@@ -5,7 +5,7 @@ const QRCode = require('qrcode');
 const path = require('path');
 const fs = require('fs');
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+
 
 const LEVEL_NAMES = {
   1: 'Cautivo',
@@ -35,7 +35,8 @@ const QR_OPTIONS_BY_LEVEL = {
 
 // GET /api/qr/checkin — genera QR de check-in unificado
 router.get('/checkin', async (req, res) => {
-  const claimUrl = `${BASE_URL}/claim`;
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+  const claimUrl = `${protocol}://${req.get('host')}/claim`;
   const options = { ...QR_OPTIONS, color: { dark: '#1E3A5F', light: '#FAFAFA' } };
 
   try {
@@ -50,7 +51,8 @@ router.get('/checkin', async (req, res) => {
 
 // GET /api/qr/checkin/download — descarga el QR unificado
 router.get('/checkin/download', async (req, res) => {
-  const claimUrl = `${BASE_URL}/claim`;
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+  const claimUrl = `${protocol}://${req.get('host')}/claim`;
   const options = { ...QR_OPTIONS, width: 1200, color: { dark: '#1E3A5F', light: '#FAFAFA' } };
 
   try {
@@ -76,7 +78,8 @@ router.get('/:level', async (req, res) => {
     return res.status(400).send('Nivel no válido');
   }
 
-  const claimUrl = `${BASE_URL}/claim?level=${level}`;
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+  const claimUrl = `${protocol}://${req.get('host')}/claim?level=${level}`;
   const options = QR_OPTIONS_BY_LEVEL[level];
 
   try {
@@ -96,7 +99,8 @@ router.get('/:level/download', async (req, res) => {
     return res.status(400).send('Nivel no válido');
   }
 
-  const claimUrl = `${BASE_URL}/claim?level=${level}`;
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+  const claimUrl = `${protocol}://${req.get('host')}/claim?level=${level}`;
   const options = { ...QR_OPTIONS_BY_LEVEL[level], width: 1200 }; // alta resolución para imprimir
 
   try {
@@ -123,7 +127,8 @@ router.get('/all/generate', async (req, res) => {
 
   const results = [];
   for (let level = 1; level <= 4; level++) {
-    const claimUrl = `${BASE_URL}/claim?level=${level}`;
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+  const claimUrl = `${protocol}://${req.get('host')}/claim?level=${level}`;
     const options = { ...QR_OPTIONS_BY_LEVEL[level], width: 1200 };
     try {
       const qrBuffer = await QRCode.toBuffer(claimUrl, options);
