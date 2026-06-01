@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Furancho Sessions — Reclama tu NFT</title>
+  <meta name="description" content="Reclama tu NFT exclusivo de Furancho Sessions. Afterwork Viño e Tapas." />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#1E3A5F" />
+  <link rel="apple-touch-icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --color-nivel1-bg: #0a0a0a;
+      --color-nivel1-accent: #8B1A1A;
+      --color-nivel1-gold: #C9963A;
+      --color-nivel1-text: #f0e0d0;
+
+      --color-nivel2-bg: #ffffff;
+      --color-nivel2-accent: #2A8A8A;
+      --color-nivel2-gold: #2A8A8A;
+      --color-nivel2-text: #1a3a3a;
+
+      --color-nivel3-bg: #0a0a0a;
+      --color-nivel3-accent: #C9963A;
+      --color-nivel3-gold: #C9963A;
+      --color-nivel3-text: #f5e8c0;
+
+      --color-nivel4-bg: #0a0a0a;
+      --color-nivel4-accent: #C9963A;
+      --color-nivel4-gold: #1E3A5F;
+      --color-nivel4-text: #e8e0f0;
+
+      --bg: #0a0a0a;
+      --accent: #C9963A;
+      --text: #f0e0d0;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    /* ========== PANTALLAS ========== */
+    .screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      padding: 0 0 40px;
+      animation: fadeIn 0.5s ease;
+    }
+    .screen.active { display: flex; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ========== HEADER ========== */
+    .header {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0;
+    }
+
+    .nft-image-container {
+      width: 100%;
+      aspect-ratio: 1;
+      max-width: 420px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .nft-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .nft-image-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 80px;
+      background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+    }
+
+    /* Shimmer overlay en la imagen */
+    .nft-image-container::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, transparent 50%, var(--bg) 100%);
+    }
+
+    /* ========== CONTENIDO ========== */
+    .content {
+      width: 100%;
+      max-width: 420px;
+      padding: 0 24px;
+    }
+
+    .level-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 100px;
+      padding: 6px 14px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      color: var(--accent);
+    }
+
+    .level-badge .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    .nft-title {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(28px, 8vw, 38px);
+      font-weight: 900;
+      line-height: 1.1;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .nft-event {
+      font-size: 13px;
+      color: rgba(255,255,255,0.45);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    .nft-description {
+      font-size: 15px;
+      line-height: 1.6;
+      color: rgba(255,255,255,0.65);
+      margin-bottom: 32px;
+    }
+
+    /* ========== FORMULARIO ========== */
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 8px;
+    }
+
+    .form-input {
+      width: 100%;
+      background: rgba(255,255,255,0.06);
+      border: 1.5px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 16px 18px;
+      font-size: 16px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      transition: border-color 0.2s, background 0.2s;
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    .form-input:focus {
+      border-color: var(--accent);
+      background: rgba(255,255,255,0.09);
+    }
+
+    .form-input::placeholder {
+      color: rgba(255,255,255,0.25);
+    }
+
+    .form-hint {
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
+      margin-top: 8px;
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    /* ========== BOTÓN ========== */
+    .btn-primary {
+      width: 100%;
+      padding: 18px 24px;
+      border: none;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      transition: transform 0.15s, opacity 0.15s, box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-primary:active { transform: scale(0.97); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .btn-primary.btn-accent {
+      background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 80%, white));
+      color: #0a0a0a;
+      box-shadow: 0 8px 32px -8px var(--accent);
+    }
+
+    .btn-primary.btn-accent:hover:not(:disabled) {
+      box-shadow: 0 12px 40px -8px var(--accent);
+    }
+
+    /* Shimmer effect on button */
+    .btn-primary::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -60%;
+      width: 30%;
+      height: 200%;
+      background: rgba(255,255,255,0.25);
+      transform: skewX(-20deg);
+      transition: left 0.5s;
+    }
+    .btn-primary:hover::after { left: 130%; }
+
+    /* ========== LOADING STATE ========== */
+    .loading-container {
+      text-align: center;
+      padding: 60px 24px;
+    }
+
+    .spinner {
+      width: 56px;
+      height: 56px;
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      margin: 0 auto 24px;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 22px;
+      margin-bottom: 8px;
+    }
+    .loading-sub {
+      font-size: 14px;
+      color: rgba(255,255,255,0.45);
+      line-height: 1.5;
+    }
+
+    /* ========== SUCCESS STATE ========== */
+    .success-container {
+      text-align: center;
+      padding: 20px 24px;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .success-icon {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #1a4a1a, #2a6a2a);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+      font-size: 36px;
+      animation: popIn 0.5s cubic-bezier(0.17, 0.67, 0.35, 1.3);
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .success-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 28px;
+      font-weight: 900;
+      margin-bottom: 12px;
+      color: #6ee86e;
+    }
+
+    .success-sub {
+      font-size: 15px;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+
+    .success-nft-card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 24px;
+      text-align: left;
+    }
+
+    .success-nft-card .nft-card-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      margin-bottom: 4px;
+      color: var(--accent);
+    }
+    .success-nft-card .nft-card-sub {
+      font-size: 13px;
+      color: rgba(255,255,255,0.45);
+    }
+
+    .wallet-display {
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-top: 12px;
+      font-family: monospace;
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      word-break: break-all;
+    }
+
+    /* ========== ERROR ========== */
+    .error-msg {
+      background: rgba(180, 30, 30, 0.15);
+      border: 1px solid rgba(200, 50, 50, 0.3);
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 14px;
+      color: #ff8888;
+      margin-top: 16px;
+      display: none;
+    }
+    .error-msg.visible { display: block; }
+
+    .duplicate-msg {
+      background: rgba(200, 150, 30, 0.15);
+      border: 1px solid rgba(200, 150, 30, 0.3);
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 14px;
+      color: #f0c060;
+      margin-top: 16px;
+      display: none;
+    }
+    .duplicate-msg.visible { display: block; }
+
+    /* ========== FOOTER ========== */
+    .footer-note {
+      font-size: 11px;
+      color: rgba(255,255,255,0.2);
+      text-align: center;
+      margin-top: 32px;
+      line-height: 1.6;
+    }
+
+    /* ========== NIVEL 2 OVERRIDE (fondo claro) ========== */
+    body.nivel-2 {
+      background: #f5f0e8;
+      color: #1a3a3a;
+      --bg: #f5f0e8;
+      --text: #1a3a3a;
+      --accent: #2A8A8A;
+    }
+    body.nivel-2 .form-input {
+      background: rgba(0,0,0,0.05);
+      border-color: rgba(0,0,0,0.15);
+      color: #1a3a3a;
+    }
+    body.nivel-2 .form-input::placeholder { color: rgba(0,0,0,0.3); }
+    body.nivel-2 .form-input:focus { border-color: #2A8A8A; }
+    body.nivel-2 .level-badge { background: rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.1); }
+    body.nivel-2 .nft-description { color: rgba(0,0,0,0.55); }
+    body.nivel-2 .form-label { color: rgba(0,0,0,0.45); }
+    body.nivel-2 .form-hint { color: rgba(0,0,0,0.35); }
+    body.nivel-2 .footer-note { color: rgba(0,0,0,0.25); }
+    body.nivel-2 .error-msg { color: #cc4444; }
+    body.nivel-2 .loading-sub { color: rgba(0,0,0,0.45); }
+    body.nivel-2 .success-sub { color: rgba(0,0,0,0.6); }
+    body.nivel-2 .success-nft-card { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.1); }
+    body.nivel-2 .wallet-display { background: rgba(0,0,0,0.08); color: rgba(0,0,0,0.35); }
+    body.nivel-2 .nft-image-container::after { background: linear-gradient(180deg, transparent 50%, #f5f0e8 100%); }
+    body.nivel-2 .btn-primary.btn-accent { color: white; }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== PANTALLA 1: CLAIM ==================== -->
+  <div class="screen active" id="screen-claim">
+    <div class="header">
+      <div style="padding: 24px 0 16px 0; text-align: center; width: 100%;">
+        <img src="/assets/logo.png" alt="Furancho Sessions Logo" style="max-height: 80px; border-radius: 8px;" />
+      </div>
+      <div class="nft-image-container">
+        <img id="nft-image" class="nft-image" src="" alt="NFT Furancho Sessions" />
+      </div>
+    </div>
+
+    <div class="content" style="margin-top: -8px;">
+      <div class="level-badge">
+        <span class="dot"></span>
+        <span id="level-label">Nivel 1</span>
+      </div>
+
+      <h1 class="nft-title" id="nft-name">CAUTIVO</h1>
+      <p class="nft-event">Furancho Sessions · Afterwork Viño e Tapas</p>
+      <p class="nft-description" id="nft-description">
+        Benvido ao Furancho. Este NFT acredita a túa primeira experiencia Furancho Sessions.
+      </p>
+
+      <form id="claim-form" onsubmit="handleSubmit(event)">
+        <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px; margin-bottom: 20px; text-align: left;">
+          <p style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--accent); letter-spacing: 1px; margin-bottom: 6px;">
+            🔒 Tu Perfil Anónimo
+          </p>
+          <p style="font-size: 13px; opacity: 0.7; line-height: 1.4; margin-bottom: 10px;">
+            Se ha creado un usuario único en tu navegador móvil. 
+          </p>
+          <div style="font-family: monospace; font-size: 12px; color: rgba(255,255,255,0.5); word-break: break-all; background: rgba(0,0,0,0.2); padding: 8px 10px; border-radius: 6px; margin-bottom: 14px;" id="wallet-address-display">
+            Generando usuario...
+          </div>
+
+          <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 14px;">
+            <label class="form-label" for="email-input">Tu email (Opcional)</label>
+            <input
+              type="email"
+              id="email-input"
+              class="form-input"
+              placeholder="nombre@email.com"
+              inputmode="email"
+              autocomplete="email"
+              style="margin-bottom: 8px;"
+            />
+            <p class="form-hint" style="margin-bottom: 12px;">
+              Escríbelo solo si deseas recuperar tu pase si cambias de móvil o si quieres recibir avisos de eventos.
+            </p>
+            <div id="gdpr-container" style="display: flex; align-items: flex-start; gap: 8px; margin-top: 10px;">
+              <input type="checkbox" id="gdpr-check" style="margin-top: 3px; transform: scale(1.1); cursor: pointer;" />
+              <label for="gdpr-check" style="font-size: 11px; opacity: 0.7; line-height: 1.4; cursor: pointer; user-select: none; color: var(--text);">
+                Acepto la política de protección de datos y recibir notificaciones de Furancho Sessions (Requerido si pones tu correo).
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" id="submit-btn" class="btn-primary btn-accent">
+          🍷 Obtener mi Pase Gratis
+        </button>
+
+        <div id="error-msg" class="error-msg"></div>
+        <div id="duplicate-msg" class="duplicate-msg"></div>
+      </form>
+
+      <!-- Mensaje del Administrador en el Claim (si hay alguno) -->
+      <div id="claim-admin-msg" style="display: none; margin-top: 24px; background: rgba(201,150,58,0.1); border: 1px solid rgba(201,150,58,0.25); border-radius: 14px; padding: 16px; text-align: left;">
+        <h4 style="font-size: 13px; font-weight: 700; color: var(--accent); display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+          📢 Mensaje del Furancho:
+        </h4>
+        <p id="claim-admin-msg-body" style="font-size: 13px; line-height: 1.5; opacity: 0.85; white-space: pre-line;"></p>
+      </div>
+
+      <p class="footer-note">
+        No necesitas contraseña ni crear una cuenta manualmente.<br>
+        Tu pase se guarda localmente en el móvil de forma segura.
+      </p>
+    </div>
+  </div>
+
+  <!-- ==================== PANTALLA 2: LOADING ==================== -->
+  <div class="screen" id="screen-loading">
+    <div class="loading-container">
+      <div class="spinner"></div>
+      <h2 class="loading-title">Creando tu usuario...</h2>
+      <p class="loading-sub">
+        Estamos registrando tu pase oficial.<br>
+        Esto tarda unos segundos. ¡No cierres la página!
+      </p>
+    </div>
+  </div>
+
+  <!-- ==================== PANTALLA 3: SUCCESS ==================== -->
+  <div class="screen" id="screen-success">
+    <div class="success-container">
+      <div class="success-icon">🎉</div>
+      <h2 class="success-title">¡Pase Recibido!</h2>
+      <p class="success-sub">
+        Tu pase exclusivo de Furancho Sessions ya está activo.<br>
+        Lo hemos vinculado directamente a tu navegador.
+      </p>
+
+      <!-- Tarjeta Digital Estilo Apple Wallet -->
+      <div style="background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 24px; margin-bottom: 24px; text-align: left; box-shadow: 0 16px 32px rgba(0,0,0,0.4); position: relative; overflow: hidden; backdrop-filter: blur(10px);">
+        <!-- Shimmer en la tarjeta -->
+        <div style="position: absolute; top: -50%; left: -60%; width: 50%; height: 200%; background: linear-gradient(to right, transparent, rgba(255,255,255,0.03), transparent); transform: skewX(-20deg); animation: shineCard 6s infinite;"></div>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <img src="/assets/logo.png" style="height: 32px; border-radius: 4px;" alt="Logo" />
+            <span style="font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 700; color: var(--accent); letter-spacing: 0.5px;">Furancho Sessions</span>
+          </div>
+          <span style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--accent);" id="card-level-tag">NIVEL 1</span>
+        </div>
+
+        <p class="nft-card-title" id="success-nft-name" style="font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 900; line-height: 1.2; margin-bottom: 6px; color: var(--text);">CAUTIVO</p>
+        <p class="nft-card-sub" style="font-size: 12px; color: rgba(255,255,255,0.45); margin-bottom: 20px;">Afterwork · <span id="success-date"></span></p>
+
+        <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px;">
+          <p style="font-size: 9px; font-weight: 600; text-transform: uppercase; color: rgba(255,255,255,0.3); letter-spacing: 1px; margin-bottom: 4px;">Pase Digital de Cliente (ID Único)</p>
+          <div class="wallet-display" id="success-wallet" style="margin-top: 0; background: rgba(0,0,0,0.2); padding: 8px 12px; border-radius: 8px; font-family: monospace; font-size: 11px; color: rgba(255,255,255,0.5); word-break: break-all;">
+            Cargando...
+          </div>
+        </div>
+      </div>
+
+      <!-- Mensaje del Administrador (si hay alguno para este nivel) -->
+      <div id="success-admin-msg" style="display: none; margin-bottom: 24px; background: rgba(201,150,58,0.15); border: 1px solid var(--accent); border-radius: 14px; padding: 20px; text-align: left;">
+        <h4 style="font-size: 14px; font-weight: 700; color: var(--accent); display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+          🎁 ¡Mensaje del Furancho!
+        </h4>
+        <p id="success-admin-msg-body" style="font-size: 13px; line-height: 1.6; opacity: 0.9; white-space: pre-line;"></p>
+      </div>
+
+      <!-- Exportar Clave (Avanzado) -->
+      <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 14px; margin-bottom: 24px; text-align: left;">
+        <details>
+          <summary style="font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.4); cursor: pointer; outline: none; user-select: none;">
+            🔑 Respaldar mi llave de seguridad (Avanzado)
+          </summary>
+          <div style="margin-top: 10px; font-size: 12px; line-height: 1.5; color: rgba(255,255,255,0.6);">
+            <p style="margin-bottom: 8px;">Esta es la clave privada de tu pase anónimo en la blockchain. Guárdala si quieres importarla en apps como MetaMask:</p>
+            <div style="font-family: monospace; font-size: 11px; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 6px; word-break: break-all; color: #ff9999;" id="private-key-display">
+              -
+            </div>
+            <p style="font-size: 10px; color: #ff8888; margin-top: 6px;">⚠️ ¡No compartas esta clave con nadie!</p>
+          </div>
+        </details>
+      </div>
+
+      <!-- Botón Tarjeta Virtual Antifraude -->
+      <button onclick="openVirtualCard()" class="btn-primary" style="background: var(--bg); border: 2px solid var(--accent); color: var(--accent); margin-bottom: 24px;">
+        👁️ Mostrar mi Tarjeta VIP
+      </button>
+
+      <!-- Guardar en pantalla de inicio -->
+      <div id="pwa-install-banner" style="display: none; background: rgba(201,150,58,0.1); border: 1px solid rgba(201,150,58,0.2); border-radius: 12px; padding: 14px 16px; font-size: 13px; text-align: left; line-height: 1.5; color: var(--text); cursor: pointer;" onclick="installPWA()">
+        📱 <strong>Añadir a pantalla de inicio:</strong><br>
+        Pulsa aquí para instalar Furancho Sessions como una App en tu móvil y tener tu pase siempre a mano.
+      </div>
+      
+      <div id="pwa-ios-banner" style="background: rgba(201,150,58,0.1); border: 1px solid rgba(201,150,58,0.2); border-radius: 12px; padding: 14px 16px; font-size: 13px; text-align: left; line-height: 1.5; color: var(--text);">
+        📱 <strong>Guarda esta tarjeta en tu móvil:</strong><br>
+        Pulsa el botón de <strong>Compartir</strong> en tu navegador y selecciona <strong>"Añadir a la pantalla de inicio"</strong>. Así tendrás tu pase Furancho siempre a mano como una app nativa.
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== PANTALLA 4: VIRTUAL CARD ==================== -->
+  <div class="screen" id="screen-virtual-card" style="justify-content: center; background: radial-gradient(circle at center, rgba(201,150,58,0.2) 0%, #0a0a0a 70%);">
+    <div style="width: 90%; max-width: 380px; position: relative;">
+      
+      <!-- Reloj Antifraude -->
+      <div style="text-align: center; margin-bottom: 20px;">
+        <p style="font-family: monospace; font-size: 24px; color: var(--accent); letter-spacing: 4px;" id="live-clock">00:00:00</p>
+        <p style="font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: rgba(255,255,255,0.4);">Pase Válido Activo</p>
+      </div>
+
+      <!-- Tarjeta Holográfica -->
+      <div class="holographic-card" style="background: rgba(20,20,20,0.8); border: 2px solid var(--accent); border-radius: 20px; padding: 30px; text-align: center; box-shadow: 0 0 40px rgba(201,150,58,0.3); position: relative; overflow: hidden; backdrop-filter: blur(10px);">
+        <div class="hologram-effect"></div>
+        <img id="vc-image" src="" alt="NFT" style="width: 120px; height: 120px; border-radius: 50%; margin-bottom: 20px; border: 3px solid var(--accent); object-fit: cover;" />
+        <h3 id="vc-level" style="font-size: 14px; color: var(--accent); letter-spacing: 2px; margin-bottom: 8px;">NIVEL</h3>
+        <h2 id="vc-name" style="font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 900; margin-bottom: 12px; color: var(--text);">NOMBRE</h2>
+        <p style="font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 24px;">Furancho Sessions</p>
+        <div style="background: rgba(0,0,0,0.5); padding: 10px; border-radius: 10px; font-family: monospace; font-size: 11px; color: rgba(255,255,255,0.4); word-break: break-all;" id="vc-wallet">
+        </div>
+      </div>
+
+      <button onclick="showScreen('screen-success')" style="margin-top: 30px; width: 100%; padding: 16px; background: transparent; border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; color: white; font-family: 'Inter'; font-weight: 600; cursor: pointer;">Volver</button>
+    </div>
+  </div>
+
+  <style>
+    @keyframes shineCard {
+      0% { left: -60%; }
+      30% { left: 130%; }
+      100% { left: 130%; }
+    }
+    .hologram-effect {
+      position: absolute;
+      top: -100%; left: -100%; width: 300%; height: 300%;
+      background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.1) 50%, transparent 60%);
+      animation: hologram 4s infinite linear;
+      pointer-events: none;
+    }
+    @keyframes hologram {
+      0% { transform: translateY(-50%) rotate(45deg); }
+      100% { transform: translateY(50%) rotate(45deg); }
+    }
+  </style>
+
+  <script>
+    // Registro Service Worker para PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js').catch(err => console.log('SW Error:', err));
+      });
+    }
+
+    // Instalación PWA (Android)
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.getElementById('pwa-install-banner').style.display = 'block';
+      document.getElementById('pwa-ios-banner').style.display = 'none';
+    });
+
+    function installPWA() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+          if (choiceResult.outcome === 'accepted') {
+            document.getElementById('pwa-install-banner').style.display = 'none';
+          }
+          deferredPrompt = null;
+        });
+      }
+    }
+
+    // Comprobar si ya está instalada o es iOS
+    const isIos = () => {
+      const userAgent = window.navigator.userAgent.toLowerCase();
+      return /iphone|ipad|ipod/.test( userAgent );
+    }
+    const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
+
+    if (isInStandaloneMode() || window.matchMedia('(display-mode: standalone)').matches) {
+      document.getElementById('pwa-install-banner').style.display = 'none';
+      document.getElementById('pwa-ios-banner').style.display = 'none';
+    } else if (isIos()) {
+      document.getElementById('pwa-ios-banner').style.display = 'block';
+    }
+
+    // Reloj Virtual Card
+    setInterval(() => {
+      const now = new Date();
+      document.getElementById('live-clock').textContent = now.toLocaleTimeString('es-ES', { hour12: false });
+    }, 1000);
+
+    function openVirtualCard() {
+      const lvl = document.getElementById('card-level-tag').textContent;
+      const name = document.getElementById('success-nft-name').textContent;
+      const img = document.getElementById('nft-image').src;
+      const wallet = document.getElementById('success-wallet').textContent;
+
+      document.getElementById('vc-level').textContent = lvl;
+      document.getElementById('vc-name').textContent = name;
+      document.getElementById('vc-image').src = img;
+      document.getElementById('vc-wallet').textContent = wallet;
+
+      showScreen('screen-virtual-card');
+    }
+    // Detectar nivel inicial desde URL (?level=1)
+    const params = new URLSearchParams(window.location.search);
+    const initialLevel = parseInt(params.get('level')) || 1;
+    let currentLevel = initialLevel;
+    
+    // Aplicar tema inicial
+    applyLevelTheme(initialLevel);
+
+    // Si no hay imagen disponible, mostrar placeholder
+    document.getElementById('nft-image').onerror = function() {
+      this.style.display = 'none';
+      const placeholder = document.createElement('div');
+      placeholder.className = 'nft-image-placeholder';
+      placeholder.textContent = '🍷';
+      this.parentNode.insertBefore(placeholder, this);
+    };
+
+    function applyLevelTheme(levelNum) {
+      const nft = NFT_DATA[levelNum] || NFT_DATA[1];
+      document.body.className = ''; // limpiar clases previas
+      document.body.classList.add(nft.bodyClass);
+      
+      const nftImg = document.getElementById('nft-image');
+      nftImg.style.display = 'block';
+      
+      // Remover placeholder previo si existe
+      const oldPlaceholder = document.querySelector('.nft-image-placeholder');
+      if (oldPlaceholder) oldPlaceholder.remove();
+
+      nftImg.src = nft.image;
+      nftImg.alt = nft.name;
+      document.getElementById('nft-name').textContent = nft.name;
+      document.getElementById('level-label').textContent = nft.label;
+      document.getElementById('nft-description').textContent = nft.description;
+      document.title = `Furancho Sessions — ${nft.name}`;
+    }
+
+    // Variables de la billetera local
+    let userWalletAddress = localStorage.getItem('furancho_wallet_address');
+    let userWalletPrivateKey = localStorage.getItem('furancho_wallet_private_key');
+    let userClaimedLevels = [];
+
+    // Inicializar billetera anónima
+    async function initWallet() {
+      if (!userWalletAddress) {
+        // Generar una billetera nueva en el servidor de forma segura
+        try {
+          const res = await fetch('/api/mint/create-wallet', { method: 'POST' });
+          const data = await res.json();
+          if (data.address && data.privateKey) {
+            userWalletAddress = data.address;
+            userWalletPrivateKey = data.privateKey;
+            localStorage.setItem('furancho_wallet_address', userWalletAddress);
+            localStorage.setItem('furancho_wallet_private_key', userWalletPrivateKey);
+          } else {
+            throw new Error('No se pudo generar billetera');
+          }
+        } catch (e) {
+          console.error(e);
+          document.getElementById('wallet-address-display').textContent = 'Error al crear billetera. Recarga la página.';
+          return;
+        }
+      }
+      
+      // Mostrar la dirección en el claim
+      const masked = userWalletAddress.substring(0, 8) + '...' + userWalletAddress.substring(userWalletAddress.length - 8);
+      document.getElementById('wallet-address-display').textContent = `ID de tu móvil: ${masked}`;
+      
+      // Comprobar historial del usuario para redirigir/subir de nivel automáticamente si escanea un QR repetido
+      await checkUserHistoryAndAdjustLevel();
+      
+      // Cargar mensajes publicados por el admin para el nivel correspondiente
+      loadAdminMessages();
+    }
+
+    // Comprobar historial de reclamos
+    let userVisitCount = 0;
+    
+    async function checkUserHistoryAndAdjustLevel() {
+      // Si la URL tiene un nivel explícito, es un salto manual.
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('level')) {
+         const manualLvl = parseInt(urlParams.get('level'));
+         if ([1,2,3,4].includes(manualLvl)) {
+            currentLevel = manualLvl;
+            applyLevelTheme(manualLvl);
+            document.getElementById('submit-btn').textContent = '🍷 Obtener Pase Manual';
+            return; // Saltamos la lógica de visualización de visitas
+         }
+      }
+
+      try {
+        const res = await fetch(`/api/mint/history?wallet=${userWalletAddress}`);
+        const data = await res.json();
+        userVisitCount = data.visitCount || 0;
+        
+        const form = document.getElementById('claim-form');
+        const btn = document.getElementById('submit-btn');
+
+        if (userVisitCount === 0) {
+          applyLevelTheme(1);
+          btn.textContent = '🍷 Registrar Visita y Obtener Pase';
+        } else if (userVisitCount === 1) {
+          applyLevelTheme(2);
+          btn.textContent = '🍷 Registrar Visita y Obtener Pase';
+        } else if (userVisitCount >= 2 && userVisitCount < 4) {
+          applyLevelTheme(3);
+          const remaining = 5 - (userVisitCount + 1);
+          btn.textContent = '📍 Registrar Visita';
+          showProgressBanner(`Llevas ${userVisitCount} visitas. Te faltan ${remaining + 1} visitas para desbloquear O Larpeiro.`);
+        } else if (userVisitCount === 4) {
+          applyLevelTheme(3);
+          btn.textContent = '🍷 Registrar Visita y Obtener Pase';
+        } else if (userVisitCount >= 5 && userVisitCount < 9) {
+          applyLevelTheme(4);
+          const remaining = 10 - (userVisitCount + 1);
+          btn.textContent = '📍 Registrar Visita';
+          showProgressBanner(`Llevas ${userVisitCount} visitas. Te faltan ${remaining + 1} visitas para ser O Presidente do Furancho.`);
+        } else if (userVisitCount === 9) {
+          applyLevelTheme(4);
+          btn.textContent = '🍷 Registrar Visita y Obtener Pase';
+        } else if (userVisitCount >= 10) {
+          applyLevelTheme(4);
+          form.style.display = 'none';
+          showMaxLevelBanner();
+        }
+      } catch (e) {
+        console.error('Error cargando historial de usuario:', e);
+      }
+    }
+
+    function showProgressBanner(text) {
+        const form = document.getElementById('claim-form');
+        const banner = document.createElement('div');
+        banner.style.cssText = 'background: rgba(201,150,58,0.15); border: 1.5px solid var(--accent); border-radius: 12px; padding: 14px; margin-bottom: 20px; font-size: 13px; text-align: left; line-height: 1.5; color: var(--text);';
+        banner.innerHTML = `✨ <strong>¡Hola de nuevo!</strong><br>${text}`;
+        form.parentNode.insertBefore(banner, form);
+    }
+
+    function showMaxLevelBanner() {
+        const form = document.getElementById('claim-form');
+        const maxBanner = document.createElement('div');
+        maxBanner.style.cssText = 'background: rgba(74,222,128,0.15); border: 1.5px solid #4ade80; border-radius: 12px; padding: 16px; margin-bottom: 20px; font-size: 14px; text-align: center; line-height: 1.6; color: #4ade80;';
+        maxBanner.innerHTML = `🏆 <strong>¡Nivel Máximo Alcanzado!</strong><br>Ya eres <strong>Presidente do Furancho</strong>. Gracias por tu fidelidad. ¡Disfruta de tus ventajas exclusivas en la barra!`;
+        form.parentNode.insertBefore(maxBanner, form);
+    }
+
+    // Cargar mensajes publicados
+    async function loadAdminMessages() {
+      try {
+        const res = await fetch(`/api/admin/current-message?level=${currentLevel}`);
+        const msg = await res.json();
+        
+        if (msg) {
+          // Mostrar en el claim
+          const claimBox = document.getElementById('claim-admin-msg');
+          const claimBody = document.getElementById('claim-admin-msg-body');
+          claimBody.textContent = msg.body;
+          claimBox.style.display = 'block';
+
+          // Mostrar en el success
+          const successBox = document.getElementById('success-admin-msg');
+          const successBody = document.getElementById('success-admin-msg-body');
+          successBody.textContent = msg.body;
+          successBox.style.display = 'block';
+        }
+      } catch (e) {
+        console.error('Error cargando mensajes:', e);
+      }
+    }
+
+    // Ejecutar al cargar la página
+    initWallet();
+
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    async function handleSubmit(event) {
+      event.preventDefault();
+
+      if (!userWalletAddress) {
+        alert('Generando usuario... Por favor, espera un segundo.');
+        return;
+      }
+
+      const email = document.getElementById('email-input').value.trim();
+      const gdprCheck = document.getElementById('gdpr-check').checked;
+
+      // Validación del checkbox GDPR si hay email escrito
+      if (email !== '') {
+        if (!gdprCheck) {
+          alert('Debes aceptar las condiciones de protección de datos para registrar tu email.');
+          return;
+        }
+      }
+
+      const btn = document.getElementById('submit-btn');
+      const errorDiv = document.getElementById('error-msg');
+      const duplicateDiv = document.getElementById('duplicate-msg');
+
+      errorDiv.classList.remove('visible');
+      duplicateDiv.classList.remove('visible');
+
+      btn.disabled = true;
+      btn.textContent = 'Enviando...';
+
+      showScreen('screen-loading');
+
+      try {
+        const payload = { walletAddress: userWalletAddress };
+        if (email !== '') {
+          payload.email = email;
+        }
+
+        // Enviar nivel manual si está en la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('level')) {
+          payload.level = parseInt(urlParams.get('level'));
+        }
+
+        const response = await fetch('/api/mint', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (response.status === 409 || response.status === 429) {
+          // Duplicado o Cooldown
+          showScreen('screen-claim');
+          btn.disabled = false;
+          btn.textContent = '🍷 Obtener mi Pase Gratis';
+          duplicateDiv.innerHTML = data.error || data.message || 'Ya tienes este pase en tu cuenta.';
+          duplicateDiv.classList.add('visible');
+          return;
+        }
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || 'Error al procesar la visita');
+        }
+
+        // Si se usó email, Crossmint crea una cartera custodia.
+        if (data.walletAddress && data.walletAddress !== userWalletAddress) {
+          userWalletAddress = data.walletAddress;
+          localStorage.setItem('furancho_wallet_address', userWalletAddress);
+        }
+
+        if (data.action === 'visit') {
+            document.getElementById('success-nft-name').textContent = 'Visita Registrada';
+            document.getElementById('success-date').textContent = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+            document.querySelector('.success-sub').innerHTML = data.message;
+            document.getElementById('card-level-tag').textContent = `VISITA ${data.visitCount}`;
+            document.getElementById('success-wallet').textContent = `ID Usuario: ${userWalletAddress}`;
+            showScreen('screen-success');
+            return;
+        }
+
+        // Si toca Mint:
+        document.getElementById('success-nft-name').textContent = data.levelName;
+        document.getElementById('card-level-tag').textContent = `NIVEL ${data.level}`;
+        document.getElementById('success-date').textContent = new Date().toLocaleDateString('es-ES', {
+          day: 'numeric', month: 'long', year: 'numeric'
+        });
+        
+        const wallet = data.walletAddress || userWalletAddress;
+        document.getElementById('success-wallet').textContent = `ID Usuario: ${wallet}`;
+        document.getElementById('private-key-display').textContent = userWalletPrivateKey;
+
+        if (data.demo) {
+          document.getElementById('success-wallet').textContent += ' (Modo Demo)';
+        }
+
+        showScreen('screen-success');
+
+      } catch (err) {
+        showScreen('screen-claim');
+        btn.disabled = false;
+        btn.textContent = '🍷 Obtener mi Pase Gratis';
+        errorDiv.textContent = err.message || 'Error de conexión. Inténtalo de nuevo.';
+        errorDiv.classList.add('visible');
+      }
+    }
+  </script>
+</body>
+</html>

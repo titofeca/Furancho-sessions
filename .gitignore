@@ -1,0 +1,6 @@
+node_modules/
+.env
+furancho.db
+qr-output/
+*.log
+.DS_Store

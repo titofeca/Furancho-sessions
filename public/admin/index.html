@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Furancho Sessions — Panel Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --navy: #1E3A5F;
+      --navy-light: #2a4e7a;
+      --crimson: #8B1A1A;
+      --teal: #2A8A8A;
+      --gold: #C9963A;
+      --dark: #0a0a0a;
+      --surface: #141414;
+      --surface2: #1e1e1e;
+      --border: rgba(255,255,255,0.08);
+      --text: #f0e0d0;
+      --text-dim: rgba(240,224,208,0.5);
+      --text-dimmer: rgba(240,224,208,0.25);
+      --nivel1: #8B1A1A;
+      --nivel2: #2A8A8A;
+      --nivel3: #C9963A;
+      --nivel4: #1E3A5F;
+      --success: #4ade80;
+      --error: #f87171;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--dark); color: var(--text); }
+
+    /* ========== LOGIN ========== */
+    #login-screen {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: radial-gradient(ellipse at center, #111 0%, #0a0a0a 70%);
+    }
+
+    .login-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 48px 40px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+
+    .login-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--gold);
+      margin-bottom: 4px;
+    }
+    .login-sub { font-size: 13px; color: var(--text-dim); margin-bottom: 32px; }
+
+    .login-input {
+      width: 100%;
+      background: rgba(255,255,255,0.05);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 16px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      margin-bottom: 16px;
+      transition: border-color 0.2s;
+    }
+    .login-input:focus { border-color: var(--gold); }
+    .login-input::placeholder { color: var(--text-dimmer); }
+
+    .login-btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, var(--gold), #e5b060);
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      color: #0a0a0a;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .login-btn:hover { opacity: 0.9; }
+    .login-btn:active { transform: scale(0.98); }
+    .login-error { color: var(--error); font-size: 13px; margin-top: 10px; display: none; }
+
+    /* ========== MAIN LAYOUT ========== */
+    #main-app { display: none; flex-direction: column; min-height: 100vh; }
+
+    /* Sidebar */
+    .sidebar {
+      width: 240px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      left: 0; top: 0; bottom: 0;
+      z-index: 100;
+    }
+
+    .sidebar-logo {
+      padding: 24px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-logo-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 17px;
+      font-weight: 900;
+      color: var(--gold);
+      line-height: 1.2;
+    }
+    .sidebar-logo-sub {
+      font-size: 11px;
+      color: var(--text-dimmer);
+      margin-top: 2px;
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      font-family: 'Inter', sans-serif;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+    .nav-item.active { background: rgba(201,150,58,0.15); color: var(--gold); }
+    .nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+    .demo-badge {
+      margin: 12px;
+      padding: 8px 12px;
+      background: rgba(201,150,58,0.1);
+      border: 1px solid rgba(201,150,58,0.2);
+      border-radius: 8px;
+      font-size: 11px;
+      color: var(--gold);
+      text-align: center;
+    }
+
+    /* Main content */
+    .main-content {
+      margin-left: 240px;
+      flex: 1;
+      padding: 32px;
+      min-height: 100vh;
+    }
+
+    .page { display: none; }
+    .page.active { display: block; animation: fadeIn 0.3s ease; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ========== PAGE HEADER ========== */
+    .page-header {
+      margin-bottom: 32px;
+    }
+    .page-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .page-subtitle { font-size: 14px; color: var(--text-dim); }
+
+    /* ========== STATS CARDS ========== */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 24px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .stat-card:hover { transform: translateY(-2px); }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: 16px 16px 0 0;
+    }
+    .stat-card.nivel-1::before { background: var(--nivel1); }
+    .stat-card.nivel-2::before { background: var(--nivel2); }
+    .stat-card.nivel-3::before { background: var(--nivel3); }
+    .stat-card.nivel-4::before { background: var(--nivel4); }
+    .stat-card.total::before { background: linear-gradient(90deg, var(--nivel1), var(--nivel2), var(--nivel3), var(--nivel4)); }
+
+    .stat-icon { font-size: 24px; margin-bottom: 12px; }
+    .stat-label { font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-dimmer); margin-bottom: 6px; }
+    .stat-value { font-family: 'Playfair Display', serif; font-size: 40px; font-weight: 900; line-height: 1; color: var(--text); }
+    .stat-sublabel { font-size: 12px; color: var(--text-dimmer); margin-top: 4px; }
+
+    /* ========== TABLE ========== */
+    .table-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+
+    .table-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .table-title { font-weight: 700; font-size: 15px; }
+
+    .filter-btn {
+      padding: 6px 14px;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: 'Inter', sans-serif;
+    }
+    .filter-btn:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
+    .filter-btn.active { background: rgba(201,150,58,0.15); border-color: var(--gold); color: var(--gold); }
+
+    .filter-row { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-dimmer);
+      text-align: left;
+      padding: 12px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 14px 24px;
+      font-size: 13px;
+      color: var(--text-dim);
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .nivel-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .nivel-pill.n1 { background: rgba(139,26,26,0.2); color: #e06060; }
+    .nivel-pill.n2 { background: rgba(42,138,138,0.2); color: #60c0c0; }
+    .nivel-pill.n3 { background: rgba(201,150,58,0.2); color: var(--gold); }
+    .nivel-pill.n4 { background: rgba(30,58,95,0.4); color: #8ab0e0; }
+
+    .status-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .status-pill.success { background: rgba(74,222,128,0.1); color: var(--success); }
+    .status-pill.pending { background: rgba(250,204,21,0.1); color: #fbbf24; }
+    .status-pill.failed { background: rgba(248,113,113,0.1); color: var(--error); }
+
+    /* ========== QR SECTION ========== */
+    .qr-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+    }
+
+    .qr-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      text-align: center;
+      transition: transform 0.2s;
+    }
+    .qr-card:hover { transform: translateY(-2px); }
+
+    .qr-img {
+      width: 100%;
+      max-width: 180px;
+      height: auto;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      background: #fafafa;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .qr-level-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .qr-level-label {
+      font-size: 11px;
+      color: var(--text-dimmer);
+      margin-bottom: 16px;
+    }
+
+    .btn-download {
+      display: inline-block;
+      padding: 8px 18px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-dim);
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s;
+      font-family: 'Inter', sans-serif;
+    }
+    .btn-download:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+
+    /* ========== MESSAGES ========== */
+    .message-form {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 24px;
+    }
+
+    .form-group { margin-bottom: 20px; }
+    .form-label { display: block; font-size: 12px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-dimmer); margin-bottom: 8px; }
+
+    .input-field {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 14px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .input-field:focus { border-color: var(--gold); }
+    .input-field::placeholder { color: var(--text-dimmer); }
+    textarea.input-field { resize: vertical; min-height: 120px; }
+
+    select.input-field {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+    }
+
+    .btn-send {
+      padding: 13px 28px;
+      background: linear-gradient(135deg, var(--gold), #e5b060);
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #0a0a0a;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn-send:hover { opacity: 0.9; }
+    .btn-send:active { transform: scale(0.98); }
+    .btn-send:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .send-result {
+      margin-top: 14px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      display: none;
+    }
+    .send-result.success { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.2); color: var(--success); display: block; }
+    .send-result.error { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2); color: var(--error); display: block; }
+
+    /* Messages history */
+    .msg-history-item {
+      padding: 16px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .msg-history-item:last-child { border-bottom: none; }
+    .msg-subject { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+    .msg-meta { font-size: 12px; color: var(--text-dimmer); }
+
+    /* ========== LOADING SPINNER ========== */
+    .loading-dots {
+      display: inline-flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .loading-dots span {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      animation: blink 1.2s infinite;
+    }
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-dimmer);
+    }
+    .empty-state-icon { font-size: 40px; margin-bottom: 12px; }
+    .empty-state-text { font-size: 14px; }
+
+    /* ========== TOAST ========== */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 20px;
+      font-size: 14px;
+      color: var(--text);
+      z-index: 9999;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.3s, transform 0.3s;
+      pointer-events: none;
+    }
+    #toast.visible { opacity: 1; transform: translateY(0); }
+
+    /* ========== RESPONSIVE ========== */
+    @media (max-width: 768px) {
+      .sidebar { width: 100%; height: auto; position: relative; border-right: none; border-bottom: 1px solid var(--border); flex-direction: row; }
+      .sidebar-nav { flex-direction: row; padding: 8px; overflow-x: auto; }
+      .main-content { margin-left: 0; padding: 20px 16px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ==================== LOGIN ==================== -->
+<div id="login-screen">
+  <div class="login-card">
+    <img src="/assets/logo.png" alt="Furancho Sessions Logo" style="max-width: 140px; margin-bottom: 20px; border-radius: 12px; border: 1px solid var(--border);" />
+    <div class="login-logo">Furancho Sessions</div>
+    <div class="login-sub">Panel de Administración</div>
+    <form onsubmit="handleLogin(event)">
+      <input type="password" id="login-password" class="login-input" placeholder="Contraseña de acceso" autocomplete="current-password" />
+      <button type="submit" class="login-btn">Entrar al Panel</button>
+      <div id="login-error" class="login-error">Contraseña incorrecta</div>
+    </form>
+  </div>
+</div>
+
+<!-- ==================== MAIN APP ==================== -->
+<div id="main-app" style="display:flex;">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-logo" style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;">
+      <img src="/assets/logo.png" alt="Logo" style="max-height: 70px; border-radius: 8px; border: 1px solid var(--border);" />
+      <div>
+        <div class="sidebar-logo-title">Furancho Sessions</div>
+        <div class="sidebar-logo-sub">Admin Panel</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
+        <span class="nav-icon">📊</span> Dashboard
+      </button>
+      <button class="nav-item" onclick="showPage('holders')" id="nav-holders">
+        <span class="nav-icon">👥</span> Holders
+      </button>
+      <button class="nav-item" onclick="showPage('messages')" id="nav-messages">
+        <span class="nav-icon">✉️</span> Mensajes
+      </button>
+      <button class="nav-item" onclick="showPage('qrcodes')" id="nav-qrcodes">
+        <span class="nav-icon">📱</span> QR Codes
+      </button>
+    </nav>
+    <div class="demo-badge" id="demo-badge">🟡 Modo Demo activo</div>
+  </div>
+
+  <!-- Content -->
+  <main class="main-content">
+
+    <!-- ==================== DASHBOARD ==================== -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-subtitle" id="dash-subtitle">Cargando datos...</p>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card total">
+          <div class="stat-icon">🍷</div>
+          <div class="stat-label">Total NFTs</div>
+          <div class="stat-value" id="stat-total">—</div>
+          <div class="stat-sublabel">minteados</div>
+        </div>
+        <div class="stat-card" style="border-top: 3px solid #1E3A5F;">
+          <div class="stat-icon">📍</div>
+          <div class="stat-label">Total Visitas</div>
+          <div class="stat-value" id="stat-visits">—</div>
+          <div class="stat-sublabel">registradas</div>
+        </div>
+        <div class="stat-card nivel-1">
+          <div class="stat-icon">🫂</div>
+          <div class="stat-label">Cautivo · Nivel 1</div>
+          <div class="stat-value" id="stat-nivel1">—</div>
+          <div class="stat-sublabel">holders</div>
+        </div>
+        <div class="stat-card nivel-2">
+          <div class="stat-icon">🥂</div>
+          <div class="stat-label">O Cunqueiro · Nivel 2</div>
+          <div class="stat-value" id="stat-nivel2">—</div>
+          <div class="stat-sublabel">holders</div>
+        </div>
+        <div class="stat-card nivel-3">
+          <div class="stat-icon">🌿</div>
+          <div class="stat-label">O Larpeiro · Nivel 3</div>
+          <div class="stat-value" id="stat-nivel3">—</div>
+          <div class="stat-sublabel">holders</div>
+        </div>
+        <div class="stat-card nivel-4">
+          <div class="stat-icon">👑</div>
+          <div class="stat-label">O Presidente · Nivel 4</div>
+          <div class="stat-value" id="stat-nivel4">—</div>
+          <div class="stat-sublabel">holders</div>
+        </div>
+      </div>
+
+      <!-- Actividad reciente -->
+      <div class="table-card">
+        <div class="table-header">
+          <span class="table-title">Actividad reciente</span>
+          <button class="filter-btn" onclick="loadStats()">↻ Actualizar</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Nivel</th>
+              <th>Fecha</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="recent-tbody">
+            <tr><td colspan="4"><div class="empty-state"><div class="loading-dots"><span></span><span></span><span></span></div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Por fecha -->
+      <div class="table-card">
+        <div class="table-header">
+          <span class="table-title">NFTs por fecha de evento</span>
+        </div>
+        <table>
+          <thead>
+            <tr><th>Fecha</th><th>NFTs minteados</th></tr>
+          </thead>
+          <tbody id="bydate-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ==================== HOLDERS ==================== -->
+    <div class="page" id="page-holders">
+      <div class="page-header">
+        <h1 class="page-title">Holders</h1>
+        <p class="page-subtitle">Lista completa de wallets y sus niveles</p>
+      </div>
+
+      <div class="table-card" style="margin-bottom: 24px;">
+        <div class="table-header">
+          <span class="table-title">Filtrar por nivel</span>
+          <div class="filter-row">
+            <button class="filter-btn active" onclick="filterHolders('all', this)">Todos</button>
+            <button class="filter-btn" onclick="filterHolders('1', this)">Nivel 1</button>
+            <button class="filter-btn" onclick="filterHolders('2', this)">Nivel 2</button>
+            <button class="filter-btn" onclick="filterHolders('3', this)">Nivel 3</button>
+            <button class="filter-btn" onclick="filterHolders('4', this)">Nivel 4</button>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Wallet (Billetera)</th>
+              <th>Nivel</th>
+              <th>Fecha evento</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="holders-tbody">
+            <tr><td colspan="4"><div class="empty-state"><div class="loading-dots"><span></span><span></span><span></span></div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Multi-nivel -->
+      <div class="table-card">
+        <div class="table-header">
+          <span class="table-title">⭐ Clientes habituales (múltiples niveles)</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Wallet (Billetera)</th>
+              <th>Niveles</th>
+              <th>Visitas</th>
+              <th>Primera visita</th>
+              <th>Última visita</th>
+            </tr>
+          </thead>
+          <tbody id="multilevel-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ==================== MESSAGES ==================== -->
+    <div class="page" id="page-messages">
+      <div class="page-header">
+        <h1 class="page-title">Publicar Anuncio</h1>
+        <p class="page-subtitle">Envía un mensaje en pantalla a los holders de tus NFTs en sus móviles</p>
+      </div>
+
+      <div class="message-form">
+        <div class="form-group">
+          <label class="form-label">Destinatarios</label>
+          <select class="input-field" id="msg-level">
+            <option value="all">Todos los holders</option>
+            <option value="1">Nivel 1 — Cautivo</option>
+            <option value="2">Nivel 2 — O Cunqueiro</option>
+            <option value="3">Nivel 3 — O Larpeiro</option>
+            <option value="4">Nivel 4 — O Presidente do Furancho</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Título del anuncio</label>
+          <input type="text" class="input-field" id="msg-subject" placeholder="Ej: ¡Próximo Furancho Sessions el viernes!" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mensaje</label>
+          <textarea class="input-field" id="msg-body" placeholder="Escribe aquí tu mensaje para los asistentes...&#10;&#10;Puedes incluir detalles del próximo evento, ofertas especiales que verán en sus móviles, etc."></textarea>
+        </div>
+        <button class="btn-send" id="send-btn" onclick="sendMessage()">
+          📢 Publicar anuncio
+        </button>
+        <div id="send-result" class="send-result"></div>
+      </div>
+
+      <!-- Historial de mensajes -->
+      <div class="table-card">
+        <div class="table-header">
+          <span class="table-title">Mensajes enviados</span>
+        </div>
+        <div id="msg-history"></div>
+      </div>
+    </div>
+
+    <!-- ==================== QR CODES ==================== -->
+    <div class="page" id="page-qrcodes">
+      <div class="page-header">
+        <h1 class="page-title">QR Check-in</h1>
+        <p class="page-subtitle">Imprime o muestra este QR a todos los clientes. El sistema calculará su nivel automáticamente.</p>
+      </div>
+
+      <div class="qr-grid" style="display: flex; justify-content: center; margin-bottom: 40px;">
+        <div class="qr-card" style="max-width: 300px; border: 2px solid var(--gold);">
+          <img src="/api/qr/checkin" alt="QR Check-in Unificado" class="qr-img" />
+          <div class="qr-level-name">CHECK-IN UNIFICADO</div>
+          <div class="qr-level-label">Todas las visitas (1, 2, 5, 10)</div>
+          <a href="/api/qr/checkin/download" class="btn-download" download>⬇ Descargar QR de Barra</a>
+        </div>
+      </div>
+
+      <div class="page-header" style="margin-top: 40px; border-top: 1px solid var(--border); padding-top: 24px;">
+        <h2 style="font-size: 20px; color: var(--text); margin-bottom: 8px;">QRs Manuales (Pases Directos)</h2>
+        <p class="page-subtitle">Úsalos solo si quieres regalar un nivel específico a alguien, ignorando su contador de visitas real. Esto genera coste en Polygon.</p>
+      </div>
+
+      <div class="qr-grid">
+        <div class="qr-card">
+          <img src="/api/qr/1" alt="QR Nivel 1" class="qr-img" />
+          <div class="qr-level-name">CAUTIVO</div>
+          <div class="qr-level-label">Nivel 1 Manual</div>
+          <a href="/api/qr/1/download" class="btn-download" download>⬇ Descargar</a>
+        </div>
+        <div class="qr-card">
+          <img src="/api/qr/2" alt="QR Nivel 2" class="qr-img" />
+          <div class="qr-level-name">O CUNQUEIRO</div>
+          <div class="qr-level-label">Nivel 2 Manual</div>
+          <a href="/api/qr/2/download" class="btn-download" download>⬇ Descargar</a>
+        </div>
+        <div class="qr-card">
+          <img src="/api/qr/3" alt="QR Nivel 3" class="qr-img" />
+          <div class="qr-level-name">O LARPEIRO</div>
+          <div class="qr-level-label">Nivel 3 Manual</div>
+          <a href="/api/qr/3/download" class="btn-download" download>⬇ Descargar</a>
+        </div>
+        <div class="qr-card">
+          <img src="/api/qr/4" alt="QR Nivel 4" class="qr-img" />
+          <div class="qr-level-name">O PRESIDENTE</div>
+          <div class="qr-level-label">Nivel 4 Manual</div>
+          <a href="/api/qr/4/download" class="btn-download" download>⬇ Descargar</a>
+        </div>
+      </div>
+
+      <div style="margin-top: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px;">
+        <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 8px;">📋 Instrucciones para el evento</h3>
+        <ol style="font-size: 14px; color: var(--text-dim); line-height: 2; padding-left: 20px;">
+          <li>Imprime (o guarda en móvil) el QR de Check-in y ponlo en la barra</li>
+          <li>El cliente escanea el QR con su cámara cada vez que consuma/asista</li>
+          <li>Se abre una página web en su móvil informándole de su progreso</li>
+          <li>Si le toca premio (Visita 1, 2, 5 o 10), recibirá su NFT automáticamente</li>
+        </ol>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Toast notification -->
+<div id="toast"></div>
+
+<script>
+  let AUTH_TOKEN = null;
+  let currentHolderFilter = 'all';
+
+  // ==================== AUTH ====================
+  async function handleLogin(event) {
+    event.preventDefault();
+    const password = document.getElementById('login-password').value;
+    const errorDiv = document.getElementById('login-error');
+
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        AUTH_TOKEN = data.token;
+        localStorage.setItem('furancho_admin_token', AUTH_TOKEN);
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('main-app').style.display = 'flex';
+        errorDiv.style.display = 'none';
+        loadStats();
+        loadHolders('all');
+        loadMessages();
+      } else {
+        errorDiv.style.display = 'block';
+      }
+    } catch (e) {
+      errorDiv.textContent = 'Error de conexión al servidor';
+      errorDiv.style.display = 'block';
+    }
+  }
+
+  // Auto-login si hay token guardado
+  window.addEventListener('load', () => {
+    const saved = localStorage.getItem('furancho_admin_token');
+    if (saved) {
+      AUTH_TOKEN = saved;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('main-app').style.display = 'flex';
+      loadStats();
+      loadHolders('all');
+      loadMessages();
+    }
+  });
+
+  function authHeaders() {
+    return { 'Content-Type': 'application/json', 'x-admin-password': AUTH_TOKEN };
+  }
+
+  // ==================== NAVIGATION ====================
+  function showPage(pageId) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById(`page-${pageId}`).classList.add('active');
+    document.getElementById(`nav-${pageId}`).classList.add('active');
+  }
+
+  // ==================== STATS ====================
+  async function loadStats() {
+    try {
+      const res = await fetch('/api/admin/stats', { headers: authHeaders() });
+      if (res.status === 401) { logout(); return; }
+      const data = await res.json();
+
+      document.getElementById('stat-total').textContent = data.total || 0;
+      document.getElementById('stat-visits').textContent = data.totalVisits || 0;
+
+      const levelMap = { 1: 'stat-nivel1', 2: 'stat-nivel2', 3: 'stat-nivel3', 4: 'stat-nivel4' };
+      Object.values(levelMap).forEach(id => document.getElementById(id).textContent = '0');
+      (data.byLevel || []).forEach(l => {
+        const el = document.getElementById(levelMap[l.level]);
+        if (el) el.textContent = l.count;
+      });
+
+      // Demo badge
+      document.getElementById('demo-badge').style.display = data.demoMode ? 'block' : 'none';
+      document.getElementById('dash-subtitle').textContent =
+        `Última actualización: ${new Date().toLocaleTimeString('es-ES')}${data.demoMode ? ' · Modo Demo' : ''}`;
+
+      // Actividad reciente
+      const tbody = document.getElementById('recent-tbody');
+      if (!data.recent || data.recent.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><div class="empty-state-icon">🍷</div><div class="empty-state-text">No hay actividad todavía. ¡El evento está por empezar!</div></div></td></tr>`;
+      } else {
+        tbody.innerHTML = data.recent.map(r => `
+          <tr>
+            <td style="font-family: monospace; font-size: 12px;">${r.wallet_masked}</td>
+            <td>${nivelPill(r.level, r.level_name)}</td>
+            <td>${formatDate(r.minted_at)}</td>
+            <td><span class="status-pill ${r.status}">${r.status}</span></td>
+          </tr>
+        `).join('');
+      }
+
+      // Por fecha
+      const dateBody = document.getElementById('bydate-tbody');
+      if (!data.byDate || data.byDate.length === 0) {
+        dateBody.innerHTML = `<tr><td colspan="2" style="text-align:center; color: var(--text-dimmer); padding: 20px;">Sin datos</td></tr>`;
+      } else {
+        dateBody.innerHTML = data.byDate.map(d => `
+          <tr><td>${d.event_date}</td><td style="font-family: 'Playfair Display', serif; font-size: 18px;">${d.count}</td></tr>
+        `).join('');
+      }
+
+    } catch (e) {
+      console.error('Error loading stats:', e);
+    }
+  }
+
+  // ==================== HOLDERS ====================
+  async function loadHolders(level) {
+    currentHolderFilter = level;
+    try {
+      const res = await fetch(`/api/admin/holders?level=${level}`, { headers: authHeaders() });
+      const holders = await res.json();
+
+      const tbody = document.getElementById('holders-tbody');
+      if (!holders || holders.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><div class="empty-state-icon">👥</div><div class="empty-state-text">No hay holders para este filtro</div></div></td></tr>`;
+      } else {
+        tbody.innerHTML = holders.map(h => `
+          <tr>
+            <td style="font-family: monospace; font-size: 13px;">${h.wallet_address}</td>
+            <td>${nivelPill(h.level, h.level_name)}</td>
+            <td>${h.event_date || '—'}</td>
+            <td><span class="status-pill ${h.status}">${h.status}</span></td>
+          </tr>
+        `).join('');
+      }
+
+      // Multi-nivel
+      const mlRes = await fetch('/api/admin/multilevel', { headers: authHeaders() });
+      const multilevel = await mlRes.json();
+      const mlBody = document.getElementById('multilevel-tbody');
+      if (!multilevel || multilevel.length === 0) {
+        mlBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text-dimmer); padding: 20px;">Todavía no hay clientes habituales con múltiples niveles</td></tr>`;
+      } else {
+        mlBody.innerHTML = multilevel.map(m => `
+          <tr>
+            <td style="font-family: monospace; font-size: 12px; font-weight: 600;">${m.wallet_address.substring(0,6)}...${m.wallet_address.substring(m.wallet_address.length - 6)}</td>
+            <td style="font-size: 12px;">${m.levels}</td>
+            <td style="font-family: 'Playfair Display', serif; font-size: 18px;">${m.total_visits}</td>
+            <td style="font-size: 12px;">${formatDate(m.first_visit)}</td>
+            <td style="font-size: 12px;">${formatDate(m.last_visit)}</td>
+          </tr>
+        `).join('');
+      }
+
+    } catch (e) {
+      console.error('Error loading holders:', e);
+    }
+  }
+
+  function filterHolders(level, btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadHolders(level);
+  }
+
+  // ==================== MESSAGES ====================
+  async function sendMessage() {
+    const subject = document.getElementById('msg-subject').value.trim();
+    const body = document.getElementById('msg-body').value.trim();
+    const levelFilter = document.getElementById('msg-level').value;
+    const resultDiv = document.getElementById('send-result');
+    const btn = document.getElementById('send-btn');
+
+    if (!subject || !body) {
+      resultDiv.className = 'send-result error';
+      resultDiv.textContent = 'El título y el mensaje son obligatorios.';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Publicando...';
+    resultDiv.className = 'send-result';
+
+    try {
+      const res = await fetch('/api/admin/send-message', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ subject, body, levelFilter })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        resultDiv.className = 'send-result success';
+        resultDiv.textContent = `✓ Anuncio publicado con éxito en las pantallas móviles de los holders.`;
+        document.getElementById('msg-subject').value = '';
+        document.getElementById('msg-body').value = '';
+        loadMessages();
+        showToast(`Mensaje publicado para los holders`);
+      } else {
+        resultDiv.className = 'send-result error';
+        resultDiv.textContent = data.error || 'Error al publicar';
+      }
+    } catch (e) {
+      resultDiv.className = 'send-result error';
+      resultDiv.textContent = 'Error de conexión';
+    }
+
+    btn.disabled = false;
+    btn.textContent = '📢 Publicar anuncio';
+  }
+
+  async function loadMessages() {
+    try {
+      const res = await fetch('/api/admin/messages', { headers: authHeaders() });
+      const messages = await res.json();
+      const container = document.getElementById('msg-history');
+
+      if (!messages || messages.length === 0) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✉️</div><div class="empty-state-text">No has enviado mensajes todavía</div></div>`;
+      } else {
+        const LEVEL_LABELS = { all: 'Todos', '1': 'Cautivo', '2': 'O Cunqueiro', '3': 'O Larpeiro', '4': 'O Presidente' };
+        container.innerHTML = messages.map(m => `
+          <div class="msg-history-item">
+            <div class="msg-subject">${m.subject}</div>
+            <div class="msg-meta">${formatDate(m.sent_at)} · ${m.recipient_count} destinatarios · ${LEVEL_LABELS[m.level_filter] || m.level_filter}</div>
+          </div>
+        `).join('');
+      }
+    } catch (e) {
+      console.error('Error loading messages:', e);
+    }
+  }
+
+  // ==================== HELPERS ====================
+  function nivelPill(level, name) {
+    return `<span class="nivel-pill n${level}">${name || 'Nivel ' + level}</span>`;
+  }
+
+  function formatDate(dateStr) {
+    if (!dateStr) return '—';
+    try {
+      return new Date(dateStr).toLocaleString('es-ES', {
+        day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+    } catch { return dateStr; }
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('visible');
+    setTimeout(() => toast.classList.remove('visible'), 3000);
+  }
+
+  function logout() {
+    localStorage.removeItem('furancho_admin_token');
+    AUTH_TOKEN = null;
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('main-app').style.display = 'none';
+  }
+
+  // Auto-refresh stats cada 30 segundos
+  setInterval(() => {
+    if (AUTH_TOKEN) loadStats();
+  }, 30000);
+</script>
+</body>
+</html>

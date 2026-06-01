@@ -1,0 +1,21 @@
+{
+  "name": "Furancho Sessions VIP",
+  "short_name": "Furancho",
+  "description": "Tu pase exclusivo para Furancho Sessions",
+  "start_url": "/claim",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#1E3A5F",
+  "icons": [
+    {
+      "src": "/assets/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
