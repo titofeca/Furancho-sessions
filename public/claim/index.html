@@ -1413,16 +1413,18 @@
         <p id="profile-admin-msg-body" class="admin-msg-body"></p>
       </div>
 
-      <!-- Botón fichar salida -->
-      <button onclick="fichaSalida()" id="profile-checkin-btn" class="btn-primary btn-accent" style="margin-bottom: 16px;">
-        🍷 Fichar Salida
-      </button>
+      <!-- Confirmación de salida (se muestra solo si se registró en esta visita) -->
+      <div id="profile-exit-confirm" style="display: none; background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.25); border-radius: 16px; padding: 14px 18px; margin-bottom: 16px; text-align: center;">
+        <p style="font-size: 13px; color: #4ade80; font-weight: 600;">✓ Salida registrada</p>
+        <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Visita acumulada. ¡Hasta la próxima!</p>
+      </div>
+
       <button onclick="openVirtualCard()" class="btn-vip">
         👁️ Ver mi Tarjeta VIP
       </button>
 
       <p class="footer-note" style="margin-top: 20px;">
-        Escanea el QR de salida en la barra cuando te vayas para acumular tu visita.
+        Escanea el QR de la puerta al entrar y al salir para acumular visitas y subir de nivel.
       </p>
     </div>
   </div>
@@ -1766,6 +1768,37 @@
         }).catch(() => {});
 
       showScreen('screen-profile');
+
+      // Auto-registrar salida en background (el escaneo del QR ES la acción)
+      // Si hay nivel subido → mostrar pantalla de éxito; si solo visita → mostrar confirmación sutil
+      autoRegistrarSalida();
+    }
+
+    async function autoRegistrarSalida() {
+      try {
+        const res = await fetch('/api/mint', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ walletAddress: userWalletAddress })
+        });
+        const data = await res.json();
+
+        if (data.action === 'mint') {
+          // Subió de nivel → pantalla de éxito con la tarjeta nueva
+          document.getElementById('success-nft-name').textContent = data.levelName || '';
+          document.getElementById('card-level-tag').textContent = 'NIVEL ' + (data.level || '');
+          document.getElementById('success-date').textContent = new Date().toLocaleDateString('es-ES');
+          document.getElementById('success-wallet').textContent = userWalletAddress;
+          document.getElementById('private-key-display').textContent = userWalletPrivateKey || '-';
+          setTimeout(() => showScreen('screen-success'), 800);
+        } else if (data.action === 'visit') {
+          // Visita registrada → confirmación sutil en el perfil
+          document.getElementById('profile-exit-confirm').style.display = 'block';
+        }
+        // Si cooldown o error → nada visible, no interrumpir
+      } catch (e) {
+        // Silencioso — no romper la experiencia
+      }
     }
 
     function animateCount(el, target, duration) {
