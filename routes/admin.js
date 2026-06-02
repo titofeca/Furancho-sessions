@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const crypto = require('crypto');
 const router = express.Router();
 const {
   getStats,
@@ -12,24 +13,44 @@ const {
 const { DEMO_MODE } = require('../services/crossmint');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'furancho2024';
+const TOKEN_SECRET = process.env.TOKEN_SECRET || crypto.randomBytes(32).toString('hex');
+const TOKEN_TTL_MS = 8 * 60 * 60 * 1000; // 8 horas
 
-// Middleware de autenticación simple
+// Genera un token firmado con HMAC: base64(payload).signature
+function generateToken() {
+  const payload = Buffer.from(JSON.stringify({ ts: Date.now() })).toString('base64url');
+  const sig = crypto.createHmac('sha256', TOKEN_SECRET).update(payload).digest('base64url');
+  return `${payload}.${sig}`;
+}
+
+// Verifica firma y expiración
+function verifyToken(token) {
+  if (!token) return false;
+  const [payload, sig] = token.split('.');
+  if (!payload || !sig) return false;
+  const expected = crypto.createHmac('sha256', TOKEN_SECRET).update(payload).digest('base64url');
+  if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return false;
+  const { ts } = JSON.parse(Buffer.from(payload, 'base64url').toString());
+  return Date.now() - ts < TOKEN_TTL_MS;
+}
+
+// Middleware de autenticación — acepta token de sesión o header legacy para compatibilidad Replit
 function requireAuth(req, res, next) {
-  const authHeader = req.headers['x-admin-password'];
-  if (authHeader !== ADMIN_PASSWORD) {
-    return res.status(401).json({ error: 'No autorizado' });
-  }
-  next();
+  const token = req.headers['x-admin-token'];
+  const legacyPassword = req.headers['x-admin-password'];
+
+  if (token && verifyToken(token)) return next();
+  if (legacyPassword === ADMIN_PASSWORD) return next(); // transitorio hasta actualizar frontend
+  return res.status(401).json({ error: 'No autorizado' });
 }
 
 // POST /api/admin/login
 router.post('/login', (req, res) => {
   const { password } = req.body;
-  if (password === ADMIN_PASSWORD) {
-    res.json({ success: true, token: ADMIN_PASSWORD }); // simple token = password
-  } else {
-    res.status(401).json({ error: 'Contraseña incorrecta' });
+  if (password !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Contraseña incorrecta' });
   }
+  res.json({ success: true, token: generateToken() });
 });
 
 // GET /api/admin/current-message (PÚBLICO para clientes móviles)

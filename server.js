@@ -13,30 +13,21 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Servir archivos estáticos (assets, public)
-app.use('/assets', express.static(path.join(__dirname, 'assets')));
-app.use(express.static(path.join(__dirname, 'public')));
-
 // Rutas API
 app.use('/api/mint', require('./routes/mint'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/qr', qrRoutes);
 app.use('/api/raffle', raffleRoutes);
 
-// Ruta principal claim — sirve la página de reclamación del NFT
-app.get('/claim', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'claim', 'index.html'));
-});
+// Rutas HTML explícitas — antes de express.static para evitar 301 con trailing slash
+app.get('/', (req, res) => res.redirect('/admin'));
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html')));
+app.get('/claim', (req, res) => res.sendFile(path.join(__dirname, 'public', 'claim', 'index.html')));
+app.get('/entry', (req, res) => res.sendFile(path.join(__dirname, 'public', 'entry', 'index.html')));
 
-// Ruta admin — sirve el panel de administración
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html'));
-});
-
-// Ruta raíz — redirige al admin
-app.get('/', (req, res) => {
-  res.redirect('/admin');
-});
+// Archivos estáticos (assets y demás)
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Health check
 app.get('/health', (req, res) => {
