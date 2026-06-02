@@ -1518,9 +1518,6 @@
     const initialLevel = parseInt(params.get('level')) || 1;
     let currentLevel = initialLevel;
 
-    // Aplicar tema inicial
-    applyLevelTheme(initialLevel);
-
     // Si no hay imagen disponible, mostrar placeholder
     document.getElementById('nft-image').onerror = function() {
       this.style.display = 'none';
@@ -1536,6 +1533,9 @@
       3: { name: 'O LARPEIRO', label: 'Nivel 3', bodyClass: 'nivel-3', image: '/assets/nft_nivel3_larpeiro.jpg',  description: 'Cinco visitas e xa forma parte da familia Furancho. Grazas polo teu apoio.' },
       4: { name: 'O PRESIDENTE', label: 'Nivel 4', bodyClass: 'nivel-4', image: '/assets/nft_nivel4_presidente.jpg', description: 'O nivel máximo. Presidente do Furancho, grazas por ser parte desta historia.' }
     };
+
+    // Aplicar tema inicial (debe ir después de NFT_DATA)
+    applyLevelTheme(initialLevel);
 
     function applyLevelTheme(levelNum) {
       const nft = NFT_DATA[levelNum] || NFT_DATA[1];
