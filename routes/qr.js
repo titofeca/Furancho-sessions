@@ -18,19 +18,19 @@ const LEVEL_NAMES = {
 const QR_OPTIONS = {
   errorCorrectionLevel: 'H',
   type: 'png',
-  margin: 2,
+  margin: 3,
   width: 800,
   color: {
     dark: '#1E3A5F',
-    light: '#FAFAFA'
+    light: '#FFFFFF'
   }
 };
 
 const QR_OPTIONS_BY_LEVEL = {
-  1: { ...QR_OPTIONS, color: { dark: '#6B1318', light: '#0a0a0a' } },
-  2: { ...QR_OPTIONS, color: { dark: '#1a6e6e', light: '#ffffff' } },
-  3: { ...QR_OPTIONS, color: { dark: '#8B6914', light: '#0a0a0a' } },
-  4: { ...QR_OPTIONS, color: { dark: '#1E3A5F', light: '#0a0a0a' } }
+  1: { ...QR_OPTIONS, color: { dark: '#8B1918', light: '#FFFFFF' } }, // vino sobre blanco
+  2: { ...QR_OPTIONS, color: { dark: '#1a6e6e', light: '#FFFFFF' } }, // teal sobre blanco
+  3: { ...QR_OPTIONS, color: { dark: '#8B6914', light: '#FFFFFF' } }, // dorado sobre blanco
+  4: { ...QR_OPTIONS, color: { dark: '#1E3A5F', light: '#FFFFFF' } }  // azul marino sobre blanco
 };
 
 
@@ -38,7 +38,7 @@ const QR_OPTIONS_BY_LEVEL = {
 router.get('/entry', async (req, res) => {
   const protocol = req.headers['x-forwarded-proto'] || req.protocol;
   const claimUrl = `${protocol}://${req.get('host')}/entry`;
-  const options = { ...QR_OPTIONS, color: { dark: '#116530', light: '#FAFAFA' } }; // Verde
+  const options = { ...QR_OPTIONS, color: { dark: '#116530', light: '#FFFFFF' } }; // Verde
 
   try {
     const qrBuffer = await QRCode.toBuffer(claimUrl, options);
@@ -74,7 +74,7 @@ router.get('/entry/download', async (req, res) => {
 router.get('/checkin', async (req, res) => {
   const protocol = req.headers['x-forwarded-proto'] || req.protocol;
   const claimUrl = `${protocol}://${req.get('host')}/claim`;
-  const options = { ...QR_OPTIONS, color: { dark: '#8B0000', light: '#FAFAFA' } };
+  const options = { ...QR_OPTIONS, color: { dark: '#8B0000', light: '#FFFFFF' } };
 
   try {
     const qrBuffer = await QRCode.toBuffer(claimUrl, options);
