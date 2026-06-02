@@ -4,79 +4,375 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Entrada - Furancho Sessions</title>
-  <link rel="stylesheet" href="/claim/style.css">
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
-<style>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
     :root {
-      --bg-dark: #050505;
-      --bg-gradient: radial-gradient(circle at top right, #2a0808 0%, #050505 60%);
-      --accent-gold: #D4AF37;
-      --accent-gold-dark: #AA8529;
-      --accent-red: #8B0000;
-      --text-main: #FDFBF7;
-      --text-muted: #BDB5A1;
-      --glass-bg: rgba(20, 20, 20, 0.6);
-      --glass-border: rgba(212, 175, 55, 0.2);
-    }
-    
-    body, html {
-      margin: 0; padding: 0;
-      background: var(--bg-dark);
-      background-image: var(--bg-gradient);
-      color: var(--text-main);
-      font-family: 'Outfit', sans-serif;
-      min-height: 100vh;
-      background-attachment: fixed;
+      --wine: #8B1918;
+      --wine-dark: #5C0F0F;
+      --wine-light: #B52A2A;
+      --cream: #F2EDE3;
+      --dark: #0C0907;
+      --dark-2: #161008;
+      --navy: #1C2B35;
+      --gold: #C4973A;
+      --text: #EDE5D8;
+      --text-muted: #9A8F82;
     }
 
-    h1, h2, h3, .nft-card-title, .nft-title {
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      min-height: 100vh;
+      font-family: 'Outfit', sans-serif;
+      background: var(--dark);
+      background-image:
+        radial-gradient(ellipse at 20% 0%, rgba(139, 25, 24, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 100%, rgba(28, 43, 53, 0.2) 0%, transparent 50%);
+      background-attachment: fixed;
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    h1, h2, h3 {
       font-family: 'Playfair Display', serif;
+    }
+
+    /* ========== SCREENS ========== */
+    .screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 32px 20px;
+      animation: screenEnter 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    @keyframes screenEnter {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ========== LOADING ========== */
+    .loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 0;
+    }
+
+    .logo-mark {
+      margin-bottom: 32px;
+    }
+
+    .logo-mark img {
+      height: 64px;
+      border-radius: 10px;
+      opacity: 0.9;
+    }
+
+    .spinner-wrap {
+      position: relative;
+      width: 68px;
+      height: 68px;
+      margin: 0 auto 28px;
+    }
+
+    .spinner {
+      width: 68px;
+      height: 68px;
+      border: 2.5px solid rgba(237, 229, 216, 0.07);
+      border-top-color: var(--wine);
+      border-radius: 50%;
+      animation: spin 0.9s cubic-bezier(0.46, 0.03, 0.52, 0.96) infinite;
+    }
+
+    .spinner-inner {
+      position: absolute;
+      inset: 10px;
+      border: 1.5px solid transparent;
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 1.4s cubic-bezier(0.46, 0.03, 0.52, 0.96) infinite reverse;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .loading-sub {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      font-weight: 300;
+    }
+
+    /* ========== SUCCESS ========== */
+    .success-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      width: 100%;
+      max-width: 380px;
+    }
+
+    .success-icon {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(139, 25, 24, 0.25), rgba(196, 151, 58, 0.2));
+      border: 1.5px solid rgba(139, 25, 24, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      margin-bottom: 22px;
+      animation: popIn 0.5s cubic-bezier(0.17, 0.67, 0.35, 1.3) both;
+      box-shadow: 0 0 30px rgba(139, 25, 24, 0.3);
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+
+    .success-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--cream);
+      margin-bottom: 10px;
+      letter-spacing: -0.3px;
+    }
+
+    .success-sub {
+      font-size: 15px;
+      color: var(--text-muted);
+      line-height: 1.65;
+      margin-bottom: 28px;
+      font-weight: 300;
+    }
+
+    /* ========== NFT CARD ========== */
+    .nft-card {
+      width: 100%;
+      background: linear-gradient(145deg, rgba(22, 14, 8, 0.9) 0%, rgba(28, 43, 53, 0.5) 100%);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(196, 151, 58, 0.25);
+      border-radius: 22px;
+      padding: 22px;
+      text-align: left;
+      position: relative;
+      overflow: hidden;
+      box-shadow:
+        0 2px 0 rgba(255,255,255,0.04) inset,
+        0 20px 50px -10px rgba(0,0,0,0.6);
+    }
+
+    .nft-card::before {
+      content: '';
+      position: absolute;
+      top: -80%;
+      left: -60%;
+      width: 55%;
+      height: 280%;
+      background: linear-gradient(to right, transparent, rgba(255,255,255,0.03), transparent);
+      transform: skewX(-18deg);
+      animation: cardShine 7s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes cardShine {
+      0%   { left: -60%; }
+      35%  { left: 140%; }
+      100% { left: 140%; }
+    }
+
+    .nft-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .nft-card-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nft-card-brand img {
+      height: 28px;
+      border-radius: 4px;
+    }
+
+    .nft-card-brand-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--gold);
+    }
+
+    .nft-card-level {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--gold);
+      background: rgba(196, 151, 58, 0.12);
+      border: 1px solid rgba(196, 151, 58, 0.25);
+      padding: 4px 10px;
+      border-radius: 100px;
+    }
+
+    .nft-card-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .nft-card-sub {
+      font-size: 12px;
+      color: rgba(237, 229, 216, 0.38);
+    }
+
+    /* ========== RAFFLE MODAL ========== */
+    #raffle-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(12, 9, 7, 0.97);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      display: none;
+      padding: 32px 24px;
+      flex-direction: column;
+    }
+
+    .raffle-title-el {
+      font-family: 'Playfair Display', serif;
+      font-size: 34px;
+      font-weight: 900;
+      color: var(--gold);
+      margin-bottom: 16px;
+    }
+
+    .raffle-prize-sub {
+      font-size: 16px;
+      color: var(--text);
+      margin-bottom: 40px;
+      font-weight: 300;
+    }
+
+    .raffle-slot {
+      font-size: 90px;
+      line-height: 1;
+      animation: rouletteFloat 0.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes rouletteFloat {
+      from { transform: translateY(-8px); }
+      to   { transform: translateY(8px); }
+    }
+
+    .raffle-searching-text {
+      margin-top: 28px;
+      font-size: 13px;
+      color: var(--text-muted);
       letter-spacing: 0.5px;
     }
 
-    .btn-primary {
-      background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dark));
-      color: #000;
-      border: none;
-      border-radius: 50px;
-      padding: 16px 28px;
-      font-size: 16px;
-      font-weight: 600;
-      font-family: 'Outfit', sans-serif;
-      cursor: pointer;
-      box-shadow: 0 4px 20px rgba(212, 175, 55, 0.3);
-      transition: all 0.3s ease;
-      text-transform: uppercase;
-      letter-spacing: 1px;
+    .raffle-winner-inner {
       width: 100%;
-    }
-    
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 25px rgba(212, 175, 55, 0.5);
+      max-width: 340px;
     }
 
-    .glass-card {
-      background: var(--glass-bg);
-      backdrop-filter: blur(15px);
-      -webkit-backdrop-filter: blur(15px);
-      border: 1px solid var(--glass-border);
-      border-radius: 24px;
-      padding: 24px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    .raffle-winner-box {
+      background: rgba(74, 222, 128, 0.07);
+      border: 1.5px solid rgba(74, 222, 128, 0.3);
+      border-radius: 18px;
+      padding: 22px;
+      margin-bottom: 18px;
     }
-    
-    .success-icon {
-      background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dark));
-      color: #000;
-      box-shadow: 0 0 30px rgba(212, 175, 55, 0.4);
+
+    .raffle-code-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: rgba(237, 229, 216, 0.5);
+      margin-bottom: 10px;
     }
-  </style></head>
+
+    .raffle-code {
+      font-family: 'Outfit', monospace;
+      font-size: 46px;
+      font-weight: 700;
+      letter-spacing: 6px;
+      color: #fff;
+      line-height: 1;
+    }
+
+    .raffle-note {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      font-weight: 300;
+    }
+
+    .btn-close-raffle {
+      padding: 14px 32px;
+      border-radius: 50px;
+      border: 1.5px solid rgba(237, 229, 216, 0.2);
+      background: transparent;
+      color: rgba(237, 229, 216, 0.6);
+      font-family: 'Outfit', sans-serif;
+      font-weight: 500;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .btn-close-raffle:hover {
+      background: rgba(255,255,255,0.04);
+      border-color: rgba(237, 229, 216, 0.35);
+    }
+
+    @keyframes spinRoulette {
+      0%   { transform: translateY(0); }
+      25%  { transform: translateY(-10px); }
+      50%  { transform: translateY(0); }
+      75%  { transform: translateY(10px); }
+      100% { transform: translateY(0); }
+    }
+  </style>
+</head>
 <body>
+
   <div class="screen" id="screen-loading" style="display: flex;">
     <div class="loading-container">
-      <div class="spinner"></div>
+      <div class="logo-mark">
+        <img src="/assets/logo.png" alt="Furancho Sessions" />
+      </div>
+      <div class="spinner-wrap">
+        <div class="spinner"></div>
+        <div class="spinner-inner"></div>
+      </div>
       <h2 class="loading-title">Registrando Entrada...</h2>
+      <p class="loading-sub">Un momento, estamos preparando tu bienvenida.</p>
     </div>
   </div>
 
@@ -88,61 +384,47 @@
         Disfruta de la experiencia. Recuerda fichar a la salida para ganar tus puntos.
       </p>
 
-      <div id="nft-container" style="display: none; glass-card">
-        <div style="position: absolute; top: -50%; left: -60%; width: 50%; height: 200%; background: linear-gradient(to right, transparent, rgba(255,255,255,0.03), transparent); transform: skewX(-20deg); animation: shineCard 6s infinite;"></div>
-        
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <img src="/assets/logo.png" style="height: 32px; border-radius: 4px;" alt="Logo" />
-            <span style="font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 700; color: var(--accent-gold); letter-spacing: 0.5px;">Furancho Sessions</span>
+      <div id="nft-container" style="display: none; width: 100%;" class="nft-card">
+        <div class="nft-card-top">
+          <div class="nft-card-brand">
+            <img src="/assets/logo.png" alt="Logo" />
+            <span class="nft-card-brand-name">Furancho Sessions</span>
           </div>
-          <span style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-gold);">NIVEL 1</span>
+          <span class="nft-card-level">NIVEL 1</span>
         </div>
-
-        <p class="nft-card-title" style="font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 900; line-height: 1.2; margin-bottom: 6px; color: var(--text);">CAUTIVO</p>
-        <p class="nft-card-sub" style="font-size: 12px; color: rgba(255,255,255,0.45); margin-bottom: 20px;">Bienvenida</p>
+        <p class="nft-card-title">CAUTIVO</p>
+        <p class="nft-card-sub">Bienvenida</p>
       </div>
-      
     </div>
   </div>
 
-    <!-- ==================== RAFFLE MODAL ==================== -->
-    <div class="screen" id="raffle-modal" style="position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.95); backdrop-filter: blur(15px); justify-content: center; text-align: center; display: none; padding: 20px;">
-      <div id="raffle-roulette" style="display: none;">
-        <h2 style="font-family: 'Playfair Display', serif; font-size: 32px; color: var(--accent-gold); margin-bottom: 20px;">Sorteo Especial</h2>
-        <p style="font-size: 16px; color: white; margin-bottom: 40px;" id="raffle-prize-text">Sorteando: ...</p>
-        <div style="font-size: 80px; animation: spinRoulette 0.5s linear infinite;">🎰</div>
-        <p style="margin-top: 30px; font-size: 14px; color: rgba(255,255,255,0.6);">Buscando ganador entre los presentes...</p>
-      </div>
-
-      <div id="raffle-winner" style="display: none;">
-        <div style="font-size: 60px; margin-bottom: 20px;">🎉</div>
-        <h2 style="font-family: 'Playfair Display', serif; font-size: 36px; color: #4ade80; margin-bottom: 10px;">¡ERES EL GANADOR!</h2>
-        <p style="font-size: 16px; color: white; margin-bottom: 30px;">Has ganado: <strong id="raffle-winner-prize"></strong></p>
-        <div style="background: rgba(255,255,255,0.1); border: 2px solid #4ade80; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
-          <p style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.7); margin-bottom: 10px;">Código de Verificación</p>
-          <p style="font-family: monospace; font-size: 40px; font-weight: bold; letter-spacing: 4px; color: white;" id="raffle-code">----</p>
-        </div>
-        <p style="font-size: 14px; color: rgba(255,255,255,0.6); line-height: 1.5;">Ve a la barra y muestra esta pantalla al personal para reclamar tu premio.</p>
-      </div>
-
-      <div id="raffle-loser" style="display: none;">
-        <div style="font-size: 60px; margin-bottom: 20px; filter: grayscale(100%);">🎲</div>
-        <h2 style="font-family: 'Playfair Display', serif; font-size: 28px; color: white; margin-bottom: 10px;">¡Casi!</h2>
-        <p style="font-size: 16px; color: rgba(255,255,255,0.6); margin-bottom: 30px;">El ganador de <span id="raffle-loser-prize"></span> ha sido otra persona.</p>
-        <button onclick="document.getElementById('raffle-modal').style.display='none'; document.body.style.overflow='auto';" style="padding: 12px 24px; border-radius: 50px; border:none; background: #D4AF37; color: black; font-weight: bold; cursor: pointer;">Cerrar</button>
-      </div>
-
-      <style>
-        @keyframes spinRoulette {
-          0% { transform: translateY(0); }
-          25% { transform: translateY(-10px); }
-          50% { transform: translateY(0); }
-          75% { transform: translateY(10px); }
-          100% { transform: translateY(0); }
-        }
-      </style>
+  <!-- ==================== RAFFLE MODAL ==================== -->
+  <div id="raffle-modal">
+    <div id="raffle-roulette" style="display: none; text-align: center;">
+      <h2 class="raffle-title-el">Sorteo Especial</h2>
+      <p class="raffle-prize-sub" id="raffle-prize-text">Sorteando: ...</p>
+      <div class="raffle-slot">🎰</div>
+      <p class="raffle-searching-text">Buscando ganador entre los presentes...</p>
     </div>
+
+    <div id="raffle-winner" style="display: none;" class="raffle-winner-inner">
+      <div style="font-size: 64px; margin-bottom: 18px;">🎉</div>
+      <h2 style="font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 900; color: #4ade80; margin-bottom: 10px;">¡ERES EL GANADOR!</h2>
+      <p style="font-size: 15px; color: var(--text); margin-bottom: 26px; font-weight: 300;">Has ganado: <strong id="raffle-winner-prize" style="font-weight: 700;"></strong></p>
+      <div class="raffle-winner-box">
+        <p class="raffle-code-label">Código de Verificación</p>
+        <p class="raffle-code" id="raffle-code">----</p>
+      </div>
+      <p class="raffle-note">Ve a la barra y muestra esta pantalla al personal para reclamar tu premio.</p>
+    </div>
+
+    <div id="raffle-loser" style="display: none; text-align: center; width: 100%; max-width: 340px;">
+      <div style="font-size: 64px; margin-bottom: 18px; filter: grayscale(100%);">🎲</div>
+      <h2 style="font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; color: var(--text); margin-bottom: 10px;">¡Casi!</h2>
+      <p style="font-size: 15px; color: var(--text-muted); margin-bottom: 28px; font-weight: 300;">El ganador de <span id="raffle-loser-prize"></span> ha sido otra persona.</p>
+      <button onclick="document.getElementById('raffle-modal').style.display='none'; document.body.style.overflow='auto';" class="btn-close-raffle">Cerrar</button>
+    </div>
+  </div>
 
   <script src="/entry/app.js"></script>
 </body>

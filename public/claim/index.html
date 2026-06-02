@@ -6,35 +6,46 @@
   <title>Furancho Sessions — Reclama tu NFT</title>
   <meta name="description" content="Reclama tu NFT exclusivo de Furancho Sessions. Afterwork Viño e Tapas." />
   <link rel="manifest" href="/manifest.json" />
-  <meta name="theme-color" content="#1E3A5F" />
+  <meta name="theme-color" content="#8B1918" />
   <link rel="apple-touch-icon" href="/assets/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --color-nivel1-bg: #0a0a0a;
-      --color-nivel1-accent: #8B1A1A;
-      --color-nivel1-gold: #C9963A;
-      --color-nivel1-text: #f0e0d0;
+      --wine: #8B1918;
+      --wine-dark: #5C0F0F;
+      --wine-light: #B52A2A;
+      --cream: #F2EDE3;
+      --cream-dark: #E8DDD0;
+      --dark: #0C0907;
+      --dark-2: #161008;
+      --navy: #1C2B35;
+      --gold: #C4973A;
+      --text: #EDE5D8;
+      --text-muted: #9A8F82;
 
-      --color-nivel2-bg: #ffffff;
+      --color-nivel1-bg: #0C0907;
+      --color-nivel1-accent: #8B1918;
+      --color-nivel1-gold: #C4973A;
+      --color-nivel1-text: #EDE5D8;
+
+      --color-nivel2-bg: #0C0907;
       --color-nivel2-accent: #2A8A8A;
       --color-nivel2-gold: #2A8A8A;
-      --color-nivel2-text: #1a3a3a;
+      --color-nivel2-text: #EDE5D8;
 
-      --color-nivel3-bg: #0a0a0a;
-      --color-nivel3-accent: #C9963A;
-      --color-nivel3-gold: #C9963A;
-      --color-nivel3-text: #f5e8c0;
+      --color-nivel3-bg: #0C0907;
+      --color-nivel3-accent: #C4973A;
+      --color-nivel3-gold: #C4973A;
+      --color-nivel3-text: #EDE5D8;
 
-      --color-nivel4-bg: #0a0a0a;
-      --color-nivel4-accent: #C9963A;
-      --color-nivel4-gold: #1E3A5F;
-      --color-nivel4-text: #e8e0f0;
+      --color-nivel4-bg: #0C0907;
+      --color-nivel4-accent: #C4973A;
+      --color-nivel4-gold: #1C2B35;
+      --color-nivel4-text: #EDE5D8;
 
-      --bg: #050505; --accent: #D4AF37;
-      --accent: #C9963A;
-      --text: #f0e0d0;
+      --bg: #0C0907;
+      --accent: #C4973A;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -42,8 +53,10 @@
     html, body {
       height: 100%;
       font-family: 'Outfit', sans-serif;
-      background: var(--bg);
-      background-image: radial-gradient(circle at top right, #2a0808 0%, #050505 60%);
+      background: var(--dark);
+      background-image:
+        radial-gradient(ellipse at 20% 0%, rgba(139, 25, 24, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 100%, rgba(28, 43, 53, 0.2) 0%, transparent 50%);
       background-attachment: fixed;
       color: var(--text);
       overflow-x: hidden;
@@ -56,23 +69,36 @@
       align-items: center;
       justify-content: flex-start;
       min-height: 100vh;
-      padding: 0 0 40px;
-      animation: fadeIn 0.5s ease;
+      padding: 0 0 60px;
+      animation: screenEnter 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
     .screen.active { display: flex; }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(16px); }
-      to { opacity: 1; transform: translateY(0); }
+    @keyframes screenEnter {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
-    /* ========== HEADER ========== */
+    /* ========== HEADER / HERO ========== */
     .header {
       width: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 0;
+    }
+
+    .header-logo-row {
+      width: 100%;
+      max-width: 420px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 24px 16px;
+    }
+
+    .header-logo-row img {
+      height: 48px;
+      border-radius: 8px;
     }
 
     .nft-image-container {
@@ -88,7 +114,10 @@
       height: 100%;
       object-fit: cover;
       display: block;
+      transition: transform 6s ease;
     }
+
+    .nft-image:hover { transform: scale(1.03); }
 
     .nft-image-placeholder {
       width: 100%;
@@ -97,120 +126,216 @@
       align-items: center;
       justify-content: center;
       font-size: 80px;
-      background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+      background: linear-gradient(135deg, #1a0d08 0%, #2a1510 100%);
     }
 
-    /* Shimmer overlay en la imagen */
+    /* Gradient overlay bottom */
     .nft-image-container::after {
       content: '';
       position: absolute;
       inset: 0;
-      background: linear-gradient(180deg, transparent 50%, var(--bg) 100%);
+      background: linear-gradient(
+        180deg,
+        transparent 40%,
+        rgba(12, 9, 7, 0.6) 75%,
+        var(--dark) 100%
+      );
+    }
+
+    /* NFT glow overlay */
+    .nft-image-container::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        135deg,
+        rgba(139, 25, 24, 0.12) 0%,
+        transparent 60%
+      );
+      z-index: 1;
     }
 
     /* ========== CONTENIDO ========== */
     .content {
       width: 100%;
       max-width: 420px;
-      padding: 0 24px;
+      padding: 0 20px;
     }
 
     .level-badge {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      background: rgba(255,255,255,0.07);
-      border: 1px solid rgba(255,255,255,0.12);
+      gap: 7px;
+      background: rgba(139, 25, 24, 0.15);
+      border: 1px solid rgba(139, 25, 24, 0.35);
       border-radius: 100px;
-      padding: 6px 14px;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 2px;
+      padding: 6px 14px 6px 10px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2.5px;
       text-transform: uppercase;
-      margin-bottom: 12px;
-      color: var(--accent);
+      margin-bottom: 14px;
+      color: var(--wine-light);
     }
 
     .level-badge .dot {
-      width: 6px;
-      height: 6px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
-      background: var(--accent);
-      animation: pulse 2s infinite;
+      background: var(--wine-light);
+      box-shadow: 0 0 6px var(--wine-light);
+      animation: dotPulse 2.2s ease-in-out infinite;
+      flex-shrink: 0;
     }
 
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(0.8); }
+    @keyframes dotPulse {
+      0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 6px var(--wine-light); }
+      50%       { opacity: 0.55; transform: scale(0.75); box-shadow: 0 0 2px var(--wine-light); }
     }
 
     .nft-title {
       font-family: 'Playfair Display', serif;
-      font-size: clamp(28px, 8vw, 38px);
+      font-size: clamp(32px, 9vw, 42px);
       font-weight: 900;
-      line-height: 1.1;
-      margin-bottom: 8px;
+      line-height: 1.05;
+      margin-bottom: 6px;
       color: var(--text);
+      letter-spacing: -0.5px;
     }
 
     .nft-event {
-      font-size: 13px;
-      color: rgba(255,255,255,0.45);
-      letter-spacing: 1px;
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 2px;
       text-transform: uppercase;
-      margin-bottom: 20px;
+      margin-bottom: 18px;
+      font-weight: 500;
     }
 
     .nft-description {
       font-size: 15px;
-      line-height: 1.6;
-      color: rgba(255,255,255,0.65);
-      margin-bottom: 32px;
+      line-height: 1.65;
+      color: rgba(237, 229, 216, 0.65);
+      margin-bottom: 28px;
+      font-weight: 300;
+    }
+
+    /* ========== FORM CARD ========== */
+    .form-card {
+      background: rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .form-card-header {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--gold);
+      margin-bottom: 6px;
+    }
+
+    .form-card-sub {
+      font-size: 13px;
+      color: rgba(237, 229, 216, 0.55);
+      line-height: 1.45;
+      margin-bottom: 12px;
+      font-weight: 300;
+    }
+
+    .wallet-display-row {
+      font-family: 'Outfit', monospace;
+      font-size: 11px;
+      color: rgba(237, 229, 216, 0.4);
+      word-break: break-all;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 9px 12px;
+      border-radius: 10px;
+      margin-bottom: 16px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .form-divider {
+      border: none;
+      border-top: 1px solid rgba(255, 255, 255, 0.07);
+      margin: 0 0 16px;
     }
 
     /* ========== FORMULARIO ========== */
     .form-label {
       display: block;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
       letter-spacing: 1.5px;
       text-transform: uppercase;
-      color: rgba(255,255,255,0.5);
+      color: rgba(237, 229, 216, 0.45);
       margin-bottom: 8px;
     }
 
     .form-input {
       width: 100%;
-      background: rgba(255,255,255,0.06);
-      border: 1.5px solid rgba(255,255,255,0.12);
-      border-radius: 12px;
-      padding: 16px 18px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1.5px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 15px 18px;
       font-size: 16px;
       color: var(--text);
       font-family: 'Outfit', sans-serif;
-      transition: border-color 0.2s, background 0.2s;
+      font-weight: 400;
+      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
       outline: none;
       -webkit-appearance: none;
+      margin-bottom: 8px;
     }
 
     .form-input:focus {
-      border-color: var(--accent);
-      background: rgba(255,255,255,0.09);
+      border-color: var(--wine);
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 0 3px rgba(139, 25, 24, 0.15);
     }
 
     .form-input::placeholder {
-      color: rgba(255,255,255,0.25);
+      color: rgba(237, 229, 216, 0.22);
     }
 
     .form-hint {
       font-size: 12px;
-      color: rgba(255,255,255,0.35);
-      margin-top: 8px;
-      margin-bottom: 28px;
+      color: rgba(237, 229, 216, 0.32);
+      margin-top: 4px;
+      margin-bottom: 16px;
       line-height: 1.5;
+      font-weight: 300;
     }
 
-    /* ========== BOTÓN ========== */
+    .gdpr-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .gdpr-row input[type="checkbox"] {
+      margin-top: 2px;
+      transform: scale(1.15);
+      cursor: pointer;
+      accent-color: var(--wine);
+      flex-shrink: 0;
+    }
+
+    .gdpr-label {
+      font-size: 11px;
+      color: rgba(237, 229, 216, 0.5);
+      line-height: 1.5;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    /* ========== BOTÓN PRINCIPAL ========== */
     .btn-primary {
       width: 100%;
       padding: 18px 24px;
@@ -220,203 +345,656 @@
       font-weight: 600;
       font-family: 'Outfit', sans-serif;
       cursor: pointer;
-      letter-spacing: 0.5px;
-      transition: transform 0.15s, opacity 0.15s, box-shadow 0.2s;
+      letter-spacing: 0.4px;
+      transition: transform 0.15s, box-shadow 0.25s;
       position: relative;
       overflow: hidden;
+      min-height: 56px;
     }
 
     .btn-primary:active { transform: scale(0.97); }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
     .btn-primary.btn-accent {
-      background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 80%, white));
-      color: #0a0a0a;
-      box-shadow: 0 8px 32px -8px var(--accent);
+      background: linear-gradient(135deg, var(--wine) 0%, var(--wine-dark) 100%);
+      color: var(--cream);
+      box-shadow: 0 8px 28px -6px rgba(139, 25, 24, 0.55);
     }
 
     .btn-primary.btn-accent:hover:not(:disabled) {
-      box-shadow: 0 12px 40px -8px var(--accent);
+      box-shadow: 0 14px 36px -6px rgba(139, 25, 24, 0.7);
+      transform: translateY(-1px);
     }
 
-    /* Shimmer effect on button */
+    /* Shimmer en botón */
     .btn-primary::after {
       content: '';
       position: absolute;
       top: -50%;
-      left: -60%;
-      width: 30%;
+      left: -70%;
+      width: 35%;
       height: 200%;
-      background: rgba(255,255,255,0.25);
+      background: rgba(255, 255, 255, 0.18);
       transform: skewX(-20deg);
-      transition: left 0.5s;
+      transition: left 0.6s ease;
     }
-    .btn-primary:hover::after { left: 130%; }
+    .btn-primary:hover:not(:disabled)::after { left: 140%; }
 
     /* ========== LOADING STATE ========== */
     .loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 60px 32px;
       text-align: center;
-      padding: 60px 24px;
+    }
+
+    .spinner-wrap {
+      position: relative;
+      width: 68px;
+      height: 68px;
+      margin: 0 auto 28px;
     }
 
     .spinner {
-      width: 56px;
-      height: 56px;
-      border: 3px solid rgba(255,255,255,0.1);
-      border-top-color: var(--accent);
+      width: 68px;
+      height: 68px;
+      border: 2.5px solid rgba(237, 229, 216, 0.07);
+      border-top-color: var(--wine);
       border-radius: 50%;
-      margin: 0 auto 24px;
-      animation: spin 0.8s linear infinite;
+      animation: spin 0.9s cubic-bezier(0.46, 0.03, 0.52, 0.96) infinite;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+    .spinner-inner {
+      position: absolute;
+      inset: 10px;
+      border: 1.5px solid transparent;
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 1.4s cubic-bezier(0.46, 0.03, 0.52, 0.96) infinite reverse;
     }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     .loading-title {
       font-family: 'Playfair Display', serif;
-      font-size: 22px;
-      margin-bottom: 8px;
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: var(--text);
     }
     .loading-sub {
       font-size: 14px;
-      color: rgba(255,255,255,0.45);
-      line-height: 1.5;
+      color: var(--text-muted);
+      line-height: 1.6;
+      font-weight: 300;
     }
 
     /* ========== SUCCESS STATE ========== */
     .success-container {
       text-align: center;
-      padding: 20px 24px;
+      padding: 24px 20px 40px;
       width: 100%;
       max-width: 420px;
     }
 
     .success-icon {
-      width: 80px;
-      height: 80px;
+      width: 72px;
+      height: 72px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #1a4a1a, #2a6a2a);
+      background: linear-gradient(135deg, rgba(139, 25, 24, 0.25), rgba(196, 151, 58, 0.2));
+      border: 1.5px solid rgba(139, 25, 24, 0.4);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto 24px;
-      font-size: 36px;
-      animation: popIn 0.5s cubic-bezier(0.17, 0.67, 0.35, 1.3);
+      margin: 0 auto 20px;
+      font-size: 32px;
+      animation: popIn 0.5s cubic-bezier(0.17, 0.67, 0.35, 1.3) both;
     }
 
     @keyframes popIn {
       from { transform: scale(0); opacity: 0; }
-      to { transform: scale(1); opacity: 1; }
+      to   { transform: scale(1); opacity: 1; }
     }
 
     .success-title {
       font-family: 'Playfair Display', serif;
-      font-size: 28px;
+      font-size: 30px;
       font-weight: 900;
-      margin-bottom: 12px;
-      color: #6ee86e;
+      margin-bottom: 10px;
+      color: var(--cream);
+      letter-spacing: -0.3px;
     }
 
     .success-sub {
-      font-size: 15px;
-      color: rgba(255,255,255,0.6);
-      line-height: 1.6;
-      margin-bottom: 32px;
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.65;
+      margin-bottom: 28px;
+      font-weight: 300;
     }
 
-    .success-nft-card {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
+    /* ========== APPLE WALLET CARD ========== */
+    .wallet-card {
+      background: linear-gradient(145deg, rgba(22, 14, 8, 0.9) 0%, rgba(28, 43, 53, 0.5) 100%);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(196, 151, 58, 0.25);
+      border-radius: 22px;
+      padding: 24px;
+      margin-bottom: 20px;
+      text-align: left;
+      position: relative;
+      overflow: hidden;
+      box-shadow:
+        0 2px 0 rgba(255,255,255,0.04) inset,
+        0 20px 50px -10px rgba(0,0,0,0.6),
+        0 0 0 0.5px rgba(196, 151, 58, 0.1);
+    }
+
+    /* Brillo continuo en la tarjeta */
+    .wallet-card::before {
+      content: '';
+      position: absolute;
+      top: -80%;
+      left: -60%;
+      width: 55%;
+      height: 280%;
+      background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.035), transparent);
+      transform: skewX(-18deg);
+      animation: cardShine 7s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes cardShine {
+      0%   { left: -60%; }
+      35%  { left: 140%; }
+      100% { left: 140%; }
+    }
+
+    .wallet-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .wallet-card-brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .wallet-card-brand img {
+      height: 30px;
+      border-radius: 5px;
+    }
+
+    .wallet-card-brand-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--gold);
+      letter-spacing: 0.3px;
+    }
+
+    .wallet-card-level-tag {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--gold);
+      background: rgba(196, 151, 58, 0.12);
+      border: 1px solid rgba(196, 151, 58, 0.25);
+      padding: 4px 10px;
+      border-radius: 100px;
+    }
+
+    .wallet-card-nft-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 26px;
+      font-weight: 900;
+      line-height: 1.15;
+      margin-bottom: 4px;
+      color: var(--text);
+      letter-spacing: -0.3px;
+    }
+
+    .wallet-card-date {
+      font-size: 11px;
+      color: rgba(237, 229, 216, 0.38);
+      margin-bottom: 20px;
+      font-weight: 400;
+      letter-spacing: 0.5px;
+    }
+
+    .wallet-card-divider {
+      border: none;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      margin: 0 0 14px;
+    }
+
+    .wallet-card-id-label {
+      font-size: 8.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: rgba(237, 229, 216, 0.25);
+      letter-spacing: 1.2px;
+      margin-bottom: 5px;
+    }
+
+    .wallet-card-id {
+      font-family: 'Outfit', monospace;
+      font-size: 10.5px;
+      color: rgba(237, 229, 216, 0.38);
+      word-break: break-all;
+      background: rgba(0, 0, 0, 0.22);
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.04);
+    }
+
+    /* ========== ADMIN MESSAGE ========== */
+    .admin-msg-box {
+      background: rgba(196, 151, 58, 0.08);
+      border: 1px solid rgba(196, 151, 58, 0.22);
       border-radius: 16px;
-      padding: 20px;
-      margin-bottom: 24px;
+      padding: 16px 18px;
+      margin-top: 20px;
       text-align: left;
     }
 
-    .success-nft-card .nft-card-title {
-      font-family: 'Playfair Display', serif;
-      font-size: 18px;
-      margin-bottom: 4px;
-      color: var(--accent);
-    }
-    .success-nft-card .nft-card-sub {
-      font-size: 13px;
-      color: rgba(255,255,255,0.45);
+    .admin-msg-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--gold);
+      margin-bottom: 7px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    .wallet-display {
-      background: rgba(0,0,0,0.3);
-      border-radius: 10px;
-      padding: 12px 14px;
-      margin-top: 12px;
-      font-family: monospace;
-      font-size: 11px;
-      color: rgba(255,255,255,0.4);
-      word-break: break-all;
+    .admin-msg-body {
+      font-size: 13px;
+      line-height: 1.6;
+      color: rgba(237, 229, 216, 0.8);
+      white-space: pre-line;
+      font-weight: 300;
     }
+
+    /* ========== ADVANCED KEY ========== */
+    .key-section {
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-bottom: 18px;
+      text-align: left;
+    }
+
+    .key-section summary {
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(237, 229, 216, 0.35);
+      cursor: pointer;
+      outline: none;
+      user-select: none;
+      letter-spacing: 0.3px;
+    }
+
+    .key-section-inner {
+      margin-top: 12px;
+      font-size: 12px;
+      line-height: 1.55;
+      color: rgba(237, 229, 216, 0.55);
+    }
+
+    .key-display {
+      font-family: monospace;
+      font-size: 10.5px;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 8px 10px;
+      border-radius: 7px;
+      word-break: break-all;
+      color: #ff9999;
+      margin-top: 8px;
+    }
+
+    .key-warning {
+      font-size: 10px;
+      color: #ff8888;
+      margin-top: 6px;
+    }
+
+    /* ========== BTN SECONDARY ========== */
+    .btn-vip {
+      width: 100%;
+      padding: 17px 24px;
+      background: transparent;
+      border: 1.5px solid rgba(139, 25, 24, 0.4);
+      border-radius: 50px;
+      color: var(--wine-light);
+      font-size: 15px;
+      font-weight: 600;
+      font-family: 'Outfit', sans-serif;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, transform 0.15s;
+      margin-bottom: 20px;
+      letter-spacing: 0.3px;
+    }
+    .btn-vip:hover {
+      border-color: var(--wine);
+      background: rgba(139, 25, 24, 0.08);
+      transform: translateY(-1px);
+    }
+    .btn-vip:active { transform: scale(0.97); }
+
+    /* ========== PWA BANNERS ========== */
+    .pwa-banner {
+      background: rgba(196, 151, 58, 0.07);
+      border: 1px solid rgba(196, 151, 58, 0.18);
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 13px;
+      text-align: left;
+      line-height: 1.55;
+      color: var(--text);
+      cursor: pointer;
+      margin-bottom: 16px;
+      font-weight: 300;
+    }
+
+    .pwa-banner strong { font-weight: 600; }
 
     /* ========== ERROR ========== */
     .error-msg {
-      background: rgba(180, 30, 30, 0.15);
-      border: 1px solid rgba(200, 50, 50, 0.3);
-      border-radius: 10px;
-      padding: 14px 16px;
-      font-size: 14px;
-      color: #ff8888;
-      margin-top: 16px;
+      background: rgba(180, 30, 30, 0.12);
+      border: 1px solid rgba(200, 50, 50, 0.28);
+      border-radius: 12px;
+      padding: 13px 16px;
+      font-size: 13px;
+      color: #ff9a9a;
+      margin-top: 14px;
       display: none;
+      line-height: 1.5;
     }
     .error-msg.visible { display: block; }
 
     .duplicate-msg {
-      background: rgba(200, 150, 30, 0.15);
-      border: 1px solid rgba(200, 150, 30, 0.3);
-      border-radius: 10px;
-      padding: 14px 16px;
-      font-size: 14px;
-      color: #f0c060;
-      margin-top: 16px;
+      background: rgba(196, 151, 58, 0.1);
+      border: 1px solid rgba(196, 151, 58, 0.25);
+      border-radius: 12px;
+      padding: 13px 16px;
+      font-size: 13px;
+      color: #f0c875;
+      margin-top: 14px;
       display: none;
+      line-height: 1.5;
     }
     .duplicate-msg.visible { display: block; }
 
     /* ========== FOOTER ========== */
     .footer-note {
       font-size: 11px;
-      color: rgba(255,255,255,0.2);
+      color: rgba(237, 229, 216, 0.18);
       text-align: center;
-      margin-top: 32px;
-      line-height: 1.6;
+      margin-top: 28px;
+      line-height: 1.7;
+      font-weight: 300;
     }
 
-    /* ========== NIVEL 2 OVERRIDE (fondo claro) ========== */
+    /* ========== VIRTUAL CARD SCREEN ========== */
+    .virtual-card-screen {
+      justify-content: center;
+      background: radial-gradient(ellipse at 50% 40%, rgba(139, 25, 24, 0.18) 0%, var(--dark) 70%);
+    }
+
+    .vc-wrap {
+      width: 90%;
+      max-width: 360px;
+    }
+
+    .vc-clock-wrap {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .vc-clock {
+      font-family: 'Outfit', monospace;
+      font-size: 28px;
+      font-weight: 300;
+      color: var(--wine-light);
+      letter-spacing: 6px;
+      text-shadow: 0 0 20px rgba(181, 42, 42, 0.5);
+    }
+
+    .vc-clock-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: rgba(237, 229, 216, 0.3);
+      margin-top: 4px;
+    }
+
+    .holographic-card {
+      background: linear-gradient(145deg, rgba(20, 12, 8, 0.95) 0%, rgba(28, 43, 53, 0.6) 100%);
+      border: 1.5px solid rgba(196, 151, 58, 0.35);
+      border-radius: 24px;
+      padding: 32px 28px;
+      text-align: center;
+      box-shadow:
+        0 0 50px rgba(139, 25, 24, 0.25),
+        0 0 0 0.5px rgba(255,255,255,0.04) inset;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+    }
+
+    .hologram-effect {
+      position: absolute;
+      top: -100%; left: -100%;
+      width: 300%; height: 300%;
+      background: linear-gradient(135deg,
+        transparent 38%,
+        rgba(255, 255, 255, 0.06) 50%,
+        transparent 62%
+      );
+      animation: hologram 5s infinite linear;
+      pointer-events: none;
+    }
+
+    @keyframes hologram {
+      0%   { transform: translateY(-55%) rotate(45deg); }
+      100% { transform: translateY(55%) rotate(45deg); }
+    }
+
+    .vc-img {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      margin: 0 auto 18px;
+      border: 2px solid rgba(196, 151, 58, 0.4);
+      object-fit: cover;
+      display: block;
+      box-shadow: 0 0 24px rgba(139, 25, 24, 0.4);
+    }
+
+    .vc-level-text {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--gold);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .vc-name-text {
+      font-family: 'Playfair Display', serif;
+      font-size: 34px;
+      font-weight: 900;
+      margin-bottom: 10px;
+      color: var(--text);
+      letter-spacing: -0.5px;
+    }
+
+    .vc-brand-text {
+      font-size: 11px;
+      color: rgba(237, 229, 216, 0.45);
+      margin-bottom: 22px;
+      letter-spacing: 1px;
+    }
+
+    .vc-wallet-display {
+      background: rgba(0, 0, 0, 0.45);
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-family: monospace;
+      font-size: 10.5px;
+      color: rgba(237, 229, 216, 0.35);
+      word-break: break-all;
+    }
+
+    .btn-back {
+      margin-top: 24px;
+      width: 100%;
+      padding: 15px;
+      background: transparent;
+      border: 1px solid rgba(237, 229, 216, 0.15);
+      border-radius: 14px;
+      color: rgba(237, 229, 216, 0.55);
+      font-family: 'Outfit', sans-serif;
+      font-weight: 500;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      letter-spacing: 0.3px;
+    }
+    .btn-back:hover {
+      background: rgba(255,255,255,0.04);
+      border-color: rgba(237, 229, 216, 0.25);
+    }
+
+    /* ========== RAFFLE MODAL ========== */
+    .raffle-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(12, 9, 7, 0.97);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      display: none;
+      padding: 32px 24px;
+    }
+
+    .raffle-modal.active { display: flex; flex-direction: column; }
+
+    .raffle-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 34px;
+      font-weight: 900;
+      color: var(--gold);
+      margin-bottom: 16px;
+    }
+
+    .raffle-prize-text {
+      font-size: 16px;
+      color: var(--text);
+      margin-bottom: 40px;
+      font-weight: 300;
+    }
+
+    .raffle-slot {
+      font-size: 90px;
+      animation: rouletteFloat 0.5s ease-in-out infinite alternate;
+      line-height: 1;
+    }
+
+    @keyframes rouletteFloat {
+      from { transform: translateY(-8px); }
+      to   { transform: translateY(8px); }
+    }
+
+    .raffle-searching {
+      margin-top: 28px;
+      font-size: 13px;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+    }
+
+    .raffle-winner-box {
+      background: rgba(74, 222, 128, 0.07);
+      border: 1.5px solid rgba(74, 222, 128, 0.3);
+      border-radius: 18px;
+      padding: 22px;
+      margin-bottom: 20px;
+    }
+
+    .raffle-code-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: rgba(237, 229, 216, 0.5);
+      margin-bottom: 10px;
+    }
+
+    .raffle-code {
+      font-family: 'Outfit', monospace;
+      font-size: 46px;
+      font-weight: 700;
+      letter-spacing: 6px;
+      color: #fff;
+      line-height: 1;
+    }
+
+    .raffle-note {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-top: 16px;
+      font-weight: 300;
+    }
+
+    /* nivel 2 light override */
     body.nivel-2 {
-      background: #f5f0e8;
+      background: #EAE4DA;
       color: #1a3a3a;
-      --bg: #f5f0e8;
-      --text: #1a3a3a;
+      --bg: #EAE4DA;
+      --text: #1C2B35;
       --accent: #2A8A8A;
     }
     body.nivel-2 .form-input {
       background: rgba(0,0,0,0.05);
-      border-color: rgba(0,0,0,0.15);
-      color: #1a3a3a;
+      border-color: rgba(0,0,0,0.12);
+      color: #1C2B35;
     }
-    body.nivel-2 .form-input::placeholder { color: rgba(0,0,0,0.3); }
+    body.nivel-2 .form-input::placeholder { color: rgba(0,0,0,0.28); }
     body.nivel-2 .form-input:focus { border-color: #2A8A8A; }
-    body.nivel-2 .level-badge { background: rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.1); }
-    body.nivel-2 .nft-description { color: rgba(0,0,0,0.55); }
-    body.nivel-2 .form-label { color: rgba(0,0,0,0.45); }
-    body.nivel-2 .form-hint { color: rgba(0,0,0,0.35); }
-    body.nivel-2 .footer-note { color: rgba(0,0,0,0.25); }
+    body.nivel-2 .level-badge { background: rgba(42,138,138,0.1); border-color: rgba(42,138,138,0.3); color: #2A8A8A; }
+    body.nivel-2 .level-badge .dot { background: #2A8A8A; box-shadow: 0 0 6px #2A8A8A; }
+    body.nivel-2 .nft-description,
+    body.nivel-2 .form-card-sub { color: rgba(28,43,53,0.55); }
+    body.nivel-2 .form-label { color: rgba(28,43,53,0.45); }
+    body.nivel-2 .form-hint { color: rgba(28,43,53,0.32); }
+    body.nivel-2 .footer-note { color: rgba(28,43,53,0.22); }
     body.nivel-2 .error-msg { color: #cc4444; }
-    body.nivel-2 .loading-sub { color: rgba(0,0,0,0.45); }
-    body.nivel-2 .success-sub { color: rgba(0,0,0,0.6); }
-    body.nivel-2 .success-nft-card { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.1); }
-    body.nivel-2 .wallet-display { background: rgba(0,0,0,0.08); color: rgba(0,0,0,0.35); }
-    body.nivel-2 .nft-image-container::after { background: linear-gradient(180deg, transparent 50%, #f5f0e8 100%); }
-    body.nivel-2 .btn-primary.btn-accent { color: white; }
+    body.nivel-2 .loading-sub { color: rgba(28,43,53,0.45); }
+    body.nivel-2 .success-sub { color: rgba(28,43,53,0.6); }
+    body.nivel-2 .wallet-card { background: rgba(255,255,255,0.7); border-color: rgba(42,138,138,0.3); }
+    body.nivel-2 .wallet-card-nft-name { color: #1C2B35; }
+    body.nivel-2 .wallet-card-id { color: rgba(28,43,53,0.45); background: rgba(0,0,0,0.07); }
+    body.nivel-2 .nft-image-container::after { background: linear-gradient(180deg, transparent 40%, rgba(234,228,218,0.7) 75%, #EAE4DA 100%); }
+    body.nivel-2 .btn-primary.btn-accent { background: linear-gradient(135deg, #2A8A8A, #1d6464); color: white; }
+    body.nivel-2 .form-card { background: rgba(255,255,255,0.35); border-color: rgba(0,0,0,0.08); }
+    body.nivel-2 .wallet-display-row { background: rgba(0,0,0,0.07); color: rgba(28,43,53,0.45); }
+    body.nivel-2 .gdpr-label { color: rgba(28,43,53,0.5); }
+    body.nivel-2 .success-title { color: #1C2B35; }
   </style>
 </head>
 <body>
@@ -424,15 +1002,15 @@
   <!-- ==================== PANTALLA 1: CLAIM ==================== -->
   <div class="screen active" id="screen-claim">
     <div class="header">
-      <div style="padding: 24px 0 16px 0; text-align: center; width: 100%;">
-        <img src="/assets/logo.png" alt="Furancho Sessions Logo" style="max-height: 80px; border-radius: 8px;" />
+      <div class="header-logo-row">
+        <img src="/assets/logo.png" alt="Furancho Sessions Logo" />
       </div>
       <div class="nft-image-container">
         <img id="nft-image" class="nft-image" src="" alt="NFT Furancho Sessions" />
       </div>
     </div>
 
-    <div class="content" style="margin-top: -8px;">
+    <div class="content" style="margin-top: -6px;">
       <div class="level-badge">
         <span class="dot"></span>
         <span id="level-label">Nivel 1</span>
@@ -445,37 +1023,31 @@
       </p>
 
       <form id="claim-form" onsubmit="handleSubmit(event)">
-        <div style="glass-card" style="margin-bottom: 20px; text-align: left;">
-          <p style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--accent); letter-spacing: 1px; margin-bottom: 6px;">
-            🔒 Tu Perfil Anónimo
-          </p>
-          <p style="font-size: 13px; opacity: 0.7; line-height: 1.4; margin-bottom: 10px;">
-            Se ha creado un usuario único en tu navegador móvil. 
-          </p>
-          <div style="font-family: monospace; font-size: 12px; color: rgba(255,255,255,0.5); word-break: break-all; background: rgba(0,0,0,0.2); padding: 8px 10px; border-radius: 6px; margin-bottom: 14px;" id="wallet-address-display">
-            Generando usuario...
-          </div>
+        <div class="form-card">
+          <p class="form-card-header">🔒 Tu Perfil Anónimo</p>
+          <p class="form-card-sub">Se ha creado un usuario único en tu navegador móvil.</p>
+          <div class="wallet-display-row" id="wallet-address-display">Generando usuario...</div>
 
-          <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 14px;">
-            <label class="form-label" for="email-input">Tu email (Opcional)</label>
-            <input
-              type="email"
-              id="email-input"
-              class="form-input"
-              placeholder="nombre@email.com"
-              inputmode="email"
-              autocomplete="email"
-              style="margin-bottom: 8px;"
-            />
-            <p class="form-hint" style="margin-bottom: 12px;">
-              Escríbelo solo si deseas recuperar tu pase si cambias de móvil o si quieres recibir avisos de eventos.
-            </p>
-            <div id="gdpr-container" style="display: flex; align-items: flex-start; gap: 8px; margin-top: 10px;">
-              <input type="checkbox" id="gdpr-check" style="margin-top: 3px; transform: scale(1.1); cursor: pointer;" />
-              <label for="gdpr-check" style="font-size: 11px; opacity: 0.7; line-height: 1.4; cursor: pointer; user-select: none; color: var(--text);">
-                Acepto la política de protección de datos y recibir notificaciones de Furancho Sessions (Requerido si pones tu correo).
-              </label>
-            </div>
+          <hr class="form-divider" />
+
+          <label class="form-label" for="email-input">Tu email (Opcional)</label>
+          <input
+            type="email"
+            id="email-input"
+            class="form-input"
+            placeholder="nombre@email.com"
+            inputmode="email"
+            autocomplete="email"
+          />
+          <p class="form-hint">
+            Escríbelo solo si deseas recuperar tu pase si cambias de móvil o quieres recibir avisos de eventos.
+          </p>
+
+          <div class="gdpr-row" id="gdpr-container">
+            <input type="checkbox" id="gdpr-check" />
+            <label for="gdpr-check" class="gdpr-label">
+              Acepto la política de protección de datos y recibir notificaciones de Furancho Sessions (Requerido si pones tu correo).
+            </label>
           </div>
         </div>
 
@@ -487,12 +1059,10 @@
         <div id="duplicate-msg" class="duplicate-msg"></div>
       </form>
 
-      <!-- Mensaje del Administrador en el Claim (si hay alguno) -->
-      <div id="claim-admin-msg" style="display: none; margin-top: 24px; background: rgba(201,150,58,0.1); border: 1px solid rgba(201,150,58,0.25); border-radius: 50px; padding: 16px; text-align: left;">
-        <h4 style="font-size: 13px; font-weight: 700; color: var(--accent); display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-          📢 Mensaje del Furancho:
-        </h4>
-        <p id="claim-admin-msg-body" style="font-size: 13px; line-height: 1.5; opacity: 0.85; white-space: pre-line;"></p>
+      <!-- Mensaje del Administrador en el Claim -->
+      <div id="claim-admin-msg" style="display: none;" class="admin-msg-box">
+        <p class="admin-msg-label">📢 Mensaje del Furancho</p>
+        <p id="claim-admin-msg-body" class="admin-msg-body"></p>
       </div>
 
       <p class="footer-note">
@@ -505,7 +1075,10 @@
   <!-- ==================== PANTALLA 2: LOADING ==================== -->
   <div class="screen" id="screen-loading">
     <div class="loading-container">
-      <div class="spinner"></div>
+      <div class="spinner-wrap">
+        <div class="spinner"></div>
+        <div class="spinner-inner"></div>
+      </div>
       <h2 class="loading-title">Creando tu usuario...</h2>
       <p class="loading-sub">
         Estamos registrando tu pase oficial.<br>
@@ -525,160 +1098,121 @@
       </p>
 
       <!-- Tarjeta Digital Estilo Apple Wallet -->
-      <div style="glass-card">
-        <!-- Shimmer en la tarjeta -->
-        <div style="position: absolute; top: -50%; left: -60%; width: 50%; height: 200%; background: linear-gradient(to right, transparent, rgba(255,255,255,0.03), transparent); transform: skewX(-20deg); animation: shineCard 6s infinite;"></div>
-        
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <img src="/assets/logo.png" style="height: 32px; border-radius: 4px;" alt="Logo" />
-            <span style="font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 700; color: var(--accent); letter-spacing: 0.5px;">Furancho Sessions</span>
+      <div class="wallet-card">
+        <div class="wallet-card-top">
+          <div class="wallet-card-brand">
+            <img src="/assets/logo.png" alt="Logo" />
+            <span class="wallet-card-brand-name">Furancho Sessions</span>
           </div>
-          <span style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--accent);" id="card-level-tag">NIVEL 1</span>
+          <span class="wallet-card-level-tag" id="card-level-tag">NIVEL 1</span>
         </div>
 
-        <p class="nft-card-title" id="success-nft-name" style="font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 900; line-height: 1.2; margin-bottom: 6px; color: var(--text);">CAUTIVO</p>
-        <p class="nft-card-sub" style="font-size: 12px; color: rgba(255,255,255,0.45); margin-bottom: 20px;">Afterwork · <span id="success-date"></span></p>
+        <p class="wallet-card-nft-name" id="success-nft-name">CAUTIVO</p>
+        <p class="wallet-card-date">Afterwork · <span id="success-date"></span></p>
 
-        <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px;">
-          <p style="font-size: 9px; font-weight: 600; text-transform: uppercase; color: rgba(255,255,255,0.3); letter-spacing: 1px; margin-bottom: 4px;">Pase Digital de Cliente (ID Único)</p>
-          <div class="wallet-display" id="success-wallet" style="margin-top: 0; background: rgba(0,0,0,0.2); padding: 8px 12px; border-radius: 8px; font-family: monospace; font-size: 11px; color: rgba(255,255,255,0.5); word-break: break-all;">
-            Cargando...
-          </div>
-        </div>
+        <hr class="wallet-card-divider" />
+        <p class="wallet-card-id-label">Pase Digital de Cliente (ID Único)</p>
+        <div class="wallet-card-id" id="success-wallet">Cargando...</div>
       </div>
 
       <!-- Mensaje del Administrador (si hay alguno para este nivel) -->
-      <div id="success-admin-msg" style="display: none; margin-bottom: 24px; background: rgba(201,150,58,0.15); border: 1px solid var(--accent); border-radius: 50px; padding: 20px; text-align: left;">
-        <h4 style="font-size: 14px; font-weight: 700; color: var(--accent); display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-          🎁 ¡Mensaje del Furancho!
-        </h4>
-        <p id="success-admin-msg-body" style="font-size: 13px; line-height: 1.6; opacity: 0.9; white-space: pre-line;"></p>
+      <div id="success-admin-msg" style="display: none;" class="admin-msg-box">
+        <p class="admin-msg-label">🎁 ¡Mensaje del Furancho!</p>
+        <p id="success-admin-msg-body" class="admin-msg-body"></p>
       </div>
 
       <!-- Exportar Clave (Avanzado) -->
-      <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 14px; margin-bottom: 24px; text-align: left;">
+      <div class="key-section">
         <details>
-          <summary style="font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.4); cursor: pointer; outline: none; user-select: none;">
-            🔑 Respaldar mi llave de seguridad (Avanzado)
-          </summary>
-          <div style="margin-top: 10px; font-size: 12px; line-height: 1.5; color: rgba(255,255,255,0.6);">
-            <p style="margin-bottom: 8px;">Esta es la clave privada de tu pase anónimo en la blockchain. Guárdala si quieres importarla en apps como MetaMask:</p>
-            <div style="font-family: monospace; font-size: 11px; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 6px; word-break: break-all; color: #ff9999;" id="private-key-display">
-              -
-            </div>
-            <p style="font-size: 10px; color: #ff8888; margin-top: 6px;">⚠️ ¡No compartas esta clave con nadie!</p>
+          <summary>🔑 Respaldar mi llave de seguridad (Avanzado)</summary>
+          <div class="key-section-inner">
+            <p style="margin-bottom: 6px;">Esta es la clave privada de tu pase anónimo en la blockchain. Guárdala si quieres importarla en apps como MetaMask:</p>
+            <div class="key-display" id="private-key-display">-</div>
+            <p class="key-warning">⚠️ ¡No compartas esta clave con nadie!</p>
           </div>
         </details>
       </div>
 
       <!-- Botón Tarjeta Virtual Antifraude -->
-      <button onclick="openVirtualCard()" class="btn-primary" style="background: var(--bg);
-      background-image: radial-gradient(circle at top right, #2a0808 0%, #050505 60%);
-      background-attachment: fixed; border: 2px solid var(--accent); color: var(--accent); margin-bottom: 24px;">
+      <button onclick="openVirtualCard()" class="btn-vip">
         👁️ Mostrar mi Tarjeta VIP
       </button>
 
       <!-- Guardar en pantalla de inicio -->
-      <div id="pwa-install-banner" style="display: none; background: rgba(201,150,58,0.1); border: 1px solid rgba(201,150,58,0.2); border-radius: 12px; padding: 14px 16px; font-size: 13px; text-align: left; line-height: 1.5; color: var(--text); cursor: pointer;" onclick="installPWA()">
+      <div id="pwa-install-banner" style="display: none;" class="pwa-banner" onclick="installPWA()">
         📱 <strong>Añadir a pantalla de inicio:</strong><br>
-        Pulsa aquí para instalar Furancho Sessions como una App en tu móvil y tener tu pase siempre a mano.
+        Pulsa aquí para instalar Furancho Sessions como una App en tu móvil.
       </div>
-      
-      <div id="pwa-ios-banner" style="background: rgba(201,150,58,0.1); border: 1px solid rgba(201,150,58,0.2); border-radius: 12px; padding: 14px 16px; font-size: 13px; text-align: left; line-height: 1.5; color: var(--text);">
+
+      <div id="pwa-ios-banner" class="pwa-banner">
         📱 <strong>Guarda esta tarjeta en tu móvil:</strong><br>
-        Pulsa el botón de <strong>Compartir</strong> en tu navegador y selecciona <strong>"Añadir a la pantalla de inicio"</strong>. Así tendrás tu pase Furancho siempre a mano como una app nativa.
+        Pulsa el botón de <strong>Compartir</strong> en tu navegador y selecciona <strong>"Añadir a la pantalla de inicio"</strong>.
       </div>
     </div>
   </div>
 
   <!-- ==================== PANTALLA 4: VIRTUAL CARD ==================== -->
-  <div class="screen" id="screen-virtual-card" style="justify-content: center; background: radial-gradient(circle at center, rgba(201,150,58,0.2) 0%, #0a0a0a 70%);">
-    <div style="width: 90%; max-width: 380px; position: relative;">
-      
-      <!-- Reloj Antifraude -->
-      <div style="text-align: center; margin-bottom: 20px;">
-        <p style="font-family: monospace; font-size: 24px; color: var(--accent); letter-spacing: 4px;" id="live-clock">00:00:00</p>
-        <p style="font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: rgba(255,255,255,0.4);">Pase Válido Activo</p>
+  <div class="screen virtual-card-screen" id="screen-virtual-card" style="justify-content: center;">
+    <div class="vc-wrap">
+
+      <div class="vc-clock-wrap">
+        <p class="vc-clock" id="live-clock">00:00:00</p>
+        <p class="vc-clock-label">Pase Válido Activo</p>
       </div>
 
-      <!-- Tarjeta Holográfica -->
-      <div class="holographic-card" style="background: rgba(20,20,20,0.8); border: 2px solid var(--accent); border-radius: 20px; padding: 30px; text-align: center; box-shadow: 0 0 40px rgba(201,150,58,0.3); position: relative; overflow: hidden; backdrop-filter: blur(10px);">
+      <div class="holographic-card">
         <div class="hologram-effect"></div>
-        <img id="vc-image" src="" alt="NFT" style="width: 120px; height: 120px; border-radius: 50%; margin-bottom: 20px; border: 3px solid var(--accent); object-fit: cover;" />
-        <h3 id="vc-level" style="font-size: 14px; color: var(--accent); letter-spacing: 2px; margin-bottom: 8px;">NIVEL</h3>
-        <h2 id="vc-name" style="font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 900; margin-bottom: 12px; color: var(--text);">NOMBRE</h2>
-        <p style="font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 24px;">Furancho Sessions</p>
-        <div style="background: rgba(0,0,0,0.5); padding: 10px; border-radius: 10px; font-family: monospace; font-size: 11px; color: rgba(255,255,255,0.4); word-break: break-all;" id="vc-wallet">
-        </div>
+        <img id="vc-image" src="" alt="NFT" class="vc-img" />
+        <p class="vc-level-text" id="vc-level">NIVEL</p>
+        <h2 class="vc-name-text" id="vc-name">NOMBRE</h2>
+        <p class="vc-brand-text">Furancho Sessions</p>
+        <div class="vc-wallet-display" id="vc-wallet"></div>
       </div>
 
-      <button onclick="showScreen('screen-success')" style="margin-top: 30px; width: 100%; padding: 16px; background: transparent; border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; color: white; font-family: 'Inter'; font-weight: 600; cursor: pointer;">Volver</button>
+      <button onclick="showScreen('screen-success')" class="btn-back">Volver</button>
     </div>
   </div>
 
-  <style>
-    @keyframes shineCard {
-      0% { left: -60%; }
-      30% { left: 130%; }
-      100% { left: 130%; }
-    }
-    .hologram-effect {
-      position: absolute;
-      top: -100%; left: -100%; width: 300%; height: 300%;
-      background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.1) 50%, transparent 60%);
-      animation: hologram 4s infinite linear;
-      pointer-events: none;
-    }
-    @keyframes hologram {
-      0% { transform: translateY(-50%) rotate(45deg); }
-      100% { transform: translateY(50%) rotate(45deg); }
-    }
-  </style>
-
-    <!-- ==================== RAFFLE MODAL ==================== -->
-    <div class="screen" id="raffle-modal" style="position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.95); backdrop-filter: blur(15px); justify-content: center; text-align: center; display: none; padding: 20px;">
-      <!-- Roulette Animation -->
-      <div id="raffle-roulette" style="display: none;">
-        <h2 style="font-family: 'Playfair Display', serif; font-size: 32px; color: var(--accent-gold); margin-bottom: 20px;">Sorteo Especial</h2>
-        <p style="font-size: 16px; color: white; margin-bottom: 40px;" id="raffle-prize-text">Sorteando: ...</p>
-        
-        <div style="font-size: 80px; animation: spinRoulette 0.5s linear infinite;">🎰</div>
-        <p style="margin-top: 30px; font-size: 14px; color: rgba(255,255,255,0.6);">Buscando ganador entre los presentes...</p>
-      </div>
-
-      <!-- Winner View -->
-      <div id="raffle-winner" style="display: none;">
-        <div style="font-size: 60px; margin-bottom: 20px;">🎉</div>
-        <h2 style="font-family: 'Playfair Display', serif; font-size: 36px; color: #4ade80; margin-bottom: 10px;">¡ERES EL GANADOR!</h2>
-        <p style="font-size: 16px; color: white; margin-bottom: 30px;">Has ganado: <strong id="raffle-winner-prize"></strong></p>
-        
-        <div style="background: rgba(255,255,255,0.1); border: 2px solid #4ade80; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
-          <p style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.7); margin-bottom: 10px;">Código de Verificación</p>
-          <p style="font-family: monospace; font-size: 40px; font-weight: bold; letter-spacing: 4px; color: white;" id="raffle-code">----</p>
-        </div>
-        
-        <p style="font-size: 14px; color: rgba(255,255,255,0.6); line-height: 1.5;">Ve a la barra y muestra esta pantalla al personal para reclamar tu premio.</p>
-      </div>
-
-      <!-- Loser View -->
-      <div id="raffle-loser" style="display: none;">
-        <div style="font-size: 60px; margin-bottom: 20px; filter: grayscale(100%);">🎲</div>
-        <h2 style="font-family: 'Playfair Display', serif; font-size: 28px; color: white; margin-bottom: 10px;">¡Casi!</h2>
-        <p style="font-size: 16px; color: rgba(255,255,255,0.6); margin-bottom: 30px;">El ganador de <span id="raffle-loser-prize"></span> ha sido otra persona.</p>
-        <button onclick="document.getElementById('raffle-modal').style.display='none'; document.body.style.overflow='auto';" class="btn-primary" style="max-width: 200px;">Cerrar</button>
-      </div>
-
-      <style>
-        @keyframes spinRoulette {
-          0% { transform: translateY(0); }
-          25% { transform: translateY(-10px); }
-          50% { transform: translateY(0); }
-          75% { transform: translateY(10px); }
-          100% { transform: translateY(0); }
-        }
-      </style>
+  <!-- ==================== RAFFLE MODAL ==================== -->
+  <div class="raffle-modal screen" id="raffle-modal" style="position: fixed; inset: 0; z-index: 1000;">
+    <!-- Roulette Animation -->
+    <div id="raffle-roulette" style="display: none;">
+      <h2 class="raffle-title">Sorteo Especial</h2>
+      <p class="raffle-prize-text" id="raffle-prize-text">Sorteando: ...</p>
+      <div class="raffle-slot">🎰</div>
+      <p class="raffle-searching">Buscando ganador entre los presentes...</p>
     </div>
+
+    <!-- Winner View -->
+    <div id="raffle-winner" style="display: none; width: 100%; max-width: 360px;">
+      <div style="font-size: 64px; margin-bottom: 18px;">🎉</div>
+      <h2 style="font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 900; color: #4ade80; margin-bottom: 10px;">¡ERES EL GANADOR!</h2>
+      <p style="font-size: 15px; color: var(--text); margin-bottom: 26px; font-weight: 300;">Has ganado: <strong id="raffle-winner-prize" style="font-weight: 700;"></strong></p>
+      <div class="raffle-winner-box">
+        <p class="raffle-code-label">Código de Verificación</p>
+        <p class="raffle-code" id="raffle-code">----</p>
+      </div>
+      <p class="raffle-note">Ve a la barra y muestra esta pantalla al personal para reclamar tu premio.</p>
+    </div>
+
+    <!-- Loser View -->
+    <div id="raffle-loser" style="display: none; width: 100%; max-width: 360px;">
+      <div style="font-size: 64px; margin-bottom: 18px; filter: grayscale(100%);">🎲</div>
+      <h2 style="font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; color: var(--text); margin-bottom: 10px;">¡Casi!</h2>
+      <p style="font-size: 15px; color: var(--text-muted); margin-bottom: 28px; font-weight: 300;">El ganador de <span id="raffle-loser-prize"></span> ha sido otra persona.</p>
+      <button onclick="document.getElementById('raffle-modal').style.display='none'; document.body.style.overflow='auto';" class="btn-vip" style="max-width: 200px; margin: 0 auto;">Cerrar</button>
+    </div>
+
+    <style>
+      @keyframes spinRoulette {
+        0%   { transform: translateY(0); }
+        25%  { transform: translateY(-10px); }
+        50%  { transform: translateY(0); }
+        75%  { transform: translateY(10px); }
+        100% { transform: translateY(0); }
+      }
+    </style>
+  </div>
 
   <script>
     // Registro Service Worker para PWA
@@ -746,7 +1280,7 @@
     const params = new URLSearchParams(window.location.search);
     const initialLevel = parseInt(params.get('level')) || 1;
     let currentLevel = initialLevel;
-    
+
     // Aplicar tema inicial
     applyLevelTheme(initialLevel);
 
@@ -763,10 +1297,10 @@
       const nft = NFT_DATA[levelNum] || NFT_DATA[1];
       document.body.className = ''; // limpiar clases previas
       document.body.classList.add(nft.bodyClass);
-      
+
       const nftImg = document.getElementById('nft-image');
       nftImg.style.display = 'block';
-      
+
       // Remover placeholder previo si existe
       const oldPlaceholder = document.querySelector('.nft-image-placeholder');
       if (oldPlaceholder) oldPlaceholder.remove();
@@ -805,21 +1339,21 @@
           return;
         }
       }
-      
+
       // Mostrar la dirección en el claim
       const masked = userWalletAddress.substring(0, 8) + '...' + userWalletAddress.substring(userWalletAddress.length - 8);
       document.getElementById('wallet-address-display').textContent = `ID de tu móvil: ${masked}`;
-      
+
       // Comprobar historial del usuario para redirigir/subir de nivel automáticamente si escanea un QR repetido
       await checkUserHistoryAndAdjustLevel();
-      
+
       // Cargar mensajes publicados por el admin para el nivel correspondiente
       loadAdminMessages();
     }
 
     // Comprobar historial de reclamos
     let userVisitCount = 0;
-    
+
     async function checkUserHistoryAndAdjustLevel() {
       // Si la URL tiene un nivel explícito, es un salto manual.
       const urlParams = new URLSearchParams(window.location.search);
@@ -837,7 +1371,7 @@
         const res = await fetch(`/api/mint/history?wallet=${userWalletAddress}`);
         const data = await res.json();
         userVisitCount = data.visitCount || 0;
-        
+
         const form = document.getElementById('claim-form');
         const btn = document.getElementById('submit-btn');
 
@@ -894,7 +1428,7 @@
       try {
         const res = await fetch(`/api/admin/current-message?level=${currentLevel}`);
         const msg = await res.json();
-        
+
         if (msg) {
           // Mostrar en el claim
           const claimBox = document.getElementById('claim-admin-msg');
@@ -1008,7 +1542,7 @@
         document.getElementById('success-date').textContent = new Date().toLocaleDateString('es-ES', {
           day: 'numeric', month: 'long', year: 'numeric'
         });
-        
+
         const wallet = data.walletAddress || userWalletAddress;
         document.getElementById('success-wallet').textContent = `ID Usuario: ${wallet}`;
         document.getElementById('private-key-display').textContent = userWalletPrivateKey;
@@ -1030,7 +1564,7 @@
     // ==================== SSE LIVE RAFFLES ====================
     function connectRaffle() {
       const evtSource = new EventSource('/api/raffle/stream');
-      
+
       evtSource.addEventListener('raffle_start', (e) => {
         const data = JSON.parse(e.data);
         const modal = document.getElementById('raffle-modal');
@@ -1039,7 +1573,7 @@
         document.getElementById('raffle-loser').style.display = 'none';
         document.getElementById('raffle-prize-text').textContent = 'Sorteando: ' + data.prize;
         modal.style.display = 'flex';
-        
+
         // Prevent scrolling
         document.body.style.overflow = 'hidden';
       });
@@ -1047,9 +1581,9 @@
       evtSource.addEventListener('raffle_result', (e) => {
         const data = JSON.parse(e.data);
         const myWallet = localStorage.getItem('furancho_wallet_address');
-        
+
         document.getElementById('raffle-roulette').style.display = 'none';
-        
+
         if (data.winnerWallet === myWallet) {
           document.getElementById('raffle-winner').style.display = 'block';
           document.getElementById('raffle-winner-prize').textContent = data.prize;
@@ -1059,12 +1593,12 @@
           document.getElementById('raffle-loser-prize').textContent = data.prize;
         }
       });
-      
+
       evtSource.onerror = (err) => {
         // Silently reconnects
       };
     }
-    
+
     // Call it after a delay so we don't block the main render
     setTimeout(connectRaffle, 2000);
 

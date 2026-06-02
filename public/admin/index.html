@@ -5,31 +5,47 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Furancho Sessions — Panel Admin</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --navy: #1E3A5F;
-      --navy-light: #2a4e7a;
-      --crimson: #8B1A1A;
-      --teal: #2A8A8A;
-      --gold: #C9963A;
-      --dark: #0a0a0a;
-      --surface: #141414;
-      --surface2: #1e1e1e;
-      --border: rgba(255,255,255,0.08);
-      --text: #f0e0d0;
-      --text-dim: rgba(240,224,208,0.5);
-      --text-dimmer: rgba(240,224,208,0.25);
-      --nivel1: #8B1A1A;
+      --wine: #8B1918;
+      --wine-dark: #5C0F0F;
+      --wine-light: #B52A2A;
+      --cream: #F2EDE3;
+      --cream-dark: #E8DDD0;
+      --dark: #0C0907;
+      --dark-2: #161008;
+      --navy: #1C2B35;
+      --gold: #C4973A;
+      --text: #EDE5D8;
+      --text-muted: #9A8F82;
+
+      --nivel1: #8B1918;
       --nivel2: #2A8A8A;
-      --nivel3: #C9963A;
-      --nivel4: #1E3A5F;
+      --nivel3: #C4973A;
+      --nivel4: #1C2B35;
       --success: #4ade80;
       --error: #f87171;
+
+      --surface: rgba(255, 255, 255, 0.04);
+      --surface2: rgba(255, 255, 255, 0.07);
+      --border: rgba(255, 255, 255, 0.07);
+      --border-strong: rgba(255, 255, 255, 0.12);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--dark); color: var(--text); }
+
+    html, body {
+      height: 100%;
+      font-family: 'Outfit', sans-serif;
+      background: var(--dark);
+      background-image:
+        radial-gradient(ellipse at 20% 0%, rgba(139, 25, 24, 0.12) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 100%, rgba(28, 43, 53, 0.18) 0%, transparent 50%);
+      background-attachment: fixed;
+      color: var(--text);
+      overflow-x: hidden;
+    }
 
     /* ========== LOGIN ========== */
     #login-screen {
@@ -37,304 +53,577 @@
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      background: radial-gradient(ellipse at center, #111 0%, #0a0a0a 70%);
+      padding: 24px;
     }
 
     .login-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 48px 40px;
+      background: rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 24px;
+      padding: 44px 36px;
       width: 100%;
-      max-width: 400px;
+      max-width: 380px;
       text-align: center;
+      box-shadow: 0 24px 64px -12px rgba(0,0,0,0.6);
+    }
+
+    .login-logo-img {
+      height: 72px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255,255,255,0.08);
     }
 
     .login-logo {
       font-family: 'Playfair Display', serif;
-      font-size: 28px;
+      font-size: 24px;
       font-weight: 900;
-      color: var(--gold);
+      color: var(--text);
       margin-bottom: 4px;
     }
-    .login-sub { font-size: 13px; color: var(--text-dim); margin-bottom: 32px; }
+
+    .login-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
 
     .login-input {
       width: 100%;
-      background: rgba(255,255,255,0.05);
-      border: 1.5px solid var(--border);
-      border-radius: 12px;
-      padding: 14px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1.5px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 15px 18px;
       font-size: 16px;
       color: var(--text);
-      font-family: 'Inter', sans-serif;
+      font-family: 'Outfit', sans-serif;
       outline: none;
-      margin-bottom: 16px;
-      transition: border-color 0.2s;
+      margin-bottom: 14px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      -webkit-appearance: none;
     }
-    .login-input:focus { border-color: var(--gold); }
-    .login-input::placeholder { color: var(--text-dimmer); }
+    .login-input:focus {
+      border-color: var(--wine);
+      box-shadow: 0 0 0 3px rgba(139, 25, 24, 0.15);
+    }
+    .login-input::placeholder { color: rgba(237,229,216,0.22); }
 
     .login-btn {
       width: 100%;
-      padding: 14px;
-      background: linear-gradient(135deg, var(--gold), #e5b060);
+      padding: 15px;
+      background: linear-gradient(135deg, var(--wine) 0%, var(--wine-dark) 100%);
       border: none;
-      border-radius: 12px;
+      border-radius: 50px;
       font-size: 15px;
-      font-weight: 700;
-      color: #0a0a0a;
+      font-weight: 600;
+      color: var(--cream);
       cursor: pointer;
-      font-family: 'Inter', sans-serif;
-      transition: opacity 0.2s, transform 0.1s;
+      font-family: 'Outfit', sans-serif;
+      letter-spacing: 0.3px;
+      transition: transform 0.15s, box-shadow 0.25s;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 28px -6px rgba(139, 25, 24, 0.5);
     }
-    .login-btn:hover { opacity: 0.9; }
-    .login-btn:active { transform: scale(0.98); }
-    .login-error { color: var(--error); font-size: 13px; margin-top: 10px; display: none; }
+    .login-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 36px -6px rgba(139, 25, 24, 0.65);
+    }
+    .login-btn:active { transform: scale(0.97); }
+
+    .login-error {
+      color: var(--error);
+      font-size: 13px;
+      margin-top: 12px;
+      display: none;
+      font-weight: 400;
+    }
 
     /* ========== MAIN LAYOUT ========== */
-    #main-app { display: none; flex-direction: column; min-height: 100vh; }
-
-    /* Sidebar */
-    .sidebar {
-      width: 240px;
-      background: var(--surface);
-      border-right: 1px solid var(--border);
-      display: flex;
+    #main-app {
+      display: none;
       flex-direction: column;
-      position: fixed;
-      left: 0; top: 0; bottom: 0;
-      z-index: 100;
-    }
-
-    .sidebar-logo {
-      padding: 24px 20px;
-      border-bottom: 1px solid var(--border);
-    }
-    .sidebar-logo-title {
-      font-family: 'Playfair Display', serif;
-      font-size: 17px;
-      font-weight: 900;
-      color: var(--gold);
-      line-height: 1.2;
-    }
-    .sidebar-logo-sub {
-      font-size: 11px;
-      color: var(--text-dimmer);
-      margin-top: 2px;
-    }
-
-    .sidebar-nav {
-      flex: 1;
-      padding: 16px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .nav-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 12px;
-      border-radius: 10px;
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--text-dim);
-      cursor: pointer;
-      transition: background 0.15s, color 0.15s;
-      border: none;
-      background: none;
-      width: 100%;
-      text-align: left;
-      font-family: 'Inter', sans-serif;
-    }
-    .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text); }
-    .nav-item.active { background: rgba(201,150,58,0.15); color: var(--gold); }
-    .nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; }
-
-    .demo-badge {
-      margin: 12px;
-      padding: 8px 12px;
-      background: rgba(201,150,58,0.1);
-      border: 1px solid rgba(201,150,58,0.2);
-      border-radius: 8px;
-      font-size: 11px;
-      color: var(--gold);
-      text-align: center;
-    }
-
-    /* Main content */
-    .main-content {
-      margin-left: 240px;
-      flex: 1;
-      padding: 32px;
       min-height: 100vh;
     }
 
-    .page { display: none; }
-    .page.active { display: block; animation: fadeIn 0.3s ease; }
+    /* ========== TOP HEADER ========== */
+    .top-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: rgba(12, 9, 7, 0.9);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 12px;
+    }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
+    .top-header-logo {
+      height: 36px;
+      border-radius: 6px;
+    }
+
+    .top-header-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .top-header-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 1px;
+      font-weight: 400;
+    }
+
+    .top-header-spacer { flex: 1; }
+
+    .demo-badge {
+      padding: 5px 12px;
+      background: rgba(196, 151, 58, 0.1);
+      border: 1px solid rgba(196, 151, 58, 0.22);
+      border-radius: 100px;
+      font-size: 10px;
+      color: var(--gold);
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    /* ========== BOTTOM NAV ========== */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 72px;
+      background: rgba(12, 9, 7, 0.94);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-top: 1px solid var(--border);
+      z-index: 200;
+      display: flex;
+      align-items: stretch;
+      padding: 0 4px;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      font-family: 'Outfit', sans-serif;
+      font-size: 10px;
+      font-weight: 500;
+      padding: 8px 4px;
+      border-radius: 12px;
+      transition: color 0.2s, background 0.2s;
+      position: relative;
+      letter-spacing: 0.2px;
+      min-height: 44px;
+    }
+
+    .nav-item .nav-icon {
+      font-size: 20px;
+      line-height: 1;
+      transition: transform 0.2s;
+    }
+
+    .nav-item:hover {
+      color: var(--text);
+      background: rgba(255,255,255,0.04);
+    }
+
+    .nav-item.active {
+      color: var(--wine-light);
+    }
+
+    .nav-item.active .nav-icon {
+      transform: translateY(-2px);
+    }
+
+    .nav-item.active::after {
+      content: '';
+      position: absolute;
+      bottom: 4px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 20px;
+      height: 2px;
+      background: var(--wine-light);
+      border-radius: 2px;
+    }
+
+    /* ========== MAIN CONTENT ========== */
+    .main-content {
+      margin-top: 60px;
+      margin-bottom: 72px;
+      flex: 1;
+      padding: 24px 16px 32px;
+      max-width: 900px;
+      width: 100%;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .page { display: none; }
+    .page.active {
+      display: block;
+      animation: pageEnter 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    @keyframes pageEnter {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
     /* ========== PAGE HEADER ========== */
     .page-header {
-      margin-bottom: 32px;
+      margin-bottom: 24px;
     }
+
     .page-title {
       font-family: 'Playfair Display', serif;
-      font-size: 28px;
+      font-size: 26px;
       font-weight: 900;
       color: var(--text);
       margin-bottom: 4px;
+      letter-spacing: -0.3px;
     }
-    .page-subtitle { font-size: 14px; color: var(--text-dim); }
 
-    /* ========== STATS CARDS ========== */
+    .page-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 300;
+    }
+
+    /* ========== STATS GRID ========== */
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-      margin-bottom: 32px;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    @media (min-width: 600px) {
+      .stats-grid { grid-template-columns: repeat(3, 1fr); }
     }
 
     .stat-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 20px 24px;
+      background: rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 18px;
+      padding: 18px 16px;
       position: relative;
       overflow: hidden;
-      transition: border-color 0.2s, transform 0.2s;
+      transition: transform 0.2s, border-color 0.2s;
     }
-    .stat-card:hover { transform: translateY(-2px); }
+
+    .stat-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.12); }
 
     .stat-card::before {
       content: '';
       position: absolute;
       top: 0; left: 0; right: 0;
-      height: 3px;
-      border-radius: 16px 16px 0 0;
+      height: 2.5px;
+      border-radius: 18px 18px 0 0;
     }
     .stat-card.nivel-1::before { background: var(--nivel1); }
     .stat-card.nivel-2::before { background: var(--nivel2); }
     .stat-card.nivel-3::before { background: var(--nivel3); }
     .stat-card.nivel-4::before { background: var(--nivel4); }
-    .stat-card.total::before { background: linear-gradient(90deg, var(--nivel1), var(--nivel2), var(--nivel3), var(--nivel4)); }
+    .stat-card.total::before   { background: linear-gradient(90deg, var(--nivel1), var(--nivel3), var(--nivel2)); }
+    .stat-card.visits::before  { background: var(--navy); }
 
-    .stat-icon { font-size: 24px; margin-bottom: 12px; }
-    .stat-label { font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-dimmer); margin-bottom: 6px; }
-    .stat-value { font-family: 'Playfair Display', serif; font-size: 40px; font-weight: 900; line-height: 1; color: var(--text); }
-    .stat-sublabel { font-size: 12px; color: var(--text-dimmer); margin-top: 4px; }
-
-    /* ========== TABLE ========== */
-    .table-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      overflow: hidden;
-      margin-bottom: 24px;
+    .stat-icon {
+      font-size: 20px;
+      margin-bottom: 10px;
+      line-height: 1;
     }
 
-    .table-header {
-      padding: 16px 24px;
-      border-bottom: 1px solid var(--border);
+    .stat-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: rgba(237, 229, 216, 0.3);
+      margin-bottom: 5px;
+    }
+
+    .stat-value {
+      font-family: 'Playfair Display', serif;
+      font-size: 38px;
+      font-weight: 900;
+      line-height: 1;
+      color: var(--text);
+    }
+
+    .stat-sublabel {
+      font-size: 11px;
+      color: rgba(237, 229, 216, 0.3);
+      margin-top: 4px;
+      font-weight: 300;
+    }
+
+    /* ========== GLASS CARD ========== */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 18px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    .card-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
       display: flex;
       align-items: center;
       justify-content: space-between;
       flex-wrap: wrap;
-      gap: 12px;
+      gap: 10px;
     }
-    .table-title { font-weight: 700; font-size: 15px; }
 
-    .filter-btn {
-      padding: 6px 14px;
-      border-radius: 100px;
-      font-size: 12px;
+    .card-title {
       font-weight: 600;
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--text-dim);
-      cursor: pointer;
-      transition: all 0.15s;
-      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      color: var(--text);
+      letter-spacing: 0.2px;
     }
-    .filter-btn:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
-    .filter-btn.active { background: rgba(201,150,58,0.15); border-color: var(--gold); color: var(--gold); }
 
+    /* ========== TABLE ========== */
+    table { width: 100%; border-collapse: collapse; }
+
+    th {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: rgba(237, 229, 216, 0.25);
+      text-align: left;
+      padding: 11px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    td {
+      padding: 13px 18px;
+      font-size: 13px;
+      color: rgba(237, 229, 216, 0.65);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+    .table-card { /* alias */ }
+
+    /* ========== FILTER BUTTONS ========== */
     .filter-row { display: flex; gap: 6px; flex-wrap: wrap; }
 
-    table { width: 100%; border-collapse: collapse; }
-    th {
+    .filter-btn {
+      padding: 6px 13px;
+      border-radius: 100px;
       font-size: 11px;
       font-weight: 600;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      color: var(--text-dimmer);
-      text-align: left;
-      padding: 12px 24px;
-      border-bottom: 1px solid var(--border);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: 'Outfit', sans-serif;
+      min-height: 30px;
     }
-    td {
-      padding: 14px 24px;
-      font-size: 13px;
-      color: var(--text-dim);
-      border-bottom: 1px solid rgba(255,255,255,0.04);
-    }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(255,255,255,0.02); }
+    .filter-btn:hover { border-color: rgba(255,255,255,0.18); color: var(--text); }
+    .filter-btn.active { background: rgba(139, 25, 24, 0.15); border-color: rgba(139, 25, 24, 0.35); color: var(--wine-light); }
 
+    /* ========== PILLS ========== */
     .nivel-pill {
       display: inline-flex;
       align-items: center;
       gap: 4px;
       padding: 3px 10px;
       border-radius: 100px;
-      font-size: 11px;
-      font-weight: 600;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
     }
-    .nivel-pill.n1 { background: rgba(139,26,26,0.2); color: #e06060; }
-    .nivel-pill.n2 { background: rgba(42,138,138,0.2); color: #60c0c0; }
-    .nivel-pill.n3 { background: rgba(201,150,58,0.2); color: var(--gold); }
-    .nivel-pill.n4 { background: rgba(30,58,95,0.4); color: #8ab0e0; }
+    .nivel-pill.n1 { background: rgba(139,25,24,0.18); color: #e07070; }
+    .nivel-pill.n2 { background: rgba(42,138,138,0.18); color: #60c4c4; }
+    .nivel-pill.n3 { background: rgba(196,151,58,0.18); color: var(--gold); }
+    .nivel-pill.n4 { background: rgba(28,43,53,0.5);    color: #8ab0d8; }
 
     .status-pill {
       display: inline-block;
-      padding: 2px 8px;
+      padding: 3px 9px;
       border-radius: 100px;
-      font-size: 11px;
-      font-weight: 600;
+      font-size: 10px;
+      font-weight: 700;
     }
     .status-pill.success { background: rgba(74,222,128,0.1); color: var(--success); }
     .status-pill.pending { background: rgba(250,204,21,0.1); color: #fbbf24; }
-    .status-pill.failed { background: rgba(248,113,113,0.1); color: var(--error); }
+    .status-pill.failed  { background: rgba(248,113,113,0.1); color: var(--error); }
+
+    /* ========== FORM ELEMENTS ========== */
+    .form-group { margin-bottom: 18px; }
+
+    .form-label {
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: rgba(237, 229, 216, 0.35);
+      margin-bottom: 8px;
+    }
+
+    .input-field {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1.5px solid rgba(255, 255, 255, 0.09);
+      border-radius: 12px;
+      padding: 13px 16px;
+      font-size: 14px;
+      color: var(--text);
+      font-family: 'Outfit', sans-serif;
+      font-weight: 400;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      -webkit-appearance: none;
+    }
+    .input-field:focus {
+      border-color: var(--wine);
+      box-shadow: 0 0 0 3px rgba(139, 25, 24, 0.12);
+    }
+    .input-field::placeholder { color: rgba(237,229,216,0.2); }
+    textarea.input-field { resize: vertical; min-height: 110px; }
+
+    select.input-field {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23777' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+    }
+
+    /* ========== BUTTONS ========== */
+    .btn-primary {
+      padding: 14px 28px;
+      background: linear-gradient(135deg, var(--wine) 0%, var(--wine-dark) 100%);
+      border: none;
+      border-radius: 50px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--cream);
+      cursor: pointer;
+      font-family: 'Outfit', sans-serif;
+      transition: transform 0.15s, box-shadow 0.25s;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 6px 24px -6px rgba(139, 25, 24, 0.5);
+      letter-spacing: 0.3px;
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 32px -6px rgba(139, 25, 24, 0.65);
+    }
+    .btn-primary:active { transform: scale(0.97); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .btn-primary::after {
+      content: '';
+      position: absolute;
+      top: -50%; left: -70%;
+      width: 35%; height: 200%;
+      background: rgba(255,255,255,0.15);
+      transform: skewX(-20deg);
+      transition: left 0.6s ease;
+    }
+    .btn-primary:hover:not(:disabled)::after { left: 140%; }
+
+    .btn-send { /* alias for messages */ }
+
+    .btn-download {
+      display: inline-block;
+      padding: 8px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s;
+      font-family: 'Outfit', sans-serif;
+      letter-spacing: 0.2px;
+    }
+    .btn-download:hover { background: rgba(255,255,255,0.09); color: var(--text); }
+
+    /* ========== SEND RESULT ========== */
+    .send-result {
+      margin-top: 14px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 13px;
+      display: none;
+      font-weight: 400;
+    }
+    .send-result.success { background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.2); color: var(--success); display: block; }
+    .send-result.error   { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.2); color: var(--error); display: block; }
+
+    /* ========== MESSAGE HISTORY ========== */
+    .msg-history-item {
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .msg-history-item:last-child { border-bottom: none; }
+    .msg-subject { font-weight: 600; font-size: 14px; color: var(--text); margin-bottom: 4px; }
+    .msg-meta { font-size: 11px; color: var(--text-muted); font-weight: 300; }
 
     /* ========== QR SECTION ========== */
     .qr-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
     }
 
     .qr-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 24px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 18px;
+      padding: 20px;
       text-align: center;
-      transition: transform 0.2s;
+      transition: transform 0.2s, border-color 0.2s;
     }
-    .qr-card:hover { transform: translateY(-2px); }
+    .qr-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.12); }
 
     .qr-img {
       width: 100%;
-      max-width: 180px;
+      max-width: 160px;
       height: auto;
       border-radius: 12px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
       background: #fafafa;
       display: block;
       margin-left: auto;
@@ -343,153 +632,136 @@
 
     .qr-level-name {
       font-family: 'Playfair Display', serif;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 700;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
+      color: var(--text);
     }
 
     .qr-level-label {
       font-size: 11px;
-      color: var(--text-dimmer);
-      margin-bottom: 16px;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+      font-weight: 300;
+      line-height: 1.5;
     }
 
-    .btn-download {
-      display: inline-block;
-      padding: 8px 18px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-dim);
-      cursor: pointer;
-      text-decoration: none;
-      transition: all 0.15s;
-      font-family: 'Inter', sans-serif;
-    }
-    .btn-download:hover { background: rgba(255,255,255,0.1); color: var(--text); }
-
-    /* ========== MESSAGES ========== */
-    .message-form {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 28px;
-      margin-bottom: 24px;
+    /* ========== RAFFLE ========== */
+    .raffle-eligible-count {
+      font-family: 'Playfair Display', serif;
+      font-size: 48px;
+      font-weight: 900;
+      color: var(--wine-light);
+      line-height: 1;
+      margin: 8px 0 4px;
     }
 
-    .form-group { margin-bottom: 20px; }
-    .form-label { display: block; font-size: 12px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-dimmer); margin-bottom: 8px; }
-
-    .input-field {
-      width: 100%;
-      background: rgba(255,255,255,0.04);
-      border: 1.5px solid var(--border);
-      border-radius: 10px;
-      padding: 12px 14px;
-      font-size: 14px;
-      color: var(--text);
-      font-family: 'Inter', sans-serif;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    .input-field:focus { border-color: var(--gold); }
-    .input-field::placeholder { color: var(--text-dimmer); }
-    textarea.input-field { resize: vertical; min-height: 120px; }
-
-    select.input-field {
-      cursor: pointer;
-      appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 14px center;
+    .raffle-status-box {
+      margin-top: 18px;
+      padding: 20px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 14px;
+      border: 1px solid rgba(196, 151, 58, 0.2);
+      text-align: center;
     }
 
-    .btn-send {
-      padding: 13px 28px;
-      background: linear-gradient(135deg, var(--gold), #e5b060);
-      border: none;
-      border-radius: 10px;
-      font-size: 14px;
+    .raffle-winner-code {
+      font-family: 'Outfit', monospace;
+      font-size: 44px;
       font-weight: 700;
-      color: #0a0a0a;
-      cursor: pointer;
-      font-family: 'Inter', sans-serif;
-      transition: opacity 0.2s, transform 0.1s;
+      letter-spacing: 6px;
+      color: white;
+      margin: 10px 0;
     }
-    .btn-send:hover { opacity: 0.9; }
-    .btn-send:active { transform: scale(0.98); }
-    .btn-send:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    .send-result {
-      margin-top: 14px;
-      padding: 12px 16px;
-      border-radius: 10px;
-      font-size: 14px;
-      display: none;
-    }
-    .send-result.success { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.2); color: var(--success); display: block; }
-    .send-result.error { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2); color: var(--error); display: block; }
-
-    /* Messages history */
-    .msg-history-item {
-      padding: 16px 24px;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
-    }
-    .msg-history-item:last-child { border-bottom: none; }
-    .msg-subject { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
-    .msg-meta { font-size: 12px; color: var(--text-dimmer); }
-
-    /* ========== LOADING SPINNER ========== */
+    /* ========== LOADING DOTS ========== */
     .loading-dots {
       display: inline-flex;
-      gap: 4px;
+      gap: 5px;
       align-items: center;
     }
     .loading-dots span {
       width: 5px; height: 5px;
       border-radius: 50%;
-      background: var(--text-dim);
+      background: var(--text-muted);
       animation: blink 1.2s infinite;
     }
     .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
     .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
     @keyframes blink { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }
 
+    /* ========== EMPTY STATE ========== */
     .empty-state {
       text-align: center;
-      padding: 48px 24px;
-      color: var(--text-dimmer);
+      padding: 40px 24px;
+      color: var(--text-muted);
     }
-    .empty-state-icon { font-size: 40px; margin-bottom: 12px; }
-    .empty-state-text { font-size: 14px; }
+    .empty-state-icon { font-size: 36px; margin-bottom: 10px; }
+    .empty-state-text { font-size: 13px; font-weight: 300; }
 
     /* ========== TOAST ========== */
     #toast {
       position: fixed;
-      bottom: 24px;
-      right: 24px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 14px 20px;
-      font-size: 14px;
+      bottom: 88px;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: rgba(22, 16, 8, 0.95);
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(20px);
+      border-radius: 50px;
+      padding: 12px 22px;
+      font-size: 13px;
+      font-weight: 500;
       color: var(--text);
       z-index: 9999;
       opacity: 0;
-      transform: translateY(10px);
       transition: opacity 0.3s, transform 0.3s;
       pointer-events: none;
+      white-space: nowrap;
+      box-shadow: 0 8px 24px -6px rgba(0,0,0,0.5);
     }
-    #toast.visible { opacity: 1; transform: translateY(0); }
+    #toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-    /* ========== RESPONSIVE ========== */
-    @media (max-width: 768px) {
-      .sidebar { width: 100%; height: auto; position: relative; border-right: none; border-bottom: 1px solid var(--border); flex-direction: row; }
-      .sidebar-nav { flex-direction: row; padding: 8px; overflow-x: auto; }
-      .main-content { margin-left: 0; padding: 20px 16px; }
-      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    /* ========== MESSAGE FORM CARD ========== */
+    .message-form {
+      background: rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 18px;
+      padding: 22px;
+      margin-bottom: 20px;
+    }
+
+    /* Instructions box */
+    .info-box {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+
+    .info-box h3 {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: var(--text);
+    }
+
+    .info-box ol {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 2;
+      padding-left: 18px;
+      font-weight: 300;
+    }
+
+    /* Desktop adjustments */
+    @media (min-width: 768px) {
+      .main-content { padding: 28px 32px 40px; }
+      .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; }
+      .bottom-nav { display: flex; }
     }
   </style>
 </head>
@@ -498,7 +770,7 @@
 <!-- ==================== LOGIN ==================== -->
 <div id="login-screen">
   <div class="login-card">
-    <img src="/assets/logo.png" alt="Furancho Sessions Logo" style="max-width: 140px; margin-bottom: 20px; border-radius: 12px; border: 1px solid var(--border);" />
+    <img src="/assets/logo.png" alt="Furancho Sessions Logo" class="login-logo-img" />
     <div class="login-logo">Furancho Sessions</div>
     <div class="login-sub">Panel de Administración</div>
     <form onsubmit="handleLogin(event)">
@@ -510,37 +782,20 @@
 </div>
 
 <!-- ==================== MAIN APP ==================== -->
-<div id="main-app" style="display:flex;">
-  <!-- Sidebar -->
-  <div class="sidebar">
-    <div class="sidebar-logo" style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;">
-      <img src="/assets/logo.png" alt="Logo" style="max-height: 70px; border-radius: 8px; border: 1px solid var(--border);" />
-      <div>
-        <div class="sidebar-logo-title">Furancho Sessions</div>
-        <div class="sidebar-logo-sub">Admin Panel</div>
-      </div>
-    </div>
-    <nav class="sidebar-nav">
-      <button class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
-        <span class="nav-icon">📊</span> Dashboard
-      </button>
-      <button class="nav-item" onclick="showPage('holders')" id="nav-holders">
-        <span class="nav-icon">👥</span> Holders
-      </button>
-      <button class="nav-item" onclick="showPage('messages')" id="nav-messages">
-        <span class="nav-icon">✉️</span> Mensajes
-      </button>
-      <button class="nav-item" onclick="showPage('qrcodes')" id="nav-qrcodes">
-        <span class="nav-icon">📱</span> QR Codes
-      </button>
-      <button class="nav-item" onclick="showPage('raffles')" id="nav-raffles">
-        <span class="nav-icon">🎲</span> Sorteos en Vivo
-      </button>
-    </nav>
-    <div class="demo-badge" id="demo-badge">🟡 Modo Demo activo</div>
-  </div>
+<div id="main-app" style="display:flex; flex-direction: column;">
 
-  <!-- Content -->
+  <!-- Top Header -->
+  <header class="top-header">
+    <img src="/assets/logo.png" alt="Logo" class="top-header-logo" />
+    <div>
+      <div class="top-header-title">Furancho Sessions</div>
+      <div class="top-header-sub">Admin Panel</div>
+    </div>
+    <div class="top-header-spacer"></div>
+    <div class="demo-badge" id="demo-badge" style="display:none;">🟡 Demo</div>
+  </header>
+
+  <!-- Main Content -->
   <main class="main-content">
 
     <!-- ==================== DASHBOARD ==================== -->
@@ -557,7 +812,7 @@
           <div class="stat-value" id="stat-total">—</div>
           <div class="stat-sublabel">minteados</div>
         </div>
-        <div class="stat-card" style="border-top: 3px solid #1E3A5F;">
+        <div class="stat-card visits">
           <div class="stat-icon">📍</div>
           <div class="stat-label">Total Visitas</div>
           <div class="stat-value" id="stat-visits">—</div>
@@ -565,62 +820,66 @@
         </div>
         <div class="stat-card nivel-1">
           <div class="stat-icon">🫂</div>
-          <div class="stat-label">Cautivo · Nivel 1</div>
+          <div class="stat-label">Cautivo · Nv1</div>
           <div class="stat-value" id="stat-nivel1">—</div>
           <div class="stat-sublabel">holders</div>
         </div>
         <div class="stat-card nivel-2">
           <div class="stat-icon">🥂</div>
-          <div class="stat-label">O Cunqueiro · Nivel 2</div>
+          <div class="stat-label">Cunqueiro · Nv2</div>
           <div class="stat-value" id="stat-nivel2">—</div>
           <div class="stat-sublabel">holders</div>
         </div>
         <div class="stat-card nivel-3">
           <div class="stat-icon">🌿</div>
-          <div class="stat-label">O Larpeiro · Nivel 3</div>
+          <div class="stat-label">Larpeiro · Nv3</div>
           <div class="stat-value" id="stat-nivel3">—</div>
           <div class="stat-sublabel">holders</div>
         </div>
         <div class="stat-card nivel-4">
           <div class="stat-icon">👑</div>
-          <div class="stat-label">O Presidente · Nivel 4</div>
+          <div class="stat-label">Presidente · Nv4</div>
           <div class="stat-value" id="stat-nivel4">—</div>
           <div class="stat-sublabel">holders</div>
         </div>
       </div>
 
       <!-- Actividad reciente -->
-      <div class="table-card">
-        <div class="table-header">
-          <span class="table-title">Actividad reciente</span>
+      <div class="glass-card">
+        <div class="card-header">
+          <span class="card-title">Actividad reciente</span>
           <button class="filter-btn" onclick="loadStats()">↻ Actualizar</button>
         </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Email</th>
-              <th>Nivel</th>
-              <th>Fecha</th>
-              <th>Estado</th>
-            </tr>
-          </thead>
-          <tbody id="recent-tbody">
-            <tr><td colspan="4"><div class="empty-state"><div class="loading-dots"><span></span><span></span><span></span></div></div></td></tr>
-          </tbody>
-        </table>
+        <div style="overflow-x: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Nivel</th>
+                <th>Fecha</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="recent-tbody">
+              <tr><td colspan="4"><div class="empty-state"><div class="loading-dots"><span></span><span></span><span></span></div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <!-- Por fecha -->
-      <div class="table-card">
-        <div class="table-header">
-          <span class="table-title">NFTs por fecha de evento</span>
+      <div class="glass-card">
+        <div class="card-header">
+          <span class="card-title">NFTs por fecha de evento</span>
         </div>
-        <table>
-          <thead>
-            <tr><th>Fecha</th><th>NFTs minteados</th></tr>
-          </thead>
-          <tbody id="bydate-tbody"></tbody>
-        </table>
+        <div style="overflow-x: auto;">
+          <table>
+            <thead>
+              <tr><th>Fecha</th><th>NFTs minteados</th></tr>
+            </thead>
+            <tbody id="bydate-tbody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -631,49 +890,53 @@
         <p class="page-subtitle">Lista completa de wallets y sus niveles</p>
       </div>
 
-      <div class="table-card" style="margin-bottom: 24px;">
-        <div class="table-header">
-          <span class="table-title">Filtrar por nivel</span>
+      <div class="glass-card" style="margin-bottom: 20px;">
+        <div class="card-header">
+          <span class="card-title">Filtrar por nivel</span>
           <div class="filter-row">
             <button class="filter-btn active" onclick="filterHolders('all', this)">Todos</button>
-            <button class="filter-btn" onclick="filterHolders('1', this)">Nivel 1</button>
-            <button class="filter-btn" onclick="filterHolders('2', this)">Nivel 2</button>
-            <button class="filter-btn" onclick="filterHolders('3', this)">Nivel 3</button>
-            <button class="filter-btn" onclick="filterHolders('4', this)">Nivel 4</button>
+            <button class="filter-btn" onclick="filterHolders('1', this)">Nv1</button>
+            <button class="filter-btn" onclick="filterHolders('2', this)">Nv2</button>
+            <button class="filter-btn" onclick="filterHolders('3', this)">Nv3</button>
+            <button class="filter-btn" onclick="filterHolders('4', this)">Nv4</button>
           </div>
         </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Wallet (Billetera)</th>
-              <th>Nivel</th>
-              <th>Fecha evento</th>
-              <th>Estado</th>
-            </tr>
-          </thead>
-          <tbody id="holders-tbody">
-            <tr><td colspan="4"><div class="empty-state"><div class="loading-dots"><span></span><span></span><span></span></div></div></td></tr>
-          </tbody>
-        </table>
+        <div style="overflow-x: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Wallet</th>
+                <th>Nivel</th>
+                <th>Fecha</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="holders-tbody">
+              <tr><td colspan="4"><div class="empty-state"><div class="loading-dots"><span></span><span></span><span></span></div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <!-- Multi-nivel -->
-      <div class="table-card">
-        <div class="table-header">
-          <span class="table-title">⭐ Clientes habituales (múltiples niveles)</span>
+      <div class="glass-card">
+        <div class="card-header">
+          <span class="card-title">⭐ Clientes habituales</span>
         </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Wallet (Billetera)</th>
-              <th>Niveles</th>
-              <th>Visitas</th>
-              <th>Primera visita</th>
-              <th>Última visita</th>
-            </tr>
-          </thead>
-          <tbody id="multilevel-tbody"></tbody>
-        </table>
+        <div style="overflow-x: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Wallet</th>
+                <th>Niveles</th>
+                <th>Visitas</th>
+                <th>Primera</th>
+                <th>Última</th>
+              </tr>
+            </thead>
+            <tbody id="multilevel-tbody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -681,7 +944,7 @@
     <div class="page" id="page-messages">
       <div class="page-header">
         <h1 class="page-title">Publicar Anuncio</h1>
-        <p class="page-subtitle">Envía un mensaje en pantalla a los holders de tus NFTs en sus móviles</p>
+        <p class="page-subtitle">Envía un mensaje en pantalla a los holders en sus móviles</p>
       </div>
 
       <div class="message-form">
@@ -701,59 +964,20 @@
         </div>
         <div class="form-group">
           <label class="form-label">Mensaje</label>
-          <textarea class="input-field" id="msg-body" placeholder="Escribe aquí tu mensaje para los asistentes...&#10;&#10;Puedes incluir detalles del próximo evento, ofertas especiales que verán en sus móviles, etc."></textarea>
+          <textarea class="input-field" id="msg-body" placeholder="Escribe aquí tu mensaje para los asistentes..."></textarea>
         </div>
-        <button class="btn-send" id="send-btn" onclick="sendMessage()">
+        <button class="btn-primary btn-send" id="send-btn" onclick="sendMessage()" style="width: 100%;">
           📢 Publicar anuncio
         </button>
         <div id="send-result" class="send-result"></div>
       </div>
 
       <!-- Historial de mensajes -->
-      <div class="table-card">
-        <div class="table-header">
-          <span class="table-title">Mensajes enviados</span>
+      <div class="glass-card">
+        <div class="card-header">
+          <span class="card-title">Mensajes enviados</span>
         </div>
         <div id="msg-history"></div>
-      </div>
-    </div>
-
-    <!-- ==================== RAFFLES ==================== -->
-    <div class="page" id="page-raffles">
-      <div class="page-header">
-        <h1 class="page-title">Sorteos en Vivo</h1>
-        <p class="page-subtitle">Dispara un sorteo para todos los clientes que están actualmente en el local.</p>
-      </div>
-
-      <div class="message-form">
-        <div class="form-group">
-          <label class="form-label">Participantes Elegibles</label>
-          <div style="font-size: 24px; color: var(--gold); font-weight: bold;" id="raffle-eligible-count">
-            Cargando...
-          </div>
-          <p style="font-size: 12px; color: var(--text-dimmer); margin-top: 4px;">Clientes que han fichado Entrada pero aún no Salida.</p>
-          <button class="btn-download" onclick="loadEligibleParticipants()" style="margin-top: 8px;">↻ Actualizar número</button>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Premio a sortear</label>
-          <input type="text" class="input-field" id="raffle-prize" placeholder="Ej: Botella de Mencía, Cena Gratis..." />
-        </div>
-        
-        <button class="btn-send" id="start-raffle-btn" onclick="startRaffle()" style="width: 100%; background: linear-gradient(135deg, #8B1A1A, #b32d2d); color: white;">
-          🎲 LANZAR SORTEO (30 Segundos)
-        </button>
-
-        <div id="raffle-status" style="margin-top: 20px; display: none; text-align: center; padding: 20px; background: rgba(0,0,0,0.5); border-radius: 12px; border: 1px solid var(--gold);">
-          <h3 style="color: var(--gold); margin-bottom: 10px;" id="raffle-status-title">Sorteo en curso...</h3>
-          <p style="font-size: 14px; color: var(--text-dim);" id="raffle-status-desc">Espera a que termine la ruleta en los móviles de los clientes.</p>
-          
-          <div id="raffle-winner-box" style="display: none; margin-top: 20px;">
-            <p style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #4ade80;">Ganador seleccionado</p>
-            <p style="font-size: 40px; font-weight: bold; letter-spacing: 4px; color: white; margin: 10px 0; font-family: monospace;" id="raffle-winner-code">----</p>
-            <p style="font-size: 13px; color: var(--text-dimmer);">Pídele al cliente que te muestre su pantalla con este código para entregarle el premio.</p>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -761,30 +985,31 @@
     <div class="page" id="page-qrcodes">
       <div class="page-header">
         <h1 class="page-title">QR Codes</h1>
-        <p class="page-subtitle">Dos QRs operativos: uno para la entrada y otro para la salida. Imprímelos y colócalos en el local.</p>
+        <p class="page-subtitle">QR de entrada y salida. Imprímelos y colócalos en el local.</p>
       </div>
 
-      <div class="qr-grid" style="display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; margin-bottom: 40px;">
-        <div class="qr-card" style="max-width: 280px; border: 2px solid #116530;">
+      <!-- QRs operativos destacados -->
+      <div class="qr-grid" style="margin-bottom: 32px;">
+        <div class="qr-card" style="border-color: rgba(46, 204, 113, 0.3);">
           <img src="/api/qr/entry" alt="QR Entrada" class="qr-img" />
           <div class="qr-level-name" style="color: #2ecc71;">🟢 ENTRADA</div>
           <div class="qr-level-label">Fichar al llegar — abre sesión y entrega NFT a nuevos</div>
-          <a href="/api/qr/entry/download" class="btn-download" download style="background: #116530;">⬇ Descargar QR Entrada</a>
+          <a href="/api/qr/entry/download" class="btn-download" download style="background: rgba(46,204,113,0.1); border-color: rgba(46,204,113,0.25); color: #2ecc71;">⬇ Descargar</a>
         </div>
-        <div class="qr-card" style="max-width: 280px; border: 2px solid var(--gold);">
+        <div class="qr-card" style="border-color: rgba(139, 25, 24, 0.35);">
           <img src="/api/qr/checkin" alt="QR Salida" class="qr-img" />
-          <div class="qr-level-name">🔴 SALIDA / CHECK-IN</div>
+          <div class="qr-level-name" style="color: var(--wine-light);">🔴 SALIDA / CHECK-IN</div>
           <div class="qr-level-label">Fichar al salir — acumula visita y sube nivel si toca</div>
-          <a href="/api/qr/checkin/download" class="btn-download" download>⬇ Descargar QR Salida</a>
+          <a href="/api/qr/checkin/download" class="btn-download" download style="background: rgba(139,25,24,0.1); border-color: rgba(139,25,24,0.3); color: var(--wine-light);">⬇ Descargar</a>
         </div>
       </div>
 
-      <div class="page-header" style="margin-top: 40px; border-top: 1px solid var(--border); padding-top: 24px;">
-        <h2 style="font-size: 20px; color: var(--text); margin-bottom: 8px;">QRs Manuales (Pases Directos)</h2>
-        <p class="page-subtitle">Úsalos solo si quieres regalar un nivel específico a alguien, ignorando su contador de visitas real. Esto genera coste en Polygon.</p>
+      <div class="page-header" style="border-top: 1px solid var(--border); padding-top: 22px; margin-top: 8px;">
+        <h2 style="font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 4px;">QRs Manuales (Pases Directos)</h2>
+        <p class="page-subtitle">Úsalos solo si quieres regalar un nivel específico ignorando el contador de visitas.</p>
       </div>
 
-      <div class="qr-grid">
+      <div class="qr-grid" style="margin-bottom: 20px;">
         <div class="qr-card">
           <img src="/api/qr/1" alt="QR Nivel 1" class="qr-img" />
           <div class="qr-level-name">CAUTIVO</div>
@@ -811,9 +1036,9 @@
         </div>
       </div>
 
-      <div style="margin-top: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px;">
-        <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 8px;">📋 Instrucciones para el evento</h3>
-        <ol style="font-size: 14px; color: var(--text-dim); line-height: 2; padding-left: 20px;">
+      <div class="info-box">
+        <h3>📋 Instrucciones para el evento</h3>
+        <ol>
           <li>Imprime (o guarda en móvil) el QR de Check-in y ponlo en la barra</li>
           <li>El cliente escanea el QR con su cámara cada vez que consuma/asista</li>
           <li>Se abre una página web en su móvil informándole de su progreso</li>
@@ -822,7 +1047,68 @@
       </div>
     </div>
 
+    <!-- ==================== RAFFLES ==================== -->
+    <div class="page" id="page-raffles">
+      <div class="page-header">
+        <h1 class="page-title">Sorteos en Vivo</h1>
+        <p class="page-subtitle">Lanza un sorteo para todos los clientes presentes en el local.</p>
+      </div>
+
+      <div class="message-form">
+        <div class="form-group">
+          <label class="form-label">Participantes Elegibles</label>
+          <div class="raffle-eligible-count" id="raffle-eligible-count">—</div>
+          <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px; font-weight: 300;">Clientes que han fichado Entrada pero aún no Salida.</p>
+          <button class="btn-download" onclick="loadEligibleParticipants()" style="margin-top: 10px;">↻ Actualizar</button>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Premio a sortear</label>
+          <input type="text" class="input-field" id="raffle-prize" placeholder="Ej: Botella de Mencía, Cena Gratis..." />
+        </div>
+
+        <button class="btn-primary" id="start-raffle-btn" onclick="startRaffle()" style="width: 100%; background: linear-gradient(135deg, var(--wine) 0%, var(--wine-dark) 100%);">
+          🎲 LANZAR SORTEO (30 Segundos)
+        </button>
+
+        <div id="raffle-status" style="display: none;" class="raffle-status-box">
+          <h3 style="color: var(--gold); margin-bottom: 8px; font-family: 'Playfair Display', serif; font-size: 18px;" id="raffle-status-title">Sorteo en curso...</h3>
+          <p style="font-size: 13px; color: var(--text-muted); font-weight: 300;" id="raffle-status-desc">Espera a que termine la ruleta en los móviles de los clientes.</p>
+
+          <div id="raffle-winner-box" style="display: none; margin-top: 20px;">
+            <p style="font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #4ade80; margin-bottom: 4px;">Ganador seleccionado</p>
+            <p class="raffle-winner-code" id="raffle-winner-code">----</p>
+            <p style="font-size: 12px; color: var(--text-muted); font-weight: 300;">Pídele al cliente que te muestre su pantalla con este código.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </main>
+
+  <!-- ==================== BOTTOM NAV ==================== -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
+      <span class="nav-icon">🏠</span>
+      <span>Dashboard</span>
+    </button>
+    <button class="nav-item" onclick="showPage('holders')" id="nav-holders">
+      <span class="nav-icon">👥</span>
+      <span>Holders</span>
+    </button>
+    <button class="nav-item" onclick="showPage('messages')" id="nav-messages">
+      <span class="nav-icon">💬</span>
+      <span>Mensajes</span>
+    </button>
+    <button class="nav-item" onclick="showPage('qrcodes')" id="nav-qrcodes">
+      <span class="nav-icon">📱</span>
+      <span>QR Codes</span>
+    </button>
+    <button class="nav-item" onclick="showPage('raffles')" id="nav-raffles">
+      <span class="nav-icon">🎰</span>
+      <span>Rifa</span>
+    </button>
+  </nav>
 </div>
 
 <!-- Toast notification -->
@@ -918,7 +1204,7 @@
       } else {
         tbody.innerHTML = data.recent.map(r => `
           <tr>
-            <td style="font-family: monospace; font-size: 12px;">${r.wallet_masked}</td>
+            <td style="font-family: monospace; font-size: 11px;">${r.wallet_masked}</td>
             <td>${nivelPill(r.level, r.level_name)}</td>
             <td>${formatDate(r.minted_at)}</td>
             <td><span class="status-pill ${r.status}">${r.status}</span></td>
@@ -929,10 +1215,10 @@
       // Por fecha
       const dateBody = document.getElementById('bydate-tbody');
       if (!data.byDate || data.byDate.length === 0) {
-        dateBody.innerHTML = `<tr><td colspan="2" style="text-align:center; color: var(--text-dimmer); padding: 20px;">Sin datos</td></tr>`;
+        dateBody.innerHTML = `<tr><td colspan="2" style="text-align:center; color: var(--text-muted); padding: 20px; font-size: 13px;">Sin datos</td></tr>`;
       } else {
         dateBody.innerHTML = data.byDate.map(d => `
-          <tr><td>${d.event_date}</td><td style="font-family: 'Playfair Display', serif; font-size: 18px;">${d.count}</td></tr>
+          <tr><td>${d.event_date}</td><td style="font-family: 'Playfair Display', serif; font-size: 20px; color: var(--text);">${d.count}</td></tr>
         `).join('');
       }
 
@@ -954,7 +1240,7 @@
       } else {
         tbody.innerHTML = holders.map(h => `
           <tr>
-            <td style="font-family: monospace; font-size: 13px;">${h.wallet_address}</td>
+            <td style="font-family: monospace; font-size: 11px;">${h.wallet_address}</td>
             <td>${nivelPill(h.level, h.level_name)}</td>
             <td>${h.event_date || '—'}</td>
             <td><span class="status-pill ${h.status}">${h.status}</span></td>
@@ -967,13 +1253,13 @@
       const multilevel = await mlRes.json();
       const mlBody = document.getElementById('multilevel-tbody');
       if (!multilevel || multilevel.length === 0) {
-        mlBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text-dimmer); padding: 20px;">Todavía no hay clientes habituales con múltiples niveles</td></tr>`;
+        mlBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text-muted); padding: 20px; font-size: 13px;">Todavía no hay clientes habituales con múltiples niveles</td></tr>`;
       } else {
         mlBody.innerHTML = multilevel.map(m => `
           <tr>
-            <td style="font-family: monospace; font-size: 12px; font-weight: 600;">${m.wallet_address.substring(0,6)}...${m.wallet_address.substring(m.wallet_address.length - 6)}</td>
+            <td style="font-family: monospace; font-size: 11px; font-weight: 600;">${m.wallet_address.substring(0,6)}...${m.wallet_address.substring(m.wallet_address.length - 6)}</td>
             <td style="font-size: 12px;">${m.levels}</td>
-            <td style="font-family: 'Playfair Display', serif; font-size: 18px;">${m.total_visits}</td>
+            <td style="font-family: 'Playfair Display', serif; font-size: 20px; color: var(--text);">${m.total_visits}</td>
             <td style="font-size: 12px;">${formatDate(m.first_visit)}</td>
             <td style="font-size: 12px;">${formatDate(m.last_visit)}</td>
           </tr>
@@ -1099,16 +1385,16 @@
         headers: { 'Authorization': `Bearer ${AUTH_TOKEN}` }
       });
       const data = await res.json();
-      document.getElementById('raffle-eligible-count').textContent = data.count + ' clientes';
+      document.getElementById('raffle-eligible-count').textContent = data.count;
     } catch (e) {
-      document.getElementById('raffle-eligible-count').textContent = 'Error';
+      document.getElementById('raffle-eligible-count').textContent = '—';
     }
   }
 
   async function startRaffle() {
     const prize = document.getElementById('raffle-prize').value.trim();
     if (!prize) return showToast('Escribe un premio primero', true);
-    
+
     if (!confirm('¿Seguro que quieres lanzar el sorteo ahora a todos los móviles conectados?')) return;
 
     document.getElementById('start-raffle-btn').disabled = true;
@@ -1131,7 +1417,7 @@
         body: JSON.stringify({ prize })
       });
       const data = await res.json();
-      
+
       if (data.error) {
         clearInterval(interval);
         document.getElementById('raffle-status').style.display = 'none';
