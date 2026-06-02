@@ -1768,10 +1768,7 @@
       document.getElementById('profile-card-level-tag').textContent = 'NIVEL ' + lvl;
       document.getElementById('profile-card-name').textContent = levelName;
 
-      // Visitas
-      const visitsEl = document.getElementById('profile-visits');
-      visitsEl.textContent = '0';
-      setTimeout(() => animateCount(visitsEl, visitCount, 800), 300);
+      // Visitas (elemento eliminado del HTML — solo actualizar barra)
 
       // Barra de progreso
       const prevMilestone = LEVEL_MILESTONES[lvl - 1] || 1;
