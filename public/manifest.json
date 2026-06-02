@@ -1,21 +1,20 @@
 {
   "name": "Furancho Sessions VIP",
   "short_name": "Furancho",
-  "description": "Tu pase exclusivo para Furancho Sessions",
+  "description": "Tu pase exclusivo para Furancho Sessions — Afterwork Viño e Tapas",
   "start_url": "/claim",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#0a0a0a",
-  "theme_color": "#1E3A5F",
+  "orientation": "portrait",
+  "background_color": "#F2EDE3",
+  "theme_color": "#8B1918",
+  "lang": "es",
   "icons": [
     {
       "src": "/assets/logo.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/assets/logo.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "sizes": "720x1280",
+      "type": "image/jpeg",
+      "purpose": "any"
     }
   ]
 }
