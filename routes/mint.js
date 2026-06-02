@@ -13,7 +13,7 @@ const mintLimiter = rateLimit({
 });
 
 const { Wallet } = require('ethers');
-const { mintNFT, DEMO_MODE } = require('../services/crossmint');
+const { mintNFT, DEMO_MODE } = require('../services/polygon');
 const { insertMint, updateMintStatus, checkDuplicate } = require('../db/database');
 
 const LEVEL_NAMES = {
@@ -31,7 +31,7 @@ router.post('/entry', mintLimiter, async (req, res) => {
 
   try {
     const { getVisitCount, openSession, insertMint, updateMintStatus } = require('../db/database');
-    const { mintNFT, DEMO_MODE } = require('../services/crossmint');
+    const { mintNFT, DEMO_MODE } = require('../services/polygon');
     
     const visitCount = getVisitCount(walletAddress);
     

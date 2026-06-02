@@ -10,7 +10,7 @@ const {
   insertMessage,
   getMessages
 } = require('../db/database');
-const { DEMO_MODE } = require('../services/crossmint');
+const { DEMO_MODE } = require('../services/polygon');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'furancho2024';
 const TOKEN_SECRET = process.env.TOKEN_SECRET || crypto.randomBytes(32).toString('hex');
