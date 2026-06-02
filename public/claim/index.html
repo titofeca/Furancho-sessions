@@ -1041,6 +1041,66 @@
       letter-spacing: 0.5px;
     }
 
+    /* ========== RAFFLE SECTION ========== */
+    .raffle-section {
+      background: linear-gradient(135deg, rgba(139,25,24,0.06) 0%, rgba(196,151,58,0.06) 100%);
+      border: 1px solid rgba(139,25,24,0.15);
+      border-radius: 20px;
+      padding: 18px;
+      margin-bottom: 20px;
+    }
+
+    .raffle-section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .raffle-section-icon {
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .raffle-section-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+
+    .raffle-section-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .raffle-live-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ccc;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    .raffle-live-dot.live {
+      background: #4ade80;
+      box-shadow: 0 0 8px rgba(74,222,128,0.6);
+      animation: pulse-dot 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.3); opacity: 0.7; }
+    }
+
+    .raffle-section-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
     /* ========== RAFFLE MEJORADA ========== */
     .raffle-particles {
       position: absolute;
@@ -1336,10 +1396,7 @@
 
       <!-- Progresión -->
       <div class="profile-progress-card">
-        <div class="profile-visits-row">
-          <span class="profile-visits-label">Visitas acumuladas</span>
-          <span class="profile-visits-count" id="profile-visits">0</span>
-        </div>
+        <p class="profile-visits-label" style="margin-bottom:10px;">Tu progreso</p>
         <div class="profile-progress-bar-bg">
           <div class="profile-progress-bar-fill" id="profile-progress-fill"></div>
         </div>
@@ -1349,25 +1406,34 @@
         <div class="profile-milestones">
           <div class="milestone" id="ms-1">
             <div class="milestone-dot"></div>
-            <span>1</span>
             <span class="milestone-label">Cautivo</span>
           </div>
           <div class="milestone" id="ms-2">
             <div class="milestone-dot"></div>
-            <span>2</span>
             <span class="milestone-label">Cunqueiro</span>
           </div>
           <div class="milestone" id="ms-3">
             <div class="milestone-dot"></div>
-            <span>5</span>
             <span class="milestone-label">Larpeiro</span>
           </div>
           <div class="milestone" id="ms-4">
             <div class="milestone-dot"></div>
-            <span>10</span>
             <span class="milestone-label">Presidente</span>
           </div>
         </div>
+      </div>
+
+      <!-- Sección Sorteo -->
+      <div class="raffle-section" id="raffle-section">
+        <div class="raffle-section-header">
+          <span class="raffle-section-icon">🎰</span>
+          <div>
+            <p class="raffle-section-title">Sorteos en Directo</p>
+            <p class="raffle-section-sub" id="raffle-status-text">Esperando próximo sorteo...</p>
+          </div>
+          <div class="raffle-live-dot" id="raffle-live-dot"></div>
+        </div>
+        <p class="raffle-section-hint">Cuando el Furancho lance un sorteo, lo verás aquí en tiempo real. ¡Mantén esta pantalla abierta!</p>
       </div>
 
       <!-- Tarjeta ID -->
@@ -1987,6 +2053,14 @@
 
       evtSource.addEventListener('raffle_start', (e) => {
         const data = JSON.parse(e.data);
+
+        // Actualizar sección sorteo en perfil
+        const dot = document.getElementById('raffle-live-dot');
+        const statusText = document.getElementById('raffle-status-text');
+        if (dot) dot.classList.add('live');
+        if (statusText) statusText.textContent = '🔴 Sorteo en curso: ' + data.prize;
+
+        // Abrir modal
         const modal = document.getElementById('raffle-modal');
         document.getElementById('raffle-roulette').style.display = 'block';
         document.getElementById('raffle-winner').style.display = 'none';
@@ -2004,12 +2078,17 @@
         stopSlotAnimation();
         document.getElementById('raffle-roulette').style.display = 'none';
 
+        // Actualizar sección sorteo en perfil
+        const dot = document.getElementById('raffle-live-dot');
+        const statusText = document.getElementById('raffle-status-text');
+        if (dot) dot.classList.remove('live');
+        if (statusText) statusText.textContent = 'Esperando próximo sorteo...';
+
         if (data.winnerWallet === myWallet) {
           document.getElementById('raffle-winner').style.display = 'block';
           document.getElementById('raffle-winner-prize').textContent = data.prize;
           document.getElementById('raffle-code').textContent = data.verificationCode;
           launchParticles();
-          // Vibrar el móvil si está disponible
           if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 400]);
         } else {
           document.getElementById('raffle-loser').style.display = 'block';
