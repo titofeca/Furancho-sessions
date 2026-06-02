@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Entrada - Furancho Sessions</title>
+  <link rel="stylesheet" href="/claim/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="screen" id="screen-loading" style="display: flex;">
+    <div class="loading-container">
+      <div class="spinner"></div>
+      <h2 class="loading-title">Registrando Entrada...</h2>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-success" style="display: none;">
+    <div class="success-container">
+      <div class="success-icon" id="icon-container">🍷</div>
+      <h2 class="success-title" id="title-container">Benvido a Furancho Sessions!</h2>
+      <p class="success-sub" id="msg-container">
+        Disfruta de la experiencia. Recuerda fichar a la salida para ganar tus puntos.
+      </p>
+
+      <div id="nft-container" style="display: none; background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 24px; margin-bottom: 24px; text-align: left; box-shadow: 0 16px 32px rgba(0,0,0,0.4); position: relative; overflow: hidden; backdrop-filter: blur(10px);">
+        <div style="position: absolute; top: -50%; left: -60%; width: 50%; height: 200%; background: linear-gradient(to right, transparent, rgba(255,255,255,0.03), transparent); transform: skewX(-20deg); animation: shineCard 6s infinite;"></div>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <img src="/assets/logo.png" style="height: 32px; border-radius: 4px;" alt="Logo" />
+            <span style="font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 700; color: var(--accent); letter-spacing: 0.5px;">Furancho Sessions</span>
+          </div>
+          <span style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--accent);">NIVEL 1</span>
+        </div>
+
+        <p class="nft-card-title" style="font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 900; line-height: 1.2; margin-bottom: 6px; color: var(--text);">CAUTIVO</p>
+        <p class="nft-card-sub" style="font-size: 12px; color: rgba(255,255,255,0.45); margin-bottom: 20px;">Bienvenida</p>
+      </div>
+      
+    </div>
+  </div>
+
+  <script src="/entry/app.js"></script>
+</body>
+</html>

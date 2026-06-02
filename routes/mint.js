@@ -23,6 +23,57 @@ const LEVEL_NAMES = {
   4: 'O Presidente do Furancho'
 };
 
+
+// POST /api/mint/entry
+router.post('/entry', mintLimiter, async (req, res) => {
+  const { walletAddress, email } = req.body;
+  if (!walletAddress) return res.status(400).json({ error: 'Falta walletAddress' });
+
+  try {
+    const { getVisitCount, openSession, insertMint, updateMintStatus } = require('../db/database');
+    const { mintNFT, DEMO_MODE } = require('../services/crossmint');
+    
+    const visitCount = getVisitCount(walletAddress);
+    
+    // Si es nuevo cliente (0 visitas), le regalamos el NFT 1 a la entrada
+    if (visitCount === 0) {
+      openSession(walletAddress); // Abre su sesión
+      
+      const levelName = LEVEL_NAMES[1];
+      const mintId = insertMint({
+        email, level: 1, levelName, walletAddress, status: 'pending', ipAddress: req.ip
+      });
+      
+      // Mintear
+      const result = await mintNFT({ email, walletAddress, level: 1, levelName });
+      updateMintStatus(mintId, 'success', result.walletAddress);
+      
+      return res.json({
+        success: true,
+        action: 'mint',
+        isNew: true,
+        levelName,
+        level: 1,
+        walletAddress: result.walletAddress,
+        demo: DEMO_MODE,
+        message: '¡Pase de Bienvenida Entregado! Recuerda fichar a la salida.'
+      });
+    } else {
+      // Cliente recurrente, solo abrimos sesión
+      openSession(walletAddress);
+      return res.json({
+        success: true,
+        action: 'entry',
+        isNew: false,
+        message: 'Benvido a Furancho Sessions, Disfruta! Recuerda fichar a la salida.'
+      });
+    }
+  } catch (error) {
+    console.error('Error en /entry:', error.message);
+    res.status(500).json({ error: 'Error procesando entrada' });
+  }
+});
+
 // POST /api/mint/create-wallet
 // Genera una billetera Web3 aleatoria y anónima en el backend
 router.post('/create-wallet', (req, res) => {
@@ -65,7 +116,7 @@ router.post('/', mintLimiter, async (req, res) => {
   }
 
   try {
-    const { insertVisit, getVisitCount, checkRecentVisit } = require('../db/database');
+    const { insertVisit, getVisitCount, checkRecentVisit, openSession, closeSession } = require('../db/database');
     
 
     // ==== CHECK COOLDOWN (Anti-Fraude) ====
@@ -79,7 +130,7 @@ router.post('/', mintLimiter, async (req, res) => {
     // ======================================
 
     // Registrar la visita actual
-    insertVisit(walletAddress, sanitizedEmail, req.ip);
+    closeSession(walletAddress);
     
     // Obtener total de visitas contando esta
     const visitCount = getVisitCount(walletAddress);
