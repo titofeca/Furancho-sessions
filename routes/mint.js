@@ -140,14 +140,10 @@ router.post('/', mintLimiter, async (req, res) => {
     let manualLevel = parseInt(level);
 
     if (manualLevel && [1, 2, 3, 4].includes(manualLevel)) {
-      // Logica de auto-mejora si ya tiene el nivel
+      // QR de regalo — mintear exactamente el nivel indicado
       targetLevel = manualLevel;
-      while (targetLevel <= 4 && checkDuplicate(walletAddress, sanitizedEmail, targetLevel)) {
-        targetLevel++;
-      }
-      
-      if (targetLevel > 4) {
-        return res.status(409).json({ error: 'Ya tienes todos los pases hasta el Nivel Máximo (Presidente).' });
+      if (checkDuplicate(walletAddress, sanitizedEmail, targetLevel)) {
+        return res.status(409).json({ error: `Ya tienes el pase de ${LEVEL_NAMES[targetLevel]}.`, action: 'duplicate' });
       }
     } else {
       if (visitCount === 1) targetLevel = 1;
