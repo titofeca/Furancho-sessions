@@ -533,6 +533,9 @@
       <button class="nav-item" onclick="showPage('qrcodes')" id="nav-qrcodes">
         <span class="nav-icon">📱</span> QR Codes
       </button>
+      <button class="nav-item" onclick="showPage('raffles')" id="nav-raffles">
+        <span class="nav-icon">🎲</span> Sorteos en Vivo
+      </button>
     </nav>
     <div class="demo-badge" id="demo-badge">🟡 Modo Demo activo</div>
   </div>
@@ -712,6 +715,45 @@
           <span class="table-title">Mensajes enviados</span>
         </div>
         <div id="msg-history"></div>
+      </div>
+    </div>
+
+    <!-- ==================== RAFFLES ==================== -->
+    <div class="page" id="page-raffles">
+      <div class="page-header">
+        <h1 class="page-title">Sorteos en Vivo</h1>
+        <p class="page-subtitle">Dispara un sorteo para todos los clientes que están actualmente en el local.</p>
+      </div>
+
+      <div class="message-form">
+        <div class="form-group">
+          <label class="form-label">Participantes Elegibles</label>
+          <div style="font-size: 24px; color: var(--gold); font-weight: bold;" id="raffle-eligible-count">
+            Cargando...
+          </div>
+          <p style="font-size: 12px; color: var(--text-dimmer); margin-top: 4px;">Clientes que han fichado Entrada pero aún no Salida.</p>
+          <button class="btn-download" onclick="loadEligibleParticipants()" style="margin-top: 8px;">↻ Actualizar número</button>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Premio a sortear</label>
+          <input type="text" class="input-field" id="raffle-prize" placeholder="Ej: Botella de Mencía, Cena Gratis..." />
+        </div>
+        
+        <button class="btn-send" id="start-raffle-btn" onclick="startRaffle()" style="width: 100%; background: linear-gradient(135deg, #8B1A1A, #b32d2d); color: white;">
+          🎲 LANZAR SORTEO (30 Segundos)
+        </button>
+
+        <div id="raffle-status" style="margin-top: 20px; display: none; text-align: center; padding: 20px; background: rgba(0,0,0,0.5); border-radius: 12px; border: 1px solid var(--gold);">
+          <h3 style="color: var(--gold); margin-bottom: 10px;" id="raffle-status-title">Sorteo en curso...</h3>
+          <p style="font-size: 14px; color: var(--text-dim);" id="raffle-status-desc">Espera a que termine la ruleta en los móviles de los clientes.</p>
+          
+          <div id="raffle-winner-box" style="display: none; margin-top: 20px;">
+            <p style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #4ade80;">Ganador seleccionado</p>
+            <p style="font-size: 40px; font-weight: bold; letter-spacing: 4px; color: white; margin: 10px 0; font-family: monospace;" id="raffle-winner-code">----</p>
+            <p style="font-size: 13px; color: var(--text-dimmer);">Pídele al cliente que te muestre su pantalla con este código para entregarle el premio.</p>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1043,6 +1085,69 @@
   setInterval(() => {
     if (AUTH_TOKEN) loadStats();
   }, 30000);
+
+  // ==================== RAFFLES ====================
+  async function loadEligibleParticipants() {
+    try {
+      const res = await fetch('/api/raffle/eligible', {
+        headers: { 'Authorization': `Bearer ${AUTH_TOKEN}` }
+      });
+      const data = await res.json();
+      document.getElementById('raffle-eligible-count').textContent = data.count + ' clientes';
+    } catch (e) {
+      document.getElementById('raffle-eligible-count').textContent = 'Error';
+    }
+  }
+
+  async function startRaffle() {
+    const prize = document.getElementById('raffle-prize').value.trim();
+    if (!prize) return showToast('Escribe un premio primero', true);
+    
+    if (!confirm('¿Seguro que quieres lanzar el sorteo ahora a todos los móviles conectados?')) return;
+
+    document.getElementById('start-raffle-btn').disabled = true;
+    document.getElementById('raffle-status').style.display = 'block';
+    document.getElementById('raffle-winner-box').style.display = 'none';
+    document.getElementById('raffle-status-title').textContent = '🎲 Ruleta girando en los móviles...';
+    document.getElementById('raffle-status-desc').textContent = 'Quedan 30 segundos';
+
+    let countdown = 30;
+    const interval = setInterval(() => {
+      countdown--;
+      document.getElementById('raffle-status-desc').textContent = `Quedan ${countdown} segundos`;
+      if (countdown <= 0) clearInterval(interval);
+    }, 1000);
+
+    try {
+      const res = await fetch('/api/raffle/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AUTH_TOKEN}` },
+        body: JSON.stringify({ prize })
+      });
+      const data = await res.json();
+      
+      if (data.error) {
+        clearInterval(interval);
+        document.getElementById('raffle-status').style.display = 'none';
+        document.getElementById('start-raffle-btn').disabled = false;
+        return showToast(data.error, true);
+      }
+
+      // Wait 30 seconds to show winner
+      setTimeout(() => {
+        document.getElementById('raffle-status-title').textContent = '🎉 ¡Sorteo Finalizado!';
+        document.getElementById('raffle-status-desc').textContent = `El ganador está viendo este código en su móvil.`;
+        document.getElementById('raffle-winner-box').style.display = 'block';
+        document.getElementById('raffle-winner-code').textContent = data.verificationCode;
+        document.getElementById('start-raffle-btn').disabled = false;
+      }, 30000);
+
+    } catch (e) {
+      clearInterval(interval);
+      document.getElementById('start-raffle-btn').disabled = false;
+      showToast('Error al lanzar sorteo', true);
+    }
+  }
 </script>
 </body>
 </html>

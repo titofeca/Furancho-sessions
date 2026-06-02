@@ -40,3 +40,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     alert("Error al registrar entrada.");
   }
 });
+
+  // ==================== SSE LIVE RAFFLES ====================
+  function connectRaffle() {
+    const evtSource = new EventSource('/api/raffle/stream');
+    
+    evtSource.addEventListener('raffle_start', (e) => {
+      const data = JSON.parse(e.data);
+      const modal = document.getElementById('raffle-modal');
+      document.getElementById('raffle-roulette').style.display = 'block';
+      document.getElementById('raffle-winner').style.display = 'none';
+      document.getElementById('raffle-loser').style.display = 'none';
+      document.getElementById('raffle-prize-text').textContent = 'Sorteando: ' + data.prize;
+      modal.style.display = 'flex';
+      
+      // Prevent scrolling
+      document.body.style.overflow = 'hidden';
+    });
+
+    evtSource.addEventListener('raffle_result', (e) => {
+      const data = JSON.parse(e.data);
+      const myWallet = localStorage.getItem('furancho_wallet_address');
+      
+      document.getElementById('raffle-roulette').style.display = 'none';
+      
+      if (data.winnerWallet === myWallet) {
+        document.getElementById('raffle-winner').style.display = 'block';
+        document.getElementById('raffle-winner-prize').textContent = data.prize;
+        document.getElementById('raffle-code').textContent = data.verificationCode;
+      } else {
+        document.getElementById('raffle-loser').style.display = 'block';
+        document.getElementById('raffle-loser-prize').textContent = data.prize;
+      }
+    });
+    
+    evtSource.onerror = (err) => {
+      // Silently reconnects
+    };
+  }
+  
+  // Call it after a delay so we don't block the main render
+  setTimeout(connectRaffle, 2000);

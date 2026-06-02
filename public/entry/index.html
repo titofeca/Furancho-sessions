@@ -106,6 +106,44 @@
     </div>
   </div>
 
+    <!-- ==================== RAFFLE MODAL ==================== -->
+    <div class="screen" id="raffle-modal" style="position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.95); backdrop-filter: blur(15px); justify-content: center; text-align: center; display: none; padding: 20px;">
+      <div id="raffle-roulette" style="display: none;">
+        <h2 style="font-family: 'Playfair Display', serif; font-size: 32px; color: var(--accent-gold); margin-bottom: 20px;">Sorteo Especial</h2>
+        <p style="font-size: 16px; color: white; margin-bottom: 40px;" id="raffle-prize-text">Sorteando: ...</p>
+        <div style="font-size: 80px; animation: spinRoulette 0.5s linear infinite;">🎰</div>
+        <p style="margin-top: 30px; font-size: 14px; color: rgba(255,255,255,0.6);">Buscando ganador entre los presentes...</p>
+      </div>
+
+      <div id="raffle-winner" style="display: none;">
+        <div style="font-size: 60px; margin-bottom: 20px;">🎉</div>
+        <h2 style="font-family: 'Playfair Display', serif; font-size: 36px; color: #4ade80; margin-bottom: 10px;">¡ERES EL GANADOR!</h2>
+        <p style="font-size: 16px; color: white; margin-bottom: 30px;">Has ganado: <strong id="raffle-winner-prize"></strong></p>
+        <div style="background: rgba(255,255,255,0.1); border: 2px solid #4ade80; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+          <p style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.7); margin-bottom: 10px;">Código de Verificación</p>
+          <p style="font-family: monospace; font-size: 40px; font-weight: bold; letter-spacing: 4px; color: white;" id="raffle-code">----</p>
+        </div>
+        <p style="font-size: 14px; color: rgba(255,255,255,0.6); line-height: 1.5;">Ve a la barra y muestra esta pantalla al personal para reclamar tu premio.</p>
+      </div>
+
+      <div id="raffle-loser" style="display: none;">
+        <div style="font-size: 60px; margin-bottom: 20px; filter: grayscale(100%);">🎲</div>
+        <h2 style="font-family: 'Playfair Display', serif; font-size: 28px; color: white; margin-bottom: 10px;">¡Casi!</h2>
+        <p style="font-size: 16px; color: rgba(255,255,255,0.6); margin-bottom: 30px;">El ganador de <span id="raffle-loser-prize"></span> ha sido otra persona.</p>
+        <button onclick="document.getElementById('raffle-modal').style.display='none'; document.body.style.overflow='auto';" style="padding: 12px 24px; border-radius: 50px; border:none; background: #D4AF37; color: black; font-weight: bold; cursor: pointer;">Cerrar</button>
+      </div>
+
+      <style>
+        @keyframes spinRoulette {
+          0% { transform: translateY(0); }
+          25% { transform: translateY(-10px); }
+          50% { transform: translateY(0); }
+          75% { transform: translateY(10px); }
+          100% { transform: translateY(0); }
+        }
+      </style>
+    </div>
+
   <script src="/entry/app.js"></script>
 </body>
 </html>

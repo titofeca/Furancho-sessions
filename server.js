@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const qrRoutes = require('./routes/qr');
+const raffleRoutes = require('./routes/raffle');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,7 +20,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Rutas API
 app.use('/api/mint', require('./routes/mint'));
 app.use('/api/admin', require('./routes/admin'));
-app.use('/api/qr', require('./routes/qr'));
+app.use('/api/qr', qrRoutes);
+app.use('/api/raffle', raffleRoutes);
 
 // Ruta principal claim — sirve la página de reclamación del NFT
 app.get('/claim', (req, res) => {
