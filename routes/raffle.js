@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getEligibleRaffleParticipants, insertRaffle } = require('../db/database');
+const { requireAuth } = require('./admin');
 
 // Mantenemos las conexiones SSE de los clientes
 let clients = [];
@@ -34,7 +35,7 @@ router.get('/stream', (req, res) => {
 
 // POST /api/raffle/start
 // Solo llamado por el admin para iniciar un sorteo
-router.post('/start', (req, res) => {
+router.post('/start', requireAuth, (req, res) => {
   const { prize } = req.body;
   
   if (!prize) {
@@ -79,7 +80,7 @@ router.post('/start', (req, res) => {
 
 // GET /api/raffle/eligible
 // Para que el admin vea cuánta gente participa antes de lanzar
-router.get('/eligible', (req, res) => {
+router.get('/eligible', requireAuth, (req, res) => {
   const eligibleWallets = getEligibleRaffleParticipants();
   res.json({ count: eligibleWallets.length });
 });

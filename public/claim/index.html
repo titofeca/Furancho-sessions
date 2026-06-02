@@ -1324,7 +1324,8 @@
           <summary>🔑 Respaldar mi llave de seguridad (Avanzado)</summary>
           <div class="key-section-inner">
             <p style="margin-bottom: 6px;">Esta es la clave privada de tu pase anónimo en la blockchain. Guárdala si quieres importarla en apps como MetaMask:</p>
-            <div class="key-display" id="private-key-display">-</div>
+            <div class="key-display" id="private-key-display" style="filter: blur(6px); user-select: none; transition: filter 0.3s;">••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••</div>
+            <button onclick="revealPrivateKey(this)" style="margin-top:10px; padding:8px 18px; border-radius:50px; border:1.5px solid rgba(139,25,24,0.3); background:transparent; color:var(--wine); font-family:'Outfit',sans-serif; font-size:13px; cursor:pointer;">👁 Mostrar clave</button>
             <p class="key-warning">⚠️ ¡No compartas esta clave con nadie!</p>
           </div>
         </details>
@@ -1832,7 +1833,7 @@
           document.getElementById('card-level-tag').textContent = 'NIVEL ' + (data.level || '');
           document.getElementById('success-date').textContent = new Date().toLocaleDateString('es-ES');
           document.getElementById('success-wallet').textContent = userWalletAddress;
-          document.getElementById('private-key-display').textContent = userWalletPrivateKey || '-';
+          document.getElementById('private-key-display').dataset.key = userWalletPrivateKey || '-';
           setTimeout(() => showScreen('screen-success'), 800);
         } else if (data.action === 'visit') {
           // Visita registrada → confirmación sutil en el perfil
@@ -1870,7 +1871,7 @@
           document.getElementById('card-level-tag').textContent = 'NIVEL ' + (data.level || '');
           document.getElementById('success-date').textContent = new Date().toLocaleDateString('es-ES');
           document.getElementById('success-wallet').textContent = userWalletAddress;
-          document.getElementById('private-key-display').textContent = userWalletPrivateKey || '-';
+          document.getElementById('private-key-display').dataset.key = userWalletPrivateKey || '-';
           showScreen('screen-success');
         } else if (data.action === 'cooldown') {
           btn.disabled = false;
@@ -1890,6 +1891,14 @@
 
     // Ejecutar al cargar la página
     initWallet();
+
+    function revealPrivateKey(btn) {
+      const el = document.getElementById('private-key-display');
+      el.textContent = el.dataset.key || '-';
+      el.style.filter = 'none';
+      el.style.userSelect = 'all';
+      btn.style.display = 'none';
+    }
 
     function showScreen(id) {
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -1986,7 +1995,7 @@
 
         const wallet = data.walletAddress || userWalletAddress;
         document.getElementById('success-wallet').textContent = `ID Usuario: ${wallet}`;
-        document.getElementById('private-key-display').textContent = userWalletPrivateKey;
+        document.getElementById('private-key-display').dataset.key = userWalletPrivateKey;
 
         if (data.demo) {
           document.getElementById('success-wallet').textContent += ' (Modo Demo)';

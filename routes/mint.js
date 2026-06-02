@@ -76,7 +76,7 @@ router.post('/entry', mintLimiter, async (req, res) => {
 
 // POST /api/mint/create-wallet
 // Genera una billetera Web3 aleatoria y anónima en el backend
-router.post('/create-wallet', (req, res) => {
+router.post('/create-wallet', mintLimiter, (req, res) => {
   try {
     const wallet = Wallet.createRandom();
     res.json({

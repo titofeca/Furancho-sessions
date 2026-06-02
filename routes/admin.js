@@ -34,13 +34,10 @@ function verifyToken(token) {
   return Date.now() - ts < TOKEN_TTL_MS;
 }
 
-// Middleware de autenticación — acepta token de sesión o header legacy para compatibilidad Replit
+// Middleware de autenticación
 function requireAuth(req, res, next) {
   const token = req.headers['x-admin-token'];
-  const legacyPassword = req.headers['x-admin-password'];
-
   if (token && verifyToken(token)) return next();
-  if (legacyPassword === ADMIN_PASSWORD) return next(); // transitorio hasta actualizar frontend
   return res.status(401).json({ error: 'No autorizado' });
 }
 
@@ -139,3 +136,4 @@ router.get('/messages', requireAuth, (req, res) => {
 });
 
 module.exports = router;
+module.exports.requireAuth = requireAuth;
