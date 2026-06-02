@@ -5,8 +5,73 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Entrada - Furancho Sessions</title>
   <link rel="stylesheet" href="/claim/style.css">
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&display=swap" rel="stylesheet">
-</head>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+    :root {
+      --bg-dark: #050505;
+      --bg-gradient: radial-gradient(circle at top right, #2a0808 0%, #050505 60%);
+      --accent-gold: #D4AF37;
+      --accent-gold-dark: #AA8529;
+      --accent-red: #8B0000;
+      --text-main: #FDFBF7;
+      --text-muted: #BDB5A1;
+      --glass-bg: rgba(20, 20, 20, 0.6);
+      --glass-border: rgba(212, 175, 55, 0.2);
+    }
+    
+    body, html {
+      margin: 0; padding: 0;
+      background: var(--bg-dark);
+      background-image: var(--bg-gradient);
+      color: var(--text-main);
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      background-attachment: fixed;
+    }
+
+    h1, h2, h3, .nft-card-title, .nft-title {
+      font-family: 'Playfair Display', serif;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dark));
+      color: #000;
+      border: none;
+      border-radius: 50px;
+      padding: 16px 28px;
+      font-size: 16px;
+      font-weight: 600;
+      font-family: 'Outfit', sans-serif;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(212, 175, 55, 0.3);
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      width: 100%;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(212, 175, 55, 0.5);
+    }
+
+    .glass-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
+      border: 1px solid var(--glass-border);
+      border-radius: 24px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    
+    .success-icon {
+      background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dark));
+      color: #000;
+      box-shadow: 0 0 30px rgba(212, 175, 55, 0.4);
+    }
+  </style></head>
 <body>
   <div class="screen" id="screen-loading" style="display: flex;">
     <div class="loading-container">
@@ -23,15 +88,15 @@
         Disfruta de la experiencia. Recuerda fichar a la salida para ganar tus puntos.
       </p>
 
-      <div id="nft-container" style="display: none; background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 24px; margin-bottom: 24px; text-align: left; box-shadow: 0 16px 32px rgba(0,0,0,0.4); position: relative; overflow: hidden; backdrop-filter: blur(10px);">
+      <div id="nft-container" style="display: none; glass-card">
         <div style="position: absolute; top: -50%; left: -60%; width: 50%; height: 200%; background: linear-gradient(to right, transparent, rgba(255,255,255,0.03), transparent); transform: skewX(-20deg); animation: shineCard 6s infinite;"></div>
         
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
           <div style="display: flex; align-items: center; gap: 8px;">
             <img src="/assets/logo.png" style="height: 32px; border-radius: 4px;" alt="Logo" />
-            <span style="font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 700; color: var(--accent); letter-spacing: 0.5px;">Furancho Sessions</span>
+            <span style="font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 700; color: var(--accent-gold); letter-spacing: 0.5px;">Furancho Sessions</span>
           </div>
-          <span style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--accent);">NIVEL 1</span>
+          <span style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-gold);">NIVEL 1</span>
         </div>
 
         <p class="nft-card-title" style="font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 900; line-height: 1.2; margin-bottom: 6px; color: var(--text);">CAUTIVO</p>
