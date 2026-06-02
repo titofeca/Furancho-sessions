@@ -961,6 +961,170 @@
       font-weight: 300;
     }
 
+    /* ========== PERFIL ========== */
+    .profile-progress-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .profile-visits-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 12px;
+    }
+
+    .profile-visits-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+    }
+
+    .profile-visits-count {
+      font-family: 'Playfair Display', serif;
+      font-size: 36px;
+      font-weight: 900;
+      color: var(--gold);
+      line-height: 1;
+    }
+
+    .profile-progress-bar-bg {
+      width: 100%;
+      height: 6px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 100px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .profile-progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--wine) 0%, var(--gold) 100%);
+      border-radius: 100px;
+      transition: width 1s cubic-bezier(0.22, 1, 0.36, 1);
+      width: 0%;
+    }
+
+    .profile-progress-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .profile-milestones {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .milestone {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+      opacity: 0.5;
+      transition: opacity 0.3s;
+    }
+
+    .milestone.reached {
+      opacity: 1;
+      color: var(--gold);
+    }
+
+    .milestone-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      border: 1.5px solid rgba(255,255,255,0.2);
+      transition: all 0.3s;
+    }
+
+    .milestone.reached .milestone-dot {
+      background: var(--gold);
+      border-color: var(--gold);
+      box-shadow: 0 0 8px rgba(196,151,58,0.5);
+    }
+
+    .milestone-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ========== RAFFLE MEJORADA ========== */
+    .raffle-particles {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .particle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      animation: particleFly 3s ease-in infinite;
+    }
+
+    @keyframes particleFly {
+      0%   { transform: translateY(100vh) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(-100px) rotate(720deg); opacity: 0; }
+    }
+
+    .raffle-winner-emoji {
+      font-size: 80px;
+      animation: winnerBounce 0.6s cubic-bezier(0.17,0.67,0.35,1.3) both;
+      display: block;
+      margin-bottom: 16px;
+    }
+
+    @keyframes winnerBounce {
+      from { transform: scale(0) rotate(-20deg); opacity: 0; }
+      to   { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+
+    .raffle-winner-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 38px;
+      font-weight: 900;
+      background: linear-gradient(135deg, #4ade80, #22c55e);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+      animation: winnerBounce 0.7s 0.1s cubic-bezier(0.17,0.67,0.35,1.3) both;
+    }
+
+    .raffle-slot-wrap {
+      position: relative;
+      display: inline-block;
+    }
+
+    .raffle-slot-glow {
+      position: absolute;
+      inset: -20px;
+      background: radial-gradient(circle, rgba(196,151,58,0.3) 0%, transparent 70%);
+      animation: glowPulse 1s ease-in-out infinite alternate;
+    }
+
+    @keyframes glowPulse {
+      from { transform: scale(0.9); opacity: 0.5; }
+      to   { transform: scale(1.1); opacity: 1; }
+    }
+
     /* nivel 2 light override */
     body.nivel-2 {
       background: #EAE4DA;
@@ -1173,6 +1337,96 @@
     </div>
   </div>
 
+  <!-- ==================== PANTALLA 5: PERFIL CLIENTE ==================== -->
+  <div class="screen" id="screen-profile">
+    <div class="header">
+      <div class="header-logo-row">
+        <img src="/assets/logo.png" alt="Furancho Sessions Logo" />
+      </div>
+      <div class="nft-image-container">
+        <img id="profile-nft-image" class="nft-image" src="" alt="NFT" />
+      </div>
+    </div>
+
+    <div class="content" style="margin-top: -6px;">
+      <div class="level-badge">
+        <span class="dot"></span>
+        <span id="profile-level-label">Nivel 1</span>
+      </div>
+      <h1 class="nft-title" id="profile-nft-name">CAUTIVO</h1>
+      <p class="nft-event">Furancho Sessions · Afterwork Viño e Tapas</p>
+
+      <!-- Progresión -->
+      <div class="profile-progress-card">
+        <div class="profile-visits-row">
+          <span class="profile-visits-label">Visitas acumuladas</span>
+          <span class="profile-visits-count" id="profile-visits">0</span>
+        </div>
+        <div class="profile-progress-bar-bg">
+          <div class="profile-progress-bar-fill" id="profile-progress-fill"></div>
+        </div>
+        <p class="profile-progress-hint" id="profile-progress-hint"></p>
+
+        <!-- Hitos -->
+        <div class="profile-milestones">
+          <div class="milestone" id="ms-1">
+            <div class="milestone-dot"></div>
+            <span>1</span>
+            <span class="milestone-label">Cautivo</span>
+          </div>
+          <div class="milestone" id="ms-2">
+            <div class="milestone-dot"></div>
+            <span>2</span>
+            <span class="milestone-label">Cunqueiro</span>
+          </div>
+          <div class="milestone" id="ms-3">
+            <div class="milestone-dot"></div>
+            <span>5</span>
+            <span class="milestone-label">Larpeiro</span>
+          </div>
+          <div class="milestone" id="ms-4">
+            <div class="milestone-dot"></div>
+            <span>10</span>
+            <span class="milestone-label">Presidente</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tarjeta ID -->
+      <div class="wallet-card" style="margin-bottom: 20px;">
+        <div class="wallet-card-top">
+          <div class="wallet-card-brand">
+            <img src="/assets/logo.png" alt="Logo" />
+            <span class="wallet-card-brand-name">Furancho Sessions</span>
+          </div>
+          <span class="wallet-card-level-tag" id="profile-card-level-tag">NIVEL 1</span>
+        </div>
+        <p class="wallet-card-nft-name" id="profile-card-name">CAUTIVO</p>
+        <hr class="wallet-card-divider" />
+        <p class="wallet-card-id-label">Tu ID de Cliente</p>
+        <div class="wallet-card-id" id="profile-wallet-id">—</div>
+      </div>
+
+      <!-- Mensaje admin -->
+      <div id="profile-admin-msg" style="display: none;" class="admin-msg-box">
+        <p class="admin-msg-label">📢 Mensaje del Furancho</p>
+        <p id="profile-admin-msg-body" class="admin-msg-body"></p>
+      </div>
+
+      <!-- Botón fichar salida -->
+      <button onclick="fichaSalida()" id="profile-checkin-btn" class="btn-primary btn-accent" style="margin-bottom: 16px;">
+        🍷 Fichar Salida
+      </button>
+      <button onclick="openVirtualCard()" class="btn-vip">
+        👁️ Ver mi Tarjeta VIP
+      </button>
+
+      <p class="footer-note" style="margin-top: 20px;">
+        Escanea el QR de salida en la barra cuando te vayas para acumular tu visita.
+      </p>
+    </div>
+  </div>
+
   <!-- ==================== RAFFLE MODAL ==================== -->
   <div class="raffle-modal screen" id="raffle-modal" style="position: fixed; inset: 0; z-index: 1000;">
     <!-- Roulette Animation -->
@@ -1183,23 +1437,26 @@
       <p class="raffle-searching">Buscando ganador entre los presentes...</p>
     </div>
 
+    <!-- Partículas decorativas -->
+    <div class="raffle-particles" id="raffle-particles"></div>
+
     <!-- Winner View -->
     <div id="raffle-winner" style="display: none; width: 100%; max-width: 360px;">
-      <div style="font-size: 64px; margin-bottom: 18px;">🎉</div>
-      <h2 style="font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 900; color: #4ade80; margin-bottom: 10px;">¡ERES EL GANADOR!</h2>
-      <p style="font-size: 15px; color: var(--text); margin-bottom: 26px; font-weight: 300;">Has ganado: <strong id="raffle-winner-prize" style="font-weight: 700;"></strong></p>
+      <span class="raffle-winner-emoji">🏆</span>
+      <h2 class="raffle-winner-title">¡ERES EL GANADOR!</h2>
+      <p style="font-size: 15px; color: var(--text); margin-bottom: 26px; font-weight: 300;">Has ganado: <strong id="raffle-winner-prize" style="font-weight: 700; color: var(--gold);"></strong></p>
       <div class="raffle-winner-box">
         <p class="raffle-code-label">Código de Verificación</p>
         <p class="raffle-code" id="raffle-code">----</p>
       </div>
-      <p class="raffle-note">Ve a la barra y muestra esta pantalla al personal para reclamar tu premio.</p>
+      <p class="raffle-note">🍷 Ve a la barra y muestra esta pantalla al personal para reclamar tu premio.</p>
     </div>
 
     <!-- Loser View -->
     <div id="raffle-loser" style="display: none; width: 100%; max-width: 360px;">
-      <div style="font-size: 64px; margin-bottom: 18px; filter: grayscale(100%);">🎲</div>
+      <div style="font-size: 64px; margin-bottom: 18px; animation: winnerBounce 0.5s ease both;">😔</div>
       <h2 style="font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; color: var(--text); margin-bottom: 10px;">¡Casi!</h2>
-      <p style="font-size: 15px; color: var(--text-muted); margin-bottom: 28px; font-weight: 300;">El ganador de <span id="raffle-loser-prize"></span> ha sido otra persona.</p>
+      <p style="font-size: 15px; color: var(--text-muted); margin-bottom: 28px; font-weight: 300; line-height: 1.6;">El ganador de <strong id="raffle-loser-prize" style="color: var(--text);"></strong> ha sido otra persona.<br>¡Suerte la próxima vez!</p>
       <button onclick="document.getElementById('raffle-modal').style.display='none'; document.body.style.overflow='auto';" class="btn-vip" style="max-width: 200px; margin: 0 auto;">Cerrar</button>
     </div>
 
@@ -1371,37 +1628,17 @@
         const res = await fetch(`/api/mint/history?wallet=${userWalletAddress}`);
         const data = await res.json();
         userVisitCount = data.visitCount || 0;
+        userClaimedLevels = data.levels || [];
 
-        const form = document.getElementById('claim-form');
-        const btn = document.getElementById('submit-btn');
-
-        if (userVisitCount === 0) {
-          applyLevelTheme(1);
-          btn.textContent = '🍷 Registrar Visita y Obtener Pase';
-        } else if (userVisitCount === 1) {
-          applyLevelTheme(2);
-          btn.textContent = '🍷 Registrar Visita y Obtener Pase';
-        } else if (userVisitCount >= 2 && userVisitCount < 4) {
-          applyLevelTheme(3);
-          const remaining = 5 - (userVisitCount + 1);
-          btn.textContent = '📍 Registrar Visita';
-          showProgressBanner(`Llevas ${userVisitCount} visitas. Te faltan ${remaining + 1} visitas para desbloquear O Larpeiro.`);
-        } else if (userVisitCount === 4) {
-          applyLevelTheme(3);
-          btn.textContent = '🍷 Registrar Visita y Obtener Pase';
-        } else if (userVisitCount >= 5 && userVisitCount < 9) {
-          applyLevelTheme(4);
-          const remaining = 10 - (userVisitCount + 1);
-          btn.textContent = '📍 Registrar Visita';
-          showProgressBanner(`Llevas ${userVisitCount} visitas. Te faltan ${remaining + 1} visitas para ser O Presidente do Furancho.`);
-        } else if (userVisitCount === 9) {
-          applyLevelTheme(4);
-          btn.textContent = '🍷 Registrar Visita y Obtener Pase';
-        } else if (userVisitCount >= 10) {
-          applyLevelTheme(4);
-          form.style.display = 'none';
-          showMaxLevelBanner();
+        // Cliente recurrente → ir directo al perfil
+        if (userVisitCount > 0) {
+          showProfileScreen(userVisitCount, userClaimedLevels);
+          return;
         }
+
+        // Primera vez → mostrar formulario de claim
+        applyLevelTheme(1);
+        document.getElementById('submit-btn').textContent = '🍷 Obtener mi Pase Gratis';
       } catch (e) {
         console.error('Error cargando historial de usuario:', e);
       }
@@ -1444,6 +1681,134 @@
         }
       } catch (e) {
         console.error('Error cargando mensajes:', e);
+      }
+    }
+
+    // ========== PANTALLA DE PERFIL ==========
+    const LEVEL_NAMES = { 1: 'CAUTIVO', 2: 'O CUNQUEIRO', 3: 'O LARPEIRO', 4: 'O PRESIDENTE' };
+    const LEVEL_IMAGES = {
+      1: '/assets/nft_nivel1_cautivo.jpg',
+      2: '/assets/nft_nivel2_cunqueiro.jpg',
+      3: '/assets/nft_nivel3_larpeiro.jpg',
+      4: '/assets/nft_nivel4_presidente.jpg'
+    };
+    const LEVEL_MILESTONES = [1, 2, 5, 10];
+
+    function getCurrentLevelFromVisits(visits) {
+      if (visits >= 10) return 4;
+      if (visits >= 5)  return 3;
+      if (visits >= 2)  return 2;
+      return 1;
+    }
+
+    function getNextMilestone(visits) {
+      for (const m of LEVEL_MILESTONES) {
+        if (visits < m) return m;
+      }
+      return null;
+    }
+
+    function showProfileScreen(visitCount, claimedLevels) {
+      const lvl = getCurrentLevelFromVisits(visitCount);
+      const levelName = LEVEL_NAMES[lvl] || 'CAUTIVO';
+      const nextMilestone = getNextMilestone(visitCount);
+
+      // Imagen y textos
+      document.getElementById('profile-nft-image').src = LEVEL_IMAGES[lvl];
+      document.getElementById('profile-nft-name').textContent = levelName;
+      document.getElementById('profile-level-label').textContent = 'Nivel ' + lvl;
+      document.getElementById('profile-card-level-tag').textContent = 'NIVEL ' + lvl;
+      document.getElementById('profile-card-name').textContent = levelName;
+
+      // Visitas
+      const visitsEl = document.getElementById('profile-visits');
+      visitsEl.textContent = '0';
+      setTimeout(() => animateCount(visitsEl, visitCount, 800), 300);
+
+      // Barra de progreso
+      const prevMilestone = LEVEL_MILESTONES[lvl - 1] || 1;
+      const pct = nextMilestone
+        ? Math.min(100, ((visitCount - prevMilestone) / (nextMilestone - prevMilestone)) * 100)
+        : 100;
+      setTimeout(() => {
+        document.getElementById('profile-progress-fill').style.width = pct + '%';
+      }, 400);
+
+      // Hint de progresión
+      const hint = document.getElementById('profile-progress-hint');
+      if (nextMilestone) {
+        const remaining = nextMilestone - visitCount;
+        hint.textContent = `Te faltan ${remaining} visita${remaining !== 1 ? 's' : ''} para el siguiente nivel`;
+      } else {
+        hint.textContent = '🏆 ¡Nivel máximo alcanzado! Eres O Presidente do Furancho';
+      }
+
+      // Hitos
+      LEVEL_MILESTONES.forEach((m, i) => {
+        const el = document.getElementById('ms-' + (i + 1));
+        if (el) el.classList.toggle('reached', visitCount >= m);
+      });
+
+      // Wallet
+      const masked = userWalletAddress.substring(0, 6) + '...' + userWalletAddress.slice(-6);
+      document.getElementById('profile-wallet-id').textContent = masked;
+
+      // Tema de color
+      applyLevelTheme(lvl);
+
+      // Mensaje admin
+      fetch(`/api/admin/current-message?level=${lvl}`)
+        .then(r => r.json()).then(msg => {
+          if (msg) {
+            document.getElementById('profile-admin-msg-body').textContent = msg.body;
+            document.getElementById('profile-admin-msg').style.display = 'block';
+          }
+        }).catch(() => {});
+
+      showScreen('screen-profile');
+    }
+
+    function animateCount(el, target, duration) {
+      const start = Date.now();
+      const tick = () => {
+        const p = Math.min(1, (Date.now() - start) / duration);
+        el.textContent = Math.round(p * target);
+        if (p < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+
+    async function fichaSalida() {
+      const btn = document.getElementById('profile-checkin-btn');
+      btn.disabled = true;
+      btn.textContent = 'Registrando...';
+      try {
+        const res = await fetch('/api/mint', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ walletAddress: userWalletAddress })
+        });
+        const data = await res.json();
+        if (data.action === 'mint') {
+          document.getElementById('success-nft-name').textContent = data.levelName || '';
+          document.getElementById('card-level-tag').textContent = 'NIVEL ' + (data.level || '');
+          document.getElementById('success-date').textContent = new Date().toLocaleDateString('es-ES');
+          document.getElementById('success-wallet').textContent = userWalletAddress;
+          document.getElementById('private-key-display').textContent = userWalletPrivateKey || '-';
+          showScreen('screen-success');
+        } else if (data.action === 'cooldown') {
+          btn.disabled = false;
+          btn.textContent = '🍷 Fichar Salida';
+          alert('Ya registraste una visita esta semana. ¡Vuelve pronto!');
+        } else {
+          btn.disabled = false;
+          btn.textContent = '✅ Salida Registrada';
+          setTimeout(() => { btn.textContent = '🍷 Fichar Salida'; btn.disabled = false; }, 2500);
+        }
+      } catch (e) {
+        btn.disabled = false;
+        btn.textContent = '🍷 Fichar Salida';
+        alert('Error al registrar. Inténtalo de nuevo.');
       }
     }
 
@@ -1562,6 +1927,43 @@
       }
     }
     // ==================== SSE LIVE RAFFLES ====================
+    // Partículas de confetti para ganador
+    function launchParticles() {
+      const container = document.getElementById('raffle-particles');
+      container.innerHTML = '';
+      const colors = ['#C4973A','#8B1918','#4ade80','#fff','#F2EDE3','#B52A2A'];
+      for (let i = 0; i < 30; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        p.style.cssText = `
+          left: ${Math.random()*100}%;
+          background: ${colors[Math.floor(Math.random()*colors.length)]};
+          width: ${4 + Math.random()*8}px;
+          height: ${4 + Math.random()*8}px;
+          border-radius: ${Math.random() > 0.5 ? '50%' : '2px'};
+          animation-delay: ${Math.random()*2}s;
+          animation-duration: ${2 + Math.random()*2}s;
+        `;
+        container.appendChild(p);
+      }
+    }
+
+    // Emojis que ruedan durante el sorteo
+    const SLOT_EMOJIS = ['🍷','🎰','🍾','🎲','🥂','🍷','🎯','🎪'];
+    let slotInterval = null;
+
+    function startSlotAnimation() {
+      let i = 0;
+      slotInterval = setInterval(() => {
+        document.querySelector('.raffle-slot').textContent = SLOT_EMOJIS[i % SLOT_EMOJIS.length];
+        i++;
+      }, 180);
+    }
+
+    function stopSlotAnimation() {
+      if (slotInterval) { clearInterval(slotInterval); slotInterval = null; }
+    }
+
     function connectRaffle() {
       const evtSource = new EventSource('/api/raffle/stream');
 
@@ -1571,35 +1973,35 @@
         document.getElementById('raffle-roulette').style.display = 'block';
         document.getElementById('raffle-winner').style.display = 'none';
         document.getElementById('raffle-loser').style.display = 'none';
+        document.getElementById('raffle-particles').innerHTML = '';
         document.getElementById('raffle-prize-text').textContent = 'Sorteando: ' + data.prize;
         modal.style.display = 'flex';
-
-        // Prevent scrolling
         document.body.style.overflow = 'hidden';
+        startSlotAnimation();
       });
 
       evtSource.addEventListener('raffle_result', (e) => {
         const data = JSON.parse(e.data);
         const myWallet = localStorage.getItem('furancho_wallet_address');
-
+        stopSlotAnimation();
         document.getElementById('raffle-roulette').style.display = 'none';
 
         if (data.winnerWallet === myWallet) {
           document.getElementById('raffle-winner').style.display = 'block';
           document.getElementById('raffle-winner-prize').textContent = data.prize;
           document.getElementById('raffle-code').textContent = data.verificationCode;
+          launchParticles();
+          // Vibrar el móvil si está disponible
+          if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 400]);
         } else {
           document.getElementById('raffle-loser').style.display = 'block';
           document.getElementById('raffle-loser-prize').textContent = data.prize;
         }
       });
 
-      evtSource.onerror = (err) => {
-        // Silently reconnects
-      };
+      evtSource.onerror = () => {};
     }
 
-    // Call it after a delay so we don't block the main render
     setTimeout(connectRaffle, 2000);
 
   </script>
