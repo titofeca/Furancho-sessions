@@ -760,16 +760,22 @@
     <!-- ==================== QR CODES ==================== -->
     <div class="page" id="page-qrcodes">
       <div class="page-header">
-        <h1 class="page-title">QR Check-in</h1>
-        <p class="page-subtitle">Imprime o muestra este QR a todos los clientes. El sistema calculará su nivel automáticamente.</p>
+        <h1 class="page-title">QR Codes</h1>
+        <p class="page-subtitle">Dos QRs operativos: uno para la entrada y otro para la salida. Imprímelos y colócalos en el local.</p>
       </div>
 
-      <div class="qr-grid" style="display: flex; justify-content: center; margin-bottom: 40px;">
-        <div class="qr-card" style="max-width: 300px; border: 2px solid var(--gold);">
-          <img src="/api/qr/checkin" alt="QR Check-in Unificado" class="qr-img" />
-          <div class="qr-level-name">CHECK-IN UNIFICADO</div>
-          <div class="qr-level-label">Todas las visitas (1, 2, 5, 10)</div>
-          <a href="/api/qr/checkin/download" class="btn-download" download>⬇ Descargar QR de Barra</a>
+      <div class="qr-grid" style="display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; margin-bottom: 40px;">
+        <div class="qr-card" style="max-width: 280px; border: 2px solid #116530;">
+          <img src="/api/qr/entry" alt="QR Entrada" class="qr-img" />
+          <div class="qr-level-name" style="color: #2ecc71;">🟢 ENTRADA</div>
+          <div class="qr-level-label">Fichar al llegar — abre sesión y entrega NFT a nuevos</div>
+          <a href="/api/qr/entry/download" class="btn-download" download style="background: #116530;">⬇ Descargar QR Entrada</a>
+        </div>
+        <div class="qr-card" style="max-width: 280px; border: 2px solid var(--gold);">
+          <img src="/api/qr/checkin" alt="QR Salida" class="qr-img" />
+          <div class="qr-level-name">🔴 SALIDA / CHECK-IN</div>
+          <div class="qr-level-label">Fichar al salir — acumula visita y sube nivel si toca</div>
+          <a href="/api/qr/checkin/download" class="btn-download" download>⬇ Descargar QR Salida</a>
         </div>
       </div>
 
