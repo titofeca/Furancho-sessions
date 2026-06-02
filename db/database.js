@@ -2,7 +2,7 @@
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 
-const DB_PATH = path.join(__dirname, '..', 'furancho.db');
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'furancho.db');
 const db = new DatabaseSync(DB_PATH);
 
 // Activar WAL mode y foreign keys
