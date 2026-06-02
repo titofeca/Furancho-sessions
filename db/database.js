@@ -35,6 +35,14 @@ db.exec(`
     sent_at TEXT DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS raffles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    prize TEXT NOT NULL,
+    winner_wallet TEXT,
+    verification_code TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
   CREATE INDEX IF NOT EXISTS idx_mints_level ON mints(level);
   CREATE INDEX IF NOT EXISTS idx_mints_wallet ON mints(wallet_address);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_mints_wallet_level ON mints(wallet_address, level);
@@ -261,6 +269,19 @@ function closeSession(walletAddress) {
   }
 }
 
+function getEligibleRaffleParticipants() {
+  // Option A: Active sessions (entry_time is not null, exit_time is null)
+  return db.prepare(`SELECT DISTINCT wallet_address FROM sessions WHERE exit_time IS NULL`).all().map(r => r.wallet_address);
+}
+
+function insertRaffle(prize, winnerWallet, verificationCode) {
+  const stmt = db.prepare(`
+    INSERT INTO raffles (prize, winner_wallet, verification_code)
+    VALUES (?, ?, ?)
+  `);
+  return stmt.run(prize, winnerWallet, verificationCode).lastInsertRowid;
+}
+
 module.exports = {
   openSession,
   closeSession,
@@ -277,5 +298,7 @@ module.exports = {
   getMessages,
   checkDuplicate,
   insertVisit,
-  getVisitCount
+  getVisitCount,
+  getEligibleRaffleParticipants,
+  insertRaffle
 };
