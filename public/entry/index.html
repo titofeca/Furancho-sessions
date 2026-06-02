@@ -12,12 +12,14 @@
       --wine-dark: #5C0F0F;
       --wine-light: #B52A2A;
       --cream: #F2EDE3;
+      --cream-dark: #E8DDD0;
+      --cream-mid: #EAE0D0;
       --dark: #1C0E06;
       --dark-2: #2A1509;
       --navy: #1C2B35;
       --gold: #C4973A;
-      --text: #EDE5D8;
-      --text-muted: #9A8F82;
+      --text: #2A1509;
+      --text-muted: #7A6A5A;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -25,10 +27,10 @@
     html, body {
       min-height: 100vh;
       font-family: 'Outfit', sans-serif;
-      background: var(--dark);
+            background: var(--cream);
       background-image:
-        radial-gradient(ellipse at 20% 0%, rgba(139, 25, 24, 0.25) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 100%, rgba(196, 151, 58, 0.10) 0%, transparent 50%);
+        radial-gradient(ellipse at 20% 0%, rgba(139, 25, 24, 0.07) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 100%, rgba(196, 151, 58, 0.08) 0%, transparent 50%);
       background-attachment: fixed;
       color: var(--text);
       overflow-x: hidden;
@@ -175,7 +177,7 @@
       position: relative;
       overflow: hidden;
       box-shadow:
-        0 2px 0 rgba(255,255,255,0.04) inset,
+        0 2px 0 rgba(42,21,9,0.04) inset,
         0 20px 50px -10px rgba(0,0,0,0.6);
     }
 
@@ -253,7 +255,7 @@
       position: fixed;
       inset: 0;
       z-index: 1000;
-      background: rgba(28, 14, 6, 0.97);
+      background: rgba(242, 237, 227, 0.99);
       backdrop-filter: blur(18px);
       -webkit-backdrop-filter: blur(18px);
       justify-content: center;
@@ -314,7 +316,7 @@
       font-size: 10px;
       text-transform: uppercase;
       letter-spacing: 2px;
-      color: rgba(237, 229, 216, 0.5);
+      color: rgba(42, 21, 9, 0.55);
       margin-bottom: 10px;
     }
 
@@ -347,8 +349,8 @@
       transition: background 0.2s, border-color 0.2s;
     }
     .btn-close-raffle:hover {
-      background: rgba(255,255,255,0.04);
-      border-color: rgba(237, 229, 216, 0.35);
+      background: rgba(42,21,9,0.04);
+      border-color: rgba(42, 21, 9, 0.4);
     }
 
     @keyframes spinRoulette {

@@ -13,24 +13,13 @@
       --wine-light: #B52A2A;
       --cream: #F2EDE3;
       --cream-dark: #E8DDD0;
+      --cream-mid: #EAE0D0;
       --dark: #1C0E06;
       --dark-2: #2A1509;
       --navy: #1C2B35;
       --gold: #C4973A;
-      --text: #EDE5D8;
-      --text-muted: #9A8F82;
-
-      --nivel1: #8B1918;
-      --nivel2: #2A8A8A;
-      --nivel3: #C4973A;
-      --nivel4: #1C2B35;
-      --success: #4ade80;
-      --error: #f87171;
-
-      --surface: rgba(255, 255, 255, 0.04);
-      --surface2: rgba(255, 255, 255, 0.07);
-      --border: rgba(255, 255, 255, 0.07);
-      --border-strong: rgba(255, 255, 255, 0.12);
+      --text: #2A1509;
+      --text-muted: #7A6A5A;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -38,10 +27,10 @@
     html, body {
       height: 100%;
       font-family: 'Outfit', sans-serif;
-      background: var(--dark);
+            background: var(--cream);
       background-image:
-        radial-gradient(ellipse at 20% 0%, rgba(139, 25, 24, 0.22) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 100%, rgba(196, 151, 58, 0.10) 0%, transparent 50%);
+        radial-gradient(ellipse at 20% 0%, rgba(139, 25, 24, 0.07) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 100%, rgba(196, 151, 58, 0.08) 0%, transparent 50%);
       background-attachment: fixed;
       color: var(--text);
       overflow-x: hidden;
@@ -57,10 +46,10 @@
     }
 
     .login-card {
-      background: rgba(255, 255, 255, 0.04);
+      background: rgba(139, 25, 24, 0.04);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(42, 21, 9, 0.08);
       border-radius: 24px;
       padding: 44px 36px;
       width: 100%;
@@ -73,7 +62,7 @@
       height: 72px;
       border-radius: 12px;
       margin-bottom: 20px;
-      border: 1px solid rgba(255,255,255,0.08);
+      border: 1px solid rgba(42,21,9,0.08);
     }
 
     .login-logo {
@@ -95,8 +84,8 @@
 
     .login-input {
       width: 100%;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1.5px solid rgba(255, 255, 255, 0.1);
+      background: rgba(42, 21, 9, 0.05);
+      border: 1.5px solid rgba(42, 21, 9, 0.1);
       border-radius: 14px;
       padding: 15px 18px;
       font-size: 16px;
@@ -111,7 +100,7 @@
       border-color: var(--wine);
       box-shadow: 0 0 0 3px rgba(139, 25, 24, 0.25);
     }
-    .login-input::placeholder { color: rgba(237,229,216,0.22); }
+    .login-input::placeholder { color: rgba(42,21,9,0.35); }
 
     .login-btn {
       width: 100%;
@@ -158,10 +147,10 @@
       left: 0;
       right: 0;
       height: 60px;
-      background: rgba(28, 14, 6, 0.9);
+      background: rgba(242, 237, 227, 0.92);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid rgba(42,21,9,0.1);
       z-index: 200;
       display: flex;
       align-items: center;
@@ -208,10 +197,10 @@
       left: 0;
       right: 0;
       height: 72px;
-      background: rgba(28, 14, 6, 0.94);
+      background: rgba(242, 237, 227, 0.95);
       backdrop-filter: blur(24px);
       -webkit-backdrop-filter: blur(24px);
-      border-top: 1px solid var(--border);
+      border-top: 1px solid rgba(42,21,9,0.1);
       z-index: 200;
       display: flex;
       align-items: stretch;
@@ -249,7 +238,7 @@
 
     .nav-item:hover {
       color: var(--text);
-      background: rgba(255,255,255,0.04);
+      background: rgba(42,21,9,0.04);
     }
 
     .nav-item.active {
@@ -328,9 +317,9 @@
     }
 
     .stat-card {
-      background: rgba(255, 255, 255, 0.04);
+      background: rgba(139, 25, 24, 0.04);
       backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(42, 21, 9, 0.06);
       border-radius: 18px;
       padding: 18px 16px;
       position: relative;
@@ -365,7 +354,7 @@
       font-weight: 600;
       letter-spacing: 1.5px;
       text-transform: uppercase;
-      color: rgba(237, 229, 216, 0.3);
+      color: rgba(42, 21, 9, 0.35);
       margin-bottom: 5px;
     }
 
@@ -379,17 +368,17 @@
 
     .stat-sublabel {
       font-size: 11px;
-      color: rgba(237, 229, 216, 0.3);
+      color: rgba(42, 21, 9, 0.35);
       margin-top: 4px;
       font-weight: 300;
     }
 
     /* ========== GLASS CARD ========== */
     .glass-card {
-      background: rgba(255, 255, 255, 0.04);
+      background: rgba(139, 25, 24, 0.04);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(42, 21, 9, 0.06);
       border-radius: 18px;
       overflow: hidden;
       margin-bottom: 20px;
@@ -397,7 +386,7 @@
 
     .card-header {
       padding: 14px 18px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid rgba(42, 21, 9, 0.06);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -423,13 +412,13 @@
       color: rgba(237, 229, 216, 0.25);
       text-align: left;
       padding: 11px 18px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid rgba(42, 21, 9, 0.05);
     }
 
     td {
       padding: 13px 18px;
       font-size: 13px;
-      color: rgba(237, 229, 216, 0.65);
+      color: var(--text-muted);
       border-bottom: 1px solid rgba(255, 255, 255, 0.03);
     }
 
@@ -446,7 +435,7 @@
       border-radius: 100px;
       font-size: 11px;
       font-weight: 600;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(42, 21, 9, 0.08);
       background: transparent;
       color: var(--text-muted);
       cursor: pointer;
@@ -493,13 +482,13 @@
       font-weight: 700;
       letter-spacing: 1.5px;
       text-transform: uppercase;
-      color: rgba(237, 229, 216, 0.35);
+      color: rgba(42, 21, 9, 0.4);
       margin-bottom: 8px;
     }
 
     .input-field {
       width: 100%;
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(42, 21, 9, 0.05);
       border: 1.5px solid rgba(255, 255, 255, 0.09);
       border-radius: 12px;
       padding: 13px 16px;
@@ -566,7 +555,7 @@
     .btn-download {
       display: inline-block;
       padding: 8px 16px;
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(42, 21, 9, 0.05);
       border: 1px solid rgba(255, 255, 255, 0.09);
       border-radius: 10px;
       font-size: 11px;
@@ -595,7 +584,7 @@
     /* ========== MESSAGE HISTORY ========== */
     .msg-history-item {
       padding: 14px 18px;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
+      border-bottom: 1px solid rgba(42,21,9,0.04);
     }
     .msg-history-item:last-child { border-bottom: none; }
     .msg-subject { font-weight: 600; font-size: 14px; color: var(--text); margin-bottom: 4px; }
@@ -609,8 +598,8 @@
     }
 
     .qr-card {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.07);
+      background: rgba(139, 25, 24, 0.04);
+      border: 1px solid rgba(42, 21, 9, 0.06);
       border-radius: 18px;
       padding: 20px;
       text-align: center;
@@ -724,10 +713,10 @@
 
     /* ========== MESSAGE FORM CARD ========== */
     .message-form {
-      background: rgba(255, 255, 255, 0.04);
+      background: rgba(139, 25, 24, 0.04);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(42, 21, 9, 0.06);
       border-radius: 18px;
       padding: 22px;
       margin-bottom: 20px;
@@ -736,7 +725,7 @@
     /* Instructions box */
     .info-box {
       background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255,255,255,0.06);
+      border: 1px solid rgba(42,21,9,0.06);
       border-radius: 14px;
       padding: 20px;
       margin-top: 20px;
@@ -853,7 +842,7 @@
           <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px;">Los clientes escanean y acceden a su perfil, nivel y sorteos en tiempo real.</p>
           <div style="display: flex; gap: 10px; flex-wrap: wrap;">
             <a href="/api/qr/checkin/download" download style="display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; background: rgba(196,151,58,0.12); border: 1px solid rgba(196,151,58,0.3); border-radius: 50px; font-size: 12px; font-weight: 600; color: var(--gold); text-decoration: none;">⬇ Descargar PNG</a>
-            <button onclick="showPage('page-qrcodes')" style="display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 50px; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer;">Ver todos los QR →</button>
+            <button onclick="showPage('page-qrcodes')" style="display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; background: rgba(42,21,9,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 50px; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer;">Ver todos los QR →</button>
           </div>
         </div>
       </div>
@@ -1026,7 +1015,7 @@
         <a href="/api/qr/checkin/download" class="btn-download" download style="background: rgba(196,151,58,0.1); border-color: rgba(196,151,58,0.3); color: var(--gold); display: inline-block;">⬇ Descargar para compartir</a>
       </div>
 
-      <div class="page-header" style="border-top: 1px solid var(--border); padding-top: 22px; margin-top: 8px;">
+      <div class="page-header" style="border-top: 1px solid rgba(42,21,9,0.1); padding-top: 22px; margin-top: 8px;">
         <h2 style="font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 4px;">QRs Manuales (Pases Directos)</h2>
         <p class="page-subtitle">Úsalos solo si quieres regalar un nivel específico ignorando el contador de visitas.</p>
       </div>
