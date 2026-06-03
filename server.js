@@ -8,6 +8,9 @@ const raffleRoutes = require('./routes/raffle');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Railway actúa como proxy — necesario para que rate-limit y req.ip funcionen correctamente
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(cors());
 app.use(express.json());
