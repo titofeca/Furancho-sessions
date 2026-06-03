@@ -1664,6 +1664,19 @@
         <p id="profile-admin-msg-body" class="admin-msg-body"></p>
       </div>
 
+      <!-- QR de recuperación -->
+      <div style="background: rgba(42,21,9,0.04); border: 1px solid rgba(42,21,9,0.08); border-radius: 20px; padding: 20px; margin-bottom: 20px; text-align: center;">
+        <p style="font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;">Tu QR de recuperación</p>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.5;">Si cambias de móvil, escanea este QR para recuperar tu cuenta y todos tus niveles.</p>
+        <img id="recovery-qr-img" src="" alt="QR de recuperación"
+          style="width: 160px; height: 160px; border-radius: 12px; border: 1px solid rgba(42,21,9,0.1); margin-bottom: 14px; display: none;" />
+        <br>
+        <a id="recovery-qr-download" href="" download="furancho-mi-pase.png"
+          style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 22px; border-radius: 50px; border: 1.5px solid rgba(139,25,24,0.25); background: transparent; color: var(--wine); font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer;">
+          📥 Guardar en galería
+        </a>
+      </div>
+
       <button onclick="openVirtualCard()" class="btn-vip">
         👁️ Ver mi Tarjeta VIP
       </button>
@@ -1825,6 +1838,14 @@
       document.getElementById('level-label').textContent = nft.label;
       document.getElementById('nft-description').textContent = nft.description;
       document.title = `Furancho Sessions — ${nft.name}`;
+    }
+
+    // Restaurar cuenta desde QR de recuperación (?restore=0x...)
+    const _restoreParam = new URLSearchParams(window.location.search).get('restore');
+    if (_restoreParam && /^0x[a-fA-F0-9]{40}$/.test(_restoreParam)) {
+      localStorage.setItem('furancho_wallet_address', _restoreParam);
+      // Limpiar la URL sin recargar
+      history.replaceState(null, '', '/claim');
     }
 
     // Variables de la billetera local
@@ -2025,6 +2046,14 @@
       // Wallet
       const masked = userWalletAddress.substring(0, 6) + '...' + userWalletAddress.slice(-6);
       document.getElementById('profile-wallet-id').textContent = masked;
+
+      // QR de recuperación
+      const qrUrl = `/api/qr/wallet/${userWalletAddress}`;
+      const qrImg = document.getElementById('recovery-qr-img');
+      const qrLink = document.getElementById('recovery-qr-download');
+      qrImg.src = qrUrl;
+      qrImg.style.display = 'block';
+      qrLink.href = qrUrl;
 
       // Tema de color
       applyLevelTheme(lvl);

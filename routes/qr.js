@@ -108,6 +108,25 @@ router.get('/checkin/download', async (req, res) => {
   }
 });
 
+// GET /api/qr/wallet/:address — QR personal de recuperación de cuenta
+router.get('/wallet/:address', async (req, res) => {
+  const { address } = req.params;
+  if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+    return res.status(400).send('Dirección no válida');
+  }
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+  const restoreUrl = `${protocol}://${req.get('host')}/claim?restore=${address}`;
+  const options = { ...QR_OPTIONS, color: { dark: '#8B1918', light: '#FFFFFF' } };
+  try {
+    const qrBuffer = await QRCode.toBuffer(restoreUrl, options);
+    res.set('Content-Type', 'image/png');
+    res.set('Content-Disposition', `attachment; filename="furancho-mi-pase.png"`);
+    res.send(qrBuffer);
+  } catch (e) {
+    res.status(500).send('Error generando QR: ' + e.message);
+  }
+});
+
 // GET /api/qr/:level — genera QR como imagen PNG (legacy)
 router.get('/:level', async (req, res) => {
   const level = parseInt(req.params.level);
