@@ -89,10 +89,11 @@ router.post('/start', requireAuth, (req, res) => {
 });
 
 // GET /api/raffle/eligible
-// Para que el admin vea cuánta gente participa antes de lanzar
 router.get('/eligible', requireAuth, (req, res) => {
-  const eligibleWallets = getEligibleRaffleParticipants();
-  res.json({ count: eligibleWallets.length });
+  const connected = [...new Set(clients.filter(c => c.walletAddress).map(c => c.walletAddress))];
+  const sessions  = getEligibleRaffleParticipants();
+  const all       = [...new Set([...connected, ...sessions])];
+  res.json({ count: all.length, connected: connected.length, sessions: sessions.length });
 });
 
 module.exports = router;
