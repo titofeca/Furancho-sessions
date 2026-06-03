@@ -1771,12 +1771,17 @@
         </a>
       </div>
 
+      <!-- Tarjeta de identidad del cliente (oculta, usada por VirtualCard) -->
+      <span id="profile-card-level-tag" style="display:none;">NIVEL 1</span>
+      <span id="profile-card-name" style="display:none;">CAUTIVO</span>
+      <span id="profile-wallet-id" style="display:none;">—</span>
+
       <button onclick="openVirtualCard()" class="btn-vip">
         👁️ Ver mi Tarjeta VIP
       </button>
 
       <p class="footer-note" style="margin-top: 20px;">
-        Escanea el QR de la puerta al entrar y al salir para acumular visitas y subir de nivel.
+        Escanea el QR de la puerta al entrar para acumular visitas y subir de nivel.
       </p>
     </div>
   </div>
@@ -1878,15 +1883,20 @@
     }, 1000);
 
     function openVirtualCard() {
-      const lvl = document.getElementById('card-level-tag').textContent;
-      const name = document.getElementById('success-nft-name').textContent;
-      const img = document.getElementById('nft-image').src;
-      const wallet = document.getElementById('success-wallet').textContent;
+      // Leer siempre desde los elementos del perfil (fuente de verdad)
+      const lvl = document.getElementById('profile-card-level-tag').textContent
+                  || document.getElementById('card-level-tag').textContent;
+      const name = document.getElementById('profile-card-name').textContent
+                   || document.getElementById('success-nft-name').textContent;
+      const profileImg = document.getElementById('profile-nft-image');
+      const img = (profileImg && profileImg.src) ? profileImg.src : document.getElementById('nft-image').src;
+      const walletMasked = document.getElementById('profile-wallet-id').textContent
+                           || userWalletAddress?.substring(0,6) + '...' + userWalletAddress?.slice(-6) || '—';
 
       document.getElementById('vc-level').textContent = lvl;
       document.getElementById('vc-name').textContent = name;
       document.getElementById('vc-image').src = img;
-      document.getElementById('vc-wallet').textContent = wallet;
+      document.getElementById('vc-wallet').textContent = walletMasked;
 
       showScreen('screen-virtual-card');
     }
@@ -2247,8 +2257,14 @@
       // Pedir permiso de notificaciones push (con delay para no interrumpir)
       setTimeout(requestPushPermission, 3000);
 
-      // Auto-registrar salida en background
-      autoRegistrarSalida();
+      // Auto-registrar salida en background solo si viene de QR con ?checkout=true o ?level=X
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('checkout') || urlParams.has('level')) {
+        autoRegistrarSalida();
+        // Limpiar la URL sin recargar para evitar bucles de fichaje
+        const newUrl = window.location.pathname;
+        history.replaceState(null, '', newUrl);
+      }
 
       } catch(err) {
         console.error('showProfileScreen error:', err);

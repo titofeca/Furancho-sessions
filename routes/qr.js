@@ -73,7 +73,7 @@ router.get('/entry/download', async (req, res) => {
 // GET /api/qr/checkin — genera QR de check-in unificado
 router.get('/checkin', async (req, res) => {
   const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-  const claimUrl = `${protocol}://${req.get('host')}/claim`;
+  const claimUrl = `${protocol}://${req.get('host')}/claim?checkout=true`;
   const options = { ...QR_OPTIONS, color: { dark: '#8B0000', light: '#FFFFFF' } };
 
   try {
@@ -89,7 +89,7 @@ router.get('/checkin', async (req, res) => {
 // GET /api/qr/checkin/download — descarga el QR unificado
 router.get('/checkin/download', async (req, res) => {
   const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-  const claimUrl = `${protocol}://${req.get('host')}/claim`;
+  const claimUrl = `${protocol}://${req.get('host')}/claim?checkout=true`;
   const options = { ...QR_OPTIONS, width: 1200, color: { dark: '#8B0000', light: '#FAFAFA' } };
 
   try {

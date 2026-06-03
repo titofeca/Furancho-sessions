@@ -409,7 +409,7 @@ function getSessionAnalytics() {
            COUNT(*) as total_visits,
            ROUND(AVG(duration_minutes),1) as avg_stay,
            MAX(entry_time) as last_visit
-    FROM sessions WHERE exit_time IS NOT NULL AND counted_as_visit = 1
+    FROM sessions WHERE exit_time IS NOT NULL
     GROUP BY wallet_address ORDER BY total_visits DESC LIMIT 10
   `).all();
 
@@ -432,7 +432,7 @@ function getEligibleRaffleParticipants() {
 }
 
 function autoCloseSessionsAt23() {
-  // Cierra todas las sesiones abiertas del día actual a las 23:00
+  // Cierra todas las sesiones abiertas del día actual a las 23:00 y las cuenta como visita
   const result = db.prepare(`
     UPDATE sessions
     SET exit_time = datetime('now'), duration_minutes =
@@ -440,7 +440,7 @@ function autoCloseSessionsAt23() {
         THEN 240
         ELSE CAST((julianday('now') - julianday(entry_time)) * 1440 AS INTEGER)
       END,
-    counted_as_visit = 0
+    counted_as_visit = 1
     WHERE exit_time IS NULL AND date(entry_time) = date('now')
   `).run();
   console.log(`[Auto-checkout 23:00] Sesiones cerradas: ${result.changes}`);

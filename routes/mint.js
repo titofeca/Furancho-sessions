@@ -34,10 +34,7 @@ router.post('/entry', mintLimiter, async (req, res) => {
     const visitCount = getVisitCount(walletAddress);
     const alreadyVisitedThisWeek = checkRecentVisit(walletAddress, 168);
 
-    // Contar la visita al entrar (no al salir) — salvo cooldown de 7 días
-    if (!alreadyVisitedThisWeek) {
-      insertVisit(walletAddress, null, req.ip);
-    }
+    // Abrir sesión al entrar (no insertamos visita hasta cerrar sesión para evitar doble conteo y cooldown en salida)
     openSession(walletAddress);
 
     const newVisitCount = alreadyVisitedThisWeek ? visitCount : visitCount + 1;
@@ -99,12 +96,16 @@ router.post('/', mintLimiter, async (req, res) => {
   }
 
   try {
-    const { insertVisit, getVisitCount, checkRecentVisit, openSession, closeSession } = require('../db/database');
+    const { insertVisit, getVisitCount, checkRecentVisit, openSession, closeSession, db } = require('../db/database');
     
 
     // ==== CHECK COOLDOWN (Anti-Fraude) ====
-    // No aplica a saltos de nivel manuales (level) para fines de demostración/admin
-    if (!level && checkRecentVisit(walletAddress, 168)) {
+    // No aplica a saltos de nivel manuales (level) para fines de demostración/admin,
+    // ni tampoco si el usuario tiene una sesión activa abierta (es decir, está saliendo del evento).
+    const activeSession = db.prepare(`SELECT id FROM sessions WHERE wallet_address = ? AND exit_time IS NULL LIMIT 1`).get(walletAddress);
+    const hasActiveSession = !!activeSession;
+
+    if (!level && !hasActiveSession && checkRecentVisit(walletAddress, 168)) {
       return res.status(429).json({ 
         error: 'Solo puedes escanear el código y acumular visita una vez cada 7 días.',
         action: 'cooldown'
