@@ -1518,7 +1518,7 @@
       </div>
     </div>
 
-    <div class="content" style="margin-top: -6px;">
+    <div class="content" style="margin-top: 14px;">
       <div class="level-badge">
         <span class="dot"></span>
         <span id="profile-level-label">Nivel 1</span>
@@ -1684,6 +1684,17 @@
       <div id="profile-exit-confirm" style="display: none; background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.25); border-radius: 16px; padding: 14px 18px; margin-bottom: 16px; text-align: center;">
         <p style="font-size: 13px; color: #4ade80; font-weight: 600;">✓ Salida registrada</p>
         <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Visita acumulada. ¡Hasta la próxima!</p>
+      </div>
+
+      <!-- Mis premios ganados -->
+      <div id="prizes-section" style="display:none; margin-bottom: 20px;">
+        <div style="background: linear-gradient(135deg, rgba(74,222,128,0.08), rgba(196,151,58,0.06)); border: 1.5px solid rgba(74,222,128,0.25); border-radius: 20px; padding: 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+            <span style="font-size:20px;">🏆</span>
+            <p style="font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:#4ade80;">Mis Premios</p>
+          </div>
+          <div id="prizes-list"></div>
+        </div>
       </div>
 
       <!-- QR de recuperación -->
@@ -2128,16 +2139,24 @@
       // No aplicar tema oscuro en el perfil — mantener fondo crema siempre
       document.body.className = '';
 
-      // Mensaje admin
+      // Mensaje admin — buscar para nivel exacto, luego para "all" como fallback
       fetch(`/api/admin/current-message?level=${lvl}`)
         .then(r => r.json()).then(msg => {
-          if (msg) {
-            document.getElementById('profile-admin-msg-body').textContent = msg.body;
-            document.getElementById('profile-admin-msg').style.display = 'block';
+          const box = document.getElementById('profile-admin-msg');
+          const body = document.getElementById('profile-admin-msg-body');
+          if (msg && msg.body) {
+            body.textContent = msg.body;
+            box.style.display = 'block';
+          } else {
+            fetch('/api/admin/current-message?level=all')
+              .then(r => r.json()).then(m => {
+                if (m && m.body) { body.textContent = m.body; box.style.display = 'block'; }
+              }).catch(() => {});
           }
         }).catch(() => {});
 
       showScreen('screen-profile');
+      renderPrizes();
 
       // Pedir permiso de notificaciones push (con delay para no interrumpir)
       setTimeout(requestPushPermission, 3000);
@@ -2222,6 +2241,25 @@
 
     // Ejecutar al cargar la página
     initWallet();
+
+    function renderPrizes() {
+      const prizes = JSON.parse(localStorage.getItem('furancho_prizes') || '[]');
+      const section = document.getElementById('prizes-section');
+      const list = document.getElementById('prizes-list');
+      if (!prizes.length) { if (section) section.style.display = 'none'; return; }
+      section.style.display = 'block';
+      list.innerHTML = prizes.map(p => `
+        <div style="border-top: 1px solid rgba(74,222,128,0.15); padding: 10px 0; first-child:border-none;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <p style="font-size:14px; font-weight:600; color:var(--text);">🎁 ${p.prize}</p>
+              <p style="font-size:11px; color:var(--text-muted); margin-top:2px;">${p.date}</p>
+            </div>
+            <div style="background:rgba(74,222,128,0.12); border:1px solid rgba(74,222,128,0.3); border-radius:10px; padding:6px 12px; font-family:'Outfit',monospace; font-size:20px; font-weight:700; letter-spacing:3px; color:#4ade80;">${p.code}</div>
+          </div>
+        </div>
+      `).join('');
+    }
 
     function revealPrivateKey(btn) {
       const el = document.getElementById('private-key-display');
@@ -2423,8 +2461,13 @@
           document.getElementById('raffle-winner-prize').textContent = data.prize;
           document.getElementById('raffle-code').textContent = data.verificationCode;
           launchParticles();
-          // Vibración ganador — patrón de celebración largo
           if (navigator.vibrate) navigator.vibrate([100,50,100,50,100,50,100,50,500,100,500,100,800]);
+
+          // Guardar premio en historial local
+          const prizes = JSON.parse(localStorage.getItem('furancho_prizes') || '[]');
+          prizes.unshift({ prize: data.prize, code: data.verificationCode, date: new Date().toLocaleString('es-ES') });
+          localStorage.setItem('furancho_prizes', JSON.stringify(prizes.slice(0, 20)));
+          renderPrizes();
         } else {
           document.getElementById('raffle-loser').style.display = 'block';
           document.getElementById('raffle-loser-prize').textContent = data.prize;
