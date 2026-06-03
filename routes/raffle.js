@@ -109,6 +109,23 @@ router.post('/start', requireAuth, (req, res) => {
   });
 });
 
+// GET /api/raffle/my-wins?wallet=0x...
+router.get('/my-wins', (req, res) => {
+  const { wallet } = req.query;
+  if (!wallet) return res.status(400).json({ error: 'Falta wallet' });
+  try {
+    const { db } = require('../db/database');
+    const wins = db.prepare(`
+      SELECT prize, verification_code, created_at
+      FROM raffles WHERE winner_wallet = ?
+      ORDER BY created_at DESC LIMIT 20
+    `).all(wallet);
+    res.json(wins);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/raffle/eligible
 router.get('/eligible', requireAuth, (req, res) => {
   const connected = [...new Set(clients.filter(c => c.walletAddress).map(c => c.walletAddress))];
