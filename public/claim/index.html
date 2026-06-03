@@ -457,7 +457,7 @@
       font-size: 30px;
       font-weight: 900;
       margin-bottom: 10px;
-      color: var(--cream);
+      color: var(--text);
       letter-spacing: -0.3px;
     }
 
@@ -1425,18 +1425,10 @@
         <p id="success-admin-msg-body" class="admin-msg-body"></p>
       </div>
 
-      <!-- Exportar Clave (Avanzado) -->
-      <div class="key-section">
-        <details>
-          <summary>🔑 Respaldar mi llave de seguridad (Avanzado)</summary>
-          <div class="key-section-inner">
-            <p style="margin-bottom: 6px;">Esta es la clave privada de tu pase anónimo en la blockchain. Guárdala si quieres importarla en apps como MetaMask:</p>
-            <div class="key-display" id="private-key-display" style="filter: blur(6px); user-select: none; transition: filter 0.3s;">••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••</div>
-            <button onclick="revealPrivateKey(this)" style="margin-top:10px; padding:8px 18px; border-radius:50px; border:1.5px solid rgba(139,25,24,0.3); background:transparent; color:var(--wine); font-family:'Outfit',sans-serif; font-size:13px; cursor:pointer;">👁 Mostrar clave</button>
-            <p class="key-warning">⚠️ ¡No compartas esta clave con nadie!</p>
-          </div>
-        </details>
-      </div>
+      <!-- Botón ir al perfil -->
+      <button onclick="initWallet()" class="btn-vip" style="margin-bottom:12px;">
+        Ver mi Perfil →
+      </button>
 
       <!-- Botón Tarjeta Virtual Antifraude -->
       <button onclick="openVirtualCard()" class="btn-vip">
@@ -2195,12 +2187,10 @@
         });
         const data = await res.json();
         if (data.action === 'mint') {
-          document.getElementById('success-nft-name').textContent = data.levelName || '';
-          document.getElementById('card-level-tag').textContent = 'NIVEL ' + (data.level || '');
-          document.getElementById('success-date').textContent = new Date().toLocaleDateString('es-ES');
-          document.getElementById('success-wallet').textContent = userWalletAddress;
-          document.getElementById('private-key-display').dataset.key = userWalletPrivateKey || '-';
-          showScreen('screen-success');
+          const refreshed = await fetch(`/api/mint/history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => null);
+          if (refreshed) { userVisitCount = refreshed.visitCount || 0; userClaimedLevels = refreshed.levels || []; }
+          showProfileScreen(userVisitCount, userClaimedLevels);
+          showProfileBanner(`🎉 ¡Subiste de nivel! Conseguiches o pase <strong>${data.levelName}</strong>`, 'gold');
         } else if (data.action === 'cooldown') {
           btn.disabled = false;
           btn.textContent = '🍷 Fichar Salida';
