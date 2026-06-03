@@ -345,9 +345,14 @@ function getRsvpStatus(walletAddress) {
 }
 
 function seedEvents() {
-  const jueves = ['2026-06-05','2026-06-12','2026-06-19','2026-06-26'];
-  jueves.forEach(date => {
-    db.prepare(`INSERT OR IGNORE INTO events (event_date, title) VALUES (?, 'Furancho Sessions')`).run(date);
+  const jueves = [
+    { date: '2026-06-05', title: 'Furancho Sessions — 5 Junio' },
+    { date: '2026-06-12', title: 'Furancho Sessions — 12 Junio' },
+    { date: '2026-06-19', title: 'Furancho Sessions — 19 Junio' },
+    { date: '2026-06-26', title: 'Furancho Sessions — 26 Junio' },
+  ];
+  jueves.forEach(({ date, title }) => {
+    db.prepare(`INSERT OR IGNORE INTO events (event_date, title) VALUES (?, ?)`).run(date, title);
   });
 }
 seedEvents();
