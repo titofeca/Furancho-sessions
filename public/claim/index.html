@@ -2023,8 +2023,15 @@
       return 100;
     }
 
+    function getDisplayLevel(visitCount, claimedLevels) {
+      const lvlByVisits = getCurrentLevelFromVisits(visitCount);
+      const lvlByClaimed = claimedLevels && claimedLevels.length > 0 ? Math.max(...claimedLevels) : 1;
+      return Math.max(lvlByVisits, lvlByClaimed);
+    }
+
     function showProfileScreen(visitCount, claimedLevels) {
-      const lvl = getCurrentLevelFromVisits(visitCount);
+      try {
+      const lvl = getDisplayLevel(visitCount, claimedLevels);
       const levelName = LEVEL_NAMES[lvl] || 'CAUTIVO';
       const nextMilestone = getNextMilestone(visitCount);
 
@@ -2061,14 +2068,14 @@
         hint.textContent = '👑 ¡Eres O Presidente do Furancho!';
       }
 
-      // Tarjetas de nivel — desbloquear según visitas
+      // Tarjetas de nivel — desbloquear según visitas O nivel reclamado
       [1,2,3,4].forEach(n => {
         const card = document.getElementById('lcard-' + n);
         const lock = document.getElementById('lock-' + n);
-        const unlocked = (n === 1 && visitCount >= 1)
-          || (n === 2 && visitCount >= 2)
-          || (n === 3 && visitCount >= 4)
-          || (n === 4 && visitCount >= 12);
+        const byVisits = (n === 1 && visitCount >= 1) || (n === 2 && visitCount >= 2)
+          || (n === 3 && visitCount >= 4) || (n === 4 && visitCount >= 12);
+        const byClaimed = claimedLevels && claimedLevels.includes(n);
+        const unlocked = byVisits || byClaimed || n <= lvl;
         if (card) card.classList.toggle('unlocked', unlocked);
         if (lock) lock.textContent = unlocked ? '🔓' : '🔒';
       });
@@ -2102,9 +2109,13 @@
       // Pedir permiso de notificaciones push (con delay para no interrumpir)
       setTimeout(requestPushPermission, 3000);
 
-      // Auto-registrar salida en background (el escaneo del QR ES la acción)
-      // Si hay nivel subido → mostrar pantalla de éxito; si solo visita → mostrar confirmación sutil
+      // Auto-registrar salida en background
       autoRegistrarSalida();
+
+      } catch(err) {
+        console.error('showProfileScreen error:', err);
+        showScreen('screen-profile'); // mostrar perfil aunque algo falle
+      }
     }
 
     async function autoRegistrarSalida() {
