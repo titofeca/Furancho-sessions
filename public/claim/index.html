@@ -2390,15 +2390,29 @@
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         startSlotAnimation();
+
+        // Vibración de inicio — patrón pulsante de emoción
+        if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100, 50, 300]);
+
+        // Vibraciones de cuenta atrás cada 3 segundos
+        let ticks = 0;
+        const tickInterval = setInterval(() => {
+          ticks++;
+          if (ticks >= 4) { clearInterval(tickInterval); return; }
+          if (navigator.vibrate) navigator.vibrate(60);
+        }, 3000);
+        modal._tickInterval = tickInterval;
       });
 
       evtSource.addEventListener('raffle_result', (e) => {
         const data = JSON.parse(e.data);
         const myWallet = localStorage.getItem('furancho_wallet_address');
         stopSlotAnimation();
+        if (document.getElementById('raffle-modal')._tickInterval) {
+          clearInterval(document.getElementById('raffle-modal')._tickInterval);
+        }
         document.getElementById('raffle-roulette').style.display = 'none';
 
-        // Actualizar sección sorteo en perfil
         const dot = document.getElementById('raffle-live-dot');
         const statusText = document.getElementById('raffle-status-text');
         if (dot) dot.classList.remove('live');
@@ -2409,10 +2423,13 @@
           document.getElementById('raffle-winner-prize').textContent = data.prize;
           document.getElementById('raffle-code').textContent = data.verificationCode;
           launchParticles();
-          if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 400]);
+          // Vibración ganador — patrón de celebración largo
+          if (navigator.vibrate) navigator.vibrate([100,50,100,50,100,50,100,50,500,100,500,100,800]);
         } else {
           document.getElementById('raffle-loser').style.display = 'block';
           document.getElementById('raffle-loser-prize').textContent = data.prize;
+          // Vibración perdedor — un golpe corto
+          if (navigator.vibrate) navigator.vibrate([200]);
         }
       });
 
@@ -2431,7 +2448,15 @@
       try {
         const reg = await navigator.serviceWorker.ready;
         const existing = await reg.pushManager.getSubscription();
-        if (existing) return; // ya suscrito
+        // Re-enviar suscripción al servidor siempre (el servidor puede haberla perdido por crash)
+        if (existing) {
+          await fetch('/api/push/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subscription: existing, walletAddress: userWalletAddress })
+          });
+          return;
+        }
 
         const { key } = await fetch('/api/push/vapid-public-key').then(r => r.json());
         if (!key) return;
