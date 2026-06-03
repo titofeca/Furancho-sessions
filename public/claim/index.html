@@ -1526,6 +1526,25 @@
       <h1 class="nft-title" id="profile-nft-name">CAUTIVO</h1>
       <p class="nft-event">Furancho Sessions · Afterwork Viño e Tapas</p>
 
+      <!-- Mensaje del Furancho — aparece si el admin envió uno -->
+      <div id="profile-admin-msg" style="display:none; margin-bottom: 18px;">
+        <div style="
+          background: linear-gradient(135deg, rgba(196,151,58,0.12) 0%, rgba(139,25,24,0.08) 100%);
+          border: 1.5px solid rgba(196,151,58,0.35);
+          border-radius: 16px;
+          padding: 16px 18px;
+          position: relative;
+          overflow: hidden;
+        ">
+          <div style="position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg, var(--wine), var(--gold));"></div>
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:18px;">📢</span>
+            <p style="font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--gold);">Mensaje del Furancho</p>
+          </div>
+          <p id="profile-admin-msg-body" style="font-size:14px; color:var(--text); line-height:1.6; font-weight:400;"></p>
+        </div>
+      </div>
+
       <!-- Banner beta -->
       <div style="background: rgba(139,25,24,0.07); border: 1px solid rgba(139,25,24,0.15); border-radius: 12px; padding: 10px 14px; margin-bottom: 18px; display: flex; align-items: center; gap: 8px;">
         <span style="font-size: 16px;">🧪</span>
@@ -1665,12 +1684,6 @@
       <div id="profile-exit-confirm" style="display: none; background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.25); border-radius: 16px; padding: 14px 18px; margin-bottom: 16px; text-align: center;">
         <p style="font-size: 13px; color: #4ade80; font-weight: 600;">✓ Salida registrada</p>
         <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Visita acumulada. ¡Hasta la próxima!</p>
-      </div>
-
-      <!-- Mensaje admin -->
-      <div id="profile-admin-msg" style="display: none;" class="admin-msg-box">
-        <p class="admin-msg-label">📢 Mensaje del Furancho</p>
-        <p id="profile-admin-msg-body" class="admin-msg-body"></p>
       </div>
 
       <!-- QR de recuperación -->
