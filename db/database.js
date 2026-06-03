@@ -325,7 +325,9 @@ function getEvents() {
   return db.prepare(`
     SELECT e.*, COUNT(r.id) as rsvp_count
     FROM events e LEFT JOIN rsvps r ON e.id = r.event_id
-    WHERE e.active = 1 ORDER BY e.event_date ASC
+    WHERE e.active = 1
+    GROUP BY e.id
+    ORDER BY e.event_date ASC
   `).all();
 }
 
@@ -346,9 +348,9 @@ function getRsvpStatus(walletAddress) {
 
 function seedEvents() {
   const dates = [
-    { date: '2026-06-10', title: 'Furancho Sessions — 10 Junio', description: 'Nuestra primera sesión del verano. Ven a disfrutar de vinos locales gallegos, tapas caseras de autor y un gran ambiente afterwork con música en directo.' },
-    { date: '2026-06-17', title: 'Furancho Sessions — 17 Junio', description: 'Una cata selecta acompañada de las mejores tapas de temporada. Descubre nuevos sabores en un ambiente único y relajado entre amigos.' },
-    { date: '2026-06-24', title: 'Furancho Sessions — 24 Junio', description: 'Especial Noche de San Juan. Fogata simbólica, música tradicional gallega y nuestro menú especial de tapas y vinos galardonados.' },
+    { date: '2026-06-11', title: 'Furancho Sessions — 11 Junio', description: 'Nuestra primera sesión del verano. Ven a disfrutar de vinos locales gallegos, tapas caseras de autor y un gran ambiente afterwork con música en directo.' },
+    { date: '2026-06-18', title: 'Furancho Sessions — 18 Junio', description: 'Una cata selecta acompañada de las mejores tapas de temporada. Descubre nuevos sabores en un ambiente único y relajado entre amigos.' },
+    { date: '2026-06-25', title: 'Furancho Sessions — 25 Junio', description: 'Especial Noche de San Juan. Fogata simbólica, música tradicional gallega y nuestro menú especial de tapas y vinos galardonados.' },
     { date: '2026-07-02', title: 'Furancho Sessions — 2 Julio', description: 'Edición VIP de inicio de mes. Sesión con DJ set premium, maridaje exclusivo y sorpresas interactivas para todos nuestros socios preferenciales.' },
   ];
   // Limpiar eventos antiguos para que solo queden las nuevas fechas asignadas
@@ -383,7 +385,7 @@ function createVipReservation({ eventId, walletAddress, phone, groupSize, notes 
 function getVipReservations(eventId) {
   return db.prepare(`
     SELECT id, substr(wallet_address,1,6)||'...'||substr(wallet_address,-4) as wallet_masked,
-           phone, group_size, status, created_at
+           phone, group_size, status, notes, created_at
     FROM vip_reservations WHERE event_id=? ORDER BY created_at ASC
   `).all(eventId);
 }

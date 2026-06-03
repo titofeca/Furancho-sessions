@@ -1585,41 +1585,52 @@
       </div>
 
       <!-- Modal reserva VIP -->
-      <div id="vip-modal" style="display:none; position:fixed; inset:0; z-index:2000; background:rgba(242,237,227,0.97); backdrop-filter:blur(12px); flex-direction:column; align-items:center; justify-content:center; padding:32px 24px;">
-        <div style="width:100%; max-width:380px;">
-          <h2 style="font-family:'Playfair Display',serif; font-size:26px; font-weight:900; color:var(--wine); margin-bottom:6px;">Zona VIP</h2>
-          <p id="vip-modal-event" style="font-size:14px; color:var(--text-muted); margin-bottom:6px;"></p>
-          <p id="vip-capacity-text" style="font-size:13px; color:var(--text); margin-bottom:20px; font-weight:600;"></p>
+      <div id="vip-modal" style="display:none; position:fixed; inset:0; z-index:2000; background:rgba(24, 12, 5, 0.65); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:20px; overflow-y:auto;">
+        <div style="width:100%; max-width:400px; background:#F2EDE3; border:1.5px solid rgba(139,25,24,0.15); border-radius:24px; padding:24px 20px; box-shadow:0 20px 50px rgba(0,0,0,0.2); text-align:center; box-sizing:border-box; position:relative; margin:auto;">
+          <span style="font-size:44px; display:block; margin-bottom:12px; filter:drop-shadow(0 2px 5px rgba(196,151,58,0.4));">⭐</span>
+          <span style="background:rgba(196,151,58,0.15); color:var(--gold); font-size:11px; font-weight:700; padding:4px 12px; border-radius:100px; text-transform:uppercase; letter-spacing:1.5px; display:inline-block; margin-bottom:12px;">Petición de Reserva</span>
+          <h2 style="font-family:'Playfair Display',serif; font-size:26px; font-weight:900; color:var(--wine); margin:0 0 6px 0;">Reservar Mesa VIP</h2>
+          <p id="vip-modal-event" style="font-size:14px; color:var(--text-muted); margin:0 0 4px 0; font-weight:600;"></p>
+          <p id="vip-capacity-text" style="font-size:13px; color:var(--text); margin:0 0 20px 0; font-weight:500;"></p>
 
-          <label style="font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); display:block; margin-bottom:6px;">Tu teléfono</label>
-          <input id="vip-phone" type="tel" inputmode="tel" placeholder="+34 600 000 000"
-            style="width:100%; padding:14px 16px; border-radius:12px; border:1.5px solid rgba(42,21,9,0.12); background:rgba(42,21,9,0.03); font-family:'Outfit',sans-serif; font-size:16px; color:var(--text); margin-bottom:16px; outline:none;" />
+          <div style="text-align:left;">
+            <label style="font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); display:block; margin-bottom:6px;">Tu teléfono</label>
+            <input id="vip-phone" type="tel" inputmode="tel" placeholder="+34 600 000 000"
+              style="width:100%; padding:14px 16px; border-radius:12px; border:1.5px solid rgba(42,21,9,0.12); background:rgba(42,21,9,0.03); font-family:'Outfit',sans-serif; font-size:16px; color:var(--text); margin-bottom:16px; outline:none; box-sizing:border-box;" />
 
-          <label style="font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); display:block; margin-bottom:6px;">Hora de llegada</label>
-          <select id="vip-time" style="width:100%; padding:14px 16px; border-radius:12px; border:1.5px solid rgba(42,21,9,0.12); background:rgba(42,21,9,0.03); font-family:'Outfit',sans-serif; font-size:16px; color:var(--text); margin-bottom:16px; outline:none; -webkit-appearance: none;">
-            <option value="19:00">19:00 h</option>
-            <option value="19:30">19:30 h</option>
-            <option value="20:00" selected>20:00 h</option>
-            <option value="20:30">20:30 h</option>
-            <option value="21:00">21:00 h</option>
-            <option value="21:30">21:30 h</option>
-            <option value="22:00">22:00 h</option>
-          </select>
+            <label style="font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); display:block; margin-bottom:6px;">Hora de llegada</label>
+            <div style="position:relative; margin-bottom:16px;">
+              <select id="vip-time" style="width:100%; padding:14px 16px; border-radius:12px; border:1.5px solid rgba(42,21,9,0.12); background:rgba(42,21,9,0.03); font-family:'Outfit',sans-serif; font-size:16px; color:var(--text); outline:none; -webkit-appearance:none; -moz-appearance:none; appearance:none; box-sizing:border-box; cursor:pointer;">
+                <option value="19:00" style="background:#F2EDE3; color:#2A1509;">19:00 h</option>
+                <option value="19:30" style="background:#F2EDE3; color:#2A1509;">19:30 h</option>
+                <option value="20:00" style="background:#F2EDE3; color:#2A1509;" selected>20:00 h</option>
+                <option value="20:30" style="background:#F2EDE3; color:#2A1509;">20:30 h</option>
+                <option value="21:00" style="background:#F2EDE3; color:#2A1509;">21:00 h</option>
+                <option value="21:30" style="background:#F2EDE3; color:#2A1509;">21:30 h</option>
+                <option value="22:00" style="background:#F2EDE3; color:#2A1509;">22:00 h</option>
+              </select>
+              <div style="position:absolute; right:16px; top:50%; transform:translateY(-50%); pointer-events:none; color:var(--text-muted); font-size:12px;">▼</div>
+            </div>
 
-          <label style="font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); display:block; margin-bottom:6px;">Número de personas (mín. 4, máx. 15)</label>
-          <div style="display:flex; gap:8px; margin-bottom:20px;">
-            <button onclick="setGroupSize(-1)" style="width:44px; height:44px; border-radius:50%; border:1.5px solid rgba(42,21,9,0.15); background:transparent; font-size:20px; cursor:pointer; color:var(--text);">−</button>
-            <div id="vip-group-display" style="flex:1; display:flex; align-items:center; justify-content:center; background:rgba(42,21,9,0.04); border-radius:12px; font-family:'Playfair Display',serif; font-size:28px; font-weight:900; color:var(--wine);">4</div>
-            <button onclick="setGroupSize(1)" style="width:44px; height:44px; border-radius:50%; border:1.5px solid rgba(42,21,9,0.15); background:transparent; font-size:20px; cursor:pointer; color:var(--text);">+</button>
+            <label style="font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); display:block; margin-bottom:6px;">Número de personas (mín. 4, máx. 15)</label>
+            <div style="display:flex; gap:8px; margin-bottom:20px;">
+              <button onclick="setGroupSize(-1)" style="width:44px; height:44px; border-radius:50%; border:1.5px solid rgba(42,21,9,0.15); background:transparent; font-size:20px; cursor:pointer; color:var(--text);">−</button>
+              <div id="vip-group-display" style="flex:1; display:flex; align-items:center; justify-content:center; background:rgba(42,21,9,0.04); border-radius:12px; font-family:'Playfair Display',serif; font-size:28px; font-weight:900; color:var(--wine);">4</div>
+              <button onclick="setGroupSize(1)" style="width:44px; height:44px; border-radius:50%; border:1.5px solid rgba(42,21,9,0.15); background:transparent; font-size:20px; cursor:pointer; color:var(--text);">+</button>
+            </div>
           </div>
 
-          <p style="font-size:11px; color:var(--text-muted); margin-bottom:16px; line-height:1.5;">
+          <p style="font-size:11.5px; color:var(--text-muted); margin-bottom:16px; line-height:1.5; text-align:left;">
             Al reservar aceptas que tu teléfono sea usado únicamente para confirmar esta reserva en Furancho Sessions.
           </p>
 
-          <p id="vip-error" style="color:var(--wine); font-size:13px; margin-bottom:12px; display:none;"></p>
+          <p style="font-size:12px; color:var(--wine); font-weight:700; margin-bottom:16px; text-align:center; line-height:1.4;">
+            ⚠️ Toda reserva VIP quedará pendiente de confirmación por parte de Furancho.
+          </p>
 
-          <button onclick="submitVip()" id="vip-submit-btn" style="width:100%; padding:16px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:16px; font-weight:700; cursor:pointer; margin-bottom:12px;">
+          <p id="vip-error" style="color:var(--wine); font-size:13px; margin-bottom:12px; display:none; text-align:center; font-weight:600;"></p>
+
+          <button onclick="submitVip()" id="vip-submit-btn" style="width:100%; padding:16px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:16px; font-weight:700; cursor:pointer; margin-bottom:12px; box-shadow:0 4px 10px rgba(139,25,24,0.3);">
             Reservar Zona VIP
           </button>
           <button onclick="closeVipModal()" style="width:100%; padding:14px; background:transparent; border:1.5px solid rgba(42,21,9,0.12); border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; color:var(--text-muted); cursor:pointer;">
@@ -2382,6 +2393,11 @@
     // Ejecutar al cargar la página
     initWallet();
 
+    function getEventBaseline(eventId) {
+      const baselines = [22, 17, 26, 19, 23, 16, 28, 21];
+      return baselines[(eventId - 1) % baselines.length] || 15;
+    }
+
     async function loadAgenda() {
       try {
         const [events, myRsvps] = await Promise.all([
@@ -2398,6 +2414,7 @@
           const d = new Date(ev.event_date + 'T00:00:00');
           const attending = myRsvps.includes(ev.id);
           const isPast = d < new Date(new Date().toDateString());
+          const baseline = getEventBaseline(ev.id);
           return `
             <div class="event-card" id="event-card-${ev.id}">
               <div class="event-card-header" onclick="toggleEventCard(${ev.id})">
@@ -2408,7 +2425,7 @@
                 </div>
                 <div style="flex:1; text-align:left;">
                   <p style="font-size:14px; font-weight:600; color:var(--text); margin:0;">${ev.title}</p>
-                  <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0;">👥 ${ev.rsvp_count + 10} personas apuntadas</p>
+                  <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0;">👥 ${ev.rsvp_count + baseline} personas apuntadas</p>
                 </div>
                 <div style="font-size:12px; color:var(--text-muted);" id="event-arrow-${ev.id}">▼</div>
               </div>
@@ -2416,7 +2433,7 @@
               <div class="event-card-content" id="event-content-${ev.id}" style="max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; text-align: left;">
                 <p style="font-size:13px; color:var(--text); line-height:1.6; margin: 12px 0;">${ev.description || 'Furancho Sessions: Afterwork con vino y tapas. Disfruta de una experiencia exclusiva.'}</p>
                 <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(42,21,9,0.05); padding-top:12px; margin-top:12px;">
-                  <span style="font-size:12px; color:var(--text-muted);">👥 ${ev.rsvp_count + 10} confirmados</span>
+                  <span style="font-size:12px; color:var(--text-muted);">👥 ${ev.rsvp_count + baseline} confirmados</span>
                   ${!isPast ? `
                   <div style="display:flex; gap:8px;">
                     <button onclick="event.stopPropagation(); toggleRsvpBtn(${ev.id}, this)" data-attending="${attending}" style="
@@ -2425,10 +2442,10 @@
                       background:${attending?'var(--wine)':'transparent'};
                       color:${attending?'#fff':'var(--text-muted)'};
                       font-family:'Outfit',sans-serif; white-space:nowrap;">${attending?'✓ Apuntado':'Me apunto'}</button>
-                    <button onclick="event.stopPropagation(); openVipModal(${ev.id},'${ev.title} · ${d.getDate()} ${months[d.getMonth()]}',${15-ev.rsvp_count})" style="
+                    <button onclick="event.stopPropagation(); openVipModal(${ev.id},'${ev.title} · ${d.getDate()} ${months[d.getMonth()]}')" style="
                       padding:8px 14px; border-radius:50px; font-size:12px; font-weight:700; cursor:pointer;
                       border:1.5px solid rgba(196,151,58,0.35); background:transparent;
-                      color:var(--gold); font-family:'Outfit',sans-serif; white-space:nowrap;">⭐ VIP</button>
+                      color:var(--gold); font-family:'Outfit',sans-serif; white-space:nowrap;">⭐ Reservar VIP</button>
                   </div>` : `<span style="font-size:12px;color:var(--text-muted);">Evento finalizado</span>`}
                 </div>
               </div>
@@ -2464,16 +2481,28 @@
     let vipEventId = null;
     let vipGroupSize = 4;
 
-    async function openVipModal(eventId, eventTitle, remaining) {
+    async function openVipModal(eventId, eventTitle) {
       vipEventId = eventId;
       vipGroupSize = 4;
       document.getElementById('vip-modal-event').textContent = eventTitle;
-      document.getElementById('vip-capacity-text').textContent = `${remaining} plazas VIP disponibles de 15`;
+      document.getElementById('vip-capacity-text').textContent = 'Cargando plazas disponibles...';
       document.getElementById('vip-group-display').textContent = '4';
       document.getElementById('vip-phone').value = '';
       document.getElementById('vip-error').style.display = 'none';
       document.getElementById('vip-modal').style.display = 'flex';
       document.body.style.overflow = 'hidden';
+
+      try {
+        const res = await fetch(`/api/events/${eventId}/vip`);
+        const cap = await res.json();
+        if (cap && typeof cap.remaining !== 'undefined') {
+          document.getElementById('vip-capacity-text').textContent = `${cap.remaining} plazas VIP disponibles de ${cap.max}`;
+        } else {
+          document.getElementById('vip-capacity-text').textContent = '15 plazas VIP disponibles de 15';
+        }
+      } catch (e) {
+        document.getElementById('vip-capacity-text').textContent = '15 plazas VIP disponibles de 15';
+      }
     }
 
     function closeVipModal() {

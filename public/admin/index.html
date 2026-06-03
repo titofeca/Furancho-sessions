@@ -1585,7 +1585,10 @@
               const statusColor = r.status==='confirmed'?'#4ade80':r.status==='cancelled'?'#f87171':'var(--gold)';
               return `<tr style="border-top:1px solid rgba(42,21,9,0.05);">
                 <td style="padding:8px 4px; font-family:monospace; font-size:11px; color:var(--text-muted);">${r.wallet_masked}</td>
-                <td style="padding:8px 4px; font-weight:600; color:var(--text);">${r.phone}</td>
+                <td style="padding:8px 4px;">
+                  <span style="font-weight:600; color:var(--text);">${r.phone}</span>
+                  ${r.notes ? `<div style="font-size:10px; color:var(--gold); font-weight:600; margin-top:2px;">${r.notes}</div>` : ''}
+                </td>
                 <td style="padding:8px 4px; text-align:center; font-weight:700; color:var(--wine);">${r.group_size}</td>
                 <td style="padding:8px 4px; text-align:center; font-size:11px; font-weight:700; color:${statusColor}; text-transform:uppercase;">${r.status}</td>
                 <td style="padding:8px 4px;">
