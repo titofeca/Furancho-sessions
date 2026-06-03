@@ -1412,9 +1412,9 @@
     document.getElementById('raffle-status').style.display = 'block';
     document.getElementById('raffle-winner-box').style.display = 'none';
     document.getElementById('raffle-status-title').textContent = '🎲 Ruleta girando en los móviles...';
-    document.getElementById('raffle-status-desc').textContent = 'Quedan 30 segundos';
+    document.getElementById('raffle-status-desc').textContent = 'Quedan 15 segundos';
 
-    let countdown = 30;
+    let countdown = 15;
     const interval = setInterval(() => {
       countdown--;
       document.getElementById('raffle-status-desc').textContent = `Quedan ${countdown} segundos`;
@@ -1424,7 +1424,7 @@
     try {
       const res = await fetch('/api/raffle/start', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AUTH_TOKEN}` },
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': AUTH_TOKEN },
         body: JSON.stringify({ prize })
       });
       const data = await res.json();
@@ -1436,14 +1436,13 @@
         return showToast(data.error, true);
       }
 
-      // Wait 30 seconds to show winner
       setTimeout(() => {
         document.getElementById('raffle-status-title').textContent = '🎉 ¡Sorteo Finalizado!';
         document.getElementById('raffle-status-desc').textContent = `El ganador está viendo este código en su móvil.`;
         document.getElementById('raffle-winner-box').style.display = 'block';
         document.getElementById('raffle-winner-code').textContent = data.verificationCode;
         document.getElementById('start-raffle-btn').disabled = false;
-      }, 30000);
+      }, 15000);
 
     } catch (e) {
       clearInterval(interval);
