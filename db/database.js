@@ -345,14 +345,16 @@ function getRsvpStatus(walletAddress) {
 }
 
 function seedEvents() {
-  const jueves = [
-    { date: '2026-06-05', title: 'Furancho Sessions — 5 Junio' },
-    { date: '2026-06-12', title: 'Furancho Sessions — 12 Junio' },
-    { date: '2026-06-19', title: 'Furancho Sessions — 19 Junio' },
-    { date: '2026-06-26', title: 'Furancho Sessions — 26 Junio' },
+  const dates = [
+    { date: '2026-06-10', title: 'Furancho Sessions — 10 Junio', description: 'Nuestra primera sesión del verano. Ven a disfrutar de vinos locales gallegos, tapas caseras de autor y un gran ambiente afterwork con música en directo.' },
+    { date: '2026-06-17', title: 'Furancho Sessions — 17 Junio', description: 'Una cata selecta acompañada de las mejores tapas de temporada. Descubre nuevos sabores en un ambiente único y relajado entre amigos.' },
+    { date: '2026-06-24', title: 'Furancho Sessions — 24 Junio', description: 'Especial Noche de San Juan. Fogata simbólica, música tradicional gallega y nuestro menú especial de tapas y vinos galardonados.' },
+    { date: '2026-07-02', title: 'Furancho Sessions — 2 Julio', description: 'Edición VIP de inicio de mes. Sesión con DJ set premium, maridaje exclusivo y sorpresas interactivas para todos nuestros socios preferenciales.' },
   ];
-  jueves.forEach(({ date, title }) => {
-    db.prepare(`INSERT OR IGNORE INTO events (event_date, title) VALUES (?, ?)`).run(date, title);
+  // Limpiar eventos antiguos para que solo queden las nuevas fechas asignadas
+  db.prepare(`DELETE FROM events`).run();
+  dates.forEach(({ date, title, description }) => {
+    db.prepare(`INSERT OR IGNORE INTO events (event_date, title, description) VALUES (?, ?, ?)`).run(date, title, description);
   });
 }
 seedEvents();
@@ -367,14 +369,14 @@ function getVipCapacity(eventId) {
   return { used: used.total, remaining: VIP_MAX - used.total, max: VIP_MAX };
 }
 
-function createVipReservation({ eventId, walletAddress, phone, groupSize }) {
+function createVipReservation({ eventId, walletAddress, phone, groupSize, notes }) {
   const cap = getVipCapacity(eventId);
   if (groupSize < 4) throw new Error('El mínimo es 4 personas.');
   if (groupSize > cap.remaining) throw new Error(`Solo quedan ${cap.remaining} plazas VIP disponibles.`);
   const existing = db.prepare(`SELECT id FROM vip_reservations WHERE event_id=? AND wallet_address=?`).get(eventId, walletAddress);
   if (existing) throw new Error('Ya tienes una reserva para este evento.');
-  db.prepare(`INSERT INTO vip_reservations (event_id, wallet_address, phone, group_size) VALUES (?,?,?,?)`)
-    .run(eventId, walletAddress, phone, groupSize);
+  db.prepare(`INSERT INTO vip_reservations (event_id, wallet_address, phone, group_size, notes) VALUES (?,?,?,?,?)`)
+    .run(eventId, walletAddress, phone, groupSize, notes || null);
   return getVipCapacity(eventId);
 }
 

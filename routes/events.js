@@ -46,14 +46,20 @@ router.get('/:id/vip', (req, res) => {
 
 // POST /api/events/vip — crear reserva VIP
 router.post('/vip', (req, res) => {
-  const { eventId, walletAddress, phone, groupSize } = req.body;
+  const { eventId, walletAddress, phone, groupSize, notes } = req.body;
   if (!eventId || !walletAddress || !phone || !groupSize)
     return res.status(400).json({ error: 'Faltan datos' });
   const phoneClean = phone.replace(/\s/g,'');
   if (!/^[+]?[\d]{9,15}$/.test(phoneClean))
     return res.status(400).json({ error: 'Teléfono no válido' });
   try {
-    const cap = createVipReservation({ eventId: parseInt(eventId), walletAddress, phone: phoneClean, groupSize: parseInt(groupSize) });
+    const cap = createVipReservation({ 
+      eventId: parseInt(eventId), 
+      walletAddress, 
+      phone: phoneClean, 
+      groupSize: parseInt(groupSize),
+      notes 
+    });
     res.json({ success: true, capacity: cap });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });

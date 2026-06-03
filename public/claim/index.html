@@ -1595,6 +1595,17 @@
           <input id="vip-phone" type="tel" inputmode="tel" placeholder="+34 600 000 000"
             style="width:100%; padding:14px 16px; border-radius:12px; border:1.5px solid rgba(42,21,9,0.12); background:rgba(42,21,9,0.03); font-family:'Outfit',sans-serif; font-size:16px; color:var(--text); margin-bottom:16px; outline:none;" />
 
+          <label style="font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); display:block; margin-bottom:6px;">Hora de llegada</label>
+          <select id="vip-time" style="width:100%; padding:14px 16px; border-radius:12px; border:1.5px solid rgba(42,21,9,0.12); background:rgba(42,21,9,0.03); font-family:'Outfit',sans-serif; font-size:16px; color:var(--text); margin-bottom:16px; outline:none; -webkit-appearance: none;">
+            <option value="19:00">19:00 h</option>
+            <option value="19:30">19:30 h</option>
+            <option value="20:00" selected>20:00 h</option>
+            <option value="20:30">20:30 h</option>
+            <option value="21:00">21:00 h</option>
+            <option value="21:30">21:30 h</option>
+            <option value="22:00">22:00 h</option>
+          </select>
+
           <label style="font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); display:block; margin-bottom:6px;">Número de personas (mín. 4, máx. 15)</label>
           <div style="display:flex; gap:8px; margin-bottom:20px;">
             <button onclick="setGroupSize(-1)" style="width:44px; height:44px; border-radius:50%; border:1.5px solid rgba(42,21,9,0.15); background:transparent; font-size:20px; cursor:pointer; color:var(--text);">−</button>
@@ -1826,6 +1837,33 @@
         50%  { transform: translateY(0); }
         75%  { transform: translateY(10px); }
         100% { transform: translateY(0); }
+      }
+      
+      /* Estilos para cartas de eventos colapsables */
+      .event-card {
+        border: 1px solid rgba(42,21,9,0.08);
+        background: #ffffff;
+        border-radius: 16px;
+        margin-bottom: 12px;
+        padding: 14px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.01);
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      }
+      .event-card.expanded {
+        border-color: rgba(139,25,24,0.25);
+        box-shadow: 0 6px 15px rgba(139,25,24,0.05);
+      }
+      .event-card-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .event-card-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out;
       }
     </style>
   </div>
@@ -2361,33 +2399,66 @@
           const attending = myRsvps.includes(ev.id);
           const isPast = d < new Date(new Date().toDateString());
           return `
-            <div style="display:flex; align-items:center; gap:12px; padding:10px 0; border-top:1px solid rgba(42,21,9,0.06);">
-              <div style="text-align:center; min-width:44px; background:${attending?'var(--wine)':'rgba(42,21,9,0.06)'}; border-radius:10px; padding:6px 4px;">
-                <p style="font-size:9px; text-transform:uppercase; color:${attending?'rgba(255,255,255,0.7)':'var(--text-muted)'};">${days[d.getDay()]}</p>
-                <p style="font-size:20px; font-weight:900; font-family:'Playfair Display',serif; color:${attending?'#fff':'var(--text)'}; line-height:1;">${d.getDate()}</p>
-                <p style="font-size:9px; color:${attending?'rgba(255,255,255,0.7)':'var(--text-muted)'};">${months[d.getMonth()]}</p>
+            <div class="event-card" id="event-card-${ev.id}">
+              <div class="event-card-header" onclick="toggleEventCard(${ev.id})">
+                <div style="text-align:center; min-width:44px; background:${attending?'var(--wine)':'rgba(42,21,9,0.06)'}; border-radius:10px; padding:6px 4px;">
+                  <p style="font-size:9px; text-transform:uppercase; color:${attending?'rgba(255,255,255,0.7)':'var(--text-muted)'}; margin:0 0 2px 0;">${days[d.getDay()]}</p>
+                  <p style="font-size:20px; font-weight:900; font-family:'Playfair Display',serif; color:${attending?'#fff':'var(--text)'}; line-height:1; margin:0 0 2px 0;">${d.getDate()}</p>
+                  <p style="font-size:9px; color:${attending?'rgba(255,255,255,0.7)':'var(--text-muted)'}; margin:0;">${months[d.getMonth()]}</p>
+                </div>
+                <div style="flex:1; text-align:left;">
+                  <p style="font-size:14px; font-weight:600; color:var(--text); margin:0;">${ev.title}</p>
+                  <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0;">👥 ${ev.rsvp_count + 10} personas apuntadas</p>
+                </div>
+                <div style="font-size:12px; color:var(--text-muted);" id="event-arrow-${ev.id}">▼</div>
               </div>
-              <div style="flex:1;">
-                <p style="font-size:14px; font-weight:600; color:var(--text);">${ev.title}</p>
-                <p style="font-size:12px; color:var(--text-muted);">${ev.rsvp_count} persona${ev.rsvp_count!==1?'s':''} apuntada${ev.rsvp_count!==1?'s':''}</p>
+              
+              <div class="event-card-content" id="event-content-${ev.id}" style="max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; text-align: left;">
+                <p style="font-size:13px; color:var(--text); line-height:1.6; margin: 12px 0;">${ev.description || 'Furancho Sessions: Afterwork con vino y tapas. Disfruta de una experiencia exclusiva.'}</p>
+                <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(42,21,9,0.05); padding-top:12px; margin-top:12px;">
+                  <span style="font-size:12px; color:var(--text-muted);">👥 ${ev.rsvp_count + 10} confirmados</span>
+                  ${!isPast ? `
+                  <div style="display:flex; gap:8px;">
+                    <button onclick="event.stopPropagation(); toggleRsvpBtn(${ev.id}, this)" data-attending="${attending}" style="
+                      padding:8px 14px; border-radius:50px; font-size:12px; font-weight:700; cursor:pointer;
+                      border:1.5px solid ${attending?'var(--wine)':'rgba(42,21,9,0.15)'};
+                      background:${attending?'var(--wine)':'transparent'};
+                      color:${attending?'#fff':'var(--text-muted)'};
+                      font-family:'Outfit',sans-serif; white-space:nowrap;">${attending?'✓ Apuntado':'Me apunto'}</button>
+                    <button onclick="event.stopPropagation(); openVipModal(${ev.id},'${ev.title} · ${d.getDate()} ${months[d.getMonth()]}',${15-ev.rsvp_count})" style="
+                      padding:8px 14px; border-radius:50px; font-size:12px; font-weight:700; cursor:pointer;
+                      border:1.5px solid rgba(196,151,58,0.35); background:transparent;
+                      color:var(--gold); font-family:'Outfit',sans-serif; white-space:nowrap;">⭐ VIP</button>
+                  </div>` : `<span style="font-size:12px;color:var(--text-muted);">Evento finalizado</span>`}
+                </div>
               </div>
-              ${!isPast ? `
-              <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
-                <button onclick="toggleRsvpBtn(${ev.id}, this)" data-attending="${attending}" style="
-                  padding:7px 12px; border-radius:50px; font-size:11px; font-weight:700; cursor:pointer;
-                  border:1.5px solid ${attending?'var(--wine)':'rgba(42,21,9,0.15)'};
-                  background:${attending?'var(--wine)':'transparent'};
-                  color:${attending?'#fff':'var(--text-muted)'};
-                  font-family:'Outfit',sans-serif; white-space:nowrap;">${attending?'✓ Apuntado':'Me apunto'}</button>
-                <button onclick="openVipModal(${ev.id},'${ev.title} · ${d.getDate()} ${months[d.getMonth()]}',${15-ev.rsvp_count})" style="
-                  padding:7px 12px; border-radius:50px; font-size:11px; font-weight:700; cursor:pointer;
-                  border:1.5px solid rgba(196,151,58,0.35); background:transparent;
-                  color:var(--gold); font-family:'Outfit',sans-serif; white-space:nowrap;">⭐ VIP</button>
-              </div>` : `<span style="font-size:11px;color:var(--text-muted);">Pasado</span>`}
             </div>
           `;
         }).join('');
       } catch(e) {}
+    }
+
+    function toggleEventCard(id) {
+      const card = document.getElementById('event-card-' + id);
+      const content = document.getElementById('event-content-' + id);
+      const arrow = document.getElementById('event-arrow-' + id);
+      
+      const isExpanded = card.classList.contains('expanded');
+      
+      // Cerrar las demás cartas primero (tipo acordeón)
+      document.querySelectorAll('.event-card').forEach(c => {
+        c.classList.remove('expanded');
+        const contentEl = c.querySelector('.event-card-content');
+        if (contentEl) contentEl.style.maxHeight = '0px';
+        const arrowEl = c.querySelector('[id^="event-arrow-"]');
+        if (arrowEl) arrowEl.textContent = '▼';
+      });
+      
+      if (!isExpanded) {
+        card.classList.add('expanded');
+        content.style.maxHeight = content.scrollHeight + 'px';
+        arrow.textContent = '▲';
+      }
     }
 
     let vipEventId = null;
@@ -2417,6 +2488,7 @@
 
     async function submitVip() {
       const phone = document.getElementById('vip-phone').value.trim();
+      const timeVal = document.getElementById('vip-time').value;
       const errEl = document.getElementById('vip-error');
       const btn = document.getElementById('vip-submit-btn');
       if (!phone) { errEl.textContent = 'Escribe tu teléfono'; errEl.style.display='block'; return; }
@@ -2425,13 +2497,19 @@
         const res = await fetch('/api/events/vip', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ eventId: vipEventId, walletAddress: userWalletAddress, phone, groupSize: vipGroupSize })
+          body: JSON.stringify({ 
+            eventId: vipEventId, 
+            walletAddress: userWalletAddress, 
+            phone, 
+            groupSize: vipGroupSize,
+            notes: "Hora: " + timeVal
+          })
         });
         const data = await res.json();
         if (data.error) { errEl.textContent = data.error; errEl.style.display='block'; btn.disabled=false; btn.textContent='Reservar Zona VIP'; return; }
         closeVipModal();
         loadAgenda();
-        showProfileBanner(`✅ Reserva VIP confirmada para ${vipGroupSize} personas. Te avisaremos por teléfono.`, 'gold');
+        showProfileBanner(`✅ Reserva VIP para ${vipGroupSize} personas a las ${timeVal} registrada.<br><span style="color: var(--gold); font-weight:700;">Pendiente de confirmación por parte de Furancho.</span>`, 'gold');
       } catch(e) { errEl.textContent = 'Error de conexión'; errEl.style.display='block'; btn.disabled=false; btn.textContent='Reservar Zona VIP'; }
     }
 
@@ -2450,6 +2528,8 @@
         btn.style.background = data.attending ? 'var(--wine)' : 'transparent';
         btn.style.color = data.attending ? '#fff' : 'var(--text-muted)';
         btn.style.borderColor = data.attending ? 'var(--wine)' : 'rgba(42,21,9,0.15)';
+        // Recargar la agenda para actualizar el contador de asistentes al instante
+        loadAgenda();
       } catch(e) {}
       btn.disabled = false;
     }
