@@ -22,6 +22,7 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/qr', qrRoutes);
 app.use('/api/raffle', raffleRoutes);
 app.use('/api/push', require('./routes/push'));
+app.use('/api/events', require('./routes/events'));
 
 // Rutas HTML explícitas — antes de express.static para evitar 301 con trailing slash
 app.get('/', (req, res) => res.redirect('/admin'));

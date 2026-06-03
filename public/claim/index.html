@@ -1560,6 +1560,17 @@
         </details>
       </div>
 
+      <!-- Agenda de eventos -->
+      <div id="agenda-section" style="margin-bottom: 18px; display:none;">
+        <div style="background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:20px; padding:18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+            <span style="font-size:20px;">📅</span>
+            <p style="font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted);">Próximas Sessions</p>
+          </div>
+          <div id="agenda-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+      </div>
+
       <!-- Banner beta -->
       <div style="background: rgba(139,25,24,0.07); border: 1px solid rgba(139,25,24,0.15); border-radius: 12px; padding: 10px 14px; margin-bottom: 18px; display: flex; align-items: center; gap: 8px;">
         <span style="font-size: 16px;">🧪</span>
@@ -2196,6 +2207,7 @@
 
       showScreen('screen-profile');
       renderPrizes();
+      loadAgenda();
 
       // Pedir permiso de notificaciones push (con delay para no interrumpir)
       setTimeout(requestPushPermission, 3000);
@@ -2280,6 +2292,64 @@
 
     // Ejecutar al cargar la página
     initWallet();
+
+    async function loadAgenda() {
+      try {
+        const [events, myRsvps] = await Promise.all([
+          fetch('/api/events').then(r => r.json()),
+          fetch(`/api/events/my-rsvps?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => [])
+        ]);
+        if (!events.length) return;
+        const section = document.getElementById('agenda-section');
+        const list = document.getElementById('agenda-list');
+        section.style.display = 'block';
+        const days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+        const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+        list.innerHTML = events.map(ev => {
+          const d = new Date(ev.event_date + 'T00:00:00');
+          const attending = myRsvps.includes(ev.id);
+          const isPast = d < new Date(new Date().toDateString());
+          return `
+            <div style="display:flex; align-items:center; gap:12px; padding:10px 0; border-top:1px solid rgba(42,21,9,0.06);">
+              <div style="text-align:center; min-width:44px; background:${attending?'var(--wine)':'rgba(42,21,9,0.06)'}; border-radius:10px; padding:6px 4px;">
+                <p style="font-size:9px; text-transform:uppercase; color:${attending?'rgba(255,255,255,0.7)':'var(--text-muted)'};">${days[d.getDay()]}</p>
+                <p style="font-size:20px; font-weight:900; font-family:'Playfair Display',serif; color:${attending?'#fff':'var(--text)'}; line-height:1;">${d.getDate()}</p>
+                <p style="font-size:9px; color:${attending?'rgba(255,255,255,0.7)':'var(--text-muted)'};">${months[d.getMonth()]}</p>
+              </div>
+              <div style="flex:1;">
+                <p style="font-size:14px; font-weight:600; color:var(--text);">${ev.title}</p>
+                <p style="font-size:12px; color:var(--text-muted);">${ev.rsvp_count} persona${ev.rsvp_count!==1?'s':''} apuntada${ev.rsvp_count!==1?'s':''}</p>
+              </div>
+              ${!isPast ? `<button onclick="toggleRsvpBtn(${ev.id}, this)" data-attending="${attending}" style="
+                padding:8px 14px; border-radius:50px; font-size:12px; font-weight:700; cursor:pointer;
+                border:1.5px solid ${attending?'var(--wine)':'rgba(42,21,9,0.15)'};
+                background:${attending?'var(--wine)':'transparent'};
+                color:${attending?'#fff':'var(--text-muted)'};
+                font-family:'Outfit',sans-serif;">${attending?'✓ Apuntado':'Me apunto'}</button>` : `<span style="font-size:11px;color:var(--text-muted);">Pasado</span>`}
+            </div>
+          `;
+        }).join('');
+      } catch(e) {}
+    }
+
+    async function toggleRsvpBtn(eventId, btn) {
+      const attending = btn.dataset.attending === 'true';
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/events/rsvp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventId, walletAddress: userWalletAddress })
+        });
+        const data = await res.json();
+        btn.dataset.attending = data.attending;
+        btn.textContent = data.attending ? '✓ Apuntado' : 'Me apunto';
+        btn.style.background = data.attending ? 'var(--wine)' : 'transparent';
+        btn.style.color = data.attending ? '#fff' : 'var(--text-muted)';
+        btn.style.borderColor = data.attending ? 'var(--wine)' : 'rgba(42,21,9,0.15)';
+      } catch(e) {}
+      btn.disabled = false;
+    }
 
     function renderPrizes() {
       const prizes = JSON.parse(localStorage.getItem('furancho_prizes') || '[]');

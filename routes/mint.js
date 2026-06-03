@@ -30,16 +30,26 @@ router.post('/entry', mintLimiter, async (req, res) => {
   if (!walletAddress) return res.status(400).json({ error: 'Falta walletAddress' });
 
   try {
-    const { getVisitCount, openSession } = require('../db/database');
+    const { getVisitCount, checkRecentVisit, openSession, insertVisit } = require('../db/database');
     const visitCount = getVisitCount(walletAddress);
+    const alreadyVisitedThisWeek = checkRecentVisit(walletAddress, 168);
+
+    // Contar la visita al entrar (no al salir) — salvo cooldown de 7 días
+    if (!alreadyVisitedThisWeek) {
+      insertVisit(walletAddress, null, req.ip);
+    }
     openSession(walletAddress);
+
+    const newVisitCount = alreadyVisitedThisWeek ? visitCount : visitCount + 1;
+
     return res.json({
       success: true,
       action: 'entry',
       isNew: visitCount === 0,
+      visitCount: newVisitCount,
       message: visitCount === 0
-        ? '¡Benvido a Furancho Sessions! Recuerda fichar a la salida.'
-        : 'Benvido de volta! Recuerda fichar a la salida.'
+        ? '¡Benvido a Furancho Sessions!'
+        : `¡Benvido de volta! Llevas ${newVisitCount} visita${newVisitCount !== 1 ? 's' : ''}.`
     });
   } catch (error) {
     console.error('Error en /entry:', error.message);

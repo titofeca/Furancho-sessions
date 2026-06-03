@@ -67,6 +67,22 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_sessions_wallet ON sessions(wallet_address);
 
+  CREATE TABLE IF NOT EXISTS events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_date TEXT NOT NULL UNIQUE,
+    title TEXT DEFAULT 'Furancho Sessions',
+    description TEXT,
+    active INTEGER DEFAULT 1
+  );
+
+  CREATE TABLE IF NOT EXISTS rsvps (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL,
+    wallet_address TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(event_id, wallet_address)
+  );
+
   CREATE TABLE IF NOT EXISTS push_subscriptions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     wallet_address TEXT,
@@ -293,6 +309,66 @@ function deletePushSubscription(endpoint) {
   db.prepare(`DELETE FROM push_subscriptions WHERE endpoint = ?`).run(endpoint);
 }
 
+function getEvents() {
+  return db.prepare(`
+    SELECT e.*, COUNT(r.id) as rsvp_count
+    FROM events e LEFT JOIN rsvps r ON e.id = r.event_id
+    WHERE e.active = 1 ORDER BY e.event_date ASC
+  `).all();
+}
+
+function toggleRsvp(eventId, walletAddress) {
+  const existing = db.prepare(`SELECT id FROM rsvps WHERE event_id=? AND wallet_address=?`).get(eventId, walletAddress);
+  if (existing) {
+    db.prepare(`DELETE FROM rsvps WHERE event_id=? AND wallet_address=?`).run(eventId, walletAddress);
+    return false; // cancelado
+  } else {
+    db.prepare(`INSERT INTO rsvps (event_id, wallet_address) VALUES (?,?)`).run(eventId, walletAddress);
+    return true; // apuntado
+  }
+}
+
+function getRsvpStatus(walletAddress) {
+  return db.prepare(`SELECT event_id FROM rsvps WHERE wallet_address=?`).all(walletAddress).map(r => r.event_id);
+}
+
+function seedEvents() {
+  const jueves = ['2026-06-05','2026-06-12','2026-06-19','2026-06-26'];
+  jueves.forEach(date => {
+    db.prepare(`INSERT OR IGNORE INTO events (event_date, title) VALUES (?, 'Furancho Sessions')`).run(date);
+  });
+}
+seedEvents();
+
+function getSessionAnalytics() {
+  const avgByLevel = db.prepare(`
+    SELECT m.level, m.level_name,
+           ROUND(AVG(s.duration_minutes), 1) as avg_minutes,
+           COUNT(DISTINCT s.wallet_address) as unique_clients,
+           COUNT(s.id) as total_sessions
+    FROM sessions s
+    JOIN (SELECT wallet_address, MAX(level) as level, MAX(level_name) as level_name FROM mints WHERE status='success' GROUP BY wallet_address) m
+      ON s.wallet_address = m.wallet_address
+    WHERE s.exit_time IS NOT NULL AND s.duration_minutes > 0
+    GROUP BY m.level ORDER BY m.level
+  `).all();
+
+  const topClients = db.prepare(`
+    SELECT wallet_address,
+           substr(wallet_address,1,6)||'...'||substr(wallet_address,-4) as wallet_masked,
+           COUNT(*) as total_visits,
+           ROUND(AVG(duration_minutes),1) as avg_stay,
+           MAX(entry_time) as last_visit
+    FROM sessions WHERE exit_time IS NOT NULL AND counted_as_visit = 1
+    GROUP BY wallet_address ORDER BY total_visits DESC LIMIT 10
+  `).all();
+
+  const activeNow = db.prepare(`SELECT COUNT(DISTINCT wallet_address) as count FROM sessions WHERE exit_time IS NULL`).get();
+  const avgGlobal = db.prepare(`SELECT ROUND(AVG(duration_minutes),1) as avg FROM sessions WHERE exit_time IS NOT NULL AND duration_minutes > 0 AND duration_minutes < 300`).get();
+
+  return { avgByLevel, topClients, activeNow: activeNow.count, avgGlobal: avgGlobal.avg };
+}
+
 function getEligibleRaffleParticipants() {
   // Option A: Active sessions (entry_time is not null, exit_time is null)
   return db.prepare(`SELECT DISTINCT wallet_address FROM sessions WHERE exit_time IS NULL`).all().map(r => r.wallet_address);
@@ -325,6 +401,10 @@ module.exports = {
   getVisitCount,
   getEligibleRaffleParticipants,
   insertRaffle,
+  getSessionAnalytics,
+  getEvents,
+  toggleRsvp,
+  getRsvpStatus,
   savePushSubscription,
   getAllPushSubscriptions,
   deletePushSubscription
