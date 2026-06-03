@@ -1079,7 +1079,7 @@
         </div>
 
         <button class="btn-primary" id="start-raffle-btn" onclick="startRaffle()" style="width: 100%; background: linear-gradient(135deg, var(--wine) 0%, var(--wine-dark) 100%);">
-          🎲 LANZAR SORTEO (30 Segundos)
+          🎲 LANZAR SORTEO (15 Segundos)
         </button>
 
         <div id="raffle-status" style="display: none;" class="raffle-status-box">
@@ -1393,7 +1393,7 @@
   async function loadEligibleParticipants() {
     try {
       const res = await fetch('/api/raffle/eligible', {
-        headers: { 'Authorization': `Bearer ${AUTH_TOKEN}` }
+        headers: { 'x-admin-token': AUTH_TOKEN }
       });
       const data = await res.json();
       document.getElementById('raffle-eligible-count').textContent = data.count;
