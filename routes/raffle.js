@@ -61,16 +61,19 @@ router.post('/start', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'Falta el nombre del premio' });
   }
 
-  // Usar clientes con app abierta (SSE) + sesiones abiertas como fallback
+  // Solo participan clientes que han fichado entrada y aún no han salido
   const connectedWallets = [...new Set(
     clients.filter(c => c.walletAddress).map(c => c.walletAddress)
   )];
-  const sessionWallets = getEligibleRaffleParticipants();
-  const allWallets = [...new Set([...connectedWallets, ...sessionWallets])];
-  const eligibleWallets = allWallets.length > 0 ? allWallets : connectedWallets;
+  const sessionWallets = getEligibleRaffleParticipants(); // sesiones abiertas en DB
+  // Intersección: tienen sesión abierta (ficharon entrada) Y tienen la app abierta
+  // Si nadie tiene la app abierta, usar solo sesiones DB
+  const eligibleWallets = connectedWallets.length > 0
+    ? sessionWallets.filter(w => connectedWallets.includes(w))
+    : sessionWallets;
 
   if (eligibleWallets.length === 0) {
-    return res.status(400).json({ error: 'No hay clientes con la app abierta en este momento.' });
+    return res.status(400).json({ error: 'No hay clientes con entrada fichada en este momento. Deben escanear el QR de entrada para participar.' });
   }
 
   const winnerIndex = Math.floor(Math.random() * eligibleWallets.length);
@@ -110,8 +113,10 @@ router.post('/start', requireAuth, (req, res) => {
 router.get('/eligible', requireAuth, (req, res) => {
   const connected = [...new Set(clients.filter(c => c.walletAddress).map(c => c.walletAddress))];
   const sessions  = getEligibleRaffleParticipants();
-  const all       = [...new Set([...connected, ...sessions])];
-  res.json({ count: all.length, connected: connected.length, sessions: sessions.length });
+  const eligible  = connected.length > 0
+    ? sessions.filter(w => connected.includes(w))
+    : sessions;
+  res.json({ count: eligible.length, withApp: connected.length, checkedIn: sessions.length });
 });
 
 module.exports = router;
