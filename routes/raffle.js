@@ -9,10 +9,16 @@ let clients = [];
 
 // Función para enviar eventos a todos los clientes conectados
 function broadcast(event, data) {
+  const dead = [];
   clients.forEach(client => {
-    client.res.write(`event: ${event}\n`);
-    client.res.write(`data: ${JSON.stringify(data)}\n\n`);
+    try {
+      client.res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      if (typeof client.res.flush === 'function') client.res.flush();
+    } catch (e) {
+      dead.push(client.id);
+    }
   });
+  if (dead.length) clients = clients.filter(c => !dead.includes(c.id));
 }
 
 // GET /api/raffle/stream?wallet=0x...
@@ -29,10 +35,16 @@ router.get('/stream', (req, res) => {
   const newClient = { id: clientId, res, walletAddress };
   clients.push(newClient);
 
-  // Keepalive cada 25 segundos para evitar timeout del proxy de Railway
+  // Keepalive cada 20 segundos para evitar timeout del proxy de Railway
   const keepalive = setInterval(() => {
-    try { res.write(': ping\n\n'); } catch (e) { clearInterval(keepalive); }
-  }, 25000);
+    try {
+      res.write(': ping\n\n');
+      if (typeof res.flush === 'function') res.flush();
+    } catch (e) {
+      clearInterval(keepalive);
+      clients = clients.filter(c => c.id !== clientId);
+    }
+  }, 20000);
 
   req.on('close', () => {
     clearInterval(keepalive);
@@ -75,6 +87,7 @@ router.post('/start', requireAuth, (req, res) => {
   insertRaffle(prize, winnerWallet, verificationCode);
 
   // Informar a todos los móviles que EMPIEZA el sorteo (Ruleta de 30 segundos)
+  console.log(`[Raffle] Iniciando sorteo. Clientes SSE: ${clients.length}, con wallet: ${connectedWallets.length}, sesiones DB: ${sessionWallets.length}`);
   broadcast('raffle_start', { duration: 15, prize });
 
   sendPushToAll('🎰 ¡Sorteo en Furancho!', `Se está sorteando: ${prize} — ¡Abre la app ahora!`, { url: '/claim' });
