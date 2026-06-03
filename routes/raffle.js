@@ -20,6 +20,7 @@ router.get('/stream', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // desactiva buffering en Nginx/Railway
 
   res.write('data: {"connected": true}\n\n');
 
@@ -28,7 +29,13 @@ router.get('/stream', (req, res) => {
   const newClient = { id: clientId, res, walletAddress };
   clients.push(newClient);
 
+  // Keepalive cada 25 segundos para evitar timeout del proxy de Railway
+  const keepalive = setInterval(() => {
+    try { res.write(': ping\n\n'); } catch (e) { clearInterval(keepalive); }
+  }, 25000);
+
   req.on('close', () => {
+    clearInterval(keepalive);
     clients = clients.filter(c => c.id !== clientId);
   });
 });
@@ -68,15 +75,13 @@ router.post('/start', requireAuth, (req, res) => {
   insertRaffle(prize, winnerWallet, verificationCode);
 
   // Informar a todos los móviles que EMPIEZA el sorteo (Ruleta de 30 segundos)
-  broadcast('raffle_start', { duration: 30, prize });
+  broadcast('raffle_start', { duration: 15, prize });
 
-  // Push a móviles con pantalla apagada
   sendPushToAll('🎰 ¡Sorteo en Furancho!', `Se está sorteando: ${prize} — ¡Abre la app ahora!`, { url: '/claim' });
 
-  // Programar el anuncio del ganador para dentro de 30 segundos
   setTimeout(() => {
     broadcast('raffle_result', { winnerWallet, verificationCode, prize });
-  }, 30000); // 30 segundos
+  }, 15000);
 
   return res.json({
     success: true,

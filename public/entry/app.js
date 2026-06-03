@@ -75,6 +75,9 @@ function connectRaffle() {
       document.getElementById('raffle-loser-prize').textContent = data.prize;
     }
   });
-  evtSource.onerror = () => {};
+  evtSource.onerror = () => {
+    evtSource.close();
+    setTimeout(connectRaffle, 5000);
+  };
 }
 setTimeout(connectRaffle, 2000);

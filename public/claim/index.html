@@ -2413,7 +2413,11 @@
         }
       });
 
-      evtSource.onerror = () => {};
+      evtSource.onerror = () => {
+        evtSource.close();
+        // Reconectar tras 5 segundos si se cae la conexión
+        setTimeout(connectRaffle, 5000);
+      };
     }
 
     setTimeout(connectRaffle, 2000);
