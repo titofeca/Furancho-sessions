@@ -58,11 +58,27 @@ router.get('/current-message', (req, res) => {
   try {
     const { db } = require('../db/database');
     const message = db.prepare(`
-      SELECT * FROM messages 
-      WHERE level_filter = 'all' OR level_filter = ? 
+      SELECT * FROM messages
+      WHERE level_filter = 'all' OR level_filter = ?
       ORDER BY sent_at DESC LIMIT 1
     `).get(level.toString());
     res.json(message || null);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/inbox?level=2 — todos los mensajes para un nivel (público para clientes)
+router.get('/inbox', (req, res) => {
+  const level = req.query.level || '1';
+  try {
+    const { db } = require('../db/database');
+    const messages = db.prepare(`
+      SELECT subject, body, sent_at FROM messages
+      WHERE level_filter = 'all' OR level_filter = ?
+      ORDER BY sent_at DESC LIMIT 20
+    `).all(level.toString());
+    res.json(messages);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
