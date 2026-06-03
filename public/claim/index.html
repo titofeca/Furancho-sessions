@@ -1909,8 +1909,19 @@
         userVisitCount = data.visitCount || 0;
         userClaimedLevels = data.levels || [];
 
-        // Cliente que ya había visitado o tiene niveles → ir directo al perfil sin formulario
+          // Cliente recurrente → ir directo al perfil
+        // Si tiene ?level, aplicar el nivel primero vía API y luego mostrar perfil
         if (walletPreexistente || userClaimedLevels.length > 0 || userVisitCount > 0) {
+          const urlParams2 = new URLSearchParams(window.location.search);
+          if (urlParams2.has('level')) {
+            const lvlParam = parseInt(urlParams2.get('level'));
+            if ([1,2,3,4].includes(lvlParam)) {
+              await applyManualLevel(lvlParam);
+              const refreshed = await fetch(`/api/mint/history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => ({ visitCount: userVisitCount, levels: userClaimedLevels }));
+              showProfileScreen(refreshed.visitCount || userVisitCount, refreshed.levels || userClaimedLevels);
+              return;
+            }
+          }
           showProfileScreen(userVisitCount, userClaimedLevels);
           return;
         }
@@ -1921,6 +1932,30 @@
       } catch (e) {
         console.error('Error cargando historial de usuario:', e);
       }
+    }
+
+    async function applyManualLevel(level) {
+      try {
+        await fetch('/api/mint', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ walletAddress: userWalletAddress, level })
+        });
+      } catch (e) { /* silencioso */ }
+    }
+
+    function showProfileBanner(msg, color = 'green') {
+      const existing = document.getElementById('profile-toast');
+      if (existing) existing.remove();
+      const toast = document.createElement('div');
+      toast.id = 'profile-toast';
+      const bg = color === 'green' ? 'rgba(74,222,128,0.1)' : 'rgba(196,151,58,0.1)';
+      const border = color === 'green' ? 'rgba(74,222,128,0.3)' : 'rgba(196,151,58,0.3)';
+      const textColor = color === 'green' ? '#4ade80' : 'var(--gold)';
+      toast.style.cssText = `background:${bg}; border:1.5px solid ${border}; border-radius:16px; padding:14px 18px; margin-bottom:16px; font-size:14px; color:${textColor}; font-weight:600; text-align:center; line-height:1.5;`;
+      toast.innerHTML = msg;
+      const content = document.querySelector('#screen-profile .content');
+      if (content) content.insertBefore(toast, content.firstChild);
     }
 
     function showProgressBanner(text) {
@@ -2087,16 +2122,16 @@
         const data = await res.json();
 
         if (data.action === 'mint') {
-          // Subió de nivel → pantalla de éxito con la tarjeta nueva
-          document.getElementById('success-nft-name').textContent = data.levelName || '';
-          document.getElementById('card-level-tag').textContent = 'NIVEL ' + (data.level || '');
-          document.getElementById('success-date').textContent = new Date().toLocaleDateString('es-ES');
-          document.getElementById('success-wallet').textContent = userWalletAddress;
-          document.getElementById('private-key-display').dataset.key = userWalletPrivateKey || '-';
-          setTimeout(() => showScreen('screen-success'), 800);
+          // Subió de nivel → actualizar perfil con banner
+          const refreshed = await fetch(`/api/mint/history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => null);
+          if (refreshed) {
+            userVisitCount = refreshed.visitCount || 0;
+            userClaimedLevels = refreshed.levels || [];
+            showProfileScreen(userVisitCount, userClaimedLevels);
+          }
+          showProfileBanner(`🎉 ¡Subiste de nivel! Conseguiches o pase <strong>${data.levelName}</strong>`, 'gold');
         } else if (data.action === 'visit') {
-          // Visita registrada → confirmación sutil en el perfil
-          document.getElementById('profile-exit-confirm').style.display = 'block';
+          showProfileBanner('✓ Saída rexistrada. ¡Grazas por vir, ata pronto!', 'green');
         }
         // Si cooldown o error → nada visible, no interrumpir
       } catch (e) {
@@ -2235,37 +2270,24 @@
           localStorage.setItem('furancho_wallet_address', userWalletAddress);
         }
 
-        if (data.action === 'visit') {
-            document.getElementById('success-nft-name').textContent = 'Visita Registrada';
-            document.getElementById('success-date').textContent = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
-            document.querySelector('.success-sub').innerHTML = data.message;
-            document.getElementById('card-level-tag').textContent = `VISITA ${data.visitCount}`;
-            document.getElementById('success-wallet').textContent = `ID Usuario: ${userWalletAddress}`;
-            showScreen('screen-success');
-            return;
+        // Actualizar historial y mostrar perfil
+        const refreshed = await fetch(`/api/mint/history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => ({ visitCount: 0, levels: [] }));
+        userVisitCount = refreshed.visitCount || 0;
+        userClaimedLevels = refreshed.levels || [];
+
+        showProfileScreen(userVisitCount, userClaimedLevels);
+
+        // Banner según el resultado
+        if (data.action === 'mint') {
+          showProfileBanner(`🎉 ¡Felicidades! Conseguiches o pase <strong>${data.levelName}</strong>`, 'gold');
+        } else if (data.action === 'visit') {
+          showProfileBanner('✓ Saída rexistrada. ¡Grazas por vir, ata pronto!', 'green');
         }
-
-        // Si toca Mint:
-        document.getElementById('success-nft-name').textContent = data.levelName;
-        document.getElementById('card-level-tag').textContent = `NIVEL ${data.level}`;
-        document.getElementById('success-date').textContent = new Date().toLocaleDateString('es-ES', {
-          day: 'numeric', month: 'long', year: 'numeric'
-        });
-
-        const wallet = data.walletAddress || userWalletAddress;
-        document.getElementById('success-wallet').textContent = `ID Usuario: ${wallet}`;
-        document.getElementById('private-key-display').dataset.key = userWalletPrivateKey;
-
-        if (data.demo) {
-          document.getElementById('success-wallet').textContent += ' (Modo Demo)';
-        }
-
-        showScreen('screen-success');
 
       } catch (err) {
         showScreen('screen-claim');
         btn.disabled = false;
-        btn.textContent = '🍷 Obtener mi Pase Gratis';
+        btn.textContent = 'Entrar al Furancho →';
         errorDiv.textContent = err.message || 'Error de conexión. Inténtalo de nuevo.';
         errorDiv.classList.add('visible');
       }

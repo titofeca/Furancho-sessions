@@ -151,7 +151,7 @@
       font-family: 'Playfair Display', serif;
       font-size: 28px;
       font-weight: 900;
-      color: var(--cream);
+      color: var(--text);
       margin-bottom: 10px;
       letter-spacing: -0.3px;
     }
@@ -162,6 +162,24 @@
       line-height: 1.65;
       margin-bottom: 28px;
       font-weight: 300;
+    }
+
+    .btn-enter {
+      display: block;
+      width: 100%;
+      padding: 18px 24px;
+      background: linear-gradient(135deg, var(--wine) 0%, var(--wine-dark) 100%);
+      color: #fff;
+      font-family: 'Outfit', sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      text-align: center;
+      text-decoration: none;
+      border-radius: 50px;
+      box-shadow: 0 6px 24px rgba(139,25,24,0.35);
+      margin-top: 8px;
+      letter-spacing: 0.3px;
+      animation: popIn 0.5s cubic-bezier(0.17,0.67,0.35,1.3) 0.4s both;
     }
 
     /* ========== NFT CARD ========== */
@@ -383,6 +401,8 @@
       <p class="success-sub" id="msg-container">
         Disfruta de la experiencia. Recuerda fichar a la salida para ganar tus puntos.
       </p>
+
+      <a href="/claim" class="btn-enter">Acceder ao Furancho →</a>
 
       <div id="nft-container" style="display: none; width: 100%;" class="nft-card">
         <div class="nft-card-top">
