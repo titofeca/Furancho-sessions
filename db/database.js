@@ -420,8 +420,31 @@ function getSessionAnalytics() {
 }
 
 function getEligibleRaffleParticipants() {
-  // Option A: Active sessions (entry_time is not null, exit_time is null)
-  return db.prepare(`SELECT DISTINCT wallet_address FROM sessions WHERE exit_time IS NULL`).all().map(r => r.wallet_address);
+  // Elegibles: ficharon entrada HOY y aún no salieron (o salida fue automática a las 23:00)
+  // Si el sorteo es antes de las 23:00: sesión abierta HOY
+  // Si el sorteo es después de las 23:00: sesión abierta HOY (ya cerrada automáticamente)
+  const now = new Date();
+  const cutoff = now.getHours() < 23 ? `exit_time IS NULL` : `date(exit_time) = date('now')`;
+  return db.prepare(`
+    SELECT DISTINCT wallet_address FROM sessions
+    WHERE date(entry_time) = date('now') AND (${cutoff} OR exit_time IS NULL)
+  `).all().map(r => r.wallet_address);
+}
+
+function autoCloseSessionsAt23() {
+  // Cierra todas las sesiones abiertas del día actual a las 23:00
+  const result = db.prepare(`
+    UPDATE sessions
+    SET exit_time = datetime('now'), duration_minutes =
+      CASE WHEN (CAST((julianday('now') - julianday(entry_time)) * 1440 AS INTEGER)) > 720
+        THEN 240
+        ELSE CAST((julianday('now') - julianday(entry_time)) * 1440 AS INTEGER)
+      END,
+    counted_as_visit = 0
+    WHERE exit_time IS NULL AND date(entry_time) = date('now')
+  `).run();
+  console.log(`[Auto-checkout 23:00] Sesiones cerradas: ${result.changes}`);
+  return result.changes;
 }
 
 function insertRaffle(prize, winnerWallet, verificationCode) {
@@ -450,6 +473,7 @@ module.exports = {
   insertVisit,
   getVisitCount,
   getEligibleRaffleParticipants,
+  autoCloseSessionsAt23,
   insertRaffle,
   getSessionAnalytics,
   getEvents,

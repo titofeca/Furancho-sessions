@@ -50,6 +50,18 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Error interno del servidor' });
 });
 
+// Auto-checkout a las 23:00 — comprueba cada minuto si es hora de cerrar sesiones
+function scheduleAutoCheckout() {
+  setInterval(() => {
+    const now = new Date();
+    if (now.getHours() === 23 && now.getMinutes() === 0) {
+      const { autoCloseSessionsAt23 } = require('./db/database');
+      autoCloseSessionsAt23();
+    }
+  }, 60 * 1000); // cada minuto
+}
+scheduleAutoCheckout();
+
 // Iniciar servidor
 app.listen(PORT, () => {
   const { DEMO_MODE } = require('./services/crossmint');
