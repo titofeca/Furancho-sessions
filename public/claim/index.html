@@ -176,6 +176,11 @@
       50%       { opacity: 0.55; transform: scale(0.75); box-shadow: 0 0 2px var(--wine-light); }
     }
 
+    @keyframes goldPulse {
+      0%, 100% { box-shadow: 0 2px 12px rgba(196,151,58,0.4); }
+      50%       { box-shadow: 0 2px 20px rgba(196,151,58,0.7); }
+    }
+
     .nft-title {
       font-family: 'Playfair Display', serif;
       font-size: clamp(32px, 9vw, 42px);
@@ -1266,10 +1271,27 @@
       </div>
     </div>
 
-    <div class="content" style="margin-top: -6px;">
-      <div class="level-badge">
-        <span class="dot"></span>
-        <span id="level-label">Nivel 1</span>
+    <div class="content" style="margin-top: 16px;">
+
+      <!-- Sello bienvenida -->
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+        <div class="level-badge" style="margin-bottom: 0;">
+          <span class="dot"></span>
+          <span id="level-label">Nivel 1</span>
+        </div>
+        <div style="
+          background: linear-gradient(135deg, #C4973A, #E8B84B);
+          color: #fff;
+          font-family: 'Playfair Display', serif;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 1.5px;
+          text-transform: uppercase;
+          padding: 6px 14px;
+          border-radius: 100px;
+          box-shadow: 0 2px 12px rgba(196,151,58,0.4);
+          animation: goldPulse 2.5s ease-in-out infinite;
+        ">✦ Bienvenido ✦</div>
       </div>
 
       <h1 class="nft-title" id="nft-name">CAUTIVO</h1>
