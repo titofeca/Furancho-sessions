@@ -51,7 +51,8 @@ function showError(msg) {
 
 // ==================== SSE LIVE RAFFLES ====================
 function connectRaffle() {
-  const evtSource = new EventSource('/api/raffle/stream');
+  const wallet = localStorage.getItem('furancho_wallet_address') || '';
+  const evtSource = new EventSource(`/api/raffle/stream${wallet ? '?wallet=' + wallet : ''}`);
   evtSource.addEventListener('raffle_start', (e) => {
     const data = JSON.parse(e.data);
     document.getElementById('raffle-prize-text').textContent = 'Sorteando: ' + data.prize;

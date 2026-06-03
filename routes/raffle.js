@@ -15,22 +15,21 @@ function broadcast(event, data) {
   });
 }
 
-// GET /api/raffle/stream
-// Endpoint al que se conectan los móviles para recibir actualizaciones en vivo
+// GET /api/raffle/stream?wallet=0x...
 router.get('/stream', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
 
-  // Enviar un mensaje inicial para mantener la conexión
   res.write('data: {"connected": true}\n\n');
 
   const clientId = Date.now() + Math.random();
-  const newClient = { id: clientId, res };
+  const walletAddress = req.query.wallet || null;
+  const newClient = { id: clientId, res, walletAddress };
   clients.push(newClient);
 
   req.on('close', () => {
-    clients = clients.filter(client => client.id !== clientId);
+    clients = clients.filter(c => c.id !== clientId);
   });
 });
 
@@ -43,12 +42,18 @@ router.post('/start', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'Falta el nombre del premio' });
   }
 
-  const eligibleWallets = getEligibleRaffleParticipants();
+  // Usar clientes con app abierta (SSE) + sesiones abiertas como fallback
+  const connectedWallets = [...new Set(
+    clients.filter(c => c.walletAddress).map(c => c.walletAddress)
+  )];
+  const sessionWallets = getEligibleRaffleParticipants();
+  const allWallets = [...new Set([...connectedWallets, ...sessionWallets])];
+  const eligibleWallets = allWallets.length > 0 ? allWallets : connectedWallets;
+
   if (eligibleWallets.length === 0) {
-    return res.status(400).json({ error: 'No hay clientes conectados (sin fichar salida) en este momento.' });
+    return res.status(400).json({ error: 'No hay clientes con la app abierta en este momento.' });
   }
 
-  // Elegir ganador al azar
   const winnerIndex = Math.floor(Math.random() * eligibleWallets.length);
   const winnerWallet = eligibleWallets[winnerIndex];
   
@@ -77,6 +82,7 @@ router.post('/start', requireAuth, (req, res) => {
     success: true,
     message: 'Sorteo iniciado',
     participants: eligibleWallets.length,
+    connected: connectedWallets.length,
     verificationCode,
     winnerWallet
   });
