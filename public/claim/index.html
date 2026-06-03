@@ -1443,15 +1443,52 @@
         👁️ Mostrar mi Tarjeta VIP
       </button>
 
-      <!-- Guardar en pantalla de inicio -->
-      <div id="pwa-install-banner" style="display: none;" class="pwa-banner" onclick="installPWA()">
-        📱 <strong>Añadir a pantalla de inicio:</strong><br>
-        Pulsa aquí para instalar Furancho Sessions como una App en tu móvil.
+      <!-- Instalar App — Android -->
+      <div id="pwa-install-banner" style="display: none;">
+        <button onclick="installPWA()" style="
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          padding: 16px 20px;
+          border-radius: 16px;
+          border: 1.5px solid rgba(139,25,24,0.25);
+          background: linear-gradient(135deg, rgba(139,25,24,0.06), rgba(196,151,58,0.06));
+          color: var(--text);
+          font-family: 'Outfit', sans-serif;
+          font-size: 15px;
+          font-weight: 600;
+          cursor: pointer;
+          margin-bottom: 12px;
+        ">
+          <span style="font-size:22px;">📲</span>
+          <div style="text-align:left;">
+            <div>Guardar en mi móvil</div>
+            <div style="font-size:12px; font-weight:400; color:var(--text-muted);">Acceso directo desde tu pantalla de inicio</div>
+          </div>
+        </button>
       </div>
 
-      <div id="pwa-ios-banner" class="pwa-banner">
-        📱 <strong>Guarda esta tarjeta en tu móvil:</strong><br>
-        Pulsa el botón de <strong>Compartir</strong> en tu navegador y selecciona <strong>"Añadir a la pantalla de inicio"</strong>.
+      <!-- Instalar App — iOS -->
+      <div id="pwa-ios-banner" style="display: none;">
+        <div style="
+          width: 100%;
+          border-radius: 16px;
+          border: 1.5px solid rgba(139,25,24,0.2);
+          background: linear-gradient(135deg, rgba(139,25,24,0.05), rgba(196,151,58,0.05));
+          padding: 16px 18px;
+          margin-bottom: 12px;
+        ">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+            <span style="font-size:22px;">📲</span>
+            <div style="font-size:15px; font-weight:600; color:var(--text);">Guardar en mi móvil</div>
+          </div>
+          <div style="font-size:13px; color:var(--text-muted); line-height:1.7;">
+            1. Pulsa el botón <strong style="color:var(--text);">Compartir</strong> <span style="font-size:15px;">⬆️</span> de tu navegador<br>
+            2. Selecciona <strong style="color:var(--text);">"Añadir a la pantalla de inicio"</strong>
+          </div>
+        </div>
       </div>
     </div>
   </div>
