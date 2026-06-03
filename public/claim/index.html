@@ -1036,6 +1036,60 @@
       letter-spacing: 0.5px;
     }
 
+    /* ========== LEVEL CARDS ========== */
+    .level-card {
+      background: rgba(42,21,9,0.04);
+      border: 1px solid rgba(42,21,9,0.08);
+      border-radius: 16px;
+      overflow: hidden;
+      position: relative;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .level-card.unlocked {
+      border-color: rgba(196,151,58,0.35);
+      box-shadow: 0 4px 16px rgba(196,151,58,0.12);
+    }
+    .level-card-img {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      display: block;
+      filter: grayscale(80%) brightness(0.7);
+      transition: filter 0.6s;
+    }
+    .level-card.unlocked .level-card-img {
+      filter: grayscale(0%) brightness(1);
+    }
+    .level-card-body {
+      padding: 10px 10px 8px;
+    }
+    .level-card-tag {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+    .level-card.unlocked .level-card-tag { color: var(--gold); }
+    .level-card-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 13px;
+      font-weight: 900;
+      color: var(--text);
+      line-height: 1.2;
+      margin: 2px 0 2px;
+    }
+    .level-card-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+    .level-card-lock {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      font-size: 16px;
+    }
+
     /* ========== RAFFLE SECTION ========== */
     .raffle-section {
       background: linear-gradient(135deg, rgba(139,25,24,0.06) 0%, rgba(196,151,58,0.06) 100%);
@@ -1390,46 +1444,93 @@
       <h1 class="nft-title" id="profile-nft-name">CAUTIVO</h1>
       <p class="nft-event">Furancho Sessions · Afterwork Viño e Tapas</p>
 
-      <!-- Progresión -->
-      <div class="profile-progress-card">
-        <p class="profile-visits-label" style="margin-bottom:10px;">Tu progreso</p>
-        <div class="profile-progress-bar-bg">
+      <!-- Banner beta -->
+      <div style="background: rgba(139,25,24,0.07); border: 1px solid rgba(139,25,24,0.15); border-radius: 12px; padding: 10px 14px; margin-bottom: 18px; display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 16px;">🧪</span>
+        <p style="font-size: 12px; color: var(--text-muted); line-height: 1.4;">App en fase de pruebas — gracias por ser de los primeros en Furancho Sessions.</p>
+      </div>
+
+      <!-- Copa de progreso -->
+      <div class="profile-progress-card" style="text-align: center;">
+        <p class="profile-visits-label" style="margin-bottom: 16px; font-size: 13px; letter-spacing: 1px; text-transform: uppercase;">Tu progreso</p>
+
+        <!-- Copa animada -->
+        <div style="position: relative; display: inline-flex; flex-direction: column; align-items: center; margin-bottom: 12px;">
+          <div id="cup-wrap" style="position: relative; width: 90px; height: 90px; transition: transform 0.6s cubic-bezier(0.34,1.56,0.64,1);">
+            <img src="/assets/logo.png" alt="Copa" id="cup-img"
+              style="width: 100%; height: 100%; object-fit: contain; border-radius: 12px; filter: grayscale(40%); transition: filter 0.8s, transform 0.8s;" />
+            <!-- Relleno de vino (clip overlay) -->
+            <div id="cup-fill" style="
+              position: absolute; bottom: 0; left: 0; right: 0;
+              background: linear-gradient(to top, rgba(139,25,24,0.35), transparent);
+              border-radius: 0 0 12px 12px;
+              height: 0%; transition: height 1.2s cubic-bezier(0.22,1,0.36,1);
+            "></div>
+          </div>
+          <div id="cup-pct" style="margin-top: 10px; font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 900; color: var(--wine); line-height: 1;">0%</div>
+          <p id="profile-progress-hint" style="font-size: 12px; color: var(--text-muted); margin-top: 4px;"></p>
+        </div>
+
+        <!-- Barra -->
+        <div class="profile-progress-bar-bg" style="margin: 12px 0 0;">
           <div class="profile-progress-bar-fill" id="profile-progress-fill"></div>
         </div>
-        <p class="profile-progress-hint" id="profile-progress-hint"></p>
+      </div>
 
-        <!-- Hitos -->
-        <div class="profile-milestones">
-          <div class="milestone" id="ms-1">
-            <div class="milestone-dot"></div>
-            <span class="milestone-label">Cautivo</span>
+      <!-- Todos los niveles -->
+      <div style="margin-bottom: 20px;">
+        <p class="profile-visits-label" style="font-size: 12px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px;">Los 4 niveles</p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="level-card" id="lcard-1">
+            <img src="/assets/nft_nivel1_cautivo.jpg" class="level-card-img" />
+            <div class="level-card-body">
+              <span class="level-card-tag">NIVEL 1</span>
+              <p class="level-card-name">CAUTIVO</p>
+              <p class="level-card-sub">Desde 1ª visita</p>
+            </div>
+            <div class="level-card-lock" id="lock-1">🔓</div>
           </div>
-          <div class="milestone" id="ms-2">
-            <div class="milestone-dot"></div>
-            <span class="milestone-label">Cunqueiro</span>
+          <div class="level-card" id="lcard-2">
+            <img src="/assets/nft_nivel2_cunqueiro.jpg" class="level-card-img" />
+            <div class="level-card-body">
+              <span class="level-card-tag">NIVEL 2</span>
+              <p class="level-card-name">CUNQUEIRO</p>
+              <p class="level-card-sub">Desde 2ª visita</p>
+            </div>
+            <div class="level-card-lock" id="lock-2">🔒</div>
           </div>
-          <div class="milestone" id="ms-3">
-            <div class="milestone-dot"></div>
-            <span class="milestone-label">Larpeiro</span>
+          <div class="level-card" id="lcard-3">
+            <img src="/assets/nft_nivel3_larpeiro.jpg" class="level-card-img" />
+            <div class="level-card-body">
+              <span class="level-card-tag">NIVEL 3</span>
+              <p class="level-card-name">LARPEIRO</p>
+              <p class="level-card-sub">4 visitas · NFT 🏅</p>
+            </div>
+            <div class="level-card-lock" id="lock-3">🔒</div>
           </div>
-          <div class="milestone" id="ms-4">
-            <div class="milestone-dot"></div>
-            <span class="milestone-label">Presidente</span>
+          <div class="level-card" id="lcard-4">
+            <img src="/assets/nft_nivel4_presidente.jpg" class="level-card-img" />
+            <div class="level-card-body">
+              <span class="level-card-tag">NIVEL 4</span>
+              <p class="level-card-name">PRESIDENTE</p>
+              <p class="level-card-sub">12 visitas · NFT 👑</p>
+            </div>
+            <div class="level-card-lock" id="lock-4">🔒</div>
           </div>
         </div>
       </div>
 
       <!-- Sección Sorteo -->
-      <div class="raffle-section" id="raffle-section">
+      <div class="raffle-section" id="raffle-section" style="margin-bottom: 20px;">
         <div class="raffle-section-header">
           <span class="raffle-section-icon">🎰</span>
-          <div>
-            <p class="raffle-section-title">Sorteos en Directo</p>
+          <div style="flex: 1;">
+            <p class="raffle-section-title">Zona de Juegos</p>
             <p class="raffle-section-sub" id="raffle-status-text">Esperando próximo sorteo...</p>
           </div>
           <div class="raffle-live-dot" id="raffle-live-dot"></div>
         </div>
-        <p class="raffle-section-hint">Cuando el Furancho lance un sorteo, lo verás aquí en tiempo real. ¡Mantén esta pantalla abierta!</p>
+        <p class="raffle-section-hint">Cuando el Furancho lance un sorteo, tu pantalla se activará en directo. ¡Mantén la app abierta para participar!</p>
       </div>
 
       <!-- Tarjeta ID -->
@@ -1741,20 +1842,25 @@
       3: '/assets/nft_nivel3_larpeiro.jpg',
       4: '/assets/nft_nivel4_presidente.jpg'
     };
-    const LEVEL_MILESTONES = [1, 2, 5, 10];
+    const LEVEL_MILESTONES = [0, 4, 12]; // visitas para nivel 3 y 4
 
     function getCurrentLevelFromVisits(visits) {
-      if (visits >= 10) return 4;
-      if (visits >= 5)  return 3;
-      if (visits >= 2)  return 2;
+      if (visits >= 12) return 4;
+      if (visits >= 4)  return 3;
+      if (visits >= 1)  return 2;
       return 1;
     }
 
     function getNextMilestone(visits) {
-      for (const m of LEVEL_MILESTONES) {
-        if (visits < m) return m;
-      }
+      if (visits < 4)  return 4;
+      if (visits < 12) return 12;
       return null;
+    }
+
+    function getProgressPct(visits) {
+      if (visits < 4)  return Math.min(100, (visits / 4) * 100);
+      if (visits < 12) return Math.min(100, ((visits - 4) / 8) * 100);
+      return 100;
     }
 
     function showProfileScreen(visitCount, claimedLevels) {
@@ -1769,30 +1875,43 @@
       document.getElementById('profile-card-level-tag').textContent = 'NIVEL ' + lvl;
       document.getElementById('profile-card-name').textContent = levelName;
 
-      // Visitas (elemento eliminado del HTML — solo actualizar barra)
+      // Barra y copa de progreso
+      const pct = getProgressPct(visitCount);
+      const nextMilestone = getNextMilestone(visitCount);
 
-      // Barra de progreso
-      const prevMilestone = LEVEL_MILESTONES[lvl - 1] || 1;
-      const pct = nextMilestone
-        ? Math.min(100, ((visitCount - prevMilestone) / (nextMilestone - prevMilestone)) * 100)
-        : 100;
       setTimeout(() => {
         document.getElementById('profile-progress-fill').style.width = pct + '%';
+        // Copa animada
+        document.getElementById('cup-fill').style.height = pct + '%';
+        document.getElementById('cup-pct').textContent = Math.round(pct) + '%';
+        const cupImg = document.getElementById('cup-img');
+        if (pct >= 100) {
+          cupImg.style.filter = 'grayscale(0%) brightness(1.1)';
+          document.getElementById('cup-wrap').style.transform = 'scale(1.12)';
+        } else if (pct >= 50) {
+          cupImg.style.filter = 'grayscale(20%) brightness(1)';
+        }
       }, 400);
 
       // Hint de progresión
       const hint = document.getElementById('profile-progress-hint');
       if (nextMilestone) {
         const remaining = nextMilestone - visitCount;
-        hint.textContent = `Te faltan ${remaining} visita${remaining !== 1 ? 's' : ''} para el siguiente nivel`;
+        hint.textContent = `${remaining} visita${remaining !== 1 ? 's' : ''} para el siguiente NFT`;
       } else {
-        hint.textContent = '🏆 ¡Nivel máximo alcanzado! Eres O Presidente do Furancho';
+        hint.textContent = '👑 ¡Eres O Presidente do Furancho!';
       }
 
-      // Hitos
-      LEVEL_MILESTONES.forEach((m, i) => {
-        const el = document.getElementById('ms-' + (i + 1));
-        if (el) el.classList.toggle('reached', visitCount >= m);
+      // Tarjetas de nivel — desbloquear según visitas
+      [1,2,3,4].forEach(n => {
+        const card = document.getElementById('lcard-' + n);
+        const lock = document.getElementById('lock-' + n);
+        const unlocked = (n === 1 && visitCount >= 1)
+          || (n === 2 && visitCount >= 2)
+          || (n === 3 && visitCount >= 4)
+          || (n === 4 && visitCount >= 12);
+        if (card) card.classList.toggle('unlocked', unlocked);
+        if (lock) lock.textContent = unlocked ? '🔓' : '🔒';
       });
 
       // Wallet

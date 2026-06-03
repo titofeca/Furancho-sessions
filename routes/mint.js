@@ -30,44 +30,17 @@ router.post('/entry', mintLimiter, async (req, res) => {
   if (!walletAddress) return res.status(400).json({ error: 'Falta walletAddress' });
 
   try {
-    const { getVisitCount, openSession, insertMint, updateMintStatus } = require('../db/database');
-    const { mintNFT, DEMO_MODE } = require('../services/polygon');
-    
+    const { getVisitCount, openSession } = require('../db/database');
     const visitCount = getVisitCount(walletAddress);
-    
-    // Si es nuevo cliente (0 visitas), le regalamos el NFT 1 a la entrada
-    if (visitCount === 0) {
-      openSession(walletAddress); // Abre su sesión
-      
-      const levelName = LEVEL_NAMES[1];
-      const mintId = insertMint({
-        email, level: 1, levelName, walletAddress, status: 'pending', ipAddress: req.ip
-      });
-      
-      // Mintear
-      const result = await mintNFT({ email, walletAddress, level: 1, levelName });
-      updateMintStatus(mintId, 'success', result.walletAddress);
-      
-      return res.json({
-        success: true,
-        action: 'mint',
-        isNew: true,
-        levelName,
-        level: 1,
-        walletAddress: result.walletAddress,
-        demo: DEMO_MODE,
-        message: '¡Pase de Bienvenida Entregado! Recuerda fichar a la salida.'
-      });
-    } else {
-      // Cliente recurrente, solo abrimos sesión
-      openSession(walletAddress);
-      return res.json({
-        success: true,
-        action: 'entry',
-        isNew: false,
-        message: 'Benvido a Furancho Sessions, Disfruta! Recuerda fichar a la salida.'
-      });
-    }
+    openSession(walletAddress);
+    return res.json({
+      success: true,
+      action: 'entry',
+      isNew: visitCount === 0,
+      message: visitCount === 0
+        ? '¡Benvido a Furancho Sessions! Recuerda fichar a la salida.'
+        : 'Benvido de volta! Recuerda fichar a la salida.'
+    });
   } catch (error) {
     console.error('Error en /entry:', error.message);
     res.status(500).json({ error: 'Error procesando entrada' });
@@ -146,10 +119,8 @@ router.post('/', mintLimiter, async (req, res) => {
         return res.status(409).json({ error: `Ya tienes el pase de ${LEVEL_NAMES[targetLevel]}.`, action: 'duplicate' });
       }
     } else {
-      if (visitCount === 1) targetLevel = 1;
-      else if (visitCount === 2) targetLevel = 2;
-      else if (visitCount === 5) targetLevel = 3;
-      else if (visitCount === 10) targetLevel = 4;
+      if (visitCount === 4)  targetLevel = 3;
+      else if (visitCount === 12) targetLevel = 4;
     }
 
     if (!targetLevel) {
