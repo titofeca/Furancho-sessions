@@ -1751,6 +1751,7 @@
     let userWalletAddress = localStorage.getItem('furancho_wallet_address');
     let userWalletPrivateKey = localStorage.getItem('furancho_wallet_private_key');
     let userClaimedLevels = [];
+    const walletPreexistente = !!userWalletAddress; // true si ya había visitado antes
 
     // Inicializar billetera anónima
     async function initWallet() {
@@ -1807,13 +1808,13 @@
         userVisitCount = data.visitCount || 0;
         userClaimedLevels = data.levels || [];
 
-        // Cliente recurrente → ir directo al perfil
-        if (userVisitCount > 0) {
+        // Cliente que ya había visitado → ir directo al perfil sin formulario
+        if (walletPreexistente) {
           showProfileScreen(userVisitCount, userClaimedLevels);
           return;
         }
 
-        // Primera vez → mostrar formulario de claim
+        // Primera vez absoluta → mostrar formulario de claim
         applyLevelTheme(1);
         document.getElementById('submit-btn').textContent = '🍷 Obtener mi Pase Gratis';
       } catch (e) {
