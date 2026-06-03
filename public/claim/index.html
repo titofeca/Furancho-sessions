@@ -1926,7 +1926,14 @@
 
       } catch (e) {
         console.error('Error cargando historial:', e);
-        if (hasLevel) { currentLevel = levelParam; applyLevelTheme(levelParam); }
+        // Si tiene wallet, mostrar perfil aunque falle el historial
+        if (walletPreexistente) {
+          if (hasLevel) await applyManualLevel(levelParam);
+          showProfileScreen(userVisitCount, userClaimedLevels);
+        } else if (hasLevel) {
+          currentLevel = levelParam;
+          applyLevelTheme(levelParam);
+        }
       }
     }
 
