@@ -1891,17 +1891,9 @@
     let userVisitCount = 0;
 
     async function checkUserHistoryAndAdjustLevel() {
-      // Si la URL tiene un nivel explícito, es un salto manual.
       const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.has('level')) {
-         const manualLvl = parseInt(urlParams.get('level'));
-         if ([1,2,3,4].includes(manualLvl)) {
-            currentLevel = manualLvl;
-            applyLevelTheme(manualLvl);
-            document.getElementById('submit-btn').textContent = '🍷 Obtener Pase Manual';
-            return; // Saltamos la lógica de visualización de visitas
-         }
-      }
+      const levelParam = parseInt(urlParams.get('level'));
+      const hasLevel = urlParams.has('level') && [1,2,3,4].includes(levelParam);
 
       try {
         const res = await fetch(`/api/mint/history?wallet=${userWalletAddress}`);
@@ -1909,28 +1901,32 @@
         userVisitCount = data.visitCount || 0;
         userClaimedLevels = data.levels || [];
 
-          // Cliente recurrente → ir directo al perfil
-        // Si tiene ?level, aplicar el nivel primero vía API y luego mostrar perfil
-        if (walletPreexistente || userClaimedLevels.length > 0 || userVisitCount > 0) {
-          const urlParams2 = new URLSearchParams(window.location.search);
-          if (urlParams2.has('level')) {
-            const lvlParam = parseInt(urlParams2.get('level'));
-            if ([1,2,3,4].includes(lvlParam)) {
-              await applyManualLevel(lvlParam);
-              const refreshed = await fetch(`/api/mint/history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => ({ visitCount: userVisitCount, levels: userClaimedLevels }));
-              showProfileScreen(refreshed.visitCount || userVisitCount, refreshed.levels || userClaimedLevels);
-              return;
-            }
+        // Cliente recurrente — siempre va al perfil directamente
+        if (walletPreexistente || userVisitCount > 0 || userClaimedLevels.length > 0) {
+          if (hasLevel) {
+            // Aplicar nivel y mostrar perfil
+            await applyManualLevel(levelParam);
+            const refreshed = await fetch(`/api/mint/history?wallet=${userWalletAddress}`)
+              .then(r => r.json()).catch(() => ({ visitCount: userVisitCount, levels: userClaimedLevels }));
+            userVisitCount = refreshed.visitCount || userVisitCount;
+            userClaimedLevels = refreshed.levels || userClaimedLevels;
           }
           showProfileScreen(userVisitCount, userClaimedLevels);
           return;
         }
 
-        // Primera vez absoluta → mostrar formulario de claim
-        applyLevelTheme(1);
-        document.getElementById('submit-btn').textContent = '🍷 Obtener mi Pase Gratis';
+        // Primera vez — mostrar formulario con el nivel correcto si hay ?level
+        if (hasLevel) {
+          currentLevel = levelParam;
+          applyLevelTheme(levelParam);
+        } else {
+          applyLevelTheme(1);
+        }
+        document.getElementById('submit-btn').textContent = 'Entrar al Furancho →';
+
       } catch (e) {
-        console.error('Error cargando historial de usuario:', e);
+        console.error('Error cargando historial:', e);
+        if (hasLevel) { currentLevel = levelParam; applyLevelTheme(levelParam); }
       }
     }
 
