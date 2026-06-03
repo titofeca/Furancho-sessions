@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Furancho Sessions - Propuesta de Valor</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 50px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #eaeaea;
+            padding-bottom: 30px;
+        }
+        .logo {
+            max-width: 250px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #1a1a2e;
+            font-size: 32px;
+            margin: 0;
+            font-weight: 700;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 18px;
+            margin-top: 10px;
+        }
+        h2 {
+            color: #d9385e;
+            font-size: 24px;
+            margin-top: 40px;
+            border-left: 5px solid #d9385e;
+            padding-left: 15px;
+        }
+        p, ul {
+            font-size: 16px;
+            color: #4a4a4a;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 12px;
+        }
+        strong {
+            color: #1a1a2e;
+        }
+        .privacy-box {
+            background-color: #f8fbff;
+            border: 1px solid #d1e4ff;
+            border-radius: 10px;
+            padding: 25px;
+            margin-top: 40px;
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+        }
+        .privacy-icon {
+            font-size: 32px;
+            line-height: 1;
+        }
+        .privacy-text h3 {
+            margin: 0 0 10px 0;
+            color: #0056b3;
+            font-size: 20px;
+        }
+        .privacy-text p {
+            margin: 0;
+            color: #333;
+        }
+        .gamification-box {
+            background-color: #fff9e6;
+            border-left: 5px solid #ffcc00;
+            padding: 20px;
+            margin-top: 30px;
+            border-radius: 0 10px 10px 0;
+        }
+        .gamification-box h3 {
+            margin-top: 0;
+            color: #b38f00;
+            font-size: 20px;
+        }
+        
+        /* Estilos para la cuadrícula de NFTs */
+        .nft-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            margin-top: 25px;
+        }
+        .nft-card {
+            background: #fff;
+            border: 1px solid #eaeaea;
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+        .nft-card:hover {
+            transform: translateY(-5px);
+            border-color: #d9385e;
+            box-shadow: 0 8px 20px rgba(217, 56, 94, 0.15);
+        }
+        .nft-image {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            object-fit: cover;
+            aspect-ratio: 1;
+            background-color: #f4f6f9;
+        }
+        .nft-card h4 {
+            margin: 0;
+            color: #1a1a2e;
+            font-size: 18px;
+        }
+        .nft-card p {
+            margin: 5px 0 0 0;
+            font-size: 14px;
+            color: #888;
+        }
+
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            font-size: 14px;
+            color: #999;
+            border-top: 1px solid #eaeaea;
+            padding-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <!-- Cargando el logo real desde la carpeta assets -->
+        <img src="assets/logo.png" alt="Furancho Sessions Logo" class="logo" onerror="this.src='https://via.placeholder.com/300x100.png?text=LOGO+EVENTO'">
+        <h1>Furancho Sessions</h1>
+        <div class="subtitle">La nueva era de la interacción en eventos sin fricción</div>
+    </div>
+
+    <p><strong>Furancho Sessions</strong> es una plataforma tecnológica diseñada para revolucionar la experiencia en eventos físicos mediante la entrega de beneficios y coleccionables digitales (NFTs). Nuestro enfoque principal es ofrecer una <strong>interacción inmediata y anónima</strong>, demostrando el verdadero poder y privacidad de la tecnología Web3.</p>
+
+    <h2>⚙️ ¿Cómo funciona? Interacción en Segundos</h2>
+    <p>El sistema está diseñado bajo la premisa absoluta de "Fricción Cero" y anonimato.</p>
+    <ul>
+        <li><strong>Escaneo e Inmersión:</strong> Los asistentes escanean un código QR y entran instantáneamente a la web app.</li>
+        <li><strong>Cero Datos Requeridos:</strong> No pedimos nombres, ni números, ni contraseñas. El usuario ya está jugando e interactuando desde el segundo uno. <em>(Proporcionar un email es solo una opción extra, completamente voluntaria).</em></li>
+        <li><strong>Entrega de Beneficios:</strong> El sistema genera automáticamente una credencial digital (NFT) única que reconoce al usuario como asistente al evento.</li>
+    </ul>
+
+    <h2>🛡️ 100% Privacidad: El Poder de la Blockchain</h2>
+    <div class="privacy-box">
+        <div class="privacy-icon">👁️‍🗨️</div>
+        <div class="privacy-text">
+            <h3>Novedad Absoluta: Jugar sin dar tus datos</h3>
+            <p>La verdadera revolución de esta plataforma es que el usuario puede disfrutar de la experiencia completa, recibir notificaciones en la web app y adquirir beneficios como socio preferencial <strong>sin revelar quién es</strong>. Gracias a la tecnología blockchain, la identidad del usuario es su propio dispositivo y su activo digital, no un registro en una base de datos. Esto elimina barreras de desconfianza y fricciones legales (RGPD).</p>
+        </div>
+    </div>
+
+    <h2>🏆 Coleccionables: Niveles de Exclusividad</h2>
+    <p>El sistema cuenta con una progresión de niveles para gamificar la experiencia. Cuanto más participe el usuario, más exclusivo y valioso será su NFT dentro del ecosistema del evento:</p>
+    
+    <div class="nft-grid">
+        <div class="nft-card">
+            <img src="assets/nft_nivel1_cautivo.jpg" alt="Nivel 1 - Cautivo" class="nft-image" onerror="this.src='https://via.placeholder.com/180x180.png?text=Nivel+1'">
+            <h4>Nivel 1</h4>
+            <p>Cautivo</p>
+        </div>
+        <div class="nft-card">
+            <img src="assets/nft_nivel2_cunqueiro.jpg" alt="Nivel 2 - O Cunqueiro" class="nft-image" onerror="this.src='https://via.placeholder.com/180x180.png?text=Nivel+2'">
+            <h4>Nivel 2</h4>
+            <p>O Cunqueiro</p>
+        </div>
+        <div class="nft-card">
+            <img src="assets/nft_nivel3_larpeiro.jpg" alt="Nivel 3 - O Larpeiro" class="nft-image" onerror="this.src='https://via.placeholder.com/180x180.png?text=Nivel+3'">
+            <h4>Nivel 3</h4>
+            <p>O Larpeiro</p>
+        </div>
+        <div class="nft-card">
+            <img src="assets/nft_nivel4_presidente.jpg" alt="Nivel 4 - O Presidente" class="nft-image" onerror="this.src='https://via.placeholder.com/180x180.png?text=Nivel+4'">
+            <h4>Nivel 4</h4>
+            <p>O Presidente (VIP)</p>
+        </div>
+    </div>
+
+    <h2>🎮 Gamificación: Sorteos y Evolución en Directo</h2>
+    <div class="gamification-box">
+        <h3>Evoluciona tu NFT y gana premios en tiempo real</h3>
+        <p>Una vez que el usuario tiene su credencial digital, la web app se convierte en un juego interactivo durante el evento:</p>
+        <ul>
+            <li><strong>Subida de Niveles (Evolución):</strong> La experiencia no termina en el primer escaneo. Si el asistente participa en diferentes barras, descubre zonas secretas del evento, o asiste a eventos futuros, su NFT "sube de nivel" (Ej: de Cautivo a VIP O Presidente). A mayor nivel, mejores ventajas dentro y fuera del evento.</li>
+            <li><strong>Sorteos Anónimos en Tiempo Real:</strong> Como cada NFT es único, funciona como un "boleto" para sorteos. Desde la administración, puedes lanzar un sorteo en directo para todos los que estén en la app. Al ganador le saltará una notificación al instante en su pantalla, pudiendo reclamar su premio enseñando su dispositivo, ¡todo sin que el sistema necesite saber su nombre!</li>
+        </ul>
+    </div>
+
+    <h2>📊 ¿Qué te aporta como Organizador o Marca?</h2>
+    <ul>
+        <li><strong>Máxima Adopción:</strong> Al no pedir datos, la tasa de participación se dispara. Consigues que prácticamente todos los asistentes interactúen con tu marca de forma divertida.</li>
+        <li><strong>Canal de Comunicación Directo y Retención:</strong> Puedes lanzar notificaciones y ventajas a la web app de tus usuarios premiando su asistencia, animando zonas apagadas del evento con sorteos "flash" o incentivando el consumo en barras.</li>
+        <li><strong>Comunidad Transversal:</strong> Crea un grupo de usuarios leales (socios preferenciales) que querrán seguir "leveando" (subiendo de nivel) su credencial en otros eventos futuros que organices, creando un ecosistema interconectado y fidelizado.</li>
+        <li><strong>Posicionamiento Innovador:</strong> Ofreces una experiencia que está años por delante de la competencia, combinando la gamificación de videojuegos y la seguridad de blockchain, con la inmediatez de una web moderna.</li>
+    </ul>
+
+    <div class="footer">
+        Presentación Comercial - Furancho Sessions NFT Platform &copy; 2026
+    </div>
+</div>
+
+</body>
+</html>
