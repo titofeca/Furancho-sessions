@@ -82,16 +82,20 @@
     .nft-image-container {
       width: 100%;
       max-width: 420px;
-      height: 200px;
+      height: 180px;
       position: relative;
       overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--cream-dark);
     }
 
     .nft-image {
-      width: 100%;
       height: 100%;
-      object-fit: cover;
-      object-position: center 20%;
+      width: auto;
+      max-width: 100%;
+      object-fit: contain;
       display: block;
       transition: transform 6s ease;
     }
