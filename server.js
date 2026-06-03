@@ -18,6 +18,7 @@ app.use('/api/mint', require('./routes/mint'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/qr', qrRoutes);
 app.use('/api/raffle', raffleRoutes);
+app.use('/api/push', require('./routes/push'));
 
 // Rutas HTML explícitas — antes de express.static para evitar 301 con trailing slash
 app.get('/', (req, res) => res.redirect('/admin'));

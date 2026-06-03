@@ -28,6 +28,34 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+self.addEventListener('push', (event) => {
+  const data = event.data ? event.data.json() : {};
+  const title = data.title || 'Furancho Sessions';
+  const body  = data.body  || '¡Hay novedades en el Furancho!';
+  const url   = data.url   || '/claim';
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon:  '/assets/icon-192.png',
+      badge: '/assets/icon-192.png',
+      data:  { url },
+      vibrate: [200, 100, 200],
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/claim';
+  event.waitUntil(
+    clients.matchAll({ type: 'window' }).then(list => {
+      const existing = list.find(c => c.url.includes('/claim'));
+      if (existing) return existing.focus();
+      return clients.openWindow(url);
+    })
+  );
+});
+
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   // API calls: red primero, sin cache

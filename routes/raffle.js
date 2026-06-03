@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getEligibleRaffleParticipants, insertRaffle } = require('../db/database');
 const { requireAuth } = require('./admin');
+const { sendPushToAll } = require('../services/push');
 
 // Mantenemos las conexiones SSE de los clientes
 let clients = [];
@@ -63,6 +64,9 @@ router.post('/start', requireAuth, (req, res) => {
 
   // Informar a todos los móviles que EMPIEZA el sorteo (Ruleta de 30 segundos)
   broadcast('raffle_start', { duration: 30, prize });
+
+  // Push a móviles con pantalla apagada
+  sendPushToAll('🎰 ¡Sorteo en Furancho!', `Se está sorteando: ${prize} — ¡Abre la app ahora!`, { url: '/claim' });
 
   // Programar el anuncio del ganador para dentro de 30 segundos
   setTimeout(() => {

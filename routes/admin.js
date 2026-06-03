@@ -11,6 +11,7 @@ const {
   getMessages
 } = require('../db/database');
 const { DEMO_MODE } = require('../services/polygon');
+const { sendPushToAll } = require('../services/push');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'furancho2024';
 const TOKEN_SECRET = process.env.TOKEN_SECRET || crypto.randomBytes(32).toString('hex');
@@ -117,7 +118,10 @@ router.post('/send-message', requireAuth, async (req, res) => {
   });
 
   console.log(`[MESSAGE] Mensaje publicado. Destinatarios estimados: ${wallets.length}`);
-  
+
+  // Push a móviles con pantalla apagada
+  sendPushToAll(`📢 ${subject}`, body, { url: '/claim' });
+
   return res.json({
     success: true,
     recipientCount: wallets.length,

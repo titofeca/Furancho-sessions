@@ -67,6 +67,14 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_sessions_wallet ON sessions(wallet_address);
 
+  CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_address TEXT,
+    endpoint TEXT NOT NULL UNIQUE,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 // =====================
@@ -269,6 +277,22 @@ function closeSession(walletAddress) {
   }
 }
 
+function savePushSubscription(walletAddress, subscription) {
+  db.prepare(`
+    INSERT INTO push_subscriptions (wallet_address, endpoint, p256dh, auth)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(endpoint) DO UPDATE SET wallet_address=excluded.wallet_address
+  `).run(walletAddress || null, subscription.endpoint, subscription.keys.p256dh, subscription.keys.auth);
+}
+
+function getAllPushSubscriptions() {
+  return db.prepare(`SELECT * FROM push_subscriptions`).all();
+}
+
+function deletePushSubscription(endpoint) {
+  db.prepare(`DELETE FROM push_subscriptions WHERE endpoint = ?`).run(endpoint);
+}
+
 function getEligibleRaffleParticipants() {
   // Option A: Active sessions (entry_time is not null, exit_time is null)
   return db.prepare(`SELECT DISTINCT wallet_address FROM sessions WHERE exit_time IS NULL`).all().map(r => r.wallet_address);
@@ -300,5 +324,8 @@ module.exports = {
   insertVisit,
   getVisitCount,
   getEligibleRaffleParticipants,
-  insertRaffle
+  insertRaffle,
+  savePushSubscription,
+  getAllPushSubscriptions,
+  deletePushSubscription
 };
