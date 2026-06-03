@@ -1344,19 +1344,19 @@
             autocomplete="email"
           />
           <p class="form-hint">
-            Escríbelo solo si deseas recuperar tu pase si cambias de móvil o quieres recibir avisos de eventos.
+            Solo para avisarte de próximos eventos. Puedes darte de baja cuando quieras.
           </p>
 
           <div class="gdpr-row" id="gdpr-container">
             <input type="checkbox" id="gdpr-check" />
             <label for="gdpr-check" class="gdpr-label">
-              Acepto la política de protección de datos y recibir notificaciones de Furancho Sessions (Requerido si pones tu correo).
+              Acepto recibir avisos de eventos de Furancho Sessions por email (opcional).
             </label>
           </div>
         </div>
 
         <button type="submit" id="submit-btn" class="btn-primary btn-accent">
-          🍷 Obtener mi Pase Gratis
+          Entrar al Furancho →
         </button>
 
         <div id="error-msg" class="error-msg"></div>
@@ -1623,31 +1623,45 @@
         <p class="raffle-section-hint">Cuando el Furancho lance un sorteo, tu pantalla se activará en directo. ¡Mantén la app abierta para participar!</p>
       </div>
 
-      <!-- Tarjeta ID -->
-      <div class="wallet-card" style="margin-bottom: 20px;">
-        <div class="wallet-card-top">
-          <div class="wallet-card-brand">
-            <img src="/assets/logo.png" alt="Logo" />
-            <span class="wallet-card-brand-name">Furancho Sessions</span>
+      <!-- Instalar App en perfil — Android -->
+      <div id="pwa-install-banner-profile" style="display: none; margin-bottom: 12px;">
+        <button onclick="installPWA()" style="
+          width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
+          padding: 16px 20px; border-radius: 16px; border: 1.5px solid rgba(139,25,24,0.25);
+          background: linear-gradient(135deg, rgba(139,25,24,0.06), rgba(196,151,58,0.06));
+          color: var(--text); font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer;">
+          <span style="font-size:22px;">📲</span>
+          <div style="text-align:left;">
+            <div>Guardar en mi móvil</div>
+            <div style="font-size:12px; font-weight:400; color:var(--text-muted);">Acceso directo desde tu pantalla de inicio</div>
           </div>
-          <span class="wallet-card-level-tag" id="profile-card-level-tag">NIVEL 1</span>
+        </button>
+      </div>
+
+      <!-- Instalar App en perfil — iOS -->
+      <div id="pwa-ios-banner-profile" style="display: none; margin-bottom: 12px;">
+        <div style="border-radius:16px; border:1.5px solid rgba(139,25,24,0.2); background:linear-gradient(135deg,rgba(139,25,24,0.05),rgba(196,151,58,0.05)); padding:16px 18px;">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+            <span style="font-size:22px;">📲</span>
+            <div style="font-size:15px; font-weight:600; color:var(--text);">Guardar en mi móvil</div>
+          </div>
+          <div style="font-size:13px; color:var(--text-muted); line-height:1.7;">
+            1. Pulsa el botón <strong style="color:var(--text);">Compartir</strong> <span>⬆️</span> de tu navegador<br>
+            2. Selecciona <strong style="color:var(--text);">"Añadir a la pantalla de inicio"</strong>
+          </div>
         </div>
-        <p class="wallet-card-nft-name" id="profile-card-name">CAUTIVO</p>
-        <hr class="wallet-card-divider" />
-        <p class="wallet-card-id-label">Tu ID de Cliente</p>
-        <div class="wallet-card-id" id="profile-wallet-id">—</div>
+      </div>
+
+      <!-- Confirmación de salida -->
+      <div id="profile-exit-confirm" style="display: none; background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.25); border-radius: 16px; padding: 14px 18px; margin-bottom: 16px; text-align: center;">
+        <p style="font-size: 13px; color: #4ade80; font-weight: 600;">✓ Salida registrada</p>
+        <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Visita acumulada. ¡Hasta la próxima!</p>
       </div>
 
       <!-- Mensaje admin -->
       <div id="profile-admin-msg" style="display: none;" class="admin-msg-box">
         <p class="admin-msg-label">📢 Mensaje del Furancho</p>
         <p id="profile-admin-msg-body" class="admin-msg-body"></p>
-      </div>
-
-      <!-- Confirmación de salida (se muestra solo si se registró en esta visita) -->
-      <div id="profile-exit-confirm" style="display: none; background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.25); border-radius: 16px; padding: 14px 18px; margin-bottom: 16px; text-align: center;">
-        <p style="font-size: 13px; color: #4ade80; font-weight: 600;">✓ Salida registrada</p>
-        <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Visita acumulada. ¡Hasta la próxima!</p>
       </div>
 
       <button onclick="openVirtualCard()" class="btn-vip">
@@ -1719,6 +1733,8 @@
       deferredPrompt = e;
       document.getElementById('pwa-install-banner').style.display = 'block';
       document.getElementById('pwa-ios-banner').style.display = 'none';
+      document.getElementById('pwa-install-banner-profile').style.display = 'block';
+      document.getElementById('pwa-ios-banner-profile').style.display = 'none';
     });
 
     function installPWA() {
@@ -1741,10 +1757,11 @@
     const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
 
     if (isInStandaloneMode() || window.matchMedia('(display-mode: standalone)').matches) {
-      document.getElementById('pwa-install-banner').style.display = 'none';
-      document.getElementById('pwa-ios-banner').style.display = 'none';
+      ['pwa-install-banner','pwa-ios-banner','pwa-install-banner-profile','pwa-ios-banner-profile']
+        .forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; });
     } else if (isIos()) {
       document.getElementById('pwa-ios-banner').style.display = 'block';
+      document.getElementById('pwa-ios-banner-profile').style.display = 'block';
     }
 
     // Reloj Virtual Card
@@ -1871,8 +1888,8 @@
         userVisitCount = data.visitCount || 0;
         userClaimedLevels = data.levels || [];
 
-        // Cliente que ya había visitado → ir directo al perfil sin formulario
-        if (walletPreexistente) {
+        // Cliente que ya había visitado o tiene niveles → ir directo al perfil sin formulario
+        if (walletPreexistente || userClaimedLevels.length > 0 || userVisitCount > 0) {
           showProfileScreen(userVisitCount, userClaimedLevels);
           return;
         }
