@@ -1571,6 +1571,39 @@
         </div>
       </div>
 
+      <!-- Modal reserva VIP -->
+      <div id="vip-modal" style="display:none; position:fixed; inset:0; z-index:2000; background:rgba(242,237,227,0.97); backdrop-filter:blur(12px); flex-direction:column; align-items:center; justify-content:center; padding:32px 24px;">
+        <div style="width:100%; max-width:380px;">
+          <h2 style="font-family:'Playfair Display',serif; font-size:26px; font-weight:900; color:var(--wine); margin-bottom:6px;">Zona VIP</h2>
+          <p id="vip-modal-event" style="font-size:14px; color:var(--text-muted); margin-bottom:6px;"></p>
+          <p id="vip-capacity-text" style="font-size:13px; color:var(--text); margin-bottom:20px; font-weight:600;"></p>
+
+          <label style="font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); display:block; margin-bottom:6px;">Tu teléfono</label>
+          <input id="vip-phone" type="tel" inputmode="tel" placeholder="+34 600 000 000"
+            style="width:100%; padding:14px 16px; border-radius:12px; border:1.5px solid rgba(42,21,9,0.12); background:rgba(42,21,9,0.03); font-family:'Outfit',sans-serif; font-size:16px; color:var(--text); margin-bottom:16px; outline:none;" />
+
+          <label style="font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); display:block; margin-bottom:6px;">Número de personas (mín. 4, máx. 15)</label>
+          <div style="display:flex; gap:8px; margin-bottom:20px;">
+            <button onclick="setGroupSize(-1)" style="width:44px; height:44px; border-radius:50%; border:1.5px solid rgba(42,21,9,0.15); background:transparent; font-size:20px; cursor:pointer; color:var(--text);">−</button>
+            <div id="vip-group-display" style="flex:1; display:flex; align-items:center; justify-content:center; background:rgba(42,21,9,0.04); border-radius:12px; font-family:'Playfair Display',serif; font-size:28px; font-weight:900; color:var(--wine);">4</div>
+            <button onclick="setGroupSize(1)" style="width:44px; height:44px; border-radius:50%; border:1.5px solid rgba(42,21,9,0.15); background:transparent; font-size:20px; cursor:pointer; color:var(--text);">+</button>
+          </div>
+
+          <p style="font-size:11px; color:var(--text-muted); margin-bottom:16px; line-height:1.5;">
+            Al reservar aceptas que tu teléfono sea usado únicamente para confirmar esta reserva en Furancho Sessions.
+          </p>
+
+          <p id="vip-error" style="color:var(--wine); font-size:13px; margin-bottom:12px; display:none;"></p>
+
+          <button onclick="submitVip()" id="vip-submit-btn" style="width:100%; padding:16px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:16px; font-weight:700; cursor:pointer; margin-bottom:12px;">
+            Reservar Zona VIP
+          </button>
+          <button onclick="closeVipModal()" style="width:100%; padding:14px; background:transparent; border:1.5px solid rgba(42,21,9,0.12); border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; color:var(--text-muted); cursor:pointer;">
+            Cancelar
+          </button>
+        </div>
+      </div>
+
       <!-- Banner beta -->
       <div style="background: rgba(139,25,24,0.07); border: 1px solid rgba(139,25,24,0.15); border-radius: 12px; padding: 10px 14px; margin-bottom: 18px; display: flex; align-items: center; gap: 8px;">
         <span style="font-size: 16px;">🧪</span>
@@ -2320,16 +2353,68 @@
                 <p style="font-size:14px; font-weight:600; color:var(--text);">${ev.title}</p>
                 <p style="font-size:12px; color:var(--text-muted);">${ev.rsvp_count} persona${ev.rsvp_count!==1?'s':''} apuntada${ev.rsvp_count!==1?'s':''}</p>
               </div>
-              ${!isPast ? `<button onclick="toggleRsvpBtn(${ev.id}, this)" data-attending="${attending}" style="
-                padding:8px 14px; border-radius:50px; font-size:12px; font-weight:700; cursor:pointer;
-                border:1.5px solid ${attending?'var(--wine)':'rgba(42,21,9,0.15)'};
-                background:${attending?'var(--wine)':'transparent'};
-                color:${attending?'#fff':'var(--text-muted)'};
-                font-family:'Outfit',sans-serif;">${attending?'✓ Apuntado':'Me apunto'}</button>` : `<span style="font-size:11px;color:var(--text-muted);">Pasado</span>`}
+              ${!isPast ? `
+              <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+                <button onclick="toggleRsvpBtn(${ev.id}, this)" data-attending="${attending}" style="
+                  padding:7px 12px; border-radius:50px; font-size:11px; font-weight:700; cursor:pointer;
+                  border:1.5px solid ${attending?'var(--wine)':'rgba(42,21,9,0.15)'};
+                  background:${attending?'var(--wine)':'transparent'};
+                  color:${attending?'#fff':'var(--text-muted)'};
+                  font-family:'Outfit',sans-serif; white-space:nowrap;">${attending?'✓ Apuntado':'Me apunto'}</button>
+                <button onclick="openVipModal(${ev.id},'${ev.title} · ${d.getDate()} ${months[d.getMonth()]}',${15-ev.rsvp_count})" style="
+                  padding:7px 12px; border-radius:50px; font-size:11px; font-weight:700; cursor:pointer;
+                  border:1.5px solid rgba(196,151,58,0.35); background:transparent;
+                  color:var(--gold); font-family:'Outfit',sans-serif; white-space:nowrap;">⭐ VIP</button>
+              </div>` : `<span style="font-size:11px;color:var(--text-muted);">Pasado</span>`}
             </div>
           `;
         }).join('');
       } catch(e) {}
+    }
+
+    let vipEventId = null;
+    let vipGroupSize = 4;
+
+    async function openVipModal(eventId, eventTitle, remaining) {
+      vipEventId = eventId;
+      vipGroupSize = 4;
+      document.getElementById('vip-modal-event').textContent = eventTitle;
+      document.getElementById('vip-capacity-text').textContent = `${remaining} plazas VIP disponibles de 15`;
+      document.getElementById('vip-group-display').textContent = '4';
+      document.getElementById('vip-phone').value = '';
+      document.getElementById('vip-error').style.display = 'none';
+      document.getElementById('vip-modal').style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeVipModal() {
+      document.getElementById('vip-modal').style.display = 'none';
+      document.body.style.overflow = '';
+    }
+
+    function setGroupSize(delta) {
+      vipGroupSize = Math.max(4, Math.min(15, vipGroupSize + delta));
+      document.getElementById('vip-group-display').textContent = vipGroupSize;
+    }
+
+    async function submitVip() {
+      const phone = document.getElementById('vip-phone').value.trim();
+      const errEl = document.getElementById('vip-error');
+      const btn = document.getElementById('vip-submit-btn');
+      if (!phone) { errEl.textContent = 'Escribe tu teléfono'; errEl.style.display='block'; return; }
+      btn.disabled = true; btn.textContent = 'Reservando...';
+      try {
+        const res = await fetch('/api/events/vip', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventId: vipEventId, walletAddress: userWalletAddress, phone, groupSize: vipGroupSize })
+        });
+        const data = await res.json();
+        if (data.error) { errEl.textContent = data.error; errEl.style.display='block'; btn.disabled=false; btn.textContent='Reservar Zona VIP'; return; }
+        closeVipModal();
+        loadAgenda();
+        showProfileBanner(`✅ Reserva VIP confirmada para ${vipGroupSize} personas. Te avisaremos por teléfono.`, 'gold');
+      } catch(e) { errEl.textContent = 'Error de conexión'; errEl.style.display='block'; btn.disabled=false; btn.textContent='Reservar Zona VIP'; }
     }
 
     async function toggleRsvpBtn(eventId, btn) {

@@ -83,6 +83,18 @@ db.exec(`
     UNIQUE(event_id, wallet_address)
   );
 
+  CREATE TABLE IF NOT EXISTS vip_reservations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL,
+    wallet_address TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    group_size INTEGER NOT NULL CHECK(group_size >= 4 AND group_size <= 15),
+    status TEXT DEFAULT 'pending',
+    notes TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(event_id, wallet_address)
+  );
+
   CREATE TABLE IF NOT EXISTS push_subscriptions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     wallet_address TEXT,
@@ -340,6 +352,39 @@ function seedEvents() {
 }
 seedEvents();
 
+const VIP_MAX = 15;
+
+function getVipCapacity(eventId) {
+  const used = db.prepare(`
+    SELECT COALESCE(SUM(group_size),0) as total
+    FROM vip_reservations WHERE event_id=? AND status != 'cancelled'
+  `).get(eventId);
+  return { used: used.total, remaining: VIP_MAX - used.total, max: VIP_MAX };
+}
+
+function createVipReservation({ eventId, walletAddress, phone, groupSize }) {
+  const cap = getVipCapacity(eventId);
+  if (groupSize < 4) throw new Error('El mínimo es 4 personas.');
+  if (groupSize > cap.remaining) throw new Error(`Solo quedan ${cap.remaining} plazas VIP disponibles.`);
+  const existing = db.prepare(`SELECT id FROM vip_reservations WHERE event_id=? AND wallet_address=?`).get(eventId, walletAddress);
+  if (existing) throw new Error('Ya tienes una reserva para este evento.');
+  db.prepare(`INSERT INTO vip_reservations (event_id, wallet_address, phone, group_size) VALUES (?,?,?,?)`)
+    .run(eventId, walletAddress, phone, groupSize);
+  return getVipCapacity(eventId);
+}
+
+function getVipReservations(eventId) {
+  return db.prepare(`
+    SELECT id, substr(wallet_address,1,6)||'...'||substr(wallet_address,-4) as wallet_masked,
+           phone, group_size, status, created_at
+    FROM vip_reservations WHERE event_id=? ORDER BY created_at ASC
+  `).all(eventId);
+}
+
+function updateVipStatus(reservationId, status) {
+  db.prepare(`UPDATE vip_reservations SET status=? WHERE id=?`).run(status, reservationId);
+}
+
 function getSessionAnalytics() {
   const avgByLevel = db.prepare(`
     SELECT m.level, m.level_name,
@@ -405,6 +450,10 @@ module.exports = {
   getEvents,
   toggleRsvp,
   getRsvpStatus,
+  createVipReservation,
+  getVipReservations,
+  getVipCapacity,
+  updateVipStatus,
   savePushSubscription,
   getAllPushSubscriptions,
   deletePushSubscription
