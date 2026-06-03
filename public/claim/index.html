@@ -1540,30 +1540,47 @@
         <p style="font-size: 12px; color: var(--text-muted); line-height: 1.4;">App en fase de pruebas — gracias por ser de los primeros en Furancho Sessions.</p>
       </div>
 
-      <!-- Copa de progreso -->
-      <div class="profile-progress-card" style="text-align: center;">
-        <p class="profile-visits-label" style="margin-bottom: 16px; font-size: 13px; letter-spacing: 1px; text-transform: uppercase;">Tu progreso</p>
+      <!-- Progreso visual -->
+      <div class="profile-progress-card" style="padding: 22px;">
 
-        <!-- Copa animada -->
-        <div style="position: relative; display: inline-flex; flex-direction: column; align-items: center; margin-bottom: 12px;">
-          <div id="cup-wrap" style="position: relative; width: 90px; height: 90px; transition: transform 0.6s cubic-bezier(0.34,1.56,0.64,1);">
-            <img src="/assets/logo.png" alt="Copa" id="cup-img"
-              style="width: 100%; height: 100%; object-fit: contain; border-radius: 12px; filter: grayscale(40%); transition: filter 0.8s, transform 0.8s;" />
-            <!-- Relleno de vino (clip overlay) -->
-            <div id="cup-fill" style="
-              position: absolute; bottom: 0; left: 0; right: 0;
-              background: linear-gradient(to top, rgba(139,25,24,0.35), transparent);
-              border-radius: 0 0 12px 12px;
-              height: 0%; transition: height 1.2s cubic-bezier(0.22,1,0.36,1);
-            "></div>
+        <!-- Visitas + hint -->
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;">
+          <div>
+            <p style="font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">Tus visitas</p>
+            <div style="display:flex; align-items:baseline; gap:6px;">
+              <span id="visit-count-display" style="font-family:'Playfair Display',serif; font-size:48px; font-weight:900; color:var(--wine); line-height:1;">0</span>
+              <span id="visit-total-display" style="font-size:14px; color:var(--text-muted);">/ 12</span>
+            </div>
           </div>
-          <div id="cup-pct" style="margin-top: 10px; font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 900; color: var(--wine); line-height: 1;">0%</div>
-          <p id="profile-progress-hint" style="font-size: 12px; color: var(--text-muted); margin-top: 4px;"></p>
+          <div style="text-align:right;">
+            <p id="profile-progress-hint" style="font-size:13px; color:var(--text-muted); line-height:1.5; max-width:150px;"></p>
+          </div>
         </div>
 
-        <!-- Barra -->
-        <div class="profile-progress-bar-bg" style="margin: 12px 0 0;">
-          <div class="profile-progress-bar-fill" id="profile-progress-fill"></div>
+        <!-- Línea de progreso con hitos -->
+        <div style="position:relative; margin-bottom:8px;">
+          <!-- Track -->
+          <div style="height:8px; background:rgba(42,21,9,0.08); border-radius:100px; overflow:visible; position:relative;">
+            <div id="profile-progress-fill" style="height:100%; background:linear-gradient(90deg,var(--wine),var(--gold)); border-radius:100px; transition:width 1.2s cubic-bezier(0.22,1,0.36,1); width:0%; position:relative;">
+              <!-- Punto indicador -->
+              <div style="position:absolute; right:-6px; top:50%; transform:translateY(-50%); width:14px; height:14px; background:var(--gold); border-radius:50%; border:2px solid #fff; box-shadow:0 0 8px rgba(196,151,58,0.6);"></div>
+            </div>
+          </div>
+          <!-- Hito NFT nivel 3 (4 visitas = 33%) -->
+          <div style="position:absolute; left:33%; top:50%; transform:translate(-50%,-50%);">
+            <div id="milestone-3" style="width:20px; height:20px; border-radius:50%; background:#fff; border:2.5px solid rgba(42,21,9,0.15); display:flex; align-items:center; justify-content:center; font-size:10px; transition:all 0.4s;">🏅</div>
+          </div>
+          <!-- Hito NFT nivel 4 (12 visitas = 100%) -->
+          <div style="position:absolute; right:-4px; top:50%; transform:translateY(-50%);">
+            <div id="milestone-4" style="width:24px; height:24px; border-radius:50%; background:#fff; border:2.5px solid rgba(42,21,9,0.15); display:flex; align-items:center; justify-content:center; font-size:12px; transition:all 0.4s;">👑</div>
+          </div>
+        </div>
+
+        <!-- Etiquetas hitos -->
+        <div style="display:flex; justify-content:space-between; margin-top:10px; padding:0 2px;">
+          <span style="font-size:10px; color:var(--text-muted);">Inicio</span>
+          <span style="font-size:10px; color:var(--text-muted); margin-left:22%;">4 vis. · NFT</span>
+          <span style="font-size:10px; color:var(--text-muted);">12 vis. · NFT</span>
         </div>
       </div>
 
@@ -1576,16 +1593,16 @@
             <div class="level-card-body">
               <span class="level-card-tag">NIVEL 1</span>
               <p class="level-card-name">CAUTIVO</p>
-              <p class="level-card-sub">Desde 1ª visita</p>
+              <p class="level-card-sub">1ª visita</p>
             </div>
-            <div class="level-card-lock" id="lock-1">🔓</div>
+            <div class="level-card-lock" id="lock-1">🔒</div>
           </div>
           <div class="level-card" id="lcard-2">
             <img src="/assets/nft_nivel2_cunqueiro.jpg" class="level-card-img" />
             <div class="level-card-body">
               <span class="level-card-tag">NIVEL 2</span>
               <p class="level-card-name">CUNQUEIRO</p>
-              <p class="level-card-sub">Desde 2ª visita</p>
+              <p class="level-card-sub">2ª visita</p>
             </div>
             <div class="level-card-lock" id="lock-2">🔒</div>
           </div>
@@ -2049,30 +2066,34 @@
       document.getElementById('profile-card-level-tag').textContent = 'NIVEL ' + lvl;
       document.getElementById('profile-card-name').textContent = levelName;
 
-      // Barra y copa de progreso
+      // Contador de visitas y barra de progreso
       const pct = getProgressPct(visitCount);
+      document.getElementById('visit-count-display').textContent = visitCount;
+      document.getElementById('visit-total-display').textContent = visitCount >= 12 ? '✓ Máximo' : '/ 12';
 
       setTimeout(() => {
         document.getElementById('profile-progress-fill').style.width = pct + '%';
-        // Copa animada
-        document.getElementById('cup-fill').style.height = pct + '%';
-        document.getElementById('cup-pct').textContent = Math.round(pct) + '%';
-        const cupImg = document.getElementById('cup-img');
-        if (pct >= 100) {
-          cupImg.style.filter = 'grayscale(0%) brightness(1.1)';
-          document.getElementById('cup-wrap').style.transform = 'scale(1.12)';
-        } else if (pct >= 50) {
-          cupImg.style.filter = 'grayscale(20%) brightness(1)';
+        // Activar hitos según progreso
+        if (visitCount >= 4 || claimedLevels.includes(3) || claimedLevels.includes(4)) {
+          const m3 = document.getElementById('milestone-3');
+          if (m3) { m3.style.background = 'var(--gold)'; m3.style.borderColor = 'var(--gold)'; m3.style.boxShadow = '0 0 10px rgba(196,151,58,0.5)'; }
+        }
+        if (visitCount >= 12 || claimedLevels.includes(4)) {
+          const m4 = document.getElementById('milestone-4');
+          if (m4) { m4.style.background = 'var(--gold)'; m4.style.borderColor = 'var(--gold)'; m4.style.boxShadow = '0 0 12px rgba(196,151,58,0.6)'; }
         }
       }, 400);
 
-      // Hint de progresión
+      // Hint
       const hint = document.getElementById('profile-progress-hint');
-      if (nextMilestone) {
-        const remaining = nextMilestone - visitCount;
-        hint.textContent = `${remaining} visita${remaining !== 1 ? 's' : ''} para el siguiente NFT`;
-      } else {
-        hint.textContent = '👑 ¡Eres O Presidente do Furancho!';
+      if (hint) {
+        if (visitCount >= 12 || claimedLevels.includes(4)) {
+          hint.textContent = '👑 Nivel máximo alcanzado';
+        } else if (visitCount >= 4 || claimedLevels.includes(3)) {
+          hint.textContent = `${12 - visitCount} visitas para O Presidente`;
+        } else {
+          hint.textContent = `${4 - visitCount} visitas para tu primer NFT`;
+        }
       }
 
       // Tarjetas de nivel — desbloquear según visitas O nivel reclamado
@@ -2099,8 +2120,8 @@
       qrImg.style.display = 'block';
       qrLink.href = qrUrl;
 
-      // Tema de color
-      applyLevelTheme(lvl);
+      // No aplicar tema oscuro en el perfil — mantener fondo crema siempre
+      document.body.className = '';
 
       // Mensaje admin
       fetch(`/api/admin/current-message?level=${lvl}`)
