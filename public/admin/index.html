@@ -1095,6 +1095,29 @@
       </div>
     </div>
 
+    <!-- ==================== PÁGINA: EVENTOS ==================== -->
+    <div class="page" id="page-events" style="display:none;">
+
+      <!-- Analytics de sesiones -->
+      <div class="card" style="margin-bottom:20px;">
+        <h2 style="font-family:'Playfair Display',serif; font-size:18px; font-weight:700; color:var(--text); margin-bottom:16px;">📊 Analytics de Sesiones</h2>
+        <div id="analytics-content" style="color:var(--text-muted); font-size:13px;">Cargando...</div>
+      </div>
+
+      <!-- Asistencia por evento -->
+      <div class="card" style="margin-bottom:20px;">
+        <h2 style="font-family:'Playfair Display',serif; font-size:18px; font-weight:700; color:var(--text); margin-bottom:16px;">📅 Asistencias Confirmadas</h2>
+        <div id="rsvp-content" style="color:var(--text-muted); font-size:13px;">Cargando...</div>
+      </div>
+
+      <!-- Reservas VIP -->
+      <div class="card">
+        <h2 style="font-family:'Playfair Display',serif; font-size:18px; font-weight:700; color:var(--text); margin-bottom:16px;">⭐ Reservas Zona VIP</h2>
+        <div id="vip-content" style="color:var(--text-muted); font-size:13px;">Cargando...</div>
+      </div>
+
+    </div>
+
   </main>
 
   <!-- ==================== BOTTOM NAV ==================== -->
@@ -1118,6 +1141,10 @@
     <button class="nav-item" onclick="showPage('raffles')" id="nav-raffles">
       <span class="nav-icon">🎰</span>
       <span>Rifa</span>
+    </button>
+    <button class="nav-item" onclick="showPage('events')" id="nav-events">
+      <span class="nav-icon">📅</span>
+      <span>Eventos</span>
     </button>
   </nav>
 </div>
@@ -1184,6 +1211,7 @@
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.getElementById(`page-${pageId}`).classList.add('active');
     document.getElementById(`nav-${pageId}`).classList.add('active');
+    if (pageId === 'events') loadEventsPage();
   }
 
   // ==================== STATS ====================
@@ -1450,6 +1478,144 @@
       showToast('Error al lanzar sorteo', true);
     }
   }
+
+  // ==================== EVENTOS & VIP ====================
+  async function loadEventsPage() {
+    await Promise.all([loadAnalytics(), loadEventsData()]);
+  }
+
+  async function loadAnalytics() {
+    try {
+      const data = await fetch('/api/events/analytics', { headers: getHeaders() }).then(r => r.json());
+      const el = document.getElementById('analytics-content');
+
+      const avgGlobal = data.avgGlobal ? `${data.avgGlobal} min` : '—';
+      let html = `
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px;">
+          <div style="background:rgba(42,21,9,0.04); border-radius:12px; padding:14px; text-align:center;">
+            <p style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:4px;">En el local ahora</p>
+            <p style="font-size:32px; font-weight:900; font-family:'Playfair Display',serif; color:var(--wine);">${data.activeNow}</p>
+          </div>
+          <div style="background:rgba(42,21,9,0.04); border-radius:12px; padding:14px; text-align:center;">
+            <p style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:4px;">Estancia media</p>
+            <p style="font-size:32px; font-weight:900; font-family:'Playfair Display',serif; color:var(--gold);">${avgGlobal}</p>
+          </div>
+        </div>`;
+
+      if (data.avgByLevel?.length) {
+        html += `<p style="font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px;">Por nivel</p>
+        <table style="width:100%; font-size:13px; margin-bottom:20px;">
+          <thead><tr style="color:var(--text-muted);">
+            <th style="text-align:left; padding:6px 0;">Nivel</th>
+            <th style="text-align:right; padding:6px 0;">Clientes</th>
+            <th style="text-align:right; padding:6px 0;">Sesiones</th>
+            <th style="text-align:right; padding:6px 0;">Media</th>
+          </tr></thead><tbody>
+          ${data.avgByLevel.map(r => `<tr>
+            <td style="padding:6px 0;">${r.level_name}</td>
+            <td style="text-align:right; color:var(--text);">${r.unique_clients}</td>
+            <td style="text-align:right; color:var(--text);">${r.total_sessions}</td>
+            <td style="text-align:right; color:var(--gold); font-weight:600;">${r.avg_minutes} min</td>
+          </tr>`).join('')}
+          </tbody></table>`;
+      }
+
+      if (data.topClients?.length) {
+        html += `<p style="font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px;">Top clientes</p>
+        <table style="width:100%; font-size:13px;">
+          <thead><tr style="color:var(--text-muted);">
+            <th style="text-align:left; padding:6px 0;">ID</th>
+            <th style="text-align:right; padding:6px 0;">Visitas</th>
+            <th style="text-align:right; padding:6px 0;">Media</th>
+          </tr></thead><tbody>
+          ${data.topClients.map((c,i) => `<tr>
+            <td style="padding:6px 0; font-family:monospace; font-size:11px;">${i+1}. ${c.wallet_masked}</td>
+            <td style="text-align:right; color:var(--wine); font-weight:700;">${c.total_visits}</td>
+            <td style="text-align:right; color:var(--text-muted);">${c.avg_stay||'—'} min</td>
+          </tr>`).join('')}
+          </tbody></table>`;
+      }
+
+      el.innerHTML = html;
+    } catch(e) { document.getElementById('analytics-content').textContent = 'Error cargando analytics'; }
+  }
+
+  async function loadEventsData() {
+    try {
+      const events = await fetch('/api/events').then(r => r.json());
+      const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+
+      // RSVP section
+      const rsvpEl = document.getElementById('rsvp-content');
+      rsvpEl.innerHTML = events.map(ev => {
+        const d = new Date(ev.event_date + 'T00:00:00');
+        return `<div style="padding:10px 0; border-bottom:1px solid rgba(42,21,9,0.06);">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <p style="font-size:14px; font-weight:600; color:var(--text);">Jueves ${d.getDate()} ${months[d.getMonth()]}</p>
+            <span style="background:var(--wine); color:#fff; font-size:12px; font-weight:700; border-radius:100px; padding:3px 10px;">${ev.rsvp_count} confirmados</span>
+          </div>
+        </div>`;
+      }).join('') || '<p>No hay eventos.</p>';
+
+      // VIP section
+      const vipEl = document.getElementById('vip-content');
+      let vipHtml = '';
+      for (const ev of events) {
+        const d = new Date(ev.event_date + 'T00:00:00');
+        const res = await fetch(`/api/events/${ev.id}/vip/reservations`, { headers: getHeaders() }).then(r => r.json());
+        const { reservations, capacity } = res;
+        vipHtml += `
+          <div style="margin-bottom:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <p style="font-size:14px; font-weight:700; color:var(--text);">Jueves ${d.getDate()} ${months[d.getMonth()]}</p>
+              <span style="font-size:12px; color:var(--text-muted);">${capacity.used}/${capacity.max} plazas</span>
+            </div>`;
+        if (reservations.length === 0) {
+          vipHtml += `<p style="font-size:13px; color:var(--text-muted);">Sin reservas todavía.</p>`;
+        } else {
+          vipHtml += `<table style="width:100%; font-size:12px; border-collapse:collapse;">
+            <thead><tr style="color:var(--text-muted);">
+              <th style="text-align:left; padding:6px 4px;">ID</th>
+              <th style="text-align:left; padding:6px 4px;">Teléfono</th>
+              <th style="text-align:center; padding:6px 4px;">Pax</th>
+              <th style="text-align:center; padding:6px 4px;">Estado</th>
+              <th style="padding:6px 4px;"></th>
+            </tr></thead><tbody>
+            ${reservations.map(r => {
+              const statusColor = r.status==='confirmed'?'#4ade80':r.status==='cancelled'?'#f87171':'var(--gold)';
+              return `<tr style="border-top:1px solid rgba(42,21,9,0.05);">
+                <td style="padding:8px 4px; font-family:monospace; font-size:11px; color:var(--text-muted);">${r.wallet_masked}</td>
+                <td style="padding:8px 4px; font-weight:600; color:var(--text);">${r.phone}</td>
+                <td style="padding:8px 4px; text-align:center; font-weight:700; color:var(--wine);">${r.group_size}</td>
+                <td style="padding:8px 4px; text-align:center; font-size:11px; font-weight:700; color:${statusColor}; text-transform:uppercase;">${r.status}</td>
+                <td style="padding:8px 4px;">
+                  <div style="display:flex; gap:4px;">
+                    <button onclick="updateVip(${r.id},'confirmed')" style="padding:4px 8px; border-radius:6px; border:none; background:#4ade8022; color:#4ade80; font-size:10px; cursor:pointer; font-weight:700;">✓</button>
+                    <button onclick="updateVip(${r.id},'cancelled')" style="padding:4px 8px; border-radius:6px; border:none; background:#f8717122; color:#f87171; font-size:10px; cursor:pointer; font-weight:700;">✗</button>
+                  </div>
+                </td>
+              </tr>`;
+            }).join('')}
+            </tbody></table>`;
+        }
+        vipHtml += `</div>`;
+      }
+      vipEl.innerHTML = vipHtml || '<p>No hay eventos.</p>';
+    } catch(e) { document.getElementById('vip-content').textContent = 'Error cargando eventos'; }
+  }
+
+  async function updateVip(id, status) {
+    try {
+      await fetch(`/api/events/vip/${id}`, {
+        method: 'PATCH',
+        headers: { ...getHeaders() },
+        body: JSON.stringify({ status })
+      });
+      loadEventsData();
+      showToast(status === 'confirmed' ? '✓ Reserva confirmada' : '✗ Reserva cancelada', status === 'cancelled');
+    } catch(e) { showToast('Error', true); }
+  }
+
 </script>
 </body>
 </html>
