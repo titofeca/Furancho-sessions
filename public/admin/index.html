@@ -1486,7 +1486,7 @@
 
   async function loadAnalytics() {
     try {
-      const data = await fetch('/api/events/analytics', { headers: getHeaders() }).then(r => r.json());
+      const data = await fetch('/api/events/analytics', { headers: authHeaders() }).then(r => r.json());
       const el = document.getElementById('analytics-content');
 
       const avgGlobal = data.avgGlobal ? `${data.avgGlobal} min` : '—';
@@ -1562,7 +1562,7 @@
       let vipHtml = '';
       for (const ev of events) {
         const d = new Date(ev.event_date + 'T00:00:00');
-        const res = await fetch(`/api/events/${ev.id}/vip/reservations`, { headers: getHeaders() }).then(r => r.json());
+        const res = await fetch(`/api/events/${ev.id}/vip/reservations`, { headers: authHeaders() }).then(r => r.json());
         const { reservations, capacity } = res;
         vipHtml += `
           <div style="margin-bottom:20px;">
@@ -1608,7 +1608,7 @@
     try {
       await fetch(`/api/events/vip/${id}`, {
         method: 'PATCH',
-        headers: { ...getHeaders() },
+        headers: { ...authHeaders() },
         body: JSON.stringify({ status })
       });
       loadEventsData();
