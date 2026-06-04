@@ -3075,6 +3075,77 @@
 
   </script>
 
+  <!-- ===================== MODAL RESERVA VIP ===================== -->
+  <div id="vip-modal" style="display:none; position:fixed; inset:0; z-index:2000; background:rgba(24,12,5,0.65); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); align-items:flex-end; justify-content:center;" onclick="if(event.target===this)closeVipModal()">
+    <div id="vip-modal-sheet" style="width:100%; max-width:480px; background:#F2EDE3; border-radius:24px 24px 0 0; padding:0 20px 40px; box-shadow:0 -8px 40px rgba(0,0,0,0.25); text-align:center; box-sizing:border-box; max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch; transform:translateY(100%); transition:transform 0.3s cubic-bezier(.32,.72,0,1);">
+
+      <!-- Handle -->
+      <div style="padding:14px 0 8px; position:sticky; top:0; background:#F2EDE3; z-index:1;">
+        <div style="width:36px; height:4px; background:rgba(42,21,9,0.15); border-radius:100px; margin:0 auto;"></div>
+      </div>
+
+      <span style="font-size:44px; display:block; margin-bottom:10px; filter:drop-shadow(0 2px 5px rgba(196,151,58,0.4));">⭐</span>
+      <span style="background:rgba(196,151,58,0.15); color:var(--gold); font-size:11px; font-weight:700; padding:4px 12px; border-radius:100px; text-transform:uppercase; letter-spacing:1.5px; display:inline-block; margin-bottom:10px;">Petición de Reserva</span>
+      <h2 style="font-family:'Playfair Display',serif; font-size:24px; font-weight:900; color:var(--wine); margin:0 0 4px 0;">Reservar Mesa VIP</h2>
+      <p id="vip-modal-event" style="font-size:14px; color:var(--text-muted); margin:0 0 14px 0; font-weight:600;"></p>
+
+      <!-- Pack -->
+      <div style="background:linear-gradient(135deg,rgba(196,151,58,0.12),rgba(139,25,24,0.06)); border:1.5px solid rgba(196,151,58,0.3); border-radius:14px; padding:14px 16px; margin-bottom:14px; text-align:left;">
+        <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--gold); margin:0 0 6px 0;">Pack incluido</p>
+        <p style="font-size:15px; font-weight:700; color:var(--text); margin:0 0 3px 0;">🍾 Magnum + Tapas + Zona VIP</p>
+        <p style="font-size:13px; color:var(--text-muted); margin:0;">PVP <strong style="color:var(--wine); font-size:15px;">140 €</strong> &nbsp;·&nbsp; Mínimo 4 personas</p>
+      </div>
+
+      <p id="vip-capacity-text" style="font-size:13px; color:var(--text); margin:0 0 18px 0; font-weight:500;"></p>
+
+      <!-- Formulario -->
+      <div style="text-align:left;">
+        <label style="font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); display:block; margin-bottom:6px;">Tu teléfono</label>
+        <input id="vip-phone" type="tel" inputmode="tel" placeholder="+34 600 000 000"
+          style="width:100%; padding:14px 16px; border-radius:12px; border:1.5px solid rgba(42,21,9,0.12); background:rgba(42,21,9,0.03); font-family:'Outfit',sans-serif; font-size:16px; color:var(--text); margin-bottom:16px; outline:none; box-sizing:border-box;" />
+
+        <label style="font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); display:block; margin-bottom:6px;">Hora de llegada</label>
+        <div style="position:relative; margin-bottom:16px;">
+          <select id="vip-time" style="width:100%; padding:14px 16px; border-radius:12px; border:1.5px solid rgba(42,21,9,0.12); background:rgba(42,21,9,0.03); font-family:'Outfit',sans-serif; font-size:16px; color:var(--text); outline:none; -webkit-appearance:none; appearance:none; box-sizing:border-box; cursor:pointer;">
+            <option value="19:00">19:00 h</option>
+            <option value="19:30">19:30 h</option>
+            <option value="20:00" selected>20:00 h</option>
+            <option value="20:30">20:30 h</option>
+            <option value="21:00">21:00 h</option>
+            <option value="21:30">21:30 h</option>
+            <option value="22:00">22:00 h</option>
+          </select>
+          <div style="position:absolute; right:16px; top:50%; transform:translateY(-50%); pointer-events:none; color:var(--text-muted); font-size:12px;">▼</div>
+        </div>
+
+        <label style="font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); display:block; margin-bottom:6px;">Número de personas (mín. 4, máx. 15)</label>
+        <div style="display:flex; gap:8px; margin-bottom:20px;">
+          <button onclick="setGroupSize(-1)" style="width:48px; height:48px; border-radius:50%; border:1.5px solid rgba(42,21,9,0.15); background:transparent; font-size:22px; cursor:pointer; color:var(--text); flex-shrink:0;">−</button>
+          <div id="vip-group-display" style="flex:1; display:flex; align-items:center; justify-content:center; background:rgba(42,21,9,0.04); border-radius:12px; font-family:'Playfair Display',serif; font-size:32px; font-weight:900; color:var(--wine);">4</div>
+          <button onclick="setGroupSize(1)" style="width:48px; height:48px; border-radius:50%; border:1.5px solid rgba(42,21,9,0.15); background:transparent; font-size:22px; cursor:pointer; color:var(--text); flex-shrink:0;">+</button>
+        </div>
+      </div>
+
+      <p style="font-size:11px; color:var(--text-muted); margin-bottom:12px; line-height:1.5; text-align:left;">
+        Al reservar aceptas que tu teléfono sea usado únicamente para confirmar esta reserva.
+      </p>
+      <p style="font-size:12px; color:var(--wine); font-weight:700; margin-bottom:16px; text-align:center; line-height:1.4;">
+        ⚠️ Quedará pendiente de confirmación por parte del Furancho.
+      </p>
+
+      <p id="vip-error" style="color:var(--wine); font-size:13px; margin-bottom:12px; display:none; text-align:center; font-weight:600;"></p>
+
+      <button onclick="submitVip()" id="vip-submit-btn"
+        style="width:100%; padding:16px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:16px; font-weight:700; cursor:pointer; margin-bottom:12px; box-shadow:0 4px 10px rgba(139,25,24,0.3);">
+        Reservar Zona VIP
+      </button>
+      <button onclick="closeVipModal()"
+        style="width:100%; padding:14px; background:transparent; border:1.5px solid rgba(42,21,9,0.12); border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; color:var(--text-muted); cursor:pointer;">
+        Cancelar
+      </button>
+    </div>
+  </div>
+
   <!-- ===================== MODAL 12 PALABRAS — PRIMER USO (BLOQUEANTE) ===================== -->
   <div id="mnemonic-modal" style="display:none; position:fixed; inset:0; z-index:3000; background:rgba(10,4,2,0.92); backdrop-filter:blur(12px); align-items:flex-end; justify-content:center;">
     <div style="width:100%; max-width:480px; background:var(--cream); border-radius:28px 28px 0 0; padding:28px 22px 40px; max-height:95vh; overflow-y:auto; -webkit-overflow-scrolling:touch;">
