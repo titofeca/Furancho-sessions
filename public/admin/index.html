@@ -1548,15 +1548,41 @@
 
       if (!messages || messages.length === 0) {
         container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✉️</div><div class="empty-state-text">No has enviado mensajes todavía</div></div>`;
-      } else {
-        const LEVEL_LABELS = { all: 'Todos', '1': 'Cautivo', '2': 'O Cunqueiro', '3': 'O Larpeiro', '4': 'O Presidente' };
-        container.innerHTML = messages.map(m => `
+        return;
+      }
+
+      // Cargar reacciones de todos los mensajes
+      const ids = messages.map(m => m.id).filter(Boolean);
+      let reactionsMap = {};
+      if (ids.length) {
+        try {
+          const rRes = await fetch(`/api/admin/reactions-summary?ids=${ids.join(',')}`, { headers: authHeaders() });
+          if (rRes.ok) reactionsMap = await rRes.json();
+        } catch {}
+      }
+
+      const LEVEL_LABELS = { all: 'Todos', '1': 'Cautivo', '2': 'O Cunqueiro', '3': 'O Larpeiro', '4': 'O Presidente' };
+      const EMOJIS = ['🍷','🙌','😂','🔥'];
+      container.innerHTML = messages.map(m => {
+        const r = reactionsMap[m.id] || {};
+        const total = EMOJIS.reduce((s, e) => s + (r[e] || 0), 0);
+        const reactionHtml = total > 0
+          ? `<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+              ${EMOJIS.filter(e => r[e] > 0).map(e =>
+                `<span style="display:inline-flex; align-items:center; gap:3px; background:rgba(42,21,9,0.06); border-radius:100px; padding:3px 9px; font-size:13px;">
+                  ${e}<span style="font-size:11px; font-weight:700; color:var(--wine);">${r[e]}</span>
+                </span>`
+              ).join('')}
+              <span style="font-size:11px; color:var(--text-muted); align-self:center;">${total} reacción${total !== 1 ? 'es' : ''}</span>
+            </div>`
+          : `<div style="margin-top:6px; font-size:11px; color:var(--text-muted);">Sin reacciones aún</div>`;
+        return `
           <div class="msg-history-item">
             <div class="msg-subject">${m.subject}</div>
             <div class="msg-meta">${formatDate(m.sent_at)} · ${m.recipient_count} destinatarios · ${LEVEL_LABELS[m.level_filter] || m.level_filter}</div>
-          </div>
-        `).join('');
-      }
+            ${reactionHtml}
+          </div>`;
+      }).join('');
     } catch (e) {
       console.error('Error loading messages:', e);
     }

@@ -8,7 +8,10 @@ const {
   getMultiLevelHolders,
   getWalletsByLevel,
   insertMessage,
-  getMessages
+  getMessages,
+  addReaction,
+  getReactionsForMessages,
+  ALLOWED_REACTIONS
 } = require('../db/database');
 const { DEMO_MODE } = require('../services/polygon');
 const { sendPushToAll } = require('../services/push');
@@ -68,7 +71,7 @@ router.get('/current-message', (req, res) => {
   }
 });
 
-// GET /api/admin/inbox?level=2 — todos los mensajes para un nivel (público para clientes)
+// GET /api/admin/inbox?level=2 — mensajes con reacciones (público para clientes)
 router.get('/inbox', (req, res) => {
   const level = req.query.level || '1';
   try {
@@ -78,7 +81,23 @@ router.get('/inbox', (req, res) => {
       WHERE level_filter = 'all' OR level_filter = ?
       ORDER BY sent_at DESC LIMIT 20
     `).all(level.toString());
-    res.json(messages);
+    const ids = messages.map(m => m.id);
+    const reactions = ids.length ? getReactionsForMessages(ids) : {};
+    res.json(messages.map(m => ({ ...m, reactions: reactions[m.id] || {} })));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/react — cliente reacciona a un mensaje (público)
+router.post('/react', (req, res) => {
+  const { messageId, emoji, walletAddress } = req.body;
+  if (!messageId || !emoji) return res.status(400).json({ error: 'Faltan datos' });
+  if (!ALLOWED_REACTIONS.includes(emoji)) return res.status(400).json({ error: 'Emoji no válido' });
+  try {
+    addReaction(parseInt(messageId), emoji, walletAddress || null);
+    const { getReactions } = require('../db/database');
+    res.json({ success: true, reactions: getReactions(parseInt(messageId)) });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -150,6 +169,17 @@ router.post('/send-message', requireAuth, async (req, res) => {
 router.get('/messages', requireAuth, (req, res) => {
   try {
     res.json(getMessages());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/reactions-summary?ids=1,2,3 — resumen reacciones para admin
+router.get('/reactions-summary', requireAuth, (req, res) => {
+  const raw = (req.query.ids || '').split(',').map(Number).filter(Boolean);
+  if (!raw.length) return res.json({});
+  try {
+    res.json(getReactionsForMessages(raw));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

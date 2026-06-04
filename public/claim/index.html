@@ -3052,19 +3052,73 @@
     const list = document.getElementById('msg-panel-list');
     list.innerHTML = _allMessages.map(m => {
       const wasUnread = !readIds.includes(msgKey(m));
+      const myReaction = getMyReaction(m.id);
+      const r = m.reactions || {};
+      const emojis = ['🍷','🙌','😂','🔥'];
+      const reactionBar = emojis.map(e => {
+        const count = r[e] || 0;
+        const active = myReaction === e;
+        return `<button onclick="reactToMsg(${m.id}, '${e}', this)"
+          style="display:inline-flex; align-items:center; gap:4px; padding:5px 10px; border-radius:100px;
+            border:1.5px solid ${active ? 'var(--wine)' : 'rgba(42,21,9,0.12)'};
+            background:${active ? 'rgba(139,25,24,0.08)' : 'transparent'};
+            font-size:15px; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s;"
+          data-msg="${m.id}" data-emoji="${e}">
+          ${e}${count > 0 ? `<span style="font-size:11px; font-weight:700; color:${active ? 'var(--wine)' : 'var(--text-muted)'};">${count}</span>` : ''}
+        </button>`;
+      }).join('');
       return `<div style="background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:14px; padding:14px 16px; position:relative; overflow:hidden;">
         ${wasUnread ? '<div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--wine),var(--gold));"></div>' : ''}
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
           <p style="font-size:13px; font-weight:700; color:var(--text);">${m.subject}</p>
           <p style="font-size:10px; color:var(--text-muted);">${new Date(m.sent_at).toLocaleDateString('es-ES')}</p>
         </div>
-        <p style="font-size:13px; color:var(--text-muted); line-height:1.5;">${m.body}</p>
+        <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin-bottom:10px;">${m.body}</p>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">${reactionBar}</div>
       </div>`;
     }).join('');
     panel.style.display = 'flex';
     requestAnimationFrame(() => { panel.querySelector('.msg-panel-sheet').style.transform = 'translateY(0)'; });
     document.getElementById('profile-admin-msg').style.display = 'none';
     updateMsgFab();
+  }
+
+  function getMyReaction(msgId) {
+    try { return JSON.parse(localStorage.getItem('furancho_reactions') || '{}')[msgId] || null; } catch { return null; }
+  }
+  function saveMyReaction(msgId, emoji) {
+    try {
+      const r = JSON.parse(localStorage.getItem('furancho_reactions') || '{}');
+      r[msgId] = emoji;
+      localStorage.setItem('furancho_reactions', JSON.stringify(r));
+    } catch {}
+  }
+
+  async function reactToMsg(msgId, emoji, btn) {
+    const wallet = localStorage.getItem('furancho_wallet_address');
+    try {
+      const res = await fetch('/api/admin/react', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId: msgId, emoji, walletAddress: wallet })
+      });
+      const data = await res.json();
+      if (!data.success) return;
+      saveMyReaction(msgId, emoji);
+      // Actualizar visualmente todos los botones de este mensaje
+      const container = btn.closest('div[style*="flex-wrap"]');
+      if (!container) return;
+      const emojis = ['🍷','🙌','😂','🔥'];
+      const r = data.reactions || {};
+      container.querySelectorAll('button[data-msg]').forEach(b => {
+        const e = b.dataset.emoji;
+        const active = e === emoji;
+        const count = r[e] || 0;
+        b.style.border = `1.5px solid ${active ? 'var(--wine)' : 'rgba(42,21,9,0.12)'}`;
+        b.style.background = active ? 'rgba(139,25,24,0.08)' : 'transparent';
+        b.innerHTML = `${e}${count > 0 ? `<span style="font-size:11px;font-weight:700;color:${active?'var(--wine)':'var(--text-muted)'};">${count}</span>` : ''}`;
+      });
+    } catch {}
   }
 
   function closeMsgPanel() {

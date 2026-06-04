@@ -560,5 +560,9 @@ module.exports = {
   updateVipStatus,
   savePushSubscription,
   getAllPushSubscriptions,
-  deletePushSubscription
+  deletePushSubscription,
+  addReaction,
+  getReactions,
+  getReactionsForMessages,
+  ALLOWED_REACTIONS
 };
