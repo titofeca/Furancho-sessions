@@ -1590,7 +1590,15 @@
           <span style="font-size:44px; display:block; margin-bottom:12px; filter:drop-shadow(0 2px 5px rgba(196,151,58,0.4));">⭐</span>
           <span style="background:rgba(196,151,58,0.15); color:var(--gold); font-size:11px; font-weight:700; padding:4px 12px; border-radius:100px; text-transform:uppercase; letter-spacing:1.5px; display:inline-block; margin-bottom:12px;">Petición de Reserva</span>
           <h2 style="font-family:'Playfair Display',serif; font-size:26px; font-weight:900; color:var(--wine); margin:0 0 6px 0;">Reservar Mesa VIP</h2>
-          <p id="vip-modal-event" style="font-size:14px; color:var(--text-muted); margin:0 0 4px 0; font-weight:600;"></p>
+          <p id="vip-modal-event" style="font-size:14px; color:var(--text-muted); margin:0 0 12px 0; font-weight:600;"></p>
+
+          <!-- Descripción del pack -->
+          <div style="background:linear-gradient(135deg,rgba(196,151,58,0.12),rgba(139,25,24,0.06)); border:1.5px solid rgba(196,151,58,0.3); border-radius:14px; padding:14px 16px; margin-bottom:14px; text-align:left;">
+            <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--gold); margin:0 0 6px 0;">Pack incluido</p>
+            <p style="font-size:14px; font-weight:700; color:var(--text); margin:0 0 2px 0;">Magnum + Tapas + Zona VIP</p>
+            <p style="font-size:13px; color:var(--text-muted); margin:0;">PVP <strong style="color:var(--wine);">140 €</strong> &nbsp;·&nbsp; Mínimo 4 personas</p>
+          </div>
+
           <p id="vip-capacity-text" style="font-size:13px; color:var(--text); margin:0 0 20px 0; font-weight:500;"></p>
 
           <div style="text-align:left;">
@@ -2394,8 +2402,11 @@
     initWallet();
 
     function getEventBaseline(eventId) {
-      const baselines = [22, 17, 26, 19, 23, 16, 28, 21];
-      return baselines[(eventId - 1) % baselines.length] || 15;
+      const baselines = [11, 7, 14, 9, 13, 6, 12, 8];
+      const base = baselines[(eventId - 1) % baselines.length] || 8;
+      // Variación aleatoria por sesión: ±2, fija durante la sesión
+      const seed = (eventId * 37 + Math.floor(Date.now() / 3600000)) % 5;
+      return base + seed;
     }
 
     async function loadAgenda() {
