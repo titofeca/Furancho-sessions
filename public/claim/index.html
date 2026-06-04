@@ -1552,18 +1552,8 @@
       <!-- inbox-section oculto (sustituido por panel flotante) -->
       <div id="inbox-section" style="display:none;"></div>
 
-      <!-- Mis premios ganados — siempre visible si hay premios -->
-      <div id="prizes-section" style="display:none; margin-bottom: 18px;">
-        <div style="background:linear-gradient(135deg,rgba(74,222,128,0.1),rgba(196,151,58,0.07)); border:1.5px solid rgba(74,222,128,0.3); border-radius:20px; padding:18px; position:relative; overflow:hidden;">
-          <div style="position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,#4ade80,var(--gold));"></div>
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
-            <span style="font-size:20px;">🏆</span>
-            <p style="font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:#4ade80;">Mis Premios Ganados</p>
-          </div>
-          <p style="font-size:11px; color:var(--text-muted); margin-bottom:12px;">Muestra el código al personal para reclamar tu premio.</p>
-          <div id="prizes-list"></div>
-        </div>
-      </div>
+      <!-- prizes-section: ahora vive dentro de la Zona de Juegos -->
+      <div id="prizes-section" style="display:none;"></div>
 
       <!-- Agenda de eventos -->
       <div id="agenda-section" style="margin-bottom: 18px; display:none;">
@@ -1627,7 +1617,7 @@
         </div>
       </div>
 
-      <!-- Sección Sorteo — justo debajo del progreso -->
+      <!-- Zona de Juegos -->
       <div class="raffle-section" id="raffle-section" style="margin-bottom: 20px;">
         <div class="raffle-section-header">
           <span class="raffle-section-icon">🎰</span>
@@ -1638,6 +1628,30 @@
           <div class="raffle-live-dot" id="raffle-live-dot"></div>
         </div>
         <p class="raffle-section-hint">Cuando el Furancho lance un sorteo, tu pantalla se activará en directo. ¡Mantén la app abierta para participar!</p>
+
+        <!-- Premios pendientes de recoger: badge destacado -->
+        <div id="prizes-pending-banner" style="display:none; margin-top:14px; background:linear-gradient(135deg,rgba(74,222,128,0.12),rgba(196,151,58,0.08)); border:1.5px solid rgba(74,222,128,0.35); border-radius:14px; padding:14px 16px; position:relative; overflow:hidden;">
+          <div style="position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,#4ade80,var(--gold));"></div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:24px;">🎁</span>
+              <div>
+                <p style="font-size:13px; font-weight:700; color:#4ade80; margin:0 0 2px;">¡Tienes premios pendientes!</p>
+                <p style="font-size:11px; color:var(--text-muted); margin:0;">Muestra el código al staff para reclamarlos.</p>
+              </div>
+            </div>
+            <button onclick="togglePrizesMenu()" style="background:rgba(74,222,128,0.15); border:1px solid rgba(74,222,128,0.3); border-radius:10px; padding:7px 12px; font-size:12px; font-weight:700; color:#4ade80; cursor:pointer; font-family:'Outfit',sans-serif; flex-shrink:0;">Ver 🏆</button>
+          </div>
+        </div>
+
+        <!-- Menú colapsable de premios (pendientes + historial recogidos) -->
+        <div id="prizes-menu" style="display:none; margin-top:12px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+            <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted);">Mis premios</p>
+            <button onclick="togglePrizesMenu()" style="background:none; border:none; font-size:13px; color:var(--text-muted); cursor:pointer; font-family:'Outfit',sans-serif;">Cerrar ✕</button>
+          </div>
+          <div id="prizes-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
       </div>
 
       <!-- Todos los niveles -->
@@ -2515,60 +2529,78 @@
       btn.disabled = false;
     }
 
+    function togglePrizesMenu() {
+      const menu = document.getElementById('prizes-menu');
+      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+
     async function renderPrizes() {
-      const section = document.getElementById('prizes-section');
       const list = document.getElementById('prizes-list');
-      if (!section || !userWalletAddress) return;
+      const pendingBanner = document.getElementById('prizes-pending-banner');
+      if (!list || !userWalletAddress) return;
 
+      let wins = [];
       try {
-        // Cargar desde servidor (fuente de verdad)
-        const wins = await fetch(`/api/raffle/my-wins?wallet=${userWalletAddress}`).then(r => r.json());
-
-        // Fusionar con localStorage por si hay premios recientes aún no en servidor
+        wins = await fetch(`/api/raffle/my-wins?wallet=${userWalletAddress}`).then(r => r.json());
+      } catch(e) {
+        // Fallback localStorage
         const local = JSON.parse(localStorage.getItem('furancho_prizes') || '[]');
+        wins = local.map(p => ({ id: null, prize: p.prize, verification_code: p.code, created_at: p.date, collected: 0 }));
+      }
 
-        // Combinar: servidor primero, sin duplicados por código
-        const allCodes = new Set(wins.map(w => w.verification_code));
-        const merged = [
-          ...wins.map(w => ({ prize: w.prize, code: w.verification_code, date: new Date(w.created_at).toLocaleString('es-ES') })),
-          ...local.filter(l => !allCodes.has(l.code))
-        ];
+      // Fusionar con localStorage por si hay premios muy recientes
+      const local = JSON.parse(localStorage.getItem('furancho_prizes') || '[]');
+      const serverCodes = new Set(wins.map(w => w.verification_code));
+      const localOnly = local.filter(l => !serverCodes.has(l.code))
+        .map(p => ({ id: null, prize: p.prize, verification_code: p.code, created_at: p.date, collected: 0 }));
+      const allWins = [...wins, ...localOnly];
 
-        if (!merged.length) { section.style.display = 'none'; return; }
+      if (!allWins.length) {
+        pendingBanner.style.display = 'none';
+        return;
+      }
 
-        section.style.display = 'block';
-        list.innerHTML = merged.map(p => `
-          <div style="padding: 12px 0; border-top: 1px solid rgba(74,222,128,0.15);">
+      const pending = allWins.filter(w => !w.collected);
+      const collected = allWins.filter(w => w.collected);
+
+      // Mostrar/ocultar badge de pendientes
+      pendingBanner.style.display = pending.length > 0 ? 'block' : 'none';
+
+      // Renderizar lista completa en el menú
+      const pendingHtml = pending.length > 0 ? `
+        <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#4ade80; margin-bottom:8px;">Pendiente de recoger</p>
+        ${pending.map(p => `
+          <div style="background:rgba(74,222,128,0.07); border:1.5px solid rgba(74,222,128,0.3); border-radius:14px; padding:14px 16px; position:relative; overflow:hidden;">
+            <div style="position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,#4ade80,var(--gold));"></div>
             <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
               <div style="flex:1;">
-                <p style="font-size:14px; font-weight:600; color:var(--text);">🎁 ${p.prize}</p>
-                <p style="font-size:11px; color:var(--text-muted); margin-top:2px;">${p.date}</p>
+                <p style="font-size:14px; font-weight:700; color:var(--text); margin:0 0 3px;">🎁 ${p.prize}</p>
+                <p style="font-size:11px; color:var(--text-muted); margin:0;">${new Date(p.created_at).toLocaleString('es-ES', {dateStyle:'short',timeStyle:'short'})}</p>
               </div>
-              <div style="
-                background:rgba(74,222,128,0.12); border:1.5px solid rgba(74,222,128,0.35);
-                border-radius:12px; padding:8px 14px; text-align:center; flex-shrink:0;">
-                <p style="font-size:9px; color:rgba(74,222,128,0.7); letter-spacing:1px; text-transform:uppercase; margin-bottom:2px;">Código</p>
-                <p style="font-family:'Outfit',monospace; font-size:22px; font-weight:900; letter-spacing:4px; color:#4ade80; line-height:1;">${p.code}</p>
+              <div style="background:rgba(74,222,128,0.15); border:1.5px solid rgba(74,222,128,0.4); border-radius:12px; padding:10px 14px; text-align:center; flex-shrink:0;">
+                <p style="font-size:9px; color:rgba(74,222,128,0.7); letter-spacing:1px; text-transform:uppercase; margin:0 0 3px;">Código</p>
+                <p style="font-family:monospace; font-size:24px; font-weight:900; letter-spacing:5px; color:#4ade80; line-height:1; margin:0;">${p.verification_code}</p>
               </div>
             </div>
           </div>
-        `).join('');
-      } catch(e) {
-        // Fallback a localStorage si el servidor falla
-        const local = JSON.parse(localStorage.getItem('furancho_prizes') || '[]');
-        if (!local.length) { section.style.display = 'none'; return; }
-        section.style.display = 'block';
-        list.innerHTML = local.map(p => `
-          <div style="padding:12px 0; border-top:1px solid rgba(74,222,128,0.15);">
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
-              <div><p style="font-size:14px; font-weight:600;">🎁 ${p.prize}</p></div>
-              <div style="background:rgba(74,222,128,0.12); border:1.5px solid rgba(74,222,128,0.35); border-radius:12px; padding:8px 14px;">
-                <p style="font-size:22px; font-weight:900; letter-spacing:4px; color:#4ade80;">${p.code}</p>
-              </div>
+        `).join('')}
+      ` : '';
+
+      const collectedHtml = collected.length > 0 ? `
+        <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-top:${pending.length>0?'16px':'0'}; margin-bottom:8px;">Premios recogidos</p>
+        ${collected.map(p => `
+          <div style="background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:14px; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; gap:12px; opacity:0.7;">
+            <div style="flex:1;">
+              <p style="font-size:13px; font-weight:600; color:var(--text-muted); margin:0 0 2px;">✅ ${p.prize}</p>
+              <p style="font-size:10px; color:var(--text-muted); margin:0;">Recogido · ${p.collected_at ? new Date(p.collected_at).toLocaleDateString('es-ES') : '—'}</p>
             </div>
+            <span style="font-size:20px; opacity:0.4;">🏅</span>
           </div>
-        `).join('');
-      }
+        `).join('')}
+      ` : '';
+
+      list.innerHTML = pendingHtml + collectedHtml ||
+        '<p style="font-size:13px; color:var(--text-muted); text-align:center; padding:12px 0;">Sin premios todavía.</p>';
     }
 
     function revealPrivateKey(btn) {
@@ -2786,9 +2818,13 @@
         }
       });
 
+      // Admin confirma entrega → el badge desaparece en tiempo real
+      evtSource.addEventListener('prize_collected', () => {
+        renderPrizes();
+      });
+
       evtSource.onerror = () => {
         evtSource.close();
-        // Reconectar tras 5 segundos si se cae la conexión
         setTimeout(connectRaffle, 5000);
       };
     }

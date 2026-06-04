@@ -9,8 +9,11 @@ const db = new DatabaseSync(DB_PATH);
 db.exec('PRAGMA journal_mode = WAL');
 db.exec('PRAGMA foreign_keys = ON');
 
-// Migración: añadir vip_max si no existe
+// Migraciones seguras
 try { db.exec(`ALTER TABLE events ADD COLUMN vip_max INTEGER DEFAULT 15`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN collected INTEGER DEFAULT 0`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_at TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_by TEXT`); } catch (_) {}
 
 // =====================
 // CREAR TABLAS
@@ -480,11 +483,37 @@ function autoCloseSessionsAt23() {
 }
 
 function insertRaffle(prize, winnerWallet, verificationCode) {
-  const stmt = db.prepare(`
+  return db.prepare(`
     INSERT INTO raffles (prize, winner_wallet, verification_code)
     VALUES (?, ?, ?)
-  `);
-  return stmt.run(prize, winnerWallet, verificationCode).lastInsertRowid;
+  `).run(prize, winnerWallet, verificationCode).lastInsertRowid;
+}
+
+function collectRaffle(raffleId, adminNote) {
+  db.prepare(`
+    UPDATE raffles SET collected = 1, collected_at = datetime('now'), collected_by = ?
+    WHERE id = ?
+  `).run(adminNote || null, raffleId);
+}
+
+function getRaffleHistory() {
+  return db.prepare(`
+    SELECT id, prize,
+           substr(winner_wallet,1,6)||'...'||substr(winner_wallet,-4) as wallet_masked,
+           winner_wallet,
+           verification_code, created_at,
+           collected, collected_at, collected_by
+    FROM raffles
+    ORDER BY created_at DESC LIMIT 100
+  `).all();
+}
+
+function getMyWins(walletAddress) {
+  return db.prepare(`
+    SELECT id, prize, verification_code, created_at, collected, collected_at
+    FROM raffles WHERE winner_wallet = ?
+    ORDER BY created_at DESC LIMIT 20
+  `).all(walletAddress);
 }
 
 const ALLOWED_REACTIONS = ['🍷', '🙌', '😂', '🔥'];
@@ -548,6 +577,9 @@ module.exports = {
   getEligibleRaffleParticipants,
   autoCloseSessionsAt23,
   insertRaffle,
+  collectRaffle,
+  getRaffleHistory,
+  getMyWins,
   getSessionAnalytics,
   getEvents,
   toggleRsvp,

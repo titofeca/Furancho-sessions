@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getEligibleRaffleParticipants, insertRaffle } = require('../db/database');
+const { getEligibleRaffleParticipants, insertRaffle, collectRaffle, getRaffleHistory, getMyWins } = require('../db/database');
 const { requireAuth } = require('./admin');
 const { sendPushToAll } = require('../services/push');
 
@@ -114,13 +114,39 @@ router.get('/my-wins', (req, res) => {
   const { wallet } = req.query;
   if (!wallet) return res.status(400).json({ error: 'Falta wallet' });
   try {
+    res.json(getMyWins(wallet));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PATCH /api/raffle/:id/collect — admin confirma que el premio fue entregado
+router.patch('/:id/collect', requireAuth, (req, res) => {
+  const { note } = req.body;
+  try {
+    collectRaffle(parseInt(req.params.id), note || null);
+    // Notificar al ganador via SSE si está conectado
     const { db } = require('../db/database');
-    const wins = db.prepare(`
-      SELECT prize, verification_code, created_at
-      FROM raffles WHERE winner_wallet = ?
-      ORDER BY created_at DESC LIMIT 20
-    `).all(wallet);
-    res.json(wins);
+    const raffle = db.prepare(`SELECT winner_wallet FROM raffles WHERE id = ?`).get(parseInt(req.params.id));
+    if (raffle?.winner_wallet) {
+      const clientSSE = clients.find(c => c.walletAddress === raffle.winner_wallet);
+      if (clientSSE) {
+        try {
+          clientSSE.res.write(`event: prize_collected\ndata: ${JSON.stringify({ raffleId: req.params.id })}\n\n`);
+          if (typeof clientSSE.res.flush === 'function') clientSSE.res.flush();
+        } catch (_) {}
+      }
+    }
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/raffle/history — historial completo de sorteos (admin)
+router.get('/history', requireAuth, (req, res) => {
+  try {
+    res.json(getRaffleHistory());
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
