@@ -1251,9 +1251,10 @@
       <span class="nav-icon">🎰</span>
       <span>Rifa</span>
     </button>
-    <button class="nav-item" onclick="showPage('events')" id="nav-events">
+    <button class="nav-item" onclick="showPage('events')" id="nav-events" style="position:relative;">
       <span class="nav-icon">📅</span>
       <span>Eventos</span>
+      <span id="vip-pending-badge" style="display:none; position:absolute; top:6px; right:10px; background:var(--wine); color:#fff; font-size:9px; font-weight:900; border-radius:100px; padding:1px 5px; min-width:14px; text-align:center;">0</span>
     </button>
   </nav>
 </div>
@@ -1289,6 +1290,7 @@
         loadHolders('all');
         loadMessages();
         loadPeakHours();
+        loadVipBadge();
       } else {
         errorDiv.style.display = 'block';
       }
@@ -1309,6 +1311,7 @@
       loadHolders('all');
       loadMessages();
       loadPeakHours();
+      loadVipBadge();
     }
   });
 
@@ -1323,6 +1326,7 @@
     document.getElementById(`page-${pageId}`).classList.add('active');
     document.getElementById(`nav-${pageId}`).classList.add('active');
     if (pageId === 'events') loadEventsPage();
+    loadVipBadge();
     if (pageId === 'holders') loadPeakHours();
     if (pageId === 'raffles') { loadEligibleParticipants(); loadRaffleHistory(); }
   }
@@ -1806,6 +1810,23 @@
     }
   }
 
+  // Badge pendientes VIP en el nav
+  async function loadVipBadge() {
+    try {
+      const events = await fetch('/api/events').then(r => r.json());
+      let pending = 0;
+      for (const ev of events) {
+        const res = await fetch(`/api/events/${ev.id}/vip/reservations`, { headers: authHeaders() }).then(r => r.json()).catch(() => ({ reservations: [] }));
+        pending += (res.reservations || []).filter(r => r.status === 'pending').length;
+      }
+      const badge = document.getElementById('vip-pending-badge');
+      if (badge) {
+        badge.textContent = pending;
+        badge.style.display = pending > 0 ? 'inline-block' : 'none';
+      }
+    } catch(_) {}
+  }
+
   // ==================== EVENTOS & VIP ====================
   async function loadEventsPage() {
     await Promise.all([loadAnalytics(), loadEventsData()]);
@@ -1963,6 +1984,7 @@
       });
       const data = await res.json();
       loadEventsData();
+      loadVipBadge();
 
       if (data.success && data.phone && status !== 'pending') {
         const phone = data.phone.replace(/[^0-9]/g, '');

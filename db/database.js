@@ -14,6 +14,10 @@ try { db.exec(`ALTER TABLE events ADD COLUMN vip_max INTEGER DEFAULT 15`); } cat
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected INTEGER DEFAULT 0`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_at TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_by TEXT`); } catch (_) {}
+// Limpiar reservas VIP huérfanas (apuntan a eventos que ya no existen)
+try {
+  db.exec(`DELETE FROM vip_reservations WHERE event_id NOT IN (SELECT id FROM events)`);
+} catch (_) {}
 
 // =====================
 // CREAR TABLAS
@@ -369,10 +373,13 @@ function seedEvents() {
     { date: '2026-06-25', title: 'Furancho Sessions — 25 Junio', description: 'Especial Noche de San Juan. Fogata simbólica, música tradicional gallega y nuestro menú especial de tapas y vinos galardonados.' },
     { date: '2026-07-02', title: 'Furancho Sessions — 2 Julio', description: 'Algo está preparándose. No podemos decir mucho… solo que merece la pena estar. Apúntate y descúbrelo.' },
   ];
-  // Limpiar eventos antiguos para que solo queden las nuevas fechas asignadas
-  db.prepare(`DELETE FROM events`).run();
+  // UPSERT: inserta si no existe, actualiza título/descripción si cambian
+  // NUNCA borra — los IDs se mantienen estables entre reinicios para que las reservas no se huerfanen
   dates.forEach(({ date, title, description }) => {
-    db.prepare(`INSERT OR IGNORE INTO events (event_date, title, description) VALUES (?, ?, ?)`).run(date, title, description);
+    db.prepare(`
+      INSERT INTO events (event_date, title, description) VALUES (?, ?, ?)
+      ON CONFLICT(event_date) DO UPDATE SET title=excluded.title, description=excluded.description
+    `).run(date, title, description);
   });
 }
 seedEvents();
