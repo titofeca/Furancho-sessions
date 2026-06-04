@@ -2293,7 +2293,7 @@
           if (!msgs || !msgs.length) return;
           _allMessages = msgs;
           const readIds = getReadIds();
-          const unread = msgs.filter(m => !readIds.includes(m.id));
+          const unread = msgs.filter(m => !readIds.includes(msgKey(m)));
           // Mostrar banner solo si hay mensajes no leídos
           if (unread.length > 0) {
             const box = document.getElementById('profile-admin-msg');
@@ -3076,15 +3076,18 @@
 
   let _allMessages = [];
 
+  function msgKey(m) { return m.id ?? m.sent_at; }   // clave única por mensaje
+
   function getReadIds() {
     try { return JSON.parse(localStorage.getItem('furancho_read_msgs') || '[]'); } catch { return []; }
   }
-  function markRead(id) {
+  function markRead(m) {
     const ids = getReadIds();
-    if (!ids.includes(id)) { ids.push(id); localStorage.setItem('furancho_read_msgs', JSON.stringify(ids)); }
+    const k = msgKey(m);
+    if (k != null && !ids.includes(k)) { ids.push(k); localStorage.setItem('furancho_read_msgs', JSON.stringify(ids)); }
   }
   function markAllRead() {
-    const ids = _allMessages.map(m => m.id);
+    const ids = _allMessages.map(msgKey).filter(k => k != null);
     localStorage.setItem('furancho_read_msgs', JSON.stringify(ids));
   }
 
@@ -3100,7 +3103,7 @@
     const badge = document.getElementById('msg-fab-badge');
     if (!fab) return;
     const readIds = getReadIds();
-    const unread = _allMessages.filter(m => !readIds.includes(m.id)).length;
+    const unread = _allMessages.filter(m => !readIds.includes(msgKey(m))).length;
     if (_allMessages.length === 0) { fab.style.display = 'none'; return; }
     fab.style.display = 'flex';
     badge.textContent = unread;
@@ -3113,7 +3116,7 @@
     const panel = document.getElementById('msg-panel');
     const list = document.getElementById('msg-panel-list');
     list.innerHTML = _allMessages.map(m => {
-      const wasUnread = !readIds.includes(m.id);
+      const wasUnread = !readIds.includes(msgKey(m));
       return `<div style="background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:14px; padding:14px 16px; position:relative; overflow:hidden;">
         ${wasUnread ? '<div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--wine),var(--gold));"></div>' : ''}
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">

@@ -74,7 +74,7 @@ router.get('/inbox', (req, res) => {
   try {
     const { db } = require('../db/database');
     const messages = db.prepare(`
-      SELECT subject, body, sent_at FROM messages
+      SELECT id, subject, body, sent_at FROM messages
       WHERE level_filter = 'all' OR level_filter = ?
       ORDER BY sent_at DESC LIMIT 20
     `).all(level.toString());
