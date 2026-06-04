@@ -368,7 +368,7 @@ function getRsvpStatus(walletAddress) {
 
 function seedEvents() {
   const dates = [
-    { date: '2026-06-11', title: 'Furancho Sessions — 11 Junio', description: '🌞 Nuestra primera sesión del verano. Ven a disfrutar de vinos locales gallegos, tapas caseras de autor y un gran ambiente afterwork con música en directo.' },
+    { date: '2026-06-11', title: 'Furancho Sessions — 11 Junio', description: 'La primera. La que marca el ritmo. Vinos locales gallegos, tapas de autor y el ambiente que solo el Furancho sabe crear. Nos vemos el jueves.' },
     { date: '2026-06-18', title: 'Furancho Sessions — 18 Junio', description: 'Una cata selecta acompañada de las mejores tapas de temporada. Descubre nuevos sabores en un ambiente único y relajado entre amigos.' },
     { date: '2026-06-25', title: 'Furancho Sessions — 25 Junio', description: 'Especial Noche de San Juan. Fogata simbólica, música tradicional gallega y nuestro menú especial de tapas y vinos galardonados.' },
     { date: '2026-07-02', title: 'Furancho Sessions — 2 Julio', description: 'Algo está preparándose. No podemos decir mucho… solo que merece la pena estar. Apúntate y descúbrelo.' },
