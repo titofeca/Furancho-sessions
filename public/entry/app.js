@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       walletAddress = data.address;
       localStorage.setItem('furancho_wallet_address', walletAddress);
       localStorage.setItem('furancho_wallet_private_key', data.privateKey);
+      if (data.mnemonic) localStorage.setItem('furancho_wallet_mnemonic', data.mnemonic);
     } catch (e) {
       showError('Error al conectar. Comprueba tu conexión e inténtalo de nuevo.');
       return;

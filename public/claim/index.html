@@ -2262,6 +2262,7 @@
       showScreen('screen-profile');
       renderPrizes();
       loadAgenda();
+      checkPendingMnemonic();
 
       // Pedir permiso de notificaciones push (con delay para no interrumpir)
       setTimeout(requestPushPermission, 3000);
@@ -2941,9 +2942,20 @@
   }
 
   function confirmMnemonicSaved() {
+    localStorage.setItem('furancho_mnemonic_confirmed', '1');
     document.getElementById('mnemonic-modal').style.display = 'none';
     document.body.style.overflow = '';
     showToast('🔐 Perfecto. Tus palabras están guardadas.');
+  }
+
+  // Mostrar modal si hay mnemónico guardado pero nunca confirmado
+  // (clientes que entraron por el QR de entrada antes de abrir claim)
+  function checkPendingMnemonic() {
+    const mnemonic = localStorage.getItem('furancho_wallet_mnemonic');
+    const confirmed = localStorage.getItem('furancho_mnemonic_confirmed');
+    if (mnemonic && !confirmed) {
+      setTimeout(() => showMnemonicModal(mnemonic), 1200);
+    }
   }
 
   function openRecoverySheet(tab) {
