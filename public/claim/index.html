@@ -2410,17 +2410,25 @@
                 <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(42,21,9,0.05); padding-top:12px; margin-top:12px;">
                   <span style="font-size:12px; color:var(--text-muted);">👥 ${ev.rsvp_count + baseline} confirmados</span>
                   ${!isPast ? `
-                  <div style="display:flex; gap:8px;">
+                  <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
                     <button onclick="event.stopPropagation(); toggleRsvpBtn(${ev.id}, this)" data-attending="${attending}" style="
                       padding:8px 14px; border-radius:50px; font-size:12px; font-weight:700; cursor:pointer;
                       border:1.5px solid ${attending?'var(--wine)':'rgba(42,21,9,0.15)'};
                       background:${attending?'var(--wine)':'transparent'};
                       color:${attending?'#fff':'var(--text-muted)'};
                       font-family:'Outfit',sans-serif; white-space:nowrap;">${attending?'✓ Apuntado':'Me apunto'}</button>
-                    <button onclick="event.stopPropagation(); openVipModal(${ev.id},'${ev.title} · ${d.getDate()} ${months[d.getMonth()]}')" style="
+                    ${myVip ? `
+                      <span id="vip-status-${ev.id}" style="display:inline-flex; align-items:center; gap:5px; padding:7px 13px; border-radius:50px; font-size:12px; font-weight:700; font-family:'Outfit',sans-serif; white-space:nowrap;
+                        background:${myVip.status==='confirmed'?'rgba(74,222,128,0.12)':myVip.status==='cancelled'?'rgba(248,113,113,0.1)':'rgba(196,151,58,0.1)'};
+                        border:1.5px solid ${myVip.status==='confirmed'?'rgba(74,222,128,0.4)':myVip.status==='cancelled'?'rgba(248,113,113,0.3)':'rgba(196,151,58,0.35)'};
+                        color:${myVip.status==='confirmed'?'#16a34a':myVip.status==='cancelled'?'#dc2626':'var(--gold)'};">
+                        ${myVip.status==='confirmed'?'✅ VIP Confirmada':myVip.status==='cancelled'?'❌ VIP Cancelada':'⏳ VIP Pendiente'}
+                        <span style="font-weight:400; opacity:0.8;">${myVip.group_size} pax</span>
+                      </span>` :
+                    `<button onclick="event.stopPropagation(); openVipModal(${ev.id},'${ev.title} · ${d.getDate()} ${months[d.getMonth()]}')" style="
                       padding:8px 14px; border-radius:50px; font-size:12px; font-weight:700; cursor:pointer;
                       border:1.5px solid rgba(196,151,58,0.35); background:transparent;
-                      color:var(--gold); font-family:'Outfit',sans-serif; white-space:nowrap;">⭐ Reservar VIP</button>
+                      color:var(--gold); font-family:'Outfit',sans-serif; white-space:nowrap;">⭐ Reservar VIP</button>`}
                   </div>` : `<span style="font-size:12px;color:var(--text-muted);">Evento finalizado</span>`}
                 </div>
               </div>
@@ -2867,6 +2875,31 @@
       // Admin confirma entrega → el badge desaparece en tiempo real
       evtSource.addEventListener('prize_collected', () => {
         renderPrizes();
+      });
+
+      // Admin confirma/cancela reserva VIP → actualizar estado en la agenda
+      evtSource.addEventListener('vip_status', (e) => {
+        const data = JSON.parse(e.data);
+        const badge = document.getElementById(`vip-status-${data.eventId}`);
+        if (badge) {
+          const labels = {
+            confirmed: { text: '✅ VIP Confirmada', bg: 'rgba(74,222,128,0.12)', border: 'rgba(74,222,128,0.4)', color: '#16a34a' },
+            cancelled:  { text: '❌ VIP Cancelada',  bg: 'rgba(248,113,113,0.1)',  border: 'rgba(248,113,113,0.3)', color: '#dc2626' },
+            pending:    { text: '⏳ VIP Pendiente',  bg: 'rgba(196,151,58,0.1)',   border: 'rgba(196,151,58,0.35)', color: 'var(--gold)' }
+          };
+          const s = labels[data.status] || labels.pending;
+          badge.style.background = s.bg;
+          badge.style.border = `1.5px solid ${s.border}`;
+          badge.style.color = s.color;
+          // Actualizar solo el texto, conservar el "X pax"
+          badge.childNodes[0].textContent = s.text + ' ';
+        }
+        // Mostrar banner de notificación
+        if (data.status === 'confirmed') {
+          showProfileBanner(`✅ Tu reserva VIP para <strong>${data.eventTitle}</strong> ha sido <strong>confirmada</strong>. ¡Te esperamos!`, 'gold');
+        } else if (data.status === 'cancelled') {
+          showProfileBanner(`❌ Tu reserva VIP para <strong>${data.eventTitle}</strong> ha sido cancelada. Contacta con Furancho para más info.`, 'red');
+        }
       });
 
       evtSource.onerror = () => {
