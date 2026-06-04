@@ -99,6 +99,15 @@ db.exec(`
     UNIQUE(event_id, wallet_address)
   );
 
+  CREATE TABLE IF NOT EXISTS message_reactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    message_id INTEGER NOT NULL,
+    emoji TEXT NOT NULL,
+    wallet_address TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(message_id, wallet_address)
+  );
+
   CREATE TABLE IF NOT EXISTS push_subscriptions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     wallet_address TEXT,
@@ -476,6 +485,47 @@ function insertRaffle(prize, winnerWallet, verificationCode) {
     VALUES (?, ?, ?)
   `);
   return stmt.run(prize, winnerWallet, verificationCode).lastInsertRowid;
+}
+
+const ALLOWED_REACTIONS = ['🍷', '🙌', '😂', '🔥'];
+
+function addReaction(messageId, emoji, walletAddress) {
+  if (!ALLOWED_REACTIONS.includes(emoji)) throw new Error('Emoji no permitido');
+  // Si ya reaccionó, actualiza el emoji
+  db.prepare(`
+    INSERT INTO message_reactions (message_id, emoji, wallet_address)
+    VALUES (?, ?, ?)
+    ON CONFLICT(message_id, wallet_address) DO UPDATE SET emoji = excluded.emoji
+  `).run(messageId, emoji, walletAddress || null);
+}
+
+function getReactions(messageId) {
+  const rows = db.prepare(`
+    SELECT emoji, COUNT(*) as count
+    FROM message_reactions WHERE message_id = ?
+    GROUP BY emoji
+  `).all(messageId);
+  const result = {};
+  ALLOWED_REACTIONS.forEach(e => { result[e] = 0; });
+  rows.forEach(r => { result[r.emoji] = r.count; });
+  return result;
+}
+
+function getReactionsForMessages(messageIds) {
+  if (!messageIds.length) return {};
+  const placeholders = messageIds.map(() => '?').join(',');
+  const rows = db.prepare(`
+    SELECT message_id, emoji, COUNT(*) as count
+    FROM message_reactions WHERE message_id IN (${placeholders})
+    GROUP BY message_id, emoji
+  `).all(...messageIds);
+  const result = {};
+  messageIds.forEach(id => {
+    result[id] = {};
+    ALLOWED_REACTIONS.forEach(e => { result[id][e] = 0; });
+  });
+  rows.forEach(r => { if (result[r.message_id]) result[r.message_id][r.emoji] = r.count; });
+  return result;
 }
 
 module.exports = {
