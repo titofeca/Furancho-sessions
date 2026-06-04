@@ -1,10 +1,12 @@
-const CACHE_NAME = 'furancho-vip-v2';
+const CACHE_NAME = 'furancho-vip-v4';
 const ASSETS_TO_CACHE = [
   '/claim',
   '/entry',
   '/assets/logo.png',
   '/assets/icon-192.png',
   '/assets/icon-512.png',
+  '/assets/icon-maskable-192.png',
+  '/assets/icon-maskable-512.png',
   '/assets/nft_nivel1_cautivo.jpg',
   '/assets/nft_nivel2_cunqueiro.jpg',
   '/assets/nft_nivel3_larpeiro.jpg',
