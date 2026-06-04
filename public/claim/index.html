@@ -1431,8 +1431,14 @@
       </button>
 
       <!-- Botón Tarjeta Virtual Antifraude -->
-      <button onclick="openVirtualCard()" class="btn-vip">
+      <button onclick="openVirtualCard()" class="btn-vip" style="margin-bottom:12px;">
         👁️ Mostrar mi Tarjeta VIP
+      </button>
+
+      <!-- Recuperar cuenta -->
+      <button onclick="openRestoreFlow()"
+        style="width:100%; padding:13px; background:transparent; border:1.5px solid rgba(42,21,9,0.15); border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; max-width:340px; margin:0 auto;">
+        🔑 Recuperar cuenta existente
       </button>
 
       <!-- Instalar App — Android -->
@@ -1777,18 +1783,39 @@
         <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Visita acumulada. ¡Hasta la próxima!</p>
       </div>
 
-      <!-- QR de recuperación -->
-      <div style="background: rgba(42,21,9,0.04); border: 1px solid rgba(42,21,9,0.08); border-radius: 20px; padding: 20px; margin-bottom: 20px; text-align: center;">
-        <p style="font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;">Tu QR de recuperación</p>
-        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.5;">Si cambias de móvil, escanea este QR para recuperar tu cuenta y todos tus niveles.</p>
-        <img id="recovery-qr-img" src="" alt="QR de recuperación"
-          style="width: 160px; height: 160px; border-radius: 12px; border: 1px solid rgba(42,21,9,0.1); margin-bottom: 14px; display: none;" />
-        <br>
-        <a id="recovery-qr-download" href="" download="furancho-mi-pase.png"
-          style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 22px; border-radius: 50px; border: 1.5px solid rgba(139,25,24,0.25); background: transparent; color: var(--wine); font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer;">
-          📥 Guardar en galería
-        </a>
+      <!-- Recuperación de cuenta — sección principal -->
+      <div style="background:linear-gradient(135deg,rgba(139,25,24,0.06),rgba(196,151,58,0.04)); border:1.5px solid rgba(139,25,24,0.18); border-radius:20px; padding:20px; margin-bottom:20px;">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+          <span style="font-size:22px;">🔐</span>
+          <p style="font-size:13px; font-weight:700; color:var(--wine); text-transform:uppercase; letter-spacing:1px;">Clave de recuperación</p>
+        </div>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px; line-height:1.6;">
+          Si cambias de móvil o borras la app, necesitas esto para recuperar tu cuenta y todos tus niveles.<br>
+          <strong style="color:var(--wine);">Sin esta clave, tu progreso desaparece para siempre.</strong>
+        </p>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <button onclick="openRecoverySheet('words')"
+            style="width:100%; padding:13px 16px; background:#fff; border:1.5px solid rgba(196,151,58,0.35); border-radius:14px; display:flex; align-items:center; gap:12px; cursor:pointer; font-family:'Outfit',sans-serif; text-align:left;">
+            <span style="font-size:22px; flex-shrink:0;">📝</span>
+            <div>
+              <p style="font-size:13px; font-weight:700; color:var(--text); margin:0 0 2px 0;">Ver mis 12 palabras</p>
+              <p style="font-size:11px; color:var(--text-muted); margin:0;">Guárdalas en papel. Sin ellas, pierdes la cuenta.</p>
+            </div>
+          </button>
+          <button onclick="openRecoverySheet('qr')"
+            style="width:100%; padding:13px 16px; background:#fff; border:1.5px solid rgba(42,21,9,0.12); border-radius:14px; display:flex; align-items:center; gap:12px; cursor:pointer; font-family:'Outfit',sans-serif; text-align:left;">
+            <span style="font-size:22px; flex-shrink:0;">📱</span>
+            <div>
+              <p style="font-size:13px; font-weight:700; color:var(--text); margin:0 0 2px 0;">QR de recuperación</p>
+              <p style="font-size:11px; color:var(--text-muted); margin:0;">Guarda la imagen. Escanéala en el móvil nuevo.</p>
+            </div>
+          </button>
+        </div>
       </div>
+
+      <!-- Imagen QR oculta (usada internamente) -->
+      <img id="recovery-qr-img" src="" alt="" style="display:none;" />
+      <a id="recovery-qr-download" href="" download="furancho-mi-pase.png" style="display:none;"></a>
 
       <!-- Tarjeta de identidad del cliente (oculta, usada por VirtualCard) -->
       <span id="profile-card-level-tag" style="display:none;">NIVEL 1</span>
@@ -2016,6 +2043,11 @@
             userWalletPrivateKey = data.privateKey;
             localStorage.setItem('furancho_wallet_address', userWalletAddress);
             localStorage.setItem('furancho_wallet_private_key', userWalletPrivateKey);
+            if (data.mnemonic) {
+              localStorage.setItem('furancho_wallet_mnemonic', data.mnemonic);
+              // Mostrar las 12 palabras en primer uso — bloqueante
+              setTimeout(() => showMnemonicModal(data.mnemonic), 800);
+            }
           } else {
             throw new Error('No se pudo generar billetera');
           }
@@ -2878,6 +2910,168 @@
       if (permission === 'granted') subscribePush();
     }
 
+  // ==================== RECUPERACIÓN DE CUENTA ====================
+
+  function showMnemonicModal(phrase) {
+    const words = phrase.trim().split(/\s+/);
+    const grid = words.map((w, i) =>
+      `<div style="background:rgba(42,21,9,0.06); border:1px solid rgba(42,21,9,0.1); border-radius:10px; padding:8px 6px; text-align:center;">
+        <span style="font-size:9px; color:var(--text-muted); display:block; margin-bottom:2px; font-weight:700;">${i+1}</span>
+        <span style="font-size:14px; font-weight:700; color:var(--dark); font-family:'Outfit',sans-serif;">${w}</span>
+      </div>`
+    ).join('');
+    document.getElementById('mnemonic-grid').innerHTML = grid;
+    const m = document.getElementById('mnemonic-modal');
+    m.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function confirmMnemonicSaved() {
+    document.getElementById('mnemonic-modal').style.display = 'none';
+    document.body.style.overflow = '';
+    showToast('🔐 Perfecto. Tus palabras están guardadas.');
+  }
+
+  function openRecoverySheet(tab) {
+    const mnemonic = localStorage.getItem('furancho_wallet_mnemonic');
+    const wallet = localStorage.getItem('furancho_wallet_address');
+    const sheet = document.getElementById('recovery-sheet');
+    const wordsPanel = document.getElementById('rs-words-panel');
+    const qrPanel = document.getElementById('rs-qr-panel');
+    const noMnemonic = document.getElementById('rs-no-mnemonic');
+
+    if (tab === 'words') {
+      wordsPanel.style.display = 'block';
+      qrPanel.style.display = 'none';
+      if (mnemonic) {
+        noMnemonic.style.display = 'none';
+        const words = mnemonic.trim().split(/\s+/);
+        document.getElementById('rs-words-grid').innerHTML = words.map((w, i) =>
+          `<div style="background:rgba(42,21,9,0.06); border:1px solid rgba(42,21,9,0.1); border-radius:10px; padding:8px 6px; text-align:center;">
+            <span style="font-size:9px; color:var(--text-muted); display:block; margin-bottom:2px; font-weight:700;">${i+1}</span>
+            <span style="font-size:14px; font-weight:700; color:var(--dark);">${w}</span>
+          </div>`
+        ).join('');
+      } else {
+        noMnemonic.style.display = 'block';
+        document.getElementById('rs-words-grid').innerHTML = '';
+      }
+    } else {
+      wordsPanel.style.display = 'none';
+      qrPanel.style.display = 'block';
+      // Cargar QR si hay wallet
+      if (wallet) {
+        const qrImg = document.getElementById('recovery-qr-img');
+        const qrDl = document.getElementById('recovery-qr-download');
+        if (qrImg.src && qrImg.src !== window.location.href) {
+          document.getElementById('rs-qr-img').src = qrImg.src;
+          document.getElementById('rs-qr-dl').href = qrDl.href;
+        } else {
+          const src = `/api/qr/wallet/${wallet}`;
+          document.getElementById('rs-qr-img').src = src;
+          document.getElementById('rs-qr-dl').href = src;
+        }
+      }
+    }
+
+    sheet.style.display = 'flex';
+    requestAnimationFrame(() => {
+      document.getElementById('recovery-sheet-inner').style.transform = 'translateY(0)';
+    });
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeRecoverySheet() {
+    const inner = document.getElementById('recovery-sheet-inner');
+    inner.style.transform = 'translateY(100%)';
+    setTimeout(() => {
+      document.getElementById('recovery-sheet').style.display = 'none';
+      document.body.style.overflow = '';
+    }, 280);
+  }
+
+  function openRestoreFlow() {
+    document.getElementById('restore-flow').style.display = 'flex';
+    requestAnimationFrame(() => {
+      document.getElementById('restore-flow-inner').style.transform = 'translateY(0)';
+    });
+    document.body.style.overflow = 'hidden';
+    document.getElementById('restore-error').style.display = 'none';
+    document.getElementById('restore-inputs').innerHTML = '';
+    buildRestoreInputs();
+  }
+
+  function closeRestoreFlow() {
+    const inner = document.getElementById('restore-flow-inner');
+    inner.style.transform = 'translateY(100%)';
+    setTimeout(() => {
+      document.getElementById('restore-flow').style.display = 'none';
+      document.body.style.overflow = '';
+    }, 280);
+  }
+
+  function buildRestoreInputs() {
+    const container = document.getElementById('restore-inputs');
+    container.innerHTML = '';
+    for (let i = 1; i <= 12; i++) {
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = 'position:relative;';
+      wrapper.innerHTML = `
+        <span style="position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:10px; color:var(--text-muted); font-weight:700; pointer-events:none;">${i}</span>
+        <input type="text" inputmode="text" autocomplete="off" autocorrect="off" spellcheck="false"
+          placeholder="palabra ${i}"
+          style="width:100%; padding:10px 10px 10px 24px; border-radius:10px; border:1.5px solid rgba(42,21,9,0.12); background:rgba(42,21,9,0.03); font-size:14px; font-family:'Outfit',sans-serif; color:var(--dark); box-sizing:border-box; outline:none;"
+          oninput="this.value=this.value.toLowerCase().trim()"
+          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();const inputs=document.querySelectorAll('#restore-inputs input');const next=inputs[${i}];if(next)next.focus();}" />
+      `;
+      container.appendChild(wrapper);
+    }
+  }
+
+  async function submitRestore() {
+    const inputs = document.querySelectorAll('#restore-inputs input');
+    const words = Array.from(inputs).map(i => i.value.trim().toLowerCase()).filter(Boolean);
+    const errorEl = document.getElementById('restore-error');
+    const btn = document.getElementById('restore-btn');
+
+    if (words.length !== 12) {
+      errorEl.textContent = 'Introduce las 12 palabras completas.';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Verificando...';
+    errorEl.style.display = 'none';
+
+    try {
+      const res = await fetch('/api/mint/recover-from-phrase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phrase: words.join(' ') })
+      });
+      const data = await res.json();
+      if (data.address) {
+        localStorage.setItem('furancho_wallet_address', data.address);
+        localStorage.setItem('furancho_wallet_private_key', data.privateKey);
+        localStorage.setItem('furancho_wallet_mnemonic', words.join(' '));
+        closeRestoreFlow();
+        showToast('✅ ¡Cuenta recuperada! Bienvenido de vuelta.');
+        setTimeout(() => location.reload(), 1200);
+      } else {
+        errorEl.textContent = data.error || 'Frase incorrecta.';
+        errorEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Recuperar mi cuenta';
+      }
+    } catch (e) {
+      errorEl.textContent = 'Error de conexión. Inténtalo de nuevo.';
+      errorEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Recuperar mi cuenta';
+    }
+  }
+
   // ==================== MENSAJES FLOTANTES ====================
 
   let _allMessages = [];
@@ -2943,6 +3137,113 @@
   }
 
   </script>
+
+  <!-- ===================== MODAL 12 PALABRAS — PRIMER USO (BLOQUEANTE) ===================== -->
+  <div id="mnemonic-modal" style="display:none; position:fixed; inset:0; z-index:3000; background:rgba(10,4,2,0.92); backdrop-filter:blur(12px); align-items:flex-end; justify-content:center;">
+    <div style="width:100%; max-width:480px; background:var(--cream); border-radius:28px 28px 0 0; padding:28px 22px 40px; max-height:95vh; overflow-y:auto; -webkit-overflow-scrolling:touch;">
+      <div style="text-align:center; margin-bottom:20px;">
+        <span style="font-size:44px; display:block; margin-bottom:10px;">🔐</span>
+        <h2 style="font-family:'Playfair Display',serif; font-size:24px; font-weight:900; color:var(--wine); margin:0 0 8px;">Guarda estas 12 palabras</h2>
+        <p style="font-size:13px; color:var(--text-muted); line-height:1.6; margin:0;">Son tu única forma de recuperar la cuenta si cambias de móvil o pierdes la app.</p>
+      </div>
+
+      <!-- Aviso rojo -->
+      <div style="background:rgba(139,25,24,0.08); border:1.5px solid rgba(139,25,24,0.25); border-radius:14px; padding:14px 16px; margin-bottom:20px; display:flex; gap:10px; align-items:flex-start;">
+        <span style="font-size:20px; flex-shrink:0;">⚠️</span>
+        <div>
+          <p style="font-size:13px; font-weight:700; color:var(--wine); margin:0 0 4px;">Sin estas palabras, no hay recuperación posible.</p>
+          <p style="font-size:12px; color:var(--text-muted); margin:0; line-height:1.5;">No las guardamos en ningún servidor. Si las pierdes, pierdes tu cuenta, tus niveles y tu historial. <strong>Para siempre.</strong> Escríbelas en papel.</p>
+        </div>
+      </div>
+
+      <!-- Grid 12 palabras -->
+      <div id="mnemonic-grid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:20px;"></div>
+
+      <!-- Instrucciones -->
+      <div style="background:rgba(196,151,58,0.08); border:1px solid rgba(196,151,58,0.2); border-radius:12px; padding:12px 14px; margin-bottom:24px;">
+        <p style="font-size:12px; color:var(--text); line-height:1.7; margin:0;">
+          📋 <strong>Cómo guardarlas:</strong><br>
+          · Escríbelas en papel, en orden, numeradas<br>
+          · Guárdalas en un lugar seguro (no en el móvil)<br>
+          · No las compartas con nadie, ni con el Furancho
+        </p>
+      </div>
+
+      <button onclick="confirmMnemonicSaved()"
+        style="width:100%; padding:16px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:16px; font-weight:700; cursor:pointer; box-shadow:0 4px 10px rgba(139,25,24,0.3);">
+        ✅ Las he guardado, entiendo que no hay recuperación sin ellas
+      </button>
+    </div>
+  </div>
+
+  <!-- ===================== SHEET VER MI CLAVE ===================== -->
+  <div id="recovery-sheet" style="display:none; position:fixed; inset:0; z-index:2500; background:rgba(24,12,5,0.6); backdrop-filter:blur(8px); align-items:flex-end; justify-content:center;" onclick="if(event.target===this)closeRecoverySheet()">
+    <div id="recovery-sheet-inner" style="width:100%; max-width:480px; background:var(--cream); border-radius:24px 24px 0 0; padding:0 20px 36px; max-height:90vh; overflow-y:auto; -webkit-overflow-scrolling:touch; transform:translateY(100%); transition:transform 0.28s cubic-bezier(.32,.72,0,1); box-shadow:0 -8px 40px rgba(0,0,0,0.2);">
+      <div style="position:sticky; top:0; background:var(--cream); padding:14px 0 10px; z-index:1; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(42,21,9,0.07);">
+        <div style="width:36px; height:4px; background:rgba(42,21,9,0.12); border-radius:100px; margin:0 auto; position:absolute; left:0; right:0; top:8px;"></div>
+        <p style="font-size:16px; font-weight:700; font-family:'Playfair Display',serif; color:var(--text); margin:12px 0 0;">🔐 Mi clave de recuperación</p>
+        <button onclick="closeRecoverySheet()" style="background:rgba(42,21,9,0.06); border:none; border-radius:50%; width:32px; height:32px; font-size:16px; cursor:pointer; color:var(--text-muted); flex-shrink:0; margin-top:12px;">✕</button>
+      </div>
+
+      <!-- Panel 12 palabras -->
+      <div id="rs-words-panel" style="display:block; padding-top:16px;">
+        <div style="background:rgba(139,25,24,0.06); border:1px solid rgba(139,25,24,0.18); border-radius:12px; padding:12px 14px; margin-bottom:16px; display:flex; gap:8px;">
+          <span style="font-size:16px;">⚠️</span>
+          <p style="font-size:12px; color:var(--wine); font-weight:600; margin:0; line-height:1.5;">No compartas estas palabras con nadie. Son la llave de tu cuenta.</p>
+        </div>
+        <div id="rs-no-mnemonic" style="display:none; text-align:center; padding:20px; background:rgba(42,21,9,0.04); border-radius:14px; margin-bottom:16px;">
+          <p style="font-size:13px; color:var(--text-muted); margin:0;">Tu cuenta fue creada antes de este sistema.<br>Usa el QR como método de recuperación.</p>
+        </div>
+        <div id="rs-words-grid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:16px;"></div>
+      </div>
+
+      <!-- Panel QR -->
+      <div id="rs-qr-panel" style="display:none; padding-top:16px; text-align:center;">
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px; line-height:1.5;">Guarda esta imagen. En el móvil nuevo, escanea el QR o abre el enlace guardado.</p>
+        <img id="rs-qr-img" src="" style="width:190px; height:190px; border-radius:14px; border:1px solid rgba(42,21,9,0.1); margin-bottom:14px;" />
+        <br>
+        <a id="rs-qr-dl" href="" download="furancho-mi-pase.png"
+          style="display:inline-flex; align-items:center; gap:8px; padding:12px 22px; border-radius:50px; border:1.5px solid rgba(139,25,24,0.25); color:var(--wine); font-family:'Outfit',sans-serif; font-size:14px; font-weight:600; text-decoration:none;">
+          📥 Guardar imagen en galería
+        </a>
+      </div>
+
+      <!-- Tabs -->
+      <div style="display:flex; gap:8px; margin-top:16px;">
+        <button onclick="openRecoverySheet('words')" style="flex:1; padding:10px; border-radius:12px; border:1.5px solid rgba(196,151,58,0.3); background:rgba(196,151,58,0.08); font-size:12px; font-weight:700; color:var(--gold); cursor:pointer; font-family:'Outfit',sans-serif;">📝 12 palabras</button>
+        <button onclick="openRecoverySheet('qr')" style="flex:1; padding:10px; border-radius:12px; border:1.5px solid rgba(42,21,9,0.12); background:rgba(42,21,9,0.04); font-size:12px; font-weight:700; color:var(--text-muted); cursor:pointer; font-family:'Outfit',sans-serif;">📱 QR</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== SHEET RECUPERAR CUENTA ===================== -->
+  <div id="restore-flow" style="display:none; position:fixed; inset:0; z-index:2500; background:rgba(24,12,5,0.65); backdrop-filter:blur(8px); align-items:flex-end; justify-content:center;" onclick="if(event.target===this)closeRestoreFlow()">
+    <div id="restore-flow-inner" style="width:100%; max-width:480px; background:var(--cream); border-radius:24px 24px 0 0; padding:0 20px 40px; max-height:94vh; overflow-y:auto; -webkit-overflow-scrolling:touch; transform:translateY(100%); transition:transform 0.28s cubic-bezier(.32,.72,0,1); box-shadow:0 -8px 40px rgba(0,0,0,0.25);">
+      <div style="position:sticky; top:0; background:var(--cream); padding:14px 0 12px; z-index:1; border-bottom:1px solid rgba(42,21,9,0.07);">
+        <div style="width:36px; height:4px; background:rgba(42,21,9,0.12); border-radius:100px; margin:0 auto 10px;"></div>
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <p style="font-size:16px; font-weight:700; font-family:'Playfair Display',serif; color:var(--text); margin:0;">🔑 Recuperar cuenta</p>
+          <button onclick="closeRestoreFlow()" style="background:rgba(42,21,9,0.06); border:none; border-radius:50%; width:32px; height:32px; font-size:16px; cursor:pointer; color:var(--text-muted);">✕</button>
+        </div>
+      </div>
+
+      <div style="padding-top:18px;">
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:6px; line-height:1.6;">Introduce tus <strong style="color:var(--dark);">12 palabras de recuperación</strong> en orden. Son las mismas que te mostramos al crear la cuenta.</p>
+        <p style="font-size:12px; color:var(--wine); font-weight:600; margin-bottom:18px;">⚠️ Si no las guardaste, no podemos recuperar la cuenta. No hay plan B.</p>
+
+        <div id="restore-inputs" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px;"></div>
+
+        <p id="restore-error" style="display:none; color:var(--wine); font-size:13px; font-weight:600; text-align:center; margin-bottom:12px;"></p>
+
+        <button id="restore-btn" onclick="submitRestore()"
+          style="width:100%; padding:16px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; margin-bottom:12px; box-shadow:0 4px 10px rgba(139,25,24,0.3);">
+          Recuperar mi cuenta
+        </button>
+
+        <p style="font-size:11px; color:var(--text-muted); text-align:center; line-height:1.6;">¿No tienes las palabras pero sí el QR de recuperación?<br>Escanéalo con la cámara del móvil nuevo directamente.</p>
+      </div>
+    </div>
+  </div>
 
   <!-- Botón flotante mensajes -->
   <div id="msg-fab" style="display:none; position:fixed; bottom:82px; right:18px; z-index:900; align-items:center; justify-content:center; width:48px; height:48px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); border-radius:50%; box-shadow:0 4px 16px rgba(139,25,24,0.4); cursor:pointer; border:none;" onclick="openMsgPanel()">

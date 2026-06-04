@@ -55,17 +55,33 @@ router.post('/entry', mintLimiter, async (req, res) => {
 });
 
 // POST /api/mint/create-wallet
-// Genera una billetera Web3 aleatoria y anónima en el backend
+// Genera una billetera Web3 aleatoria con mnemónico de 12 palabras
 router.post('/create-wallet', mintLimiter, (req, res) => {
   try {
     const wallet = Wallet.createRandom();
     res.json({
       address: wallet.address,
-      privateKey: wallet.privateKey
+      privateKey: wallet.privateKey,
+      mnemonic: wallet.mnemonic?.phrase || null   // 12 palabras BIP39
     });
   } catch (error) {
     console.error('Error al generar billetera:', error);
     res.status(500).json({ error: 'Error al generar la billetera anónima' });
+  }
+});
+
+// POST /api/mint/recover-from-phrase
+// Recupera una cuenta a partir de las 12 palabras mnemónicas
+router.post('/recover-from-phrase', mintLimiter, (req, res) => {
+  const { phrase } = req.body;
+  if (!phrase || typeof phrase !== 'string') return res.status(400).json({ error: 'Falta la frase' });
+  const words = phrase.trim().toLowerCase().split(/\s+/);
+  if (words.length !== 12) return res.status(400).json({ error: 'La frase debe tener exactamente 12 palabras' });
+  try {
+    const wallet = Wallet.fromPhrase(words.join(' '));
+    res.json({ address: wallet.address, privateKey: wallet.privateKey });
+  } catch (e) {
+    res.status(400).json({ error: 'Frase de recuperación no válida. Comprueba que las palabras son correctas.' });
   }
 });
 
