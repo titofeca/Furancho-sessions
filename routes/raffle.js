@@ -87,7 +87,7 @@ router.post('/start', requireAuth, (req, res) => {
   }
 
   // Guardar en DB
-  insertRaffle(prize, winnerWallet, verificationCode);
+  const raffleId = insertRaffle(prize, winnerWallet, verificationCode);
 
   // Informar a todos los móviles que EMPIEZA el sorteo (Ruleta de 30 segundos)
   console.log(`[Raffle] Iniciando sorteo. Clientes SSE: ${clients.length}, con wallet: ${connectedWallets.length}, sesiones DB: ${sessionWallets.length}`);
