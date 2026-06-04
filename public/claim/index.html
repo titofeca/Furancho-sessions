@@ -2277,12 +2277,11 @@
       const masked = userWalletAddress.substring(0, 6) + '...' + userWalletAddress.slice(-6);
       document.getElementById('profile-wallet-id').textContent = masked;
 
-      // QR de recuperación
+      // QR de recuperación — solo guardar la URL, no mostrar en perfil
       const qrUrl = `/api/qr/wallet/${userWalletAddress}`;
       const qrImg = document.getElementById('recovery-qr-img');
       const qrLink = document.getElementById('recovery-qr-download');
       qrImg.src = qrUrl;
-      qrImg.style.display = 'block';
       qrLink.href = qrUrl;
 
       // No aplicar tema oscuro en el perfil — mantener fondo crema siempre
@@ -2501,9 +2500,10 @@
       const modal = document.getElementById('vip-modal');
       modal.style.display = 'flex';
       document.body.style.overflow = 'hidden';
-      requestAnimationFrame(() => {
+      // Doble RAF necesario en iOS Safari para que la transición arranque correctamente
+      requestAnimationFrame(() => requestAnimationFrame(() => {
         document.getElementById('vip-modal-sheet').style.transform = 'translateY(0)';
-      });
+      }));
 
       try {
         const res = await fetch(`/api/events/${eventId}/vip`);
