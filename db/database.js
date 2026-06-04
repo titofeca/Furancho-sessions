@@ -9,6 +9,9 @@ const db = new DatabaseSync(DB_PATH);
 db.exec('PRAGMA journal_mode = WAL');
 db.exec('PRAGMA foreign_keys = ON');
 
+// Migración: añadir vip_max si no existe
+try { db.exec(`ALTER TABLE events ADD COLUMN vip_max INTEGER DEFAULT 15`); } catch (_) {}
+
 // =====================
 // CREAR TABLAS
 // =====================
@@ -72,7 +75,8 @@ db.exec(`
     event_date TEXT NOT NULL UNIQUE,
     title TEXT DEFAULT 'Furancho Sessions',
     description TEXT,
-    active INTEGER DEFAULT 1
+    active INTEGER DEFAULT 1,
+    vip_max INTEGER DEFAULT 15
   );
 
   CREATE TABLE IF NOT EXISTS rsvps (
@@ -361,14 +365,20 @@ function seedEvents() {
 }
 seedEvents();
 
-const VIP_MAX = 15;
-
 function getVipCapacity(eventId) {
+  const event = db.prepare(`SELECT vip_max FROM events WHERE id=?`).get(eventId);
+  const max = event ? (event.vip_max ?? 15) : 15;
   const used = db.prepare(`
     SELECT COALESCE(SUM(group_size),0) as total
     FROM vip_reservations WHERE event_id=? AND status != 'cancelled'
   `).get(eventId);
-  return { used: used.total, remaining: VIP_MAX - used.total, max: VIP_MAX };
+  return { used: used.total, remaining: max - used.total, max };
+}
+
+function setVipMax(eventId, newMax) {
+  if (newMax < 0) throw new Error('La capacidad no puede ser negativa.');
+  db.prepare(`UPDATE events SET vip_max=? WHERE id=?`).run(newMax, eventId);
+  return getVipCapacity(eventId);
 }
 
 function createVipReservation({ eventId, walletAddress, phone, groupSize, notes }) {
@@ -388,6 +398,15 @@ function getVipReservations(eventId) {
            phone, group_size, status, notes, created_at
     FROM vip_reservations WHERE event_id=? ORDER BY created_at ASC
   `).all(eventId);
+}
+
+function getVipReservation(reservationId) {
+  return db.prepare(`
+    SELECT r.id, r.phone, r.group_size, r.status, r.notes, r.event_id,
+           e.title as event_title, e.event_date
+    FROM vip_reservations r JOIN events e ON r.event_id = e.id
+    WHERE r.id=?
+  `).get(reservationId);
 }
 
 function updateVipStatus(reservationId, status) {
@@ -485,7 +504,9 @@ module.exports = {
   getRsvpStatus,
   createVipReservation,
   getVipReservations,
+  getVipReservation,
   getVipCapacity,
+  setVipMax,
   updateVipStatus,
   savePushSubscription,
   getAllPushSubscriptions,

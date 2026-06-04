@@ -1564,37 +1564,57 @@
         const d = new Date(ev.event_date + 'T00:00:00');
         const res = await fetch(`/api/events/${ev.id}/vip/reservations`, { headers: authHeaders() }).then(r => r.json());
         const { reservations, capacity } = res;
+        const pendingCount = reservations.filter(r => r.status === 'pending').length;
+        const pct = capacity.max > 0 ? Math.round((capacity.used / capacity.max) * 100) : 0;
+        const barColor = pct >= 90 ? '#f87171' : pct >= 60 ? 'var(--gold)' : '#4ade80';
+
         vipHtml += `
-          <div style="margin-bottom:20px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-              <p style="font-size:14px; font-weight:700; color:var(--text);">Jueves ${d.getDate()} ${months[d.getMonth()]}</p>
-              <span style="font-size:12px; color:var(--text-muted);">${capacity.used}/${capacity.max} plazas</span>
+          <div style="margin-bottom:24px; border-bottom:1px solid rgba(42,21,9,0.07); padding-bottom:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <p style="font-size:14px; font-weight:700; color:var(--text);">Jueves ${d.getDate()} ${months[d.getMonth()]}
+                ${pendingCount > 0 ? `<span style="margin-left:8px; background:var(--gold); color:#fff; font-size:10px; font-weight:700; border-radius:100px; padding:2px 8px;">${pendingCount} pendiente${pendingCount>1?'s':''}</span>` : ''}
+              </p>
+              <span style="font-size:12px; color:var(--text-muted);">${capacity.used}/${capacity.max} pax</span>
+            </div>
+
+            <!-- Barra de ocupación -->
+            <div style="background:rgba(42,21,9,0.08); border-radius:100px; height:6px; margin-bottom:12px; overflow:hidden;">
+              <div style="height:100%; width:${pct}%; background:${barColor}; border-radius:100px; transition:width 0.3s;"></div>
+            </div>
+
+            <!-- Control de capacidad -->
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px; background:rgba(42,21,9,0.03); border-radius:10px; padding:10px 12px;">
+              <span style="font-size:11px; color:var(--text-muted); flex:1;">Plazas disponibles (ajustar por tel./presencial):</span>
+              <input id="vip-max-${ev.id}" type="number" min="0" max="50" value="${capacity.max}"
+                style="width:58px; padding:5px 8px; border-radius:8px; border:1.5px solid rgba(42,21,9,0.12); background:#fff; font-size:13px; font-family:'Outfit',sans-serif; text-align:center; color:var(--text);">
+              <button onclick="setVipCapacity(${ev.id})" style="padding:5px 12px; border-radius:8px; border:none; background:var(--wine); color:#fff; font-size:11px; font-weight:700; cursor:pointer;">Guardar</button>
             </div>`;
+
         if (reservations.length === 0) {
           vipHtml += `<p style="font-size:13px; color:var(--text-muted);">Sin reservas todavía.</p>`;
         } else {
           vipHtml += `<table style="width:100%; font-size:12px; border-collapse:collapse;">
             <thead><tr style="color:var(--text-muted);">
-              <th style="text-align:left; padding:6px 4px;">ID</th>
               <th style="text-align:left; padding:6px 4px;">Teléfono</th>
               <th style="text-align:center; padding:6px 4px;">Pax</th>
               <th style="text-align:center; padding:6px 4px;">Estado</th>
               <th style="padding:6px 4px;"></th>
             </tr></thead><tbody>
             ${reservations.map(r => {
+              const isPending = r.status === 'pending';
               const statusColor = r.status==='confirmed'?'#4ade80':r.status==='cancelled'?'#f87171':'var(--gold)';
-              return `<tr style="border-top:1px solid rgba(42,21,9,0.05);">
-                <td style="padding:8px 4px; font-family:monospace; font-size:11px; color:var(--text-muted);">${r.wallet_masked}</td>
+              const rowBg = isPending ? 'rgba(196,151,58,0.06)' : 'transparent';
+              return `<tr style="border-top:1px solid rgba(42,21,9,0.05); background:${rowBg};">
                 <td style="padding:8px 4px;">
                   <span style="font-weight:600; color:var(--text);">${r.phone}</span>
                   ${r.notes ? `<div style="font-size:10px; color:var(--gold); font-weight:600; margin-top:2px;">${r.notes}</div>` : ''}
                 </td>
-                <td style="padding:8px 4px; text-align:center; font-weight:700; color:var(--wine);">${r.group_size}</td>
-                <td style="padding:8px 4px; text-align:center; font-size:11px; font-weight:700; color:${statusColor}; text-transform:uppercase;">${r.status}</td>
+                <td style="padding:8px 4px; text-align:center; font-weight:700; color:var(--wine); font-size:14px;">${r.group_size}</td>
+                <td style="padding:8px 4px; text-align:center; font-size:11px; font-weight:700; color:${statusColor}; text-transform:uppercase; letter-spacing:0.5px;">${r.status}</td>
                 <td style="padding:8px 4px;">
-                  <div style="display:flex; gap:4px;">
-                    <button onclick="updateVip(${r.id},'confirmed')" style="padding:4px 8px; border-radius:6px; border:none; background:#4ade8022; color:#4ade80; font-size:10px; cursor:pointer; font-weight:700;">✓</button>
-                    <button onclick="updateVip(${r.id},'cancelled')" style="padding:4px 8px; border-radius:6px; border:none; background:#f8717122; color:#f87171; font-size:10px; cursor:pointer; font-weight:700;">✗</button>
+                  <div style="display:flex; gap:4px; justify-content:flex-end;">
+                    <button onclick="updateVip(${r.id},'confirmed')" title="Confirmar" style="padding:5px 10px; border-radius:7px; border:none; background:#4ade8022; color:#4ade80; font-size:12px; cursor:pointer; font-weight:700;">✓</button>
+                    <button onclick="updateVip(${r.id},'cancelled')" title="Cancelar" style="padding:5px 10px; border-radius:7px; border:none; background:#f8717122; color:#f87171; font-size:12px; cursor:pointer; font-weight:700;">✗</button>
                   </div>
                 </td>
               </tr>`;
@@ -1609,13 +1629,50 @@
 
   async function updateVip(id, status) {
     try {
-      await fetch(`/api/events/vip/${id}`, {
+      const res = await fetch(`/api/events/vip/${id}`, {
         method: 'PATCH',
-        headers: { ...authHeaders() },
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
       });
+      const data = await res.json();
       loadEventsData();
-      showToast(status === 'confirmed' ? '✓ Reserva confirmada' : '✗ Reserva cancelada', status === 'cancelled');
+
+      if (data.success && data.phone && status !== 'pending') {
+        const phone = data.phone.replace(/[^0-9]/g, '');
+        let waMsg = '';
+        if (status === 'confirmed') {
+          waMsg = `Hola! Te confirmamos tu reserva VIP en *Furancho Sessions* — ${data.eventTitle} para ${data.groupSize} personas. ¡Te esperamos!`;
+          showToast('✓ Confirmada — abriendo WhatsApp...');
+        } else {
+          waMsg = `Hola, lamentamos informarte que tu reserva VIP en *Furancho Sessions* — ${data.eventTitle} ha sido cancelada. Contacta con nosotros para más información.`;
+          showToast('✗ Cancelada — abriendo WhatsApp...', true);
+        }
+        setTimeout(() => {
+          window.open(`https://wa.me/${phone}?text=${encodeURIComponent(waMsg)}`, '_blank');
+        }, 400);
+      } else {
+        showToast('Reserva actualizada');
+      }
+    } catch(e) { showToast('Error', true); }
+  }
+
+  async function setVipCapacity(eventId) {
+    const input = document.getElementById(`vip-max-${eventId}`);
+    const val = parseInt(input.value);
+    if (isNaN(val) || val < 0) return showToast('Valor no válido', true);
+    try {
+      const res = await fetch(`/api/events/${eventId}/vip/capacity`, {
+        method: 'PATCH',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vipMax: val })
+      });
+      const data = await res.json();
+      if (data.success) {
+        loadEventsData();
+        showToast(`Capacidad actualizada: ${data.capacity.remaining} plazas libres`);
+      } else {
+        showToast(data.error || 'Error', true);
+      }
     } catch(e) { showToast('Error', true); }
   }
 
