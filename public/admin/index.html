@@ -991,28 +991,64 @@
         <p class="page-subtitle">QR de entrada y salida. Imprímelos y colócalos en el local.</p>
       </div>
 
-      <!-- QRs operativos destacados -->
-      <div class="qr-grid" style="margin-bottom: 32px;">
+      <!-- PDFs corporativos — descarga principal -->
+      <div style="background:linear-gradient(135deg,rgba(139,25,24,0.06),rgba(196,151,58,0.04)); border:1.5px solid rgba(196,151,58,0.25); border-radius:20px; padding:20px; margin-bottom:28px;">
+        <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--gold); margin-bottom:4px;">⬇ Descargar PDFs para imprimir</p>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:18px;">Diseño corporativo con logo, colores Furancho y texto en galego. Listos para imprimir y colgar.</p>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <a href="/api/pdf/entrada" target="_blank"
+            style="display:flex; align-items:center; gap:12px; padding:14px 16px; background:#fff; border:1.5px solid rgba(46,204,113,0.3); border-radius:14px; text-decoration:none;">
+            <span style="font-size:24px; flex-shrink:0;">🟢</span>
+            <div style="flex:1;">
+              <p style="font-size:13px; font-weight:700; color:#1C0E06; margin:0 0 2px 0;">QR Entrada — "¡Cheguei!"</p>
+              <p style="font-size:11px; color:#7A6A5A; margin:0;">PDF corporativo · escanear al llegar</p>
+            </div>
+            <span style="font-size:12px; font-weight:700; color:#2ecc71; flex-shrink:0;">PDF ↓</span>
+          </a>
+          <a href="/api/pdf/salida" target="_blank"
+            style="display:flex; align-items:center; gap:12px; padding:14px 16px; background:#fff; border:1.5px solid rgba(139,25,24,0.3); border-radius:14px; text-decoration:none;">
+            <span style="font-size:24px; flex-shrink:0;">🔴</span>
+            <div style="flex:1;">
+              <p style="font-size:13px; font-weight:700; color:#1C0E06; margin:0 0 2px 0;">QR Salida — "Marcho que teño que marchar"</p>
+              <p style="font-size:11px; color:#7A6A5A; margin:0;">PDF corporativo · escanear al irse</p>
+            </div>
+            <span style="font-size:12px; font-weight:700; color:var(--wine); flex-shrink:0;">PDF ↓</span>
+          </a>
+          <a href="/api/pdf/app" target="_blank"
+            style="display:flex; align-items:center; gap:12px; padding:14px 16px; background:#fff; border:1.5px solid rgba(196,151,58,0.3); border-radius:14px; text-decoration:none;">
+            <span style="font-size:24px; flex-shrink:0;">🟡</span>
+            <div style="flex:1;">
+              <p style="font-size:13px; font-weight:700; color:#1C0E06; margin:0 0 2px 0;">QR App — "¿Perdiches a app?"</p>
+              <p style="font-size:11px; color:#7A6A5A; margin:0;">PDF corporativo · enlace de vuelta para clientes perdidos</p>
+            </div>
+            <span style="font-size:12px; font-weight:700; color:var(--gold); flex-shrink:0;">PDF ↓</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- QRs operativos (PNG rápido) -->
+      <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:12px;">Vista rápida QR (PNG)</p>
+      <div class="qr-grid" style="margin-bottom:32px;">
         <div class="qr-card" style="border-color: rgba(46, 204, 113, 0.3);">
           <img src="/api/qr/entry" alt="QR Entrada" class="qr-img" />
           <div class="qr-level-name" style="color: #2ecc71;">🟢 ENTRADA</div>
           <div class="qr-level-label">Fichar al llegar — abre sesión y entrega NFT a nuevos</div>
-          <a href="/api/qr/entry/download" class="btn-download" download style="background: rgba(46,204,113,0.1); border-color: rgba(46,204,113,0.25); color: #2ecc71;">⬇ Descargar</a>
+          <a href="/api/qr/entry/download" class="btn-download" download style="background: rgba(46,204,113,0.1); border-color: rgba(46,204,113,0.25); color: #2ecc71;">⬇ PNG</a>
         </div>
         <div class="qr-card" style="border-color: rgba(139, 25, 24, 0.35);">
           <img src="/api/qr/checkin" alt="QR Salida" class="qr-img" />
-          <div class="qr-level-name" style="color: var(--wine-light);">🔴 SALIDA / CHECK-IN</div>
-          <div class="qr-level-label">Fichar al salir — acumula visita y sube nivel si toca</div>
-          <a href="/api/qr/checkin/download" class="btn-download" download style="background: rgba(139,25,24,0.1); border-color: rgba(139,25,24,0.3); color: var(--wine-light);">⬇ Descargar</a>
+          <div class="qr-level-name" style="color: var(--wine-light);">🔴 SALIDA</div>
+          <div class="qr-level-label">Fichar al salir — acumula visita y sube nivel</div>
+          <a href="/api/qr/checkin/download" class="btn-download" download style="background: rgba(139,25,24,0.1); border-color: rgba(139,25,24,0.3); color: var(--wine-light);">⬇ PNG</a>
         </div>
       </div>
 
-      <!-- QR Perfil Cliente -->
+      <!-- QR App Cliente -->
       <div style="background: rgba(196,151,58,0.06); border: 1px solid rgba(196,151,58,0.2); border-radius: 20px; padding: 20px; margin-bottom: 32px; text-align: center;">
-        <p style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--gold); margin-bottom: 12px;">🟡 QR Perfil de Cliente</p>
-        <img src="/api/qr/checkin" alt="QR Perfil" style="width: 180px; height: 180px; border-radius: 12px; margin-bottom: 12px;" />
-        <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px;">Comparte o imprime este QR para que los clientes accedan a su perfil, nivel y progresión desde su móvil.</p>
-        <a href="/api/qr/checkin/download" class="btn-download" download style="background: rgba(196,151,58,0.1); border-color: rgba(196,151,58,0.3); color: var(--gold); display: inline-block;">⬇ Descargar para compartir</a>
+        <p style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--gold); margin-bottom: 12px;">🟡 QR App Cliente (PNG)</p>
+        <img src="/api/qr/checkin" alt="QR App" style="width: 180px; height: 180px; border-radius: 12px; margin-bottom: 12px;" />
+        <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px;">Para clientes que perdieron el enlace a su perfil.</p>
+        <a href="/api/qr/checkin/download" class="btn-download" download style="background: rgba(196,151,58,0.1); border-color: rgba(196,151,58,0.3); color: var(--gold); display: inline-block;">⬇ PNG</a>
       </div>
 
       <div class="page-header" style="border-top: 1px solid rgba(42,21,9,0.1); padding-top: 22px; margin-top: 8px;">

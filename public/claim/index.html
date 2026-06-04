@@ -1527,38 +1527,23 @@
       <p class="nft-event">Furancho Sessions · Afterwork Viño e Tapas</p>
 
       <!-- Mensaje del Furancho — aparece si el admin envió uno -->
+      <!-- Banner mensaje nuevo (solo no leídos) -->
       <div id="profile-admin-msg" style="display:none; margin-bottom: 18px;">
-        <div style="
-          background: linear-gradient(135deg, rgba(196,151,58,0.12) 0%, rgba(139,25,24,0.08) 100%);
-          border: 1.5px solid rgba(196,151,58,0.35);
-          border-radius: 16px;
-          padding: 16px 18px;
-          position: relative;
-          overflow: hidden;
-        ">
-          <div style="position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg, var(--wine), var(--gold));"></div>
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-            <span style="font-size:18px;">📢</span>
-            <p style="font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--gold);">Mensaje del Furancho</p>
+        <div style="background:linear-gradient(135deg,rgba(196,151,58,0.12) 0%,rgba(139,25,24,0.08) 100%); border:1.5px solid rgba(196,151,58,0.35); border-radius:16px; padding:16px 18px; position:relative; overflow:hidden;">
+          <div style="position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--wine),var(--gold));"></div>
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:18px;">📢</span>
+              <p style="font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--gold);">Mensaje del Furancho</p>
+            </div>
+            <button onclick="dismissAdminMsg()" style="background:none; border:none; font-size:18px; color:var(--text-muted); cursor:pointer; line-height:1; padding:0; flex-shrink:0;">✕</button>
           </div>
           <p id="profile-admin-msg-body" style="font-size:14px; color:var(--text); line-height:1.6; font-weight:400;"></p>
         </div>
       </div>
 
-      <!-- Buzón de mensajes del Furancho -->
-      <div id="inbox-section" style="display:none; margin-bottom: 18px;">
-        <details>
-          <summary style="cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between; padding:14px 18px; background:linear-gradient(135deg,rgba(196,151,58,0.1),rgba(139,25,24,0.07)); border:1.5px solid rgba(196,151,58,0.25); border-radius:16px;">
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span style="font-size:18px;">✉️</span>
-              <span style="font-size:13px; font-weight:700; color:var(--text);">Mensajes del Furancho</span>
-              <span id="inbox-count" style="background:var(--wine); color:#fff; font-size:10px; font-weight:700; border-radius:100px; padding:2px 7px;">0</span>
-            </div>
-            <span style="font-size:12px; color:var(--text-muted);">Ver todos ▾</span>
-          </summary>
-          <div id="inbox-list" style="margin-top:8px; display:flex; flex-direction:column; gap:8px;"></div>
-        </details>
-      </div>
+      <!-- inbox-section oculto (sustituido por panel flotante) -->
+      <div id="inbox-section" style="display:none;"></div>
 
       <!-- Mis premios ganados — siempre visible si hay premios -->
       <div id="prizes-section" style="display:none; margin-bottom: 18px;">
@@ -2271,40 +2256,17 @@
       fetch(`/api/admin/inbox?level=${lvl}`)
         .then(r => r.json()).then(msgs => {
           if (!msgs || !msgs.length) return;
-          const section = document.getElementById('inbox-section');
-          const list = document.getElementById('inbox-list');
-          const count = document.getElementById('inbox-count');
-          section.style.display = 'block';
-          count.textContent = msgs.length;
-          list.innerHTML = msgs.map(m => `
-            <div style="background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:12px; padding:14px 16px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                <p style="font-size:13px; font-weight:700; color:var(--text);">${m.subject}</p>
-                <p style="font-size:10px; color:var(--text-muted);">${new Date(m.sent_at).toLocaleDateString('es-ES')}</p>
-              </div>
-              <p style="font-size:13px; color:var(--text-muted); line-height:1.5;">${m.body}</p>
-            </div>
-          `).join('');
-          // Mostrar el más reciente también arriba destacado
-          const box = document.getElementById('profile-admin-msg');
-          const body = document.getElementById('profile-admin-msg-body');
-          if (msgs[0] && box && body) { body.textContent = msgs[0].body; box.style.display = 'block'; }
-        }).catch(() => {});
-
-      // Mensaje admin — buscar para nivel exacto, luego para "all" como fallback
-      fetch(`/api/admin/current-message?level=${lvl}`)
-        .then(r => r.json()).then(msg => {
-          const box = document.getElementById('profile-admin-msg');
-          const body = document.getElementById('profile-admin-msg-body');
-          if (msg && msg.body) {
-            body.textContent = msg.body;
+          _allMessages = msgs;
+          const readIds = getReadIds();
+          const unread = msgs.filter(m => !readIds.includes(m.id));
+          // Mostrar banner solo si hay mensajes no leídos
+          if (unread.length > 0) {
+            const box = document.getElementById('profile-admin-msg');
+            const body = document.getElementById('profile-admin-msg-body');
+            body.textContent = unread[0].body;
             box.style.display = 'block';
-          } else {
-            fetch('/api/admin/current-message?level=all')
-              .then(r => r.json()).then(m => {
-                if (m && m.body) { body.textContent = m.body; box.style.display = 'block'; }
-              }).catch(() => {});
           }
+          updateMsgFab();
         }).catch(() => {});
 
       showScreen('screen-profile');
@@ -2904,6 +2866,94 @@
       if (permission === 'granted') subscribePush();
     }
 
+  // ==================== MENSAJES FLOTANTES ====================
+
+  let _allMessages = [];
+
+  function getReadIds() {
+    try { return JSON.parse(localStorage.getItem('furancho_read_msgs') || '[]'); } catch { return []; }
+  }
+  function markRead(id) {
+    const ids = getReadIds();
+    if (!ids.includes(id)) { ids.push(id); localStorage.setItem('furancho_read_msgs', JSON.stringify(ids)); }
+  }
+  function markAllRead() {
+    const ids = _allMessages.map(m => m.id);
+    localStorage.setItem('furancho_read_msgs', JSON.stringify(ids));
+  }
+
+  function dismissAdminMsg() {
+    // Marcar todos los mensajes actuales como leídos
+    markAllRead();
+    document.getElementById('profile-admin-msg').style.display = 'none';
+    updateMsgFab();
+  }
+
+  function updateMsgFab() {
+    const fab = document.getElementById('msg-fab');
+    const badge = document.getElementById('msg-fab-badge');
+    if (!fab) return;
+    const readIds = getReadIds();
+    const unread = _allMessages.filter(m => !readIds.includes(m.id)).length;
+    if (_allMessages.length === 0) { fab.style.display = 'none'; return; }
+    fab.style.display = 'flex';
+    badge.textContent = unread;
+    badge.style.display = unread > 0 ? 'flex' : 'none';
+  }
+
+  function openMsgPanel() {
+    markAllRead();
+    const readIds = getReadIds();
+    const panel = document.getElementById('msg-panel');
+    const list = document.getElementById('msg-panel-list');
+    list.innerHTML = _allMessages.map(m => {
+      const wasUnread = !readIds.includes(m.id);
+      return `<div style="background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:14px; padding:14px 16px; position:relative; overflow:hidden;">
+        ${wasUnread ? '<div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--wine),var(--gold));"></div>' : ''}
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <p style="font-size:13px; font-weight:700; color:var(--text);">${m.subject}</p>
+          <p style="font-size:10px; color:var(--text-muted);">${new Date(m.sent_at).toLocaleDateString('es-ES')}</p>
+        </div>
+        <p style="font-size:13px; color:var(--text-muted); line-height:1.5;">${m.body}</p>
+      </div>`;
+    }).join('');
+    panel.style.display = 'flex';
+    requestAnimationFrame(() => { panel.querySelector('.msg-panel-sheet').style.transform = 'translateY(0)'; });
+    document.getElementById('profile-admin-msg').style.display = 'none';
+    updateMsgFab();
+  }
+
+  function closeMsgPanel() {
+    const panel = document.getElementById('msg-panel');
+    const sheet = panel.querySelector('.msg-panel-sheet');
+    sheet.style.transform = 'translateY(100%)';
+    setTimeout(() => { panel.style.display = 'none'; }, 280);
+  }
+
   </script>
+
+  <!-- Botón flotante mensajes -->
+  <div id="msg-fab" style="display:none; position:fixed; bottom:82px; right:18px; z-index:900; align-items:center; justify-content:center; width:48px; height:48px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); border-radius:50%; box-shadow:0 4px 16px rgba(139,25,24,0.4); cursor:pointer; border:none;" onclick="openMsgPanel()">
+    <span style="font-size:20px;">✉️</span>
+    <span id="msg-fab-badge" style="display:none; position:absolute; top:-4px; right:-4px; background:var(--gold); color:#fff; font-size:10px; font-weight:900; width:18px; height:18px; border-radius:50%; align-items:center; justify-content:center; font-family:'Outfit',sans-serif;"></span>
+  </div>
+
+  <!-- Panel deslizante mensajes -->
+  <div id="msg-panel" style="display:none; position:fixed; inset:0; z-index:1500; background:rgba(24,12,5,0.55); backdrop-filter:blur(6px); align-items:flex-end; justify-content:center;" onclick="if(event.target===this)closeMsgPanel()">
+    <div class="msg-panel-sheet" style="width:100%; max-width:480px; background:var(--cream); border-radius:24px 24px 0 0; padding:0 0 32px 0; max-height:80vh; display:flex; flex-direction:column; transform:translateY(100%); transition:transform 0.28s cubic-bezier(.32,.72,0,1); box-shadow:0 -8px 40px rgba(0,0,0,0.25);">
+      <div style="padding:14px 20px 0; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+        <div style="width:36px; height:4px; background:rgba(42,21,9,0.15); border-radius:100px; margin:0 auto;"></div>
+      </div>
+      <div style="padding:12px 20px 16px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; border-bottom:1px solid rgba(42,21,9,0.07);">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:20px;">✉️</span>
+          <span style="font-family:'Playfair Display',serif; font-size:17px; font-weight:700; color:var(--text);">Mensajes del Furancho</span>
+        </div>
+        <button onclick="closeMsgPanel()" style="background:rgba(42,21,9,0.06); border:none; border-radius:50%; width:32px; height:32px; font-size:16px; cursor:pointer; color:var(--text-muted); display:flex; align-items:center; justify-content:center;">✕</button>
+      </div>
+      <div id="msg-panel-list" style="padding:16px 20px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;"></div>
+    </div>
+  </div>
+
 </body>
 </html>
