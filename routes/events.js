@@ -39,6 +39,24 @@ router.get('/my-rsvps', (req, res) => {
   }
 });
 
+// GET /api/events/vip/my-reservations?wallet=0x... — reservas del cliente
+router.get('/vip/my-reservations', (req, res) => {
+  const { wallet } = req.query;
+  if (!wallet) return res.status(400).json({ error: 'Falta wallet' });
+  try {
+    const { db } = require('../db/database');
+    const rows = db.prepare(`
+      SELECT r.id, r.event_id, r.group_size, r.status, r.notes, r.created_at,
+             e.event_date, e.title as event_title
+      FROM vip_reservations r
+      JOIN events e ON r.event_id = e.id
+      WHERE r.wallet_address = ?
+      ORDER BY e.event_date ASC
+    `).all(wallet);
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // GET /api/events/:id/vip — capacidad VIP de un evento (público)
 router.get('/:id/vip', (req, res) => {
   try {
@@ -99,6 +117,17 @@ router.patch('/vip/:id', requireAuth, (req, res) => {
       groupSize: reservation?.group_size,
       eventTitle: reservation?.event_title
     });
+    // Notificar al cliente vía SSE si está conectado
+    if (reservation?.wallet_address) {
+      try {
+        const { broadcast } = require('./raffle');
+        broadcast('vip_status', {
+          eventId: reservation.event_id,
+          status,
+          eventTitle: reservation.event_title
+        }, reservation.wallet_address);
+      } catch(_) {}
+    }
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

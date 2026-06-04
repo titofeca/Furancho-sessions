@@ -7,10 +7,13 @@ const { sendPushToAll } = require('../services/push');
 // Mantenemos las conexiones SSE de los clientes
 let clients = [];
 
-// Función para enviar eventos a todos los clientes conectados
-function broadcast(event, data) {
+// Envía evento a todos los clientes o solo a uno por wallet
+function broadcast(event, data, targetWallet = null) {
   const dead = [];
-  clients.forEach(client => {
+  const targets = targetWallet
+    ? clients.filter(c => c.walletAddress === targetWallet)
+    : clients;
+  targets.forEach(client => {
     try {
       client.res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
       if (typeof client.res.flush === 'function') client.res.flush();
@@ -164,3 +167,4 @@ router.get('/eligible', requireAuth, (req, res) => {
 });
 
 module.exports = router;
+module.exports.broadcast = broadcast;
