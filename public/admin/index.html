@@ -893,6 +893,48 @@
         <p class="page-subtitle">Lista completa de wallets y sus niveles</p>
       </div>
 
+      <!-- ── Gráfica horas pico ── -->
+      <div class="glass-card" style="margin-bottom:20px;" id="peak-hours-card">
+        <div class="card-header">
+          <span class="card-title">⏰ Horas pico del evento</span>
+          <span id="peak-label" style="font-size:11px; color:var(--gold); font-weight:700;"></span>
+        </div>
+
+        <!-- KPIs rápidos -->
+        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:18px;" id="peak-kpis">
+          <div style="background:rgba(42,21,9,0.04); border-radius:12px; padding:12px; text-align:center;">
+            <p style="font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 4px;">En local ahora</p>
+            <p id="kpi-open" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:var(--wine); margin:0;">—</p>
+          </div>
+          <div style="background:rgba(42,21,9,0.04); border-radius:12px; padding:12px; text-align:center;">
+            <p style="font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 4px;">Estancia media</p>
+            <p id="kpi-avg" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:var(--gold); margin:0;">—</p>
+          </div>
+          <div style="background:rgba(42,21,9,0.04); border-radius:12px; padding:12px; text-align:center;">
+            <p style="font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 4px;">Total sesiones</p>
+            <p id="kpi-sessions" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text); margin:0;">—</p>
+          </div>
+          <div style="background:rgba(42,21,9,0.04); border-radius:12px; padding:12px; text-align:center;">
+            <p style="font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 4px;">Clientes únicos</p>
+            <p id="kpi-users" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text); margin:0;">—</p>
+          </div>
+        </div>
+
+        <!-- Gráfica de barras por hora -->
+        <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;">Afluencia por hora</p>
+        <div id="hour-chart" style="display:flex; align-items:flex-end; gap:3px; height:80px; margin-bottom:6px; padding:0 2px;"></div>
+        <div id="hour-labels" style="display:flex; gap:3px; padding:0 2px; margin-bottom:16px;"></div>
+
+        <!-- Días de la semana -->
+        <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;">Días más activos</p>
+        <div id="weekday-chart" style="display:flex; gap:6px; margin-bottom:16px;"></div>
+
+        <!-- Últimos 7 días -->
+        <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;">Últimos 7 días</p>
+        <div id="week-chart" style="display:flex; align-items:flex-end; gap:6px; height:60px; margin-bottom:6px;"></div>
+        <div id="week-labels" style="display:flex; gap:6px; margin-bottom:4px;"></div>
+      </div>
+
       <div class="glass-card" style="margin-bottom: 20px;">
         <div class="card-header">
           <span class="card-title">Filtrar por nivel</span>
@@ -1224,6 +1266,7 @@
         loadStats();
         loadHolders('all');
         loadMessages();
+        loadPeakHours();
       } else {
         errorDiv.style.display = 'block';
       }
@@ -1243,6 +1286,7 @@
       loadStats();
       loadHolders('all');
       loadMessages();
+      loadPeakHours();
     }
   });
 
@@ -1257,6 +1301,7 @@
     document.getElementById(`page-${pageId}`).classList.add('active');
     document.getElementById(`nav-${pageId}`).classList.add('active');
     if (pageId === 'events') loadEventsPage();
+    if (pageId === 'holders') loadPeakHours();
   }
 
   // ==================== STATS ====================
@@ -1359,6 +1404,94 @@
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     loadHolders(level);
+  }
+
+  // ==================== PEAK HOURS ====================
+  async function loadPeakHours() {
+    try {
+      const data = await fetch('/api/admin/peak-hours', { headers: authHeaders() }).then(r => r.json());
+      if (data.error) return;
+
+      const DAYS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+      const WINE = '#8B1918', GOLD = '#C4973A', MUTED = 'rgba(42,21,9,0.15)';
+
+      // KPIs
+      document.getElementById('kpi-open').textContent = data.totals.open_now ?? '—';
+      document.getElementById('kpi-avg').textContent = data.totals.avg_duration ? data.totals.avg_duration + ' min' : '—';
+      document.getElementById('kpi-sessions').textContent = data.totals.total_sessions ?? '—';
+      document.getElementById('kpi-users').textContent = data.totals.total_users ?? '—';
+      if (data.peakHour) {
+        const h = data.peakHour.hour;
+        document.getElementById('peak-label').textContent =
+          `Hora pico: ${String(h).padStart(2,'0')}:00–${String(h+1).padStart(2,'0')}:00`;
+      }
+
+      // Gráfica barras por hora (0–23)
+      const hourMap = {};
+      data.hourCounts.forEach(r => { hourMap[r.hour] = r.unique_users; });
+      const maxH = Math.max(1, ...Object.values(hourMap));
+      const eventHours = [];
+      for (let h = 17; h <= 23; h++) eventHours.push(h); // horas del evento
+      const allHours = eventHours.length > 0 ? eventHours : Array.from({length:24},(_,i)=>i);
+
+      const chartEl = document.getElementById('hour-chart');
+      const labelsEl = document.getElementById('hour-labels');
+      const isPeak = h => data.peakHour && h === data.peakHour.hour;
+
+      chartEl.innerHTML = allHours.map(h => {
+        const v = hourMap[h] || 0;
+        const pct = Math.round((v / maxH) * 100);
+        const color = isPeak(h) ? GOLD : v > 0 ? WINE : MUTED;
+        const avgRow = data.avgByHour.find(r => r.hour === h);
+        const tooltip = v > 0 ? `${v} clientes${avgRow ? ' · media '+avgRow.avg_min+'min' : ''}` : 'sin datos';
+        return `<div title="${h}:00 — ${tooltip}" style="flex:1; display:flex; flex-direction:column; justify-content:flex-end; cursor:default;">
+          <div style="width:100%; background:${color}; border-radius:4px 4px 0 0; height:${Math.max(2,pct*0.8)}px; transition:height 0.4s; position:relative;">
+            ${v > 0 ? `<span style="position:absolute; top:-16px; left:50%; transform:translateX(-50%); font-size:9px; font-weight:700; color:${color}; white-space:nowrap;">${v}</span>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+
+      labelsEl.innerHTML = allHours.map(h =>
+        `<div style="flex:1; text-align:center; font-size:9px; color:${isPeak(h)?'var(--gold)':'var(--text-muted)'}; font-weight:${isPeak(h)?'700':'400'};">${String(h).padStart(2,'0')}</div>`
+      ).join('');
+
+      // Días de la semana
+      const wdMax = Math.max(1, ...data.byWeekday.map(r => r.unique_users));
+      document.getElementById('weekday-chart').innerHTML = DAYS.map((d, i) => {
+        const row = data.byWeekday.find(r => r.weekday === i);
+        const v = row ? row.unique_users : 0;
+        const pct = Math.round((v / wdMax) * 100);
+        const isTop = row && row.unique_users === wdMax && v > 0;
+        return `<div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;">
+          <span style="font-size:10px; font-weight:700; color:${isTop?'var(--gold)':'var(--text-muted)'};">${v||''}</span>
+          <div style="width:100%; height:32px; background:rgba(42,21,9,0.06); border-radius:6px; display:flex; align-items:flex-end; overflow:hidden;">
+            <div style="width:100%; height:${Math.max(0,pct)}%; background:${isTop?GOLD:WINE}; opacity:${v>0?1:0.2}; border-radius:6px; transition:height 0.4s;"></div>
+          </div>
+          <span style="font-size:9px; color:${isTop?'var(--gold)':'var(--text-muted)'}; font-weight:${isTop?'700':'400'};">${d}</span>
+        </div>`;
+      }).join('');
+
+      // Últimos 7 días
+      if (data.last7days.length > 0) {
+        const wMax = Math.max(1, ...data.last7days.map(r => r.unique_users));
+        document.getElementById('week-chart').innerHTML = data.last7days.map(r => {
+          const pct = Math.round((r.unique_users / wMax) * 100);
+          const d = new Date(r.day + 'T00:00:00');
+          return `<div title="${r.day}: ${r.unique_users} clientes" style="flex:1; display:flex; flex-direction:column; justify-content:flex-end;">
+            <div style="width:100%; background:${WINE}; border-radius:4px 4px 0 0; height:${Math.max(2,pct*0.6)}px;">
+              <span style="display:block; text-align:center; font-size:9px; color:${WINE}; margin-top:-14px; font-weight:700;">${r.unique_users}</span>
+            </div>
+          </div>`;
+        }).join('');
+        document.getElementById('week-labels').innerHTML = data.last7days.map(r => {
+          const d = new Date(r.day + 'T00:00:00');
+          return `<div style="flex:1; text-align:center; font-size:9px; color:var(--text-muted);">${d.getDate()}/${d.getMonth()+1}</div>`;
+        }).join('');
+      } else {
+        document.getElementById('week-chart').innerHTML = '<p style="font-size:12px;color:var(--text-muted);padding:8px 0;">Sin datos esta semana</p>';
+      }
+
+    } catch(e) { console.error('Peak hours error:', e); }
   }
 
   // ==================== MESSAGES ====================
