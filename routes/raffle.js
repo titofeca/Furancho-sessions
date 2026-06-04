@@ -105,7 +105,8 @@ router.post('/start', requireAuth, (req, res) => {
     participants: eligibleWallets.length,
     connected: connectedWallets.length,
     verificationCode,
-    winnerWallet
+    winnerWallet,
+    raffleId
   });
 });
 

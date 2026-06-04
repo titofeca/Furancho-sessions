@@ -1174,12 +1174,34 @@
           <p style="font-size: 13px; color: var(--text-muted); font-weight: 300;" id="raffle-status-desc">Espera a que termine la ruleta en los móviles de los clientes.</p>
 
           <div id="raffle-winner-box" style="display: none; margin-top: 20px;">
-            <p style="font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #4ade80; margin-bottom: 4px;">Ganador seleccionado</p>
+            <p style="font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #4ade80; margin-bottom: 4px;">Ganador seleccionado — código a verificar:</p>
             <p class="raffle-winner-code" id="raffle-winner-code">----</p>
-            <p style="font-size: 12px; color: var(--text-muted); font-weight: 300;">Pídele al cliente que te muestre su pantalla con este código.</p>
+            <p style="font-size: 12px; color: var(--text-muted); font-weight: 300; margin-bottom: 16px;">El cliente ve este código en su móvil. Compruébalo y confirma la entrega.</p>
+
+            <!-- Botón confirmar entrega -->
+            <div id="collect-btn-wrap" style="display:none;">
+              <input type="hidden" id="collect-raffle-id" value="">
+              <button onclick="confirmPrizeDelivery()"
+                style="width:100%; padding:14px; background:linear-gradient(135deg,#4ade80,#16a34a); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(74,222,128,0.3);">
+                ✅ Premio entregado — confirmar
+              </button>
+              <p style="font-size:11px; color:var(--text-muted); text-align:center; margin-top:8px;">Al confirmar, el código desaparece del móvil del cliente.</p>
+            </div>
           </div>
         </div>
       </div>
+
+      <!-- Historial de sorteos -->
+      <div class="glass-card" style="margin-top:20px;">
+        <div class="card-header" style="margin-bottom:16px;">
+          <span class="card-title">📋 Historial de Premios</span>
+          <button class="btn-download" onclick="loadRaffleHistory()" style="font-size:11px; padding:6px 12px;">↻</button>
+        </div>
+        <div id="raffle-history-list">
+          <p style="font-size:13px; color:var(--text-muted); text-align:center; padding:20px 0;">Sin sorteos todavía.</p>
+        </div>
+      </div>
+
     </div>
 
     <!-- ==================== PÁGINA: EVENTOS ==================== -->
@@ -1302,6 +1324,7 @@
     document.getElementById(`nav-${pageId}`).classList.add('active');
     if (pageId === 'events') loadEventsPage();
     if (pageId === 'holders') loadPeakHours();
+    if (pageId === 'raffles') { loadEligibleParticipants(); loadRaffleHistory(); }
   }
 
   // ==================== STATS ====================
@@ -1668,18 +1691,118 @@
         return showToast(data.error, true);
       }
 
+      // Guardar datos del sorteo activo para confirmar entrega luego
+      window._activeRaffle = { id: data.raffleId, verificationCode: data.verificationCode, prize, winnerWallet: data.winnerWallet };
+
       setTimeout(() => {
         document.getElementById('raffle-status-title').textContent = '🎉 ¡Sorteo Finalizado!';
         document.getElementById('raffle-status-desc').textContent = `El ganador está viendo este código en su móvil.`;
         document.getElementById('raffle-winner-box').style.display = 'block';
         document.getElementById('raffle-winner-code').textContent = data.verificationCode;
         document.getElementById('start-raffle-btn').disabled = false;
+        // Mostrar botón de confirmar entrega
+        if (data.raffleId) {
+          document.getElementById('collect-btn-wrap').style.display = 'block';
+          document.getElementById('collect-raffle-id').value = data.raffleId;
+        }
+        loadRaffleHistory();
       }, 15000);
 
     } catch (e) {
       clearInterval(interval);
       document.getElementById('start-raffle-btn').disabled = false;
       showToast('Error al lanzar sorteo', true);
+    }
+  }
+
+  // ==================== SORTEOS — CONFIRMAR ENTREGA + HISTORIAL ====================
+
+  async function confirmPrizeDelivery() {
+    const raffleId = document.getElementById('collect-raffle-id').value;
+    if (!raffleId) return showToast('No hay sorteo activo', true);
+    const btn = document.querySelector('#collect-btn-wrap button');
+    btn.disabled = true;
+    btn.textContent = 'Confirmando...';
+    try {
+      const res = await fetch(`/api/raffle/${raffleId}/collect`, {
+        method: 'PATCH',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('collect-btn-wrap').style.display = 'none';
+        showToast('✅ Premio entregado confirmado');
+        loadRaffleHistory();
+      } else {
+        showToast(data.error || 'Error', true);
+        btn.disabled = false;
+        btn.textContent = '✅ Premio entregado — confirmar';
+      }
+    } catch(e) {
+      showToast('Error de conexión', true);
+      btn.disabled = false;
+      btn.textContent = '✅ Premio entregado — confirmar';
+    }
+  }
+
+  async function collectHistoric(raffleId, btn) {
+    btn.disabled = true;
+    try {
+      const res = await fetch(`/api/raffle/${raffleId}/collect`, {
+        method: 'PATCH',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      const data = await res.json();
+      if (data.success) { showToast('✅ Marcado como entregado'); loadRaffleHistory(); }
+      else { showToast(data.error || 'Error', true); btn.disabled = false; }
+    } catch(e) { showToast('Error', true); btn.disabled = false; }
+  }
+
+  async function loadRaffleHistory() {
+    const container = document.getElementById('raffle-history-list');
+    if (!container) return;
+    try {
+      const history = await fetch('/api/raffle/history', { headers: authHeaders() }).then(r => r.json());
+      if (!history.length) {
+        container.innerHTML = '<p style="font-size:13px; color:var(--text-muted); text-align:center; padding:20px 0;">Sin sorteos todavía.</p>';
+        return;
+      }
+      const pending = history.filter(r => !r.collected);
+      const done    = history.filter(r =>  r.collected);
+
+      const renderRow = (r, isPending) => `
+        <div style="display:flex; align-items:center; gap:12px; padding:12px 0; border-top:1px solid rgba(42,21,9,0.06);">
+          <div style="flex-shrink:0; width:36px; height:36px; border-radius:50%; background:${isPending ? 'rgba(74,222,128,0.12)' : 'rgba(42,21,9,0.05)'}; display:flex; align-items:center; justify-content:center; font-size:16px;">
+            ${isPending ? '🎁' : '✅'}
+          </div>
+          <div style="flex:1; min-width:0;">
+            <p style="font-size:13px; font-weight:700; color:var(--text); margin:0 0 2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${r.prize}</p>
+            <p style="font-size:11px; color:var(--text-muted); margin:0;">${r.wallet_masked} · ${new Date(r.created_at).toLocaleDateString('es-ES', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</p>
+          </div>
+          <div style="text-align:right; flex-shrink:0;">
+            <span style="font-family:monospace; font-size:14px; font-weight:900; letter-spacing:3px; color:${isPending ? '#4ade80' : 'var(--text-muted)'};">${r.verification_code}</span>
+            ${isPending ? `
+              <br><button onclick="collectHistoric(${r.id}, this)"
+                style="margin-top:6px; padding:5px 10px; background:rgba(74,222,128,0.12); border:1px solid rgba(74,222,128,0.3); border-radius:8px; font-size:11px; font-weight:700; color:#4ade80; cursor:pointer; font-family:'Outfit',sans-serif;">
+                Entregar ✓
+              </button>` : `
+              <br><span style="font-size:10px; color:var(--text-muted);">${r.collected_at ? new Date(r.collected_at).toLocaleDateString('es-ES') : '—'}</span>`}
+          </div>
+        </div>`;
+
+      container.innerHTML = `
+        ${pending.length > 0 ? `
+          <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#4ade80; margin-bottom:4px;">Pendientes de entrega (${pending.length})</p>
+          ${pending.map(r => renderRow(r, true)).join('')}
+        ` : ''}
+        ${done.length > 0 ? `
+          <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-top:${pending.length ? '16px' : '0'}; margin-bottom:4px;">Entregados (${done.length})</p>
+          ${done.map(r => renderRow(r, false)).join('')}
+        ` : ''}`;
+    } catch(e) {
+      container.innerHTML = '<p style="font-size:12px; color:var(--text-muted); padding:12px 0;">Error cargando historial.</p>';
     }
   }
 
