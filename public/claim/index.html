@@ -1555,25 +1555,38 @@
       <!-- prizes-section: ahora vive dentro de la Zona de Juegos -->
       <div id="prizes-section" style="display:none;"></div>
 
-      <!-- Agenda de eventos -->
-      <div id="agenda-section" style="margin-bottom: 18px; display:none;">
-        <div style="background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:20px; padding:18px;">
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
-            <span style="font-size:20px;">📅</span>
-            <p style="font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted);">Próximas Sessions</p>
+      <!-- ① GUARDAR EN MI MÓVIL — primero si no está instalado -->
+
+      <!-- Android -->
+      <div id="pwa-install-banner-profile" style="display: none; margin-bottom: 16px;">
+        <button onclick="installPWA()" style="
+          width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
+          padding: 16px 20px; border-radius: 16px; border: 1.5px solid rgba(139,25,24,0.25);
+          background: linear-gradient(135deg, rgba(139,25,24,0.06), rgba(196,151,58,0.06));
+          color: var(--text); font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer;">
+          <span style="font-size:22px;">📲</span>
+          <div style="text-align:left;">
+            <div>Guardar en mi móvil</div>
+            <div style="font-size:12px; font-weight:400; color:var(--text-muted);">Acceso directo desde tu pantalla de inicio</div>
           </div>
-          <div id="agenda-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+        </button>
+      </div>
+
+      <!-- iOS -->
+      <div id="pwa-ios-banner-profile" style="display: none; margin-bottom: 16px;">
+        <div style="border-radius:16px; border:1.5px solid rgba(139,25,24,0.2); background:linear-gradient(135deg,rgba(139,25,24,0.05),rgba(196,151,58,0.05)); padding:16px 18px;">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+            <span style="font-size:22px;">📲</span>
+            <div style="font-size:15px; font-weight:600; color:var(--text);">Guardar en mi móvil</div>
+          </div>
+          <div style="font-size:13px; color:var(--text-muted); line-height:1.7;">
+            1. Pulsa el botón <strong style="color:var(--text);">Compartir</strong> <span>⬆️</span> de tu navegador<br>
+            2. Selecciona <strong style="color:var(--text);">"Añadir a la pantalla de inicio"</strong>
+          </div>
         </div>
       </div>
 
-      <!-- Modal reserva VIP — bottom sheet -->
-      <!-- Banner beta -->
-      <div style="background: rgba(139,25,24,0.07); border: 1px solid rgba(139,25,24,0.15); border-radius: 12px; padding: 10px 14px; margin-bottom: 18px; display: flex; align-items: center; gap: 8px;">
-        <span style="font-size: 16px;">🧪</span>
-        <p style="font-size: 12px; color: var(--text-muted); line-height: 1.4;">App en fase de pruebas — gracias por ser de los primeros en Furancho Sessions.</p>
-      </div>
-
-      <!-- Progreso visual -->
+      <!-- ② TUS VISITAS -->
       <div class="profile-progress-card" style="padding: 22px;">
 
         <!-- Visitas + hint -->
@@ -1592,24 +1605,19 @@
 
         <!-- Línea de progreso con hitos -->
         <div style="position:relative; margin-bottom:8px;">
-          <!-- Track -->
           <div style="height:8px; background:rgba(42,21,9,0.08); border-radius:100px; overflow:visible; position:relative;">
             <div id="profile-progress-fill" style="height:100%; background:linear-gradient(90deg,var(--wine),var(--gold)); border-radius:100px; transition:width 1.2s cubic-bezier(0.22,1,0.36,1); width:0%; position:relative;">
-              <!-- Punto indicador -->
               <div style="position:absolute; right:-6px; top:50%; transform:translateY(-50%); width:14px; height:14px; background:var(--gold); border-radius:50%; border:2px solid #fff; box-shadow:0 0 8px rgba(196,151,58,0.6);"></div>
             </div>
           </div>
-          <!-- Hito NFT nivel 3 (4 visitas = 33%) -->
           <div style="position:absolute; left:33%; top:50%; transform:translate(-50%,-50%);">
             <div id="milestone-3" style="width:20px; height:20px; border-radius:50%; background:#fff; border:2.5px solid rgba(42,21,9,0.15); display:flex; align-items:center; justify-content:center; font-size:10px; transition:all 0.4s;">🏅</div>
           </div>
-          <!-- Hito NFT nivel 4 (12 visitas = 100%) -->
           <div style="position:absolute; right:-4px; top:50%; transform:translateY(-50%);">
             <div id="milestone-4" style="width:24px; height:24px; border-radius:50%; background:#fff; border:2.5px solid rgba(42,21,9,0.15); display:flex; align-items:center; justify-content:center; font-size:12px; transition:all 0.4s;">👑</div>
           </div>
         </div>
 
-        <!-- Etiquetas hitos -->
         <div style="display:flex; justify-content:space-between; margin-top:10px; padding:0 2px;">
           <span style="font-size:10px; color:var(--text-muted);">Inicio</span>
           <span style="font-size:10px; color:var(--text-muted); margin-left:22%;">4 vis. · NFT</span>
@@ -1617,7 +1625,7 @@
         </div>
       </div>
 
-      <!-- Zona de Juegos -->
+      <!-- ③ ZONA DE JUEGOS -->
       <div class="raffle-section" id="raffle-section" style="margin-bottom: 20px;">
         <div class="raffle-section-header">
           <span class="raffle-section-icon">🎰</span>
@@ -1651,6 +1659,17 @@
             <button onclick="togglePrizesMenu()" style="background:none; border:none; font-size:13px; color:var(--text-muted); cursor:pointer; font-family:'Outfit',sans-serif;">Cerrar ✕</button>
           </div>
           <div id="prizes-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+      </div>
+
+      <!-- ④ PRÓXIMAS SESSIONS -->
+      <div id="agenda-section" style="margin-bottom: 18px; display:none;">
+        <div style="background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:20px; padding:18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+            <span style="font-size:20px;">📅</span>
+            <p style="font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted);">Próximas Sessions</p>
+          </div>
+          <div id="agenda-list" style="display:flex; flex-direction:column; gap:10px;"></div>
         </div>
       </div>
 
@@ -1693,35 +1712,6 @@
               <p class="level-card-sub">12 visitas · NFT 👑</p>
             </div>
             <div class="level-card-lock" id="lock-4">🔒</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Instalar App en perfil — Android -->
-      <div id="pwa-install-banner-profile" style="display: none; margin-bottom: 12px;">
-        <button onclick="installPWA()" style="
-          width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
-          padding: 16px 20px; border-radius: 16px; border: 1.5px solid rgba(139,25,24,0.25);
-          background: linear-gradient(135deg, rgba(139,25,24,0.06), rgba(196,151,58,0.06));
-          color: var(--text); font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer;">
-          <span style="font-size:22px;">📲</span>
-          <div style="text-align:left;">
-            <div>Guardar en mi móvil</div>
-            <div style="font-size:12px; font-weight:400; color:var(--text-muted);">Acceso directo desde tu pantalla de inicio</div>
-          </div>
-        </button>
-      </div>
-
-      <!-- Instalar App en perfil — iOS -->
-      <div id="pwa-ios-banner-profile" style="display: none; margin-bottom: 12px;">
-        <div style="border-radius:16px; border:1.5px solid rgba(139,25,24,0.2); background:linear-gradient(135deg,rgba(139,25,24,0.05),rgba(196,151,58,0.05)); padding:16px 18px;">
-          <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
-            <span style="font-size:22px;">📲</span>
-            <div style="font-size:15px; font-weight:600; color:var(--text);">Guardar en mi móvil</div>
-          </div>
-          <div style="font-size:13px; color:var(--text-muted); line-height:1.7;">
-            1. Pulsa el botón <strong style="color:var(--text);">Compartir</strong> <span>⬆️</span> de tu navegador<br>
-            2. Selecciona <strong style="color:var(--text);">"Añadir a la pantalla de inicio"</strong>
           </div>
         </div>
       </div>
