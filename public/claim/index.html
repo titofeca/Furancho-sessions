@@ -2364,9 +2364,10 @@
 
     async function loadAgenda() {
       try {
-        const [events, myRsvps] = await Promise.all([
+        const [events, myRsvps, myVipReservations] = await Promise.all([
           fetch('/api/events').then(r => r.json()),
-          fetch(`/api/events/my-rsvps?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => [])
+          fetch(`/api/events/my-rsvps?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => []),
+          fetch(`/api/events/vip/my-reservations?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => [])
         ]);
         if (!events.length) return;
         const section = document.getElementById('agenda-section');
@@ -2386,6 +2387,7 @@
           const isPast = d < today;
           const baseline = getEventBaseline(ev.id);
           const isFirst = ev.id === firstOpenId;
+          const myVip = myVipReservations.find(r => r.event_id === ev.id);
           return `
             <div class="event-card${isFirst ? ' expanded' : ''}" id="event-card-${ev.id}"
               style="${hidden ? 'display:none;' : ''}${isFirst ? 'border-color:rgba(139,25,24,0.2);' : ''}">
