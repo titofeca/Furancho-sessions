@@ -1569,9 +1569,13 @@
         </div>
       </div>
 
-      <!-- Modal reserva VIP -->
-      <div id="vip-modal" style="display:none; position:fixed; inset:0; z-index:2000; background:rgba(24, 12, 5, 0.65); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:20px; overflow-y:auto;">
-        <div style="width:100%; max-width:400px; background:#F2EDE3; border:1.5px solid rgba(139,25,24,0.15); border-radius:24px; padding:24px 20px; box-shadow:0 20px 50px rgba(0,0,0,0.2); text-align:center; box-sizing:border-box; position:relative; margin:auto;">
+      <!-- Modal reserva VIP — bottom sheet -->
+      <div id="vip-modal" style="display:none; position:fixed; inset:0; z-index:2000; background:rgba(24,12,5,0.65); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); align-items:flex-end; justify-content:center;" onclick="if(event.target===this)closeVipModal()">
+        <div style="width:100%; max-width:480px; background:#F2EDE3; border-radius:24px 24px 0 0; padding:0 20px 36px; box-shadow:0 -8px 40px rgba(0,0,0,0.25); text-align:center; box-sizing:border-box; position:relative; max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch; transform:translateY(100%); transition:transform 0.3s cubic-bezier(.32,.72,0,1);" id="vip-modal-sheet">
+          <!-- Handle -->
+          <div style="position:sticky; top:0; background:#F2EDE3; padding:12px 0 8px; z-index:1;">
+            <div style="width:36px; height:4px; background:rgba(42,21,9,0.15); border-radius:100px; margin:0 auto;"></div>
+          </div>
           <span style="font-size:44px; display:block; margin-bottom:12px; filter:drop-shadow(0 2px 5px rgba(196,151,58,0.4));">⭐</span>
           <span style="background:rgba(196,151,58,0.15); color:var(--gold); font-size:11px; font-weight:700; padding:4px 12px; border-radius:100px; text-transform:uppercase; letter-spacing:1.5px; display:inline-block; margin-bottom:12px;">Petición de Reserva</span>
           <h2 style="font-family:'Playfair Display',serif; font-size:26px; font-weight:900; color:var(--wine); margin:0 0 6px 0;">Reservar Mesa VIP</h2>
@@ -2462,8 +2466,12 @@
       document.getElementById('vip-group-display').textContent = '4';
       document.getElementById('vip-phone').value = '';
       document.getElementById('vip-error').style.display = 'none';
-      document.getElementById('vip-modal').style.display = 'flex';
+      const modal = document.getElementById('vip-modal');
+      modal.style.display = 'flex';
       document.body.style.overflow = 'hidden';
+      requestAnimationFrame(() => {
+        document.getElementById('vip-modal-sheet').style.transform = 'translateY(0)';
+      });
 
       try {
         const res = await fetch(`/api/events/${eventId}/vip`);
@@ -2479,8 +2487,12 @@
     }
 
     function closeVipModal() {
-      document.getElementById('vip-modal').style.display = 'none';
-      document.body.style.overflow = '';
+      const sheet = document.getElementById('vip-modal-sheet');
+      sheet.style.transform = 'translateY(100%)';
+      setTimeout(() => {
+        document.getElementById('vip-modal').style.display = 'none';
+        document.body.style.overflow = '';
+      }, 300);
     }
 
     function setGroupSize(delta) {

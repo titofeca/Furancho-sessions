@@ -177,4 +177,138 @@ router.get('/app', async (req, res) => {
   } catch (e) { res.status(500).send('Error: ' + e.message); }
 });
 
+// ─── GET /api/pdf/vip — Cartel zona VIP para imprimir en A4 ─────────────────
+router.get('/vip', async (req, res) => {
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', 'attachment; filename="Furancho_VIP_Zone.pdf"');
+
+  const doc = new PDFDocument({ size: 'A4', margin: 0, info: { Title: 'Furancho VIP Zone', Author: 'Furancho Sessions' } });
+  doc.pipe(res);
+
+  const W = doc.page.width;   // 595.28
+  const H = doc.page.height;  // 841.89
+
+  // ── Fondo oscuro total ───────────────────────────────────────────────────────
+  doc.rect(0, 0, W, H).fill(DARK);
+
+  // ── Textura: líneas diagonales sutiles ──────────────────────────────────────
+  doc.save();
+  doc.opacity(0.04);
+  for (let i = -H; i < W + H; i += 18) {
+    doc.moveTo(i, 0).lineTo(i + H, H).stroke('#C4973A').lineWidth(1);
+  }
+  doc.restore();
+
+  // ── Marco exterior dorado ────────────────────────────────────────────────────
+  doc.rect(18, 18, W - 36, H - 36).stroke(GOLD).lineWidth(2).opacity(1);
+  doc.rect(24, 24, W - 48, H - 48).stroke(GOLD).lineWidth(0.5).opacity(0.4);
+
+  // ── Banda superior vino ──────────────────────────────────────────────────────
+  doc.opacity(1);
+  doc.rect(18, 18, W - 36, 130).fill(WINE);
+
+  // ── Logo centrado en la banda ────────────────────────────────────────────────
+  const logoW = 58;
+  const logoH = 103;
+  try {
+    doc.image(LOGO_PATH, (W - logoW) / 2, 23, { width: logoW, height: logoH });
+  } catch (_) {}
+
+  // ── "FURANCHO SESSIONS" debajo del logo ──────────────────────────────────────
+  doc.fillColor(GOLD)
+     .fontSize(8)
+     .font('Helvetica-Bold')
+     .opacity(0.9)
+     .text('FURANCHO SESSIONS', 0, 133, { align: 'center', characterSpacing: 4 });
+
+  // ── Línea dorada separadora ──────────────────────────────────────────────────
+  doc.opacity(1);
+  doc.moveTo(60, 152).lineTo(W - 60, 152).stroke(GOLD).lineWidth(1);
+
+  // ── ⚠ ACCESO RESTRINGIDO ─────────────────────────────────────────────────────
+  doc.fillColor(GOLD)
+     .fontSize(11)
+     .font('Helvetica-Bold')
+     .opacity(0.85)
+     .text('⚠  A C C E S O   R E S T R I N G I D O  ⚠', 0, 164, { align: 'center', characterSpacing: 2 });
+
+  // ── VIP (gigante, decorativo) ─────────────────────────────────────────────────
+  doc.fillColor(WINE)
+     .fontSize(180)
+     .font('Helvetica-Bold')
+     .opacity(0.12)
+     .text('VIP', 0, 195, { align: 'center', width: W });
+
+  // ── VIP real encima ───────────────────────────────────────────────────────────
+  doc.fillColor('#FFFFFF')
+     .fontSize(110)
+     .font('Helvetica-Bold')
+     .opacity(1)
+     .text('VIP', 0, 215, { align: 'center', width: W, characterSpacing: 12 });
+
+  // ── FURANCHO ZONE ────────────────────────────────────────────────────────────
+  doc.fillColor(GOLD)
+     .fontSize(28)
+     .font('Helvetica-Bold')
+     .opacity(1)
+     .text('FURANCHO  ZONE', 0, 348, { align: 'center', width: W, characterSpacing: 6 });
+
+  // ── Línea dorada central ──────────────────────────────────────────────────────
+  doc.moveTo(80, 394).lineTo(W - 80, 394).stroke(GOLD).lineWidth(0.8);
+
+  // ── Texto divertido ───────────────────────────────────────────────────────────
+  doc.fillColor('#FFFFFF')
+     .fontSize(13.5)
+     .font('Helvetica-Bold')
+     .opacity(0.95)
+     .text('Se lles dixeron que é por aquí, é por aquí.', 0, 408, { align: 'center', width: W });
+
+  doc.fillColor(GOLD)
+     .fontSize(11)
+     .font('Helvetica-Oblique')
+     .opacity(0.8)
+     .text('Se non lles dixeron nada... xa están tardando en irse.', 0, 430, { align: 'center', width: W });
+
+  // ── Separador ─────────────────────────────────────────────────────────────────
+  doc.moveTo(120, 460).lineTo(W - 120, 460).stroke(WINE).lineWidth(0.6).opacity(0.6);
+
+  // ── Condiciones de acceso ─────────────────────────────────────────────────────
+  doc.opacity(1);
+  const rules = [
+    { icon: '✦', text: 'Reserva VIP confirmada por el staff' },
+    { icon: '✦', text: 'Actitud de persona interesante (mínimo)' },
+    { icon: '✦', text: 'Respeto al espacio y a los demás' },
+    { icon: '✦', text: 'Las normas las pone el Furancho. Siempre.' },
+  ];
+
+  let ry = 474;
+  for (const r of rules) {
+    doc.fillColor(GOLD).fontSize(9).font('Helvetica-Bold').opacity(0.9)
+       .text(r.icon, 100, ry, { width: 16, align: 'left' });
+    doc.fillColor('#FFFFFF').fontSize(9).font('Helvetica').opacity(0.75)
+       .text(r.text, 120, ry, { width: W - 240, align: 'left' });
+    ry += 18;
+  }
+
+  // ── Línea inferior decorativa ─────────────────────────────────────────────────
+  doc.moveTo(60, ry + 12).lineTo(W - 60, ry + 12).stroke(GOLD).lineWidth(1).opacity(1);
+
+  // ── Tagline final ─────────────────────────────────────────────────────────────
+  doc.fillColor(GOLD)
+     .fontSize(10)
+     .font('Helvetica-Bold')
+     .opacity(0.7)
+     .text('O Bo Viño · A Boa Compaña · A Boa Xente', 0, ry + 26, { align: 'center', characterSpacing: 2, width: W });
+
+  // ── Footer banda vino ─────────────────────────────────────────────────────────
+  doc.rect(18, H - 60, W - 36, 42).fill(WINE).opacity(1);
+  doc.fillColor('#FFFFFF')
+     .fontSize(8)
+     .font('Helvetica')
+     .opacity(0.6)
+     .text('furancho.sessions  ·  Imprime · Plastifica · Coloca  ·  Job done.', 0, H - 44, { align: 'center', characterSpacing: 1, width: W });
+
+  doc.end();
+});
+
 module.exports = router;
