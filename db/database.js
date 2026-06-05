@@ -394,18 +394,14 @@ function openSession(walletAddress) {
   }
 }
 
-// manual=true → escaneó QR salida (80pts), manual=false → cierre automático (5pts)
-function closeSession(walletAddress, manual = true) {
-  const pts = manual ? 80 : 5;
-  const reason = manual ? 'Salida fichada' : 'Salida automática';
-
+function closeSession(walletAddress) {
   const session = db.prepare(`
     SELECT id, entry_time FROM sessions
     WHERE wallet_address = ? AND exit_time IS NULL
     ORDER BY entry_time DESC LIMIT 1
   `).get(walletAddress);
 
-  // Solo cuenta como visita si ese día tiene un evento activo en la agenda
+  // Solo cuenta como visita si ese día tiene un evento en la agenda
   const entryDay = session
     ? session.entry_time.slice(0, 10)
     : new Date().toISOString().slice(0, 10);
@@ -419,29 +415,15 @@ function closeSession(walletAddress, manual = true) {
     if (diffMinutes > 12 * 60 || diffMinutes < 0) diffMinutes = 60;
     db.prepare(`
       UPDATE sessions
-      SET exit_time = datetime('now'), duration_minutes = ?, counted_as_visit = ?, exit_points = ?
+      SET exit_time = datetime('now'), duration_minutes = ?, counted_as_visit = ?
       WHERE id = ?
-    `).run(diffMinutes, countVisit, countVisit ? pts : 0, session.id);
+    `).run(diffMinutes, countVisit, session.id);
   } else {
     db.prepare(`
-      INSERT INTO sessions (wallet_address, entry_time, exit_time, duration_minutes, counted_as_visit, exit_points)
-      VALUES (?, datetime('now', '-60 minutes'), datetime('now'), 60, ?, ?)
-    `).run(walletAddress, countVisit, countVisit ? pts : 0);
+      INSERT INTO sessions (wallet_address, entry_time, exit_time, duration_minutes, counted_as_visit)
+      VALUES (?, datetime('now', '-60 minutes'), datetime('now'), 60, ?)
+    `).run(walletAddress, countVisit);
   }
-
-  // Solo registrar puntos si hay evento ese día
-  if (countVisit) {
-    db.prepare(`INSERT INTO points (wallet_address, points, reason) VALUES (?, ?, ?)`).run(walletAddress, pts, reason);
-  }
-}
-
-function getPoints(walletAddress) {
-  const row = db.prepare(`SELECT COALESCE(SUM(points),0) as total FROM points WHERE wallet_address = ?`).get(walletAddress);
-  return row ? row.total : 0;
-}
-
-function getPointsHistory(walletAddress) {
-  return db.prepare(`SELECT points, reason, created_at FROM points WHERE wallet_address = ? ORDER BY created_at DESC LIMIT 20`).all(walletAddress);
 }
 
 function savePushSubscription(walletAddress, subscription) {
@@ -626,20 +608,17 @@ function getEligibleRaffleParticipants() {
 }
 
 function autoCloseSessionsAt23() {
-  // Cierra todas las sesiones abiertas y asigna 5 puntos (salida automática)
-  const open = db.prepare(`SELECT id, wallet_address FROM sessions WHERE exit_time IS NULL AND date(entry_time) = date('now')`).all();
+  const open = db.prepare(`SELECT id, wallet_address, entry_time FROM sessions WHERE exit_time IS NULL AND date(entry_time) = date('now')`).all();
   const stmt = db.prepare(`
     UPDATE sessions
     SET exit_time = datetime('now'),
         duration_minutes = CASE WHEN (CAST((julianday('now') - julianday(entry_time)) * 1440 AS INTEGER)) > 720
           THEN 240
           ELSE CAST((julianday('now') - julianday(entry_time)) * 1440 AS INTEGER) END,
-        counted_as_visit = 1,
-        exit_points = 5
+        counted_as_visit = CASE WHEN (SELECT 1 FROM events WHERE event_date = date(entry_time)) THEN 1 ELSE 0 END
     WHERE id = ?
   `);
-  const pts = db.prepare(`INSERT INTO points (wallet_address, points, reason) VALUES (?, 5, 'Salida automática')`);
-  open.forEach(s => { stmt.run(s.id); pts.run(s.wallet_address); });
+  open.forEach(s => stmt.run(s.id));
   console.log(`[Auto-checkout 23:00] Sesiones cerradas: ${open.length}`);
   return open.length;
 }
@@ -910,8 +889,7 @@ module.exports = {
   getVisitCount,
   getEligibleRaffleParticipants,
   autoCloseSessionsAt23,
-  getPoints,
-  getPointsHistory,
+
   insertRaffle,
   collectRaffle,
   getRaffleHistory,

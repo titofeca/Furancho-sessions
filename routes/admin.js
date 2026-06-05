@@ -259,14 +259,6 @@ router.get('/peak-hours', requireAuth, (req, res) => {
       )
     `).get();
 
-    // Puntos: top clientes por puntos acumulados
-    const topPoints = db.prepare(`
-      SELECT wallet_address,
-             substr(wallet_address,1,6)||'...'||substr(wallet_address,-4) as wallet_masked,
-             SUM(points) as total_points
-      FROM points GROUP BY wallet_address ORDER BY total_points DESC LIMIT 8
-    `).all();
-
     // Timeline por día para totales (o datos del día seleccionado por hora ya en hourCounts)
     const timeline = !date ? db.prepare(`
       SELECT date(entry_time) as day, COUNT(*) as sessions, COUNT(DISTINCT wallet_address) as unique_users
@@ -274,7 +266,7 @@ router.get('/peak-hours', requireAuth, (req, res) => {
       GROUP BY day ORDER BY day DESC LIMIT 20
     `).all() : [];
 
-    res.json({ hourCounts, avgByHour, byWeekday, peakHour, totals, regulars: regulars?.count || 0, topPoints, timeline });
+    res.json({ hourCounts, avgByHour, byWeekday, peakHour, totals, regulars: regulars?.count || 0, timeline });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -394,20 +386,11 @@ router.get('/segments', requireAuth, (req, res) => {
       SELECT substr(s.wallet_address,1,6)||'...'||substr(s.wallet_address,-4) as wallet_masked,
         (SELECT MAX(m.level) FROM mints m WHERE m.wallet_address=s.wallet_address AND m.status='success') as nivel,
         COUNT(*) as visitas,
-        (SELECT SUM(p.points) FROM points p WHERE p.wallet_address=s.wallet_address) as puntos,
         MAX(entry_time) as ultima_visita
       FROM sessions s WHERE counted_as_visit=1
       GROUP BY s.wallet_address
       HAVING COUNT(*) >= 2 AND (SELECT MAX(m.level) FROM mints m WHERE m.wallet_address=s.wallet_address AND m.status='success') >= 2
       ORDER BY (SELECT MAX(m.level) FROM mints m WHERE m.wallet_address=s.wallet_address AND m.status='success') DESC, COUNT(*) DESC
-    `).all();
-
-    const cerca_premio = db.prepare(`
-      SELECT substr(wallet_address,1,6)||'...'||substr(wallet_address,-4) as wallet_masked,
-        SUM(points) as puntos
-      FROM points GROUP BY wallet_address
-      HAVING puntos BETWEEN 240 AND 299
-      ORDER BY puntos DESC
     `).all();
 
     const inactivos = db.prepare(`
@@ -425,13 +408,11 @@ router.get('/segments', requireAuth, (req, res) => {
       nuevos,
       habituales,
       vip_candidatos,
-      cerca_premio,
       inactivos,
       counts: {
         nuevos_count: nuevos.length,
         habituales_count: habituales.length,
         vip_count: vip_candidatos.length,
-        cerca_premio_count: cerca_premio.length,
         inactivos_count: inactivos.length
       }
     });

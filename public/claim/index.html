@@ -1638,20 +1638,6 @@
               <span id="visit-total-display" style="font-size:14px; color:var(--text-muted);">visitas</span>
             </div>
           </div>
-          <!-- Puntos -->
-          <div style="text-align:right; flex-shrink:0; display:none;">
-            <div id="points-block" style="background:rgba(196,151,58,0.08); border:1px solid rgba(196,151,58,0.2); border-radius:14px; padding:10px 14px; min-width:90px; display:none;">
-              <p style="font-size:9px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--gold); margin:0 0 3px;">Puntos</p>
-              <div style="display:flex; align-items:baseline; gap:3px;">
-                <span id="points-display" style="font-family:'Playfair Display',serif; font-size:26px; font-weight:900; color:var(--gold); line-height:1;">—</span>
-                <span style="font-size:11px; color:var(--text-muted);">/ 300</span>
-              </div>
-              <div style="height:4px; background:rgba(196,151,58,0.15); border-radius:100px; margin-top:6px; overflow:hidden;">
-                <div id="points-bar" style="height:100%; background:var(--gold); border-radius:100px; width:0%; transition:width 1s ease;"></div>
-              </div>
-              <p style="font-size:9px; color:var(--text-muted); margin:4px 0 0;">Puntos acumulados</p>
-            </div>
-          </div>
         </div>
 
         <!-- Hint siguiente nivel -->
@@ -1679,13 +1665,9 @@
           </div>
         </div>
 
-        <!-- Siguiente hito + cómo ganar puntos -->
         <div id="journey-next-hint" style="display:none; margin-top:14px; padding:10px 14px; background:rgba(196,151,58,0.06); border:1px solid rgba(196,151,58,0.2); border-radius:12px; text-align:center;">
           <p style="font-size:12px; color:var(--gold); font-weight:600; margin:0;" id="journey-next-text"></p>
         </div>
-        <p style="font-size:11px; color:var(--text-muted); margin-top:12px; text-align:center; line-height:1.5;">
-          ¡Recuerda registrar tu salida antes de marcharte! 🍷
-        </p>
       </div>
 
       <!-- ② PREMIOS -->
@@ -2315,7 +2297,6 @@
       showScreen('screen-profile');
       renderPrizes();
       loadAgenda();
-      loadPoints();
       checkPendingMnemonic();
 
       // Mostrar toast si viene de restauración por QR
@@ -2770,22 +2751,6 @@
       }
     }
 
-    async function loadPoints() {
-      if (!userWalletAddress) return;
-      try {
-        const data = await fetch(`/api/mint/points?wallet=${userWalletAddress}`).then(r => r.json());
-        const pts = data.total || 0;
-        const el = document.getElementById('points-display');
-        const bar = document.getElementById('points-bar');
-        if (el) el.textContent = pts;
-        if (bar) bar.style.width = Math.min(100, Math.round(pts / 300 * 100)) + '%';
-        
-        const block = document.getElementById('points-block');
-        if (block) {
-          block.style.display = 'none';
-        }
-      } catch(e) {}
-    }
 
     async function renderPrizes() {
       const stateEl  = document.getElementById('prizes-state-content');

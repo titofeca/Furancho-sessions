@@ -1146,9 +1146,6 @@
           <div id="week-labels" style="display:flex; gap:6px; margin-bottom:4px;"></div>
           <span id="peak-label" style="font-size:11px; color:var(--gold); font-weight:700; display:block; margin-top:6px;"></span>
 
-          <!-- Puntos: ranking hacia tapa gratis -->
-          <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:16px 0 10px;">🍽️ Puntos hacia tapa gratis (300pts)</p>
-          <div id="top-points"></div>
         </div>
       </div>
 
@@ -1221,7 +1218,6 @@
           <button class="seg-tab active" onclick="switchSegTab('nuevos', this)">🌱 Nuevos <span id="seg-count-nuevos"></span></button>
           <button class="seg-tab" onclick="switchSegTab('habituales', this)">⭐ Habituales <span id="seg-count-habituales"></span></button>
           <button class="seg-tab" onclick="switchSegTab('vip', this)">💎 VIP <span id="seg-count-vip"></span></button>
-          <button class="seg-tab" onclick="switchSegTab('cerca', this)">🎁 Premio <span id="seg-count-cerca"></span></button>
           <button class="seg-tab" onclick="switchSegTab('inactivos', this)">💤 Inactivos <span id="seg-count-inactivos"></span></button>
         </div>
         <div id="seg-panel-nuevos" class="seg-panel active">
@@ -1229,7 +1225,6 @@
         </div>
         <div id="seg-panel-habituales" class="seg-panel"></div>
         <div id="seg-panel-vip" class="seg-panel"></div>
-        <div id="seg-panel-cerca" class="seg-panel"></div>
         <div id="seg-panel-inactivos" class="seg-panel"></div>
       </div>
 
@@ -2067,31 +2062,6 @@
         weekEl.innerHTML = ''; weekLbl.innerHTML = '';
         if (weekTitle) weekTitle.style.display = 'none';
         weekEl.style.display = 'none'; weekLbl.style.display = 'none';
-      }
-
-      // Puntos: ranking clientes
-      const topEl = document.getElementById('top-points');
-      if (topEl && data.topPoints && data.topPoints.length) {
-        const maxPts = data.topPoints[0].total_points || 1;
-        topEl.innerHTML = data.topPoints.map((p,i) => {
-          const pct = Math.round((p.total_points / maxPts) * 100);
-          const atGoal = p.total_points >= 300;
-          return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-            <span style="font-size:11px;color:var(--text-muted);width:14px;text-align:right;">${i+1}</span>
-            <div style="flex:1;">
-              <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
-                <span style="font-family:monospace;font-size:11px;color:var(--text);">${p.wallet_masked}</span>
-                <span style="font-size:11px;font-weight:700;color:${atGoal?'#4ade80':'var(--gold)'};">${p.total_points}pts${atGoal?' 🍽️':''}</span>
-              </div>
-              <div style="height:4px;background:rgba(42,21,9,0.1);border-radius:2px;">
-                <div style="height:4px;width:${pct}%;background:${atGoal?'#4ade80':'var(--wine)'};border-radius:2px;transition:width 0.4s;"></div>
-              </div>
-            </div>
-          </div>`;
-        }).join('');
-        topEl.previousElementSibling.style.display = '';
-      } else if (topEl) {
-        topEl.innerHTML = '<p style="font-size:12px;color:var(--text-muted);padding:4px 0;">Sin puntos registrados aún</p>';
       }
 
     } catch(e) { console.error('Peak hours error:', e); }
@@ -2956,9 +2926,9 @@
         <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">clientes recientes</div>
       </div>
       <div class="analytics-kpi">
-        <div class="kpi-value" style="color:var(--gold);">${segmentsData.counts?.cerca_premio_count ?? '—'}</div>
-        <div class="kpi-label">Cerca de premio</div>
-        <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">240–299 puntos</div>
+        <div class="kpi-value" style="color:var(--gold);">${segmentsData.counts?.inactivos_count ?? '—'}</div>
+        <div class="kpi-label">Inactivos &gt;45d</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">sin visita reciente</div>
       </div>
     `;
   }
@@ -3004,7 +2974,6 @@
     document.getElementById('seg-count-nuevos').textContent = counts.nuevos_count ? `(${counts.nuevos_count})` : '';
     document.getElementById('seg-count-habituales').textContent = counts.habituales_count ? `(${counts.habituales_count})` : '';
     document.getElementById('seg-count-vip').textContent = counts.vip_count ? `(${counts.vip_count})` : '';
-    document.getElementById('seg-count-cerca').textContent = counts.cerca_premio_count ? `(${counts.cerca_premio_count})` : '';
     document.getElementById('seg-count-inactivos').textContent = counts.inactivos_count ? `(${counts.inactivos_count})` : '';
 
     const emptyMsg = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Sin clientes en este segmento</div>';
@@ -3014,7 +2983,6 @@
     document.getElementById('seg-panel-nuevos').innerHTML = nuevos.length ? nuevos.slice(0,10).map(c => `
       <div class="seg-row">
         <div><div class="seg-wallet">${c.wallet_masked}</div><div class="seg-meta">${c.primera_visita ? new Date(c.primera_visita).toLocaleDateString('es-ES') : '—'}</div></div>
-        <div style="text-align:right"><div style="font-size:13px;font-weight:700;color:var(--wine);">${c.puntos || 0} pts</div></div>
       </div>`).join('') + (nuevos.length > 10 ? `<div style="text-align:center;font-size:11px;color:var(--text-muted);padding:6px;">+${nuevos.length-10} más</div>` : '') : emptyMsg;
 
     // Habituales
@@ -3022,7 +2990,6 @@
     document.getElementById('seg-panel-habituales').innerHTML = hab.length ? hab.slice(0,10).map(c => `
       <div class="seg-row">
         <div><div class="seg-wallet">${c.wallet_masked}</div><div class="seg-meta">Nv${c.nivel || 1} · ${c.total_visits} visitas</div></div>
-        <div style="text-align:right"><div style="font-size:13px;font-weight:700;color:var(--wine);">${c.puntos || 0} pts</div></div>
       </div>`).join('') + (hab.length > 10 ? `<div style="text-align:center;font-size:11px;color:var(--text-muted);padding:6px;">+${hab.length-10} más</div>` : '') : emptyMsg;
 
     // VIP candidatos
@@ -3030,19 +2997,7 @@
     document.getElementById('seg-panel-vip').innerHTML = vip.length ? vip.slice(0,10).map(c => `
       <div class="seg-row">
         <div><div class="seg-wallet">${c.wallet_masked}</div><div class="seg-meta">Nv${c.nivel || 1} · ${c.visitas} visitas · ${c.ultima_visita ? new Date(c.ultima_visita).toLocaleDateString('es-ES') : '—'}</div></div>
-        <div style="text-align:right"><div style="font-size:13px;font-weight:700;color:var(--gold);">${c.puntos || 0} pts</div></div>
       </div>`).join('') + (vip.length > 10 ? `<div style="text-align:center;font-size:11px;color:var(--text-muted);padding:6px;">+${vip.length-10} más</div>` : '') : emptyMsg;
-
-    // Cerca de premio
-    const cerca = segmentsData.cerca_premio || [];
-    document.getElementById('seg-panel-cerca').innerHTML = cerca.length ? cerca.map(c => `
-      <div class="seg-row">
-        <div class="seg-wallet">${c.wallet_masked}</div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div style="background:rgba(196,151,58,0.15);border-radius:50px;padding:3px 10px;font-size:13px;font-weight:700;color:var(--gold);">${c.puntos} pts</div>
-          <div style="font-size:11px;color:var(--text-muted);">faltan ${300 - c.puntos}</div>
-        </div>
-      </div>`).join('') : emptyMsg;
 
     // Inactivos
     const inact = segmentsData.inactivos || [];

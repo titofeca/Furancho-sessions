@@ -231,14 +231,6 @@ router.get('/history', (req, res) => {
   }
 });
 
-// GET /api/mint/points?wallet=0x...
-router.get('/points', (req, res) => {
-  const { wallet } = req.query;
-  if (!wallet) return res.status(400).json({ error: 'Wallet requerida' });
-  try {
-    const { getPoints, getPointsHistory } = require('../db/database');
-    res.json({ total: getPoints(wallet), history: getPointsHistory(wallet) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
+
 
 module.exports = router;
