@@ -632,10 +632,14 @@ function getEventSessions(dateFilter) {
 }
 
 function getSessionDates() {
+  // Solo fechas que coinciden con eventos reales (para que el selector no tenga fechas vacías)
   return db.prepare(`
-    SELECT DISTINCT date(entry_time) as day, COUNT(*) as count
-    FROM sessions WHERE entry_time IS NOT NULL
-    GROUP BY day ORDER BY day DESC LIMIT 30
+    SELECT e.event_date as day, COUNT(s.id) as count
+    FROM events e
+    LEFT JOIN sessions s ON date(s.entry_time) = e.event_date
+    WHERE e.active = 1
+    GROUP BY e.event_date
+    ORDER BY e.event_date DESC
   `).all();
 }
 
