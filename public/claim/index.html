@@ -1586,57 +1586,8 @@
         </div>
       </div>
 
-      <!-- ② TU CAMINO — visitas + journey unificados -->
+      <!-- ② TU CAMINO — visitas + journey -->
       <div class="profile-progress-card" style="padding:22px; margin-bottom:20px;">
-
-      <!-- ③ PREMIOS -->
-      <div class="raffle-section" id="raffle-section" style="margin-bottom: 20px;">
-        <div class="raffle-section-header">
-          <span class="raffle-section-icon">🎁</span>
-          <div style="flex: 1;">
-            <p class="raffle-section-title">Premios</p>
-            <p class="raffle-section-sub" id="raffle-status-text">Esperando próximo sorteo...</p>
-          </div>
-          <div class="raffle-live-dot" id="raffle-live-dot"></div>
-        </div>
-        <p class="raffle-section-hint">Participa en los sorteos de la noche fichando tu entrada. Si te toca, recibirás una notificación en este móvil.</p>
-
-        <!-- Botón de aceptar premio (visible solo cuando eres el ganador) -->
-        <div id="accept-prize-banner" style="display:none; margin-top:14px; background:linear-gradient(135deg,rgba(196,151,58,0.15),rgba(139,25,24,0.08)); border:2px solid var(--gold); border-radius:16px; padding:18px; text-align:center; position:relative; overflow:hidden;">
-          <div style="position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--wine),var(--gold),var(--wine));"></div>
-          <div style="font-size:32px; margin-bottom:8px;">🏆</div>
-          <p style="font-family:'Playfair Display',serif; font-size:18px; font-weight:900; color:var(--wine); margin-bottom:4px;">¡Te ha tocado!</p>
-          <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;" id="accept-prize-name"></p>
-          <div style="font-family:'Outfit',monospace; font-size:40px; font-weight:700; letter-spacing:6px; color:var(--wine); margin-bottom:14px;" id="accept-prize-code">----</div>
-          <div id="accept-countdown-wrap" style="margin-bottom:14px;">
-            <p style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">Tiempo para aceptar</p>
-            <div style="font-size:28px; font-weight:700; color:var(--gold);" id="accept-countdown">90</div>
-          </div>
-          <button id="accept-prize-btn" onclick="acceptPrize()" style="width:100%; padding:14px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; box-shadow:0 4px 16px rgba(139,25,24,0.3);">
-            ¡Soy yo! Reclamar premio 🎉
-          </button>
-          <p style="font-size:11px; color:var(--text-muted); margin-top:8px;">Muestra el código al staff del Furancho.</p>
-        </div>
-
-        <!-- Mis premios de esta noche -->
-        <div id="my-prizes-section" style="display:none; margin-top:14px;">
-          <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;">Esta noche</p>
-          <div id="prizes-list" style="display:flex; flex-direction:column; gap:8px;"></div>
-        </div>
-      </div>
-
-      <!-- ④ PRÓXIMAS SESSIONS -->
-      <div id="agenda-section" style="margin-bottom: 18px; display:none;">
-        <div style="background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:20px; padding:18px;">
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
-            <span style="font-size:20px;">📅</span>
-            <p style="font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted);">Próximas Sessions</p>
-          </div>
-          <div id="agenda-list" style="display:flex; flex-direction:column; gap:10px;"></div>
-        </div>
-      </div>
-
-        <!-- Contador de visitas + hint -->
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:22px;">
           <div>
             <p style="font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">Tu camino en O Furancho</p>
@@ -1649,52 +1600,71 @@
             <p id="profile-progress-hint" style="font-size:13px; color:var(--text-muted); line-height:1.5; max-width:150px;"></p>
           </div>
         </div>
-
-        <!-- Journey: línea con 4 nodos -->
         <div style="position:relative; display:flex; align-items:flex-start; justify-content:space-between;">
           <div style="position:absolute; top:18px; left:18px; right:18px; height:3px; background:rgba(42,21,9,0.08); border-radius:100px; z-index:0;"></div>
           <div id="journey-progress-line" style="position:absolute; top:18px; left:18px; height:3px; background:linear-gradient(90deg,var(--wine),var(--gold)); border-radius:100px; z-index:1; width:0%; transition:width 1.2s cubic-bezier(0.22,1,0.36,1);"></div>
-
           <div id="jnode-1" style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; flex:1;">
             <div id="jdot-1" style="width:36px; height:36px; border-radius:50%; background:rgba(42,21,9,0.07); border:2.5px solid rgba(42,21,9,0.12); display:flex; align-items:center; justify-content:center; font-size:16px; transition:all 0.5s; margin-bottom:8px;">🍷</div>
-            <div style="text-align:center;">
-              <div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-1">NV1</div>
-              <div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;">Cautivo</div>
-              <div style="font-size:10px; color:var(--text-muted); margin-top:1px;">1ª vis.</div>
-            </div>
+            <div style="text-align:center;"><div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-1">NV1</div><div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;">Cautivo</div><div style="font-size:10px; color:var(--text-muted); margin-top:1px;">1ª vis.</div></div>
           </div>
-
           <div id="jnode-2" style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; flex:1;">
             <div id="jdot-2" style="width:36px; height:36px; border-radius:50%; background:rgba(42,21,9,0.07); border:2.5px solid rgba(42,21,9,0.12); display:flex; align-items:center; justify-content:center; font-size:16px; transition:all 0.5s; margin-bottom:8px;">🍶</div>
-            <div style="text-align:center;">
-              <div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-2">NV2</div>
-              <div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;">Cunqueiro</div>
-              <div style="font-size:10px; color:var(--text-muted); margin-top:1px;">2ª vis.</div>
-            </div>
+            <div style="text-align:center;"><div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-2">NV2</div><div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;">Cunqueiro</div><div style="font-size:10px; color:var(--text-muted); margin-top:1px;">2ª vis.</div></div>
           </div>
-
           <div id="jnode-3" style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; flex:1;">
             <div id="jdot-3" style="width:36px; height:36px; border-radius:50%; background:rgba(42,21,9,0.07); border:2.5px solid rgba(42,21,9,0.12); display:flex; align-items:center; justify-content:center; font-size:16px; transition:all 0.5s; margin-bottom:8px;">🌿</div>
-            <div style="text-align:center;">
-              <div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-3">NV3</div>
-              <div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;">Larpeiro</div>
-              <div style="font-size:10px; color:var(--text-muted); margin-top:1px;">4 vis. 🏅</div>
-            </div>
+            <div style="text-align:center;"><div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-3">NV3</div><div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;">Larpeiro</div><div style="font-size:10px; color:var(--text-muted); margin-top:1px;">4 vis. 🏅</div></div>
           </div>
-
           <div id="jnode-4" style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; flex:1;">
             <div id="jdot-4" style="width:36px; height:36px; border-radius:50%; background:rgba(42,21,9,0.07); border:2.5px solid rgba(42,21,9,0.12); display:flex; align-items:center; justify-content:center; font-size:16px; transition:all 0.5s; margin-bottom:8px;">👑</div>
-            <div style="text-align:center;">
-              <div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-4">NV4</div>
-              <div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;">Presidente</div>
-              <div style="font-size:10px; color:var(--text-muted); margin-top:1px;">12 vis. 👑</div>
-            </div>
+            <div style="text-align:center;"><div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-4">NV4</div><div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;">Presidente</div><div style="font-size:10px; color:var(--text-muted); margin-top:1px;">12 vis. 👑</div></div>
           </div>
         </div>
-
-        <!-- Siguiente hito -->
         <div id="journey-next-hint" style="display:none; margin-top:16px; padding:10px 14px; background:rgba(196,151,58,0.06); border:1px solid rgba(196,151,58,0.2); border-radius:12px; text-align:center;">
           <p style="font-size:12px; color:var(--gold); font-weight:600; margin:0;" id="journey-next-text"></p>
+        </div>
+      </div>
+
+      <!-- ③ PRÓXIMAS SESSIONS -->
+      <div id="agenda-section" style="margin-bottom:18px; display:none;">
+        <div style="background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:20px; padding:18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+            <span style="font-size:20px;">📅</span>
+            <p style="font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted);">Próximas Sessions</p>
+          </div>
+          <div id="agenda-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+      </div>
+
+      <!-- ④ PREMIOS -->
+      <div class="raffle-section" id="raffle-section" style="margin-bottom:20px;">
+        <div class="raffle-section-header">
+          <span class="raffle-section-icon">🎁</span>
+          <div style="flex:1;">
+            <p class="raffle-section-title">Premios</p>
+            <p class="raffle-section-sub" id="raffle-status-text">Esperando próximo sorteo...</p>
+          </div>
+          <div class="raffle-live-dot" id="raffle-live-dot"></div>
+        </div>
+        <p class="raffle-section-hint">Participa en los sorteos de la noche fichando tu entrada. Si te toca, recibirás una notificación en este móvil.</p>
+        <div id="accept-prize-banner" style="display:none; margin-top:14px; background:linear-gradient(135deg,rgba(196,151,58,0.15),rgba(139,25,24,0.08)); border:2px solid var(--gold); border-radius:16px; padding:18px; text-align:center; position:relative; overflow:hidden;">
+          <div style="position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--wine),var(--gold),var(--wine));"></div>
+          <div style="font-size:32px; margin-bottom:8px;">🏆</div>
+          <p style="font-family:'Playfair Display',serif; font-size:18px; font-weight:900; color:var(--wine); margin-bottom:4px;">¡Te ha tocado!</p>
+          <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;" id="accept-prize-name"></p>
+          <div style="font-family:'Outfit',monospace; font-size:40px; font-weight:700; letter-spacing:6px; color:var(--wine); margin-bottom:14px;" id="accept-prize-code">----</div>
+          <div id="accept-countdown-wrap" style="margin-bottom:14px;">
+            <p style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">Tiempo para aceptar</p>
+            <div style="font-size:28px; font-weight:700; color:var(--gold);" id="accept-countdown">180</div>
+          </div>
+          <button id="accept-prize-btn" onclick="acceptPrize()" style="width:100%; padding:14px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; box-shadow:0 4px 16px rgba(139,25,24,0.3);">
+            ¡Soy yo! Reclamar premio 🎉
+          </button>
+          <p style="font-size:11px; color:var(--text-muted); margin-top:8px;">Muestra el código al staff del Furancho.</p>
+        </div>
+        <div id="my-prizes-section" style="display:none; margin-top:14px;">
+          <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;">Esta noche</p>
+          <div id="prizes-list" style="display:flex; flex-direction:column; gap:8px;"></div>
         </div>
       </div>
 
