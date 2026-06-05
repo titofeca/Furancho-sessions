@@ -23,6 +23,20 @@ try { db.exec(`ALTER TABLE raffles ADD COLUMN rejection_note TEXT`); } catch (_)
 try { db.exec(`CREATE TABLE IF NOT EXISTS prize_presets (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, active INTEGER DEFAULT 1, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS raffle_participants (raffle_id INTEGER NOT NULL, wallet_address TEXT NOT NULL, PRIMARY KEY (raffle_id, wallet_address))`); } catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS scheduled_raffles (id INTEGER PRIMARY KEY AUTOINCREMENT, event_date TEXT NOT NULL, scheduled_time TEXT NOT NULL, prize TEXT NOT NULL, status TEXT DEFAULT 'pending', raffle_id INTEGER, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS redemptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      wallet_address TEXT NOT NULL,
+      code TEXT NOT NULL UNIQUE,
+      status TEXT DEFAULT 'pending',
+      created_at TEXT DEFAULT (datetime('now')),
+      delivered_at TEXT,
+      delivered_by TEXT
+    )
+  `);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_redemptions_wallet ON redemptions(wallet_address)`);
+} catch (_) {}
 // Limpiar reservas VIP huérfanas (apuntan a eventos que ya no existen)
 try {
   db.exec(`DELETE FROM vip_reservations WHERE event_id NOT IN (SELECT id FROM events)`);
@@ -667,7 +681,7 @@ function getMyWins(walletAddress) {
 
 function getRaffleParticipation(walletAddress) {
   return db.prepare(`
-    SELECT r.id, r.prize, r.status, r.created_at, r.collected, r.collected_at, r.rejection_note,
+    SELECT r.id, r.prize, r.status, r.created_at, r.collected, r.collected_at, r.rejection_note, r.acceptance_deadline,
            CASE WHEN r.winner_wallet = ? THEN 1 ELSE 0 END as is_winner,
            CASE WHEN r.winner_wallet = ? THEN r.verification_code ELSE NULL END as verification_code
     FROM raffles r
@@ -823,6 +837,41 @@ function getSessionDates() {
     ORDER BY day DESC
     LIMIT 30
   `).all();
+}
+
+function createRedemption(walletAddress, code) {
+  try {
+    db.exec('BEGIN TRANSACTION');
+    db.prepare(`
+      INSERT INTO redemptions (wallet_address, code)
+      VALUES (?, ?)
+    `).run(walletAddress, code);
+
+    db.prepare(`
+      INSERT INTO points (wallet_address, points, reason)
+      VALUES (?, -300, ?)
+    `).run(walletAddress, `Canje Tapa Gratis (Código: ${code})`);
+    db.exec('COMMIT');
+  } catch (e) {
+    try { db.exec('ROLLBACK'); } catch (_) {}
+    throw e;
+  }
+}
+
+function getRedemptions(walletAddress) {
+  return db.prepare(`SELECT * FROM redemptions WHERE wallet_address = ? ORDER BY created_at DESC`).all(walletAddress);
+}
+
+function getAllRedemptions() {
+  return db.prepare(`SELECT * FROM redemptions ORDER BY created_at DESC`).all();
+}
+
+function collectRedemption(id, adminUser) {
+  db.prepare(`
+    UPDATE redemptions
+    SET status = 'delivered', delivered_at = datetime('now'), delivered_by = ?
+    WHERE id = ?
+  `).run(adminUser || null, id);
 }
 
 module.exports = {

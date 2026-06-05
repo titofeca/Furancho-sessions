@@ -12,6 +12,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <style>
+    @keyframes pulse {
+      from { opacity: 0.6; }
+      to { opacity: 1; }
+    }
     :root {
       --wine: #8B1918;
       --wine-dark: #5C0F0F;
@@ -1609,7 +1613,7 @@
               <div style="height:4px; background:rgba(196,151,58,0.15); border-radius:100px; margin-top:6px; overflow:hidden;">
                 <div id="points-bar" style="height:100%; background:var(--gold); border-radius:100px; width:0%; transition:width 1s ease;"></div>
               </div>
-              <p style="font-size:9px; color:var(--text-muted); margin:4px 0 0;">🍽️ tapa gratis</p>
+              <p style="font-size:9px; color:var(--text-muted); margin:4px 0 0;">Puntos acumulados</p>
             </div>
           </div>
         </div>
@@ -1644,7 +1648,7 @@
           <p style="font-size:12px; color:var(--gold); font-weight:600; margin:0;" id="journey-next-text"></p>
         </div>
         <p style="font-size:11px; color:var(--text-muted); margin-top:12px; text-align:center; line-height:1.5;">
-          Ficha salida para ganar <strong style="color:var(--gold);">80 pts</strong> · Sin fichar: <strong>5 pts</strong> · 300 pts = 🍽️ tapa gratis
+          Ficha salida para ganar <strong style="color:var(--gold);">80 pts</strong> · Sin fichar: <strong>5 pts</strong>
         </p>
       </div>
 
@@ -1677,7 +1681,7 @@
           <p style="font-size:11px; color:var(--text-muted); margin-top:8px;">Muestra el código al staff del Furancho.</p>
         </div>
         <div id="my-prizes-section" style="display:none; margin-top:14px;">
-          <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;">Esta noche</p>
+          <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;" id="prizes-header-title">Mis Premios y Canjes</p>
           <div id="prizes-list" style="display:flex; flex-direction:column; gap:8px;"></div>
         </div>
       </div>
@@ -2699,14 +2703,26 @@
         const bar = document.getElementById('points-bar');
         if (el) el.textContent = pts;
         if (bar) bar.style.width = Math.min(100, Math.round(pts / 300 * 100)) + '%';
-        if (pts >= 300) {
-          const block = document.getElementById('points-block');
-          if (block) {
-            block.style.background = 'rgba(74,222,128,0.1)';
-            block.style.borderColor = 'rgba(74,222,128,0.4)';
-            block.querySelector('p').style.color = '#4ade80';
-            bar.style.background = '#4ade80';
+        
+        const block = document.getElementById('points-block');
+        if (block) {
+          block.style.background = 'rgba(196,151,58,0.08)';
+          block.style.borderColor = 'rgba(196,151,58,0.2)';
+          block.style.cursor = 'default';
+          block.style.transform = 'none';
+          block.onmouseenter = null;
+          block.onmouseleave = null;
+          block.onclick = null;
+          const pElements = block.querySelectorAll('p');
+          if (pElements.length > 0) {
+            pElements[0].style.color = 'var(--gold)';
+            pElements[0].textContent = 'Puntos';
           }
+          const hintEl = pElements[pElements.length - 1];
+          if (hintEl) {
+            hintEl.textContent = 'Puntos acumulados';
+          }
+          bar.style.background = 'var(--gold)';
         }
       } catch(e) {}
     }
@@ -2733,26 +2749,42 @@
       const todayRaffles = history.filter(r => r.created_at && r.created_at.startsWith(today));
       const hasEntry     = eligibility.hasSessionToday;
       const doneTonight  = eligibility.rafflesDoneTonight || 0;
-      const pendingScheduled = scheduled.filter(s => s.status === 'pending');
-      const remaining    = pendingScheduled.length || Math.max(0, 2 - doneTonight);
+      const remaining    = scheduled.filter(s => s.status === 'pending').length || Math.max(0, 2 - doneTonight);
+
+      // Auto-restaurar banner de aceptación si el ganador refrescó
+      const pendingRaffle = history.find(r => r.is_winner === 1 && r.status === 'pending_acceptance');
+      if (pendingRaffle && pendingRaffle.acceptance_deadline) {
+        const deadlineDate = new Date(pendingRaffle.acceptance_deadline.replace(' ', 'T') + 'Z');
+        const diffSecs = Math.max(0, Math.floor((deadlineDate - new Date()) / 1000));
+        if (diffSecs > 0) {
+          showAcceptBanner(pendingRaffle.id, pendingRaffle.prize, pendingRaffle.verification_code, diffSecs);
+        }
+      } else if (!pendingRaffle && _acceptRaffleId) {
+        hideAcceptBanner();
+      }
 
       // Evento de esta noche
       const todayEvent = events.find(ev => ev.event_date === today);
       const nextEvent  = !todayEvent ? events.find(ev => ev.event_date > today) : null;
 
       // Bloque de sorteos programados para mostrar en cualquier estado
-      const scheduleHTML = pendingScheduled.length ? `
+      const scheduleHTML = scheduled.length ? `
         <div style="margin-top:12px; border-top:1px solid rgba(42,21,9,0.07); padding-top:12px;">
           <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 8px;">Sorteos de esta noche</p>
-          ${pendingScheduled.map(s => `
+          ${scheduled.map(s => {
+            const isLaunched = s.status === 'launched';
+            const badge = isLaunched ? `<span style="font-size:10px; color:#16a34a; font-weight:700; background:rgba(74,222,128,0.1); padding:2px 6px; border-radius:4px; margin-left:auto;">Realizado</span>` : '';
+            return `
             <div style="display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid rgba(42,21,9,0.05);">
-              <span style="font-size:12px; font-weight:700; color:var(--wine); width:42px; flex-shrink:0;">${s.scheduled_time}</span>
-              <span style="font-size:13px; color:var(--text); flex:1;">🎁 ${s.prize}</span>
-            </div>`).join('')}
+              <span style="font-size:12px; font-weight:700; color:${isLaunched ? 'var(--text-muted)' : 'var(--wine)'}; width:42px; flex-shrink:0;">${s.scheduled_time}</span>
+              <span style="font-size:13px; color:${isLaunched ? 'var(--text-muted)' : 'var(--text)'}; flex:1; text-decoration:${isLaunched ? 'line-through' : 'none'};">🎁 ${s.prize}</span>
+              ${badge}
+            </div>`;
+          }).join('')}
         </div>` : '';
 
-      // ── ESTADO: sin entrada fichada ──────────────────────────────
-      if (!hasEntry && !todayRaffles.length) {
+      // ── ESTADO: sin entrada fichada y sin historial anterior ──
+      if (!hasEntry && !history.length) {
         stateEl.innerHTML = `
           <div style="background:rgba(42,21,9,0.04); border:1px dashed rgba(42,21,9,0.15); border-radius:16px; padding:16px; text-align:center;">
             <div style="font-size:28px; margin-bottom:8px;">🚪</div>
@@ -2769,8 +2801,8 @@
         return;
       }
 
-      // ── ESTADO: tiene entrada, aún no hay sorteos esta noche ─────
-      if (hasEntry && !todayRaffles.length) {
+      // ── ESTADO: tiene entrada, aún no hay premios/sorteos ─────
+      if (hasEntry && !history.length) {
         stateEl.innerHTML = `
           <div style="background:rgba(74,222,128,0.05); border:1px solid rgba(74,222,128,0.2); border-radius:16px; padding:16px;">
             <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
@@ -2798,19 +2830,29 @@
         return;
       }
 
-      // ── ESTADO: ya participó en algún sorteo ────────────────────
+      // ── ESTADO: tiene premios o participación en historial ──
       stateEl.innerHTML = '';
-      // Mostrar si sigue siendo elegible para más sorteos
-      if (hasEntry && remaining > 0 && todayRaffles.every(r => r.status !== 'pending_acceptance')) {
+      if (hasEntry) {
+        if (remaining > 0 && todayRaffles.every(r => r.status !== 'pending_acceptance')) {
+          stateEl.innerHTML = `
+            <div style="display:flex; align-items:center; gap:8px; padding:10px 12px; background:rgba(74,222,128,0.05); border:1px solid rgba(74,222,128,0.15); border-radius:12px; margin-bottom:10px;">
+              <span style="font-size:14px;">✅</span>
+              <p style="font-size:12px; color:var(--text-muted); margin:0;">Sigues en la lista — queda${remaining!==1?'n':''} <strong style="color:var(--text);">${remaining} sorteo${remaining!==1?'s':''}</strong> esta noche</p>
+            </div>
+            ${scheduleHTML}`;
+        } else {
+          stateEl.innerHTML = scheduleHTML;
+        }
+      } else {
         stateEl.innerHTML = `
-          <div style="display:flex; align-items:center; gap:8px; padding:10px 12px; background:rgba(74,222,128,0.05); border:1px solid rgba(74,222,128,0.15); border-radius:12px; margin-bottom:10px;">
-            <span style="font-size:14px;">✅</span>
-            <p style="font-size:12px; color:var(--text-muted); margin:0;">Sigues en la lista — queda${remaining!==1?'n':''} <strong style="color:var(--text);">${remaining} sorteo${remaining!==1?'s':''}</strong> esta noche</p>
-          </div>`;
+          <div style="background:rgba(42,21,9,0.04); border:1px dashed rgba(42,21,9,0.15); border-radius:16px; padding:16px; text-align:center; margin-bottom:10px;">
+            <div style="font-size:28px; margin-bottom:8px;">🚪</div>
+            <p style="font-size:13px; font-weight:700; color:var(--text); margin:0 0 4px;">Ficha tu entrada hoy</p>
+            <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0;">Ficha tu entrada hoy para participar en los nuevos sorteos del Furancho.</p>
+          </div>
+          ${scheduleHTML}`;
       }
 
-      // Lista de sorteos de hoy
-      section.style.display = 'block';
       const wins = todayRaffles.filter(r => r.is_winner === 1 && r.status !== 'rejected');
       if (wins.length) {
         if (statusEl) statusEl.textContent = `🏆 ¡Has ganado ${wins.length === 1 ? 'un premio' : wins.length + ' premios'} esta noche!`;
@@ -2818,38 +2860,41 @@
         if (statusEl) statusEl.textContent = doneTonight > 0 ? `${doneTonight} sorteo${doneTonight!==1?'s':''} esta noche` : 'Esperando próximo sorteo...';
       }
 
+      section.style.display = 'block';
       const statusMsg = {
-        collected:          (r) => `<span style="color:#4ade80; font-weight:700;">✅ ¡Premio recogido!</span><span style="color:var(--text-muted);"> · ${r.prize}</span>`,
+        collected:          (r) => `<span style="color:#16a34a; font-weight:700;">✅ ¡Premio recogido!</span><span style="color:var(--text-muted);"> · ${r.prize}</span>`,
         accepted:           (r) => `<span style="color:var(--gold); font-weight:700;">🏆 ¡Ganaste!</span><span style="color:var(--text-muted);"> · ${r.prize}</span>`,
         rejected:           (r, won) => won
           ? `<span style="color:var(--wine); font-weight:700;">🍷 ¡Estabas muy ocupado pasándolo bien!</span><br><span style="font-size:11px; color:var(--text-muted);">No viste el aviso a tiempo... eso pasa por disfrutar tanto 😄</span>`
-          : `<span style="color:var(--text-muted);">Esta vez no era tu momento — el próximo puede ser tuyo 🎲</span>`,
+          : `<span style="color:var(--text-muted);">Sorteo finalizado · ${r.prize} (No premiado)</span>`,
         pending_acceptance: (r, won) => won
           ? `<span style="color:var(--gold); font-weight:700;">⏳ ¡Ganaste! Acepta el premio</span>`
-          : `<span style="color:var(--text-muted);">🎲 Sorteo en curso...</span>`,
+          : `<span style="color:var(--text-muted);">🎲 Sorteo en curso... (esperando confirmación)</span>`,
         pending:            (r, won) => won
           ? `<span style="color:var(--gold); font-weight:700;">🏆 ¡Ganaste!</span>`
           : `<span style="color:var(--text-muted);">🎲 Sorteo activo</span>`,
       };
 
-      list.innerHTML = todayRaffles.map((r, i) => {
-        const won    = r.is_winner === 1;
-        const msg    = (statusMsg[r.status] || (() => r.prize))(r, won);
-        const isWin  = won && r.status !== 'rejected';
-        const bg     = r.status === 'collected' ? 'rgba(74,222,128,0.06)'
-                     : isWin                    ? 'rgba(196,151,58,0.07)'
-                                                : 'rgba(42,21,9,0.03)';
+      list.innerHTML = history.map((r) => {
+        const won = r.is_winner === 1;
+        const msg = (statusMsg[r.status] || (() => r.prize))(r, won);
+        const isWin = won && r.status !== 'rejected';
+        const bg = r.status === 'collected' ? 'rgba(74,222,128,0.06)'
+                 : isWin                    ? 'rgba(196,151,58,0.07)'
+                                            : 'rgba(42,21,9,0.03)';
         const border = r.status === 'collected' ? 'rgba(74,222,128,0.25)'
                      : isWin                    ? 'rgba(196,151,58,0.3)'
                                                 : 'rgba(42,21,9,0.08)';
+        const dateObj = new Date(r.created_at);
+        const timeStr = dateObj.toLocaleDateString('es-ES', {day:'2-digit',month:'short'}) + ' ' + dateObj.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
         return `<div style="background:${bg}; border:1px solid ${border}; border-radius:14px; padding:13px 15px;">
           <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px;">
             <div style="flex:1;">
-              <p style="font-size:12px; color:var(--text-muted); margin:0 0 3px;">Sorteo ${i + 1}</p>
+              <p style="font-size:10px; color:var(--text-muted); margin:0 0 3px;">Sorteo Especial</p>
               <p style="font-size:13px; font-weight:600; color:var(--text); margin:0 0 3px; line-height:1.5;">${msg}</p>
               ${isWin && r.verification_code ? `<div style="font-family:monospace; font-size:22px; font-weight:700; letter-spacing:5px; color:var(--wine); margin-top:4px;">${r.verification_code}</div>` : ''}
             </div>
-            <span style="font-size:10px; color:var(--text-muted); flex-shrink:0; margin-top:2px;">${new Date(r.created_at).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</span>
+            <span style="font-size:10px; color:var(--text-muted); flex-shrink:0; margin-top:2px;">${timeStr}</span>
           </div>
         </div>`;
       }).join('');
@@ -3537,6 +3582,8 @@
       </button>
     </div>
   </div>
+
+
 
   <!-- ===================== MODAL 12 PALABRAS — PRIMER USO (BLOQUEANTE) ===================== -->
   <div id="mnemonic-modal" style="display:none; position:fixed; inset:0; z-index:3000; background:rgba(10,4,2,0.92); backdrop-filter:blur(12px); align-items:flex-end; justify-content:center;">
