@@ -5,9 +5,10 @@ const path = require('path');
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'furancho.db');
 const db = new DatabaseSync(DB_PATH);
 
-// Activar WAL mode y foreign keys
+// Activar WAL mode, foreign keys y busy_timeout para tolerar bloqueos en rolling deploy
 db.exec('PRAGMA journal_mode = WAL');
 db.exec('PRAGMA foreign_keys = ON');
+db.exec('PRAGMA busy_timeout = 5000');
 
 // Migraciones seguras
 try { db.exec(`ALTER TABLE events ADD COLUMN vip_max INTEGER DEFAULT 15`); } catch (_) {}
@@ -501,7 +502,7 @@ function seedEvents() {
     `).run(date, title, description);
   });
 }
-seedEvents();
+try { seedEvents(); } catch(e) { console.warn('[DB] seedEvents falló (posible lock en deploy):', e.message); }
 
 function getVipCapacity(eventId) {
   const event = db.prepare(`SELECT vip_max FROM events WHERE id=?`).get(eventId);

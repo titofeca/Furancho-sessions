@@ -1,4 +1,9 @@
 require('dotenv').config();
+
+// Capturar errores no manejados para que aparezcan en logs de Railway
+process.on('uncaughtException',  (e) => console.error('[CRASH] uncaughtException:', e.stack || e.message));
+process.on('unhandledRejection', (e) => console.error('[CRASH] unhandledRejection:', e?.stack || e));
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
