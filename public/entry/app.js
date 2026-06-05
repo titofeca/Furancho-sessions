@@ -155,29 +155,53 @@ function showError(msg) {
 }
 
 // ==================== SSE LIVE RAFFLES ====================
+const _entryWinnerTitles = ['¡CAÍUCHE O PREMIO, HO!','¡TOCOUCHE, CAMPIÓN!','¡A SORTE ESTABA DO TEU LADO!'];
+const _entryLoserEmojis = ['😤','🙃','😅','🫠','😬'];
+const _entryLoserTitles = ['Esta vez non...','Que mala pata, ho','Nin desta vez'];
+const _entryLoserMsgs = [
+  'O viño segue na mesa, que non é pouco.',
+  'Haberá máis sorteos. A noite é longa.',
+  'Non todo o monte é ourego, home.',
+  'A bonoloto tampouco, pero aquí estamos.',
+];
+
 function connectRaffle() {
   const wallet = localStorage.getItem('furancho_wallet_address') || '';
   const evtSource = new EventSource(`/api/raffle/stream${wallet ? '?wallet=' + wallet : ''}`);
   evtSource.addEventListener('raffle_start', (e) => {
     const data = JSON.parse(e.data);
-    document.getElementById('raffle-prize-text').textContent = 'Sorteando: ' + data.prize;
+    document.getElementById('raffle-prize-text').textContent = '⚡ ' + data.prize;
     document.getElementById('raffle-roulette').style.display = 'block';
     document.getElementById('raffle-winner').style.display = 'none';
     document.getElementById('raffle-loser').style.display = 'none';
     document.getElementById('raffle-modal').style.display = 'flex';
     document.body.style.overflow = 'hidden';
+    if (navigator.vibrate) navigator.vibrate([100,50,100,50,200]);
   });
   evtSource.addEventListener('raffle_result', (e) => {
     const data = JSON.parse(e.data);
     const myWallet = localStorage.getItem('furancho_wallet_address');
     document.getElementById('raffle-roulette').style.display = 'none';
     if (data.winnerWallet === myWallet) {
+      const titleEl = document.getElementById('entry-winner-title');
+      if (titleEl) titleEl.textContent = _entryWinnerTitles[Math.floor(Math.random()*_entryWinnerTitles.length)];
       document.getElementById('raffle-winner').style.display = 'block';
       document.getElementById('raffle-winner-prize').textContent = data.prize;
       document.getElementById('raffle-code').textContent = data.verificationCode;
+      if (navigator.vibrate) navigator.vibrate([100,50,100,50,100,50,500,100,800]);
     } else {
+      const emoji = _entryLoserEmojis[Math.floor(Math.random()*_entryLoserEmojis.length)];
+      const title = _entryLoserTitles[Math.floor(Math.random()*_entryLoserTitles.length)];
+      const msg = _entryLoserMsgs[Math.floor(Math.random()*_entryLoserMsgs.length)];
+      const eEl = document.getElementById('entry-loser-emoji');
+      const tEl = document.getElementById('entry-loser-title');
+      const mEl = document.getElementById('entry-loser-msg');
+      if (eEl) eEl.textContent = emoji;
+      if (tEl) tEl.textContent = title;
       document.getElementById('raffle-loser').style.display = 'block';
       document.getElementById('raffle-loser-prize').textContent = data.prize;
+      if (mEl) mEl.innerHTML = `O premio de <strong>${data.prize}</strong> foi para outro. ${msg}`;
+      if (navigator.vibrate) navigator.vibrate([150]);
     }
   });
   evtSource.onerror = () => {
