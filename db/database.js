@@ -376,6 +376,39 @@ function getRsvpStatus(walletAddress) {
   return db.prepare(`SELECT event_id FROM rsvps WHERE wallet_address=?`).all(walletAddress).map(r => r.event_id);
 }
 
+function createEvent({ date, title, description }) {
+  return db.prepare(`
+    INSERT INTO events (event_date, title, description)
+    VALUES (?, ?, ?)
+    ON CONFLICT(event_date) DO UPDATE SET title=excluded.title, description=excluded.description
+  `).run(date, title || 'Furancho Sessions', description || null).lastInsertRowid;
+}
+
+function updateEvent(id, { title, description, date, active }) {
+  const fields = [];
+  const vals = [];
+  if (title !== undefined)       { fields.push('title = ?');       vals.push(title); }
+  if (description !== undefined) { fields.push('description = ?'); vals.push(description); }
+  if (date !== undefined)        { fields.push('event_date = ?');  vals.push(date); }
+  if (active !== undefined)      { fields.push('active = ?');      vals.push(active ? 1 : 0); }
+  if (!fields.length) return;
+  vals.push(id);
+  db.prepare(`UPDATE events SET ${fields.join(', ')} WHERE id = ?`).run(...vals);
+}
+
+function deleteEvent(id) {
+  db.prepare(`UPDATE events SET active = 0 WHERE id = ?`).run(id);
+}
+
+function getAllEvents() {
+  return db.prepare(`
+    SELECT e.*, COUNT(r.id) as rsvp_count
+    FROM events e LEFT JOIN rsvps r ON e.id = r.event_id
+    GROUP BY e.id
+    ORDER BY e.event_date ASC
+  `).all();
+}
+
 function seedEvents() {
   const dates = [
     { date: '2026-06-11', title: 'Furancho Sessions — 11 Junio', description: 'La primera. La que marca el ritmo. Vinos locales gallegos, tapas de autor y el ambiente que solo el Furancho sabe crear. Nos vemos el jueves.' },
@@ -632,6 +665,10 @@ module.exports = {
   getSessionAnalytics,
   getEventSessions,
   getSessionDates,
+  createEvent,
+  updateEvent,
+  deleteEvent,
+  getAllEvents,
   getEvents,
   toggleRsvp,
   getRsvpStatus,

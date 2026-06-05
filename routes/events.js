@@ -3,7 +3,8 @@ const router = express.Router();
 const { getEvents, toggleRsvp, getRsvpStatus,
         createVipReservation, getVipReservations, getVipReservation,
         getVipCapacity, updateVipStatus, setVipMax,
-        getSessionAnalytics } = require('../db/database');
+        getSessionAnalytics,
+        createEvent, updateEvent, deleteEvent, getAllEvents } = require('../db/database');
 const { requireAuth } = require('./admin');
 const { sendVipRequestEmail } = require('../services/notifications');
 
@@ -140,6 +141,38 @@ router.patch('/:id/vip/capacity', requireAuth, (req, res) => {
     const cap = setVipMax(parseInt(req.params.id), parseInt(vipMax));
     res.json({ success: true, capacity: cap });
   } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// GET /api/events/all — todos los eventos incluyendo inactivos (admin)
+router.get('/all', requireAuth, (req, res) => {
+  try { res.json(getAllEvents()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/events — crear nuevo evento (admin)
+router.post('/', requireAuth, (req, res) => {
+  const { date, title, description } = req.body;
+  if (!date) return res.status(400).json({ error: 'Falta la fecha' });
+  try {
+    const id = createEvent({ date, title, description });
+    res.json({ success: true, id });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// PATCH /api/events/:id — editar evento (admin)
+router.patch('/:id', requireAuth, (req, res) => {
+  const { title, description, date, active } = req.body;
+  try {
+    updateEvent(parseInt(req.params.id), { title, description, date, active });
+    res.json({ success: true });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// DELETE /api/events/:id — desactivar evento (admin)
+router.delete('/:id', requireAuth, ({ params }, res) => {
+  try {
+    deleteEvent(parseInt(params.id));
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // GET /api/events/analytics — para el admin
