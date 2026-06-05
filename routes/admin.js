@@ -204,12 +204,13 @@ router.get('/peak-hours', requireAuth, (req, res) => {
     const { db } = require('../db/database');
     const date = req.query.date || null;
 
-    // Filtro SQL: si hay fecha filtra ese día; si no, excluye las pruebas de Jun 4 antes de 19:30
+    // Filtro SQL: si hay fecha filtra ese día; para totales excluye sesiones de prueba del 4 jun
+    // Las sesiones se guardan en UTC. El evento del 4 jun empezó a las 19:30 CEST = 17:30 UTC.
+    // Los scans de prueba fueron antes de las 19:30 locales = antes de las 17:30 UTC.
+    const JUN4_TEST_CUTOFF = `'17:30:00'`; // 19:30 CEST en UTC
     const dateWhere = date
-      ? (date === '2026-06-04'
-          ? `date(entry_time) = '2026-06-04' AND time(entry_time) >= '19:30:00'`
-          : `date(entry_time) = '${date.replace(/'/g, '')}'`)
-      : `NOT (date(entry_time) = '2026-06-04' AND time(entry_time) < '19:30:00')`;
+      ? `date(entry_time) = '${date.replace(/'/g, '')}'`
+      : `NOT (date(entry_time) = '2026-06-04' AND time(entry_time) < ${JUN4_TEST_CUTOFF})`;
 
     const hourCounts = db.prepare(`
       SELECT hour, COUNT(*) as sessions, COUNT(DISTINCT wallet_address) as unique_users

@@ -254,23 +254,50 @@ function getStats() {
 }
 
 function getHolders(levelFilter) {
-  if (levelFilter && levelFilter !== 'all') {
+  // Nv2-4: solo en mints (tienen NFT real o demo)
+  // Nv1: sesiones sin mint asociado (escanaron entrada pero no salida/mint)
+  // "all": unión de ambos grupos
+  const lvl = levelFilter && levelFilter !== 'all' ? parseInt(levelFilter) : null;
+
+  if (lvl && lvl >= 2) {
     return db.prepare(`
-      SELECT id,
-        substr(wallet_address, 1, 6) || '...' || substr(wallet_address, -6) as wallet_masked,
-        wallet_address, level, level_name, minted_at, event_date, status
-      FROM mints
-      WHERE status != 'failed' AND level = ?
+      SELECT substr(wallet_address,1,6)||'...'||substr(wallet_address,-6) as wallet_masked,
+             wallet_address, level, level_name, minted_at as event_date, status
+      FROM mints WHERE status != 'failed' AND level = ?
       ORDER BY minted_at DESC
-    `).all(parseInt(levelFilter));
+    `).all(lvl);
   }
+
+  if (lvl === 1) {
+    // Primero los que tienen mint Nv1, luego los que solo tienen sesión
+    return db.prepare(`
+      SELECT substr(wallet_address,1,6)||'...'||substr(wallet_address,-6) as wallet_masked,
+             wallet_address, 1 as level, 'Cautivo' as level_name,
+             MAX(entry_time) as event_date, 'session' as status
+      FROM sessions
+      WHERE wallet_address NOT IN (SELECT wallet_address FROM mints WHERE status='success')
+      GROUP BY wallet_address
+      UNION ALL
+      SELECT substr(wallet_address,1,6)||'...'||substr(wallet_address,-6) as wallet_masked,
+             wallet_address, level, level_name, minted_at as event_date, status
+      FROM mints WHERE status != 'failed' AND level = 1
+      ORDER BY event_date DESC
+    `).all();
+  }
+
+  // All: union de sesiones-sin-mint (Nv1 implícito) + todos los mints
   return db.prepare(`
-    SELECT id,
-      substr(wallet_address, 1, 6) || '...' || substr(wallet_address, -6) as wallet_masked,
-      wallet_address, level, level_name, minted_at, event_date, status
-    FROM mints
-    WHERE status != 'failed'
-    ORDER BY minted_at DESC
+    SELECT substr(wallet_address,1,6)||'...'||substr(wallet_address,-6) as wallet_masked,
+           wallet_address, 1 as level, 'Cautivo' as level_name,
+           MAX(entry_time) as event_date, 'session' as status
+    FROM sessions
+    WHERE wallet_address NOT IN (SELECT wallet_address FROM mints WHERE status='success')
+    GROUP BY wallet_address
+    UNION ALL
+    SELECT substr(wallet_address,1,6)||'...'||substr(wallet_address,-6) as wallet_masked,
+           wallet_address, level, level_name, minted_at as event_date, status
+    FROM mints WHERE status != 'failed'
+    ORDER BY event_date DESC
   `).all();
 }
 
@@ -708,6 +735,10 @@ function getReactionsForMessages(messageIds) {
 function getEventSessions(dateFilter) {
   // dateFilter: 'YYYY-MM-DD' o null para hoy
   const day = dateFilter || new Date().toISOString().slice(0, 10);
+  // Para el 4 jun excluir scans de prueba (antes de 19:30 CEST = 17:30 UTC)
+  const timeFilter = day === '2026-06-04'
+    ? `AND time(s.entry_time) >= '17:30:00'`
+    : '';
   return db.prepare(`
     SELECT
       s.id,
@@ -724,28 +755,27 @@ function getEventSessions(dateFilter) {
       SELECT wallet_address, MAX(level) as level, MAX(level_name) as level_name
       FROM mints WHERE status='success' GROUP BY wallet_address
     ) m ON s.wallet_address = m.wallet_address
-    WHERE date(s.entry_time) = ?
+    WHERE date(s.entry_time) = ? ${timeFilter}
     ORDER BY s.entry_time DESC
   `).all(day);
 }
 
 function getSessionDates() {
-  // Unión: fechas de eventos activos + días con sesiones reales (ej. pruebas día anterior al evento)
+  // Solo fechas de la agenda (events activos) con conteo de sesiones reales
+  // No incluir fechas de sesiones sin evento programado
   return db.prepare(`
-    SELECT day, MAX(count) as count FROM (
-      SELECT e.event_date as day, COUNT(s.id) as count
-      FROM events e
-      LEFT JOIN sessions s ON date(s.entry_time) = e.event_date
-      WHERE e.active = 1
-      GROUP BY e.event_date
-      UNION
-      SELECT date(entry_time) as day, COUNT(*) as count
-      FROM sessions
-      WHERE entry_time IS NOT NULL
-      GROUP BY day
-    )
-    GROUP BY day
-    ORDER BY day DESC
+    SELECT
+      e.event_date as day,
+      COUNT(CASE
+        WHEN s.entry_time IS NOT NULL
+          AND NOT (e.event_date = '2026-06-04' AND time(s.entry_time) < '17:30:00')
+        THEN 1
+      END) as count
+    FROM events e
+    LEFT JOIN sessions s ON date(s.entry_time) = e.event_date
+    WHERE e.active = 1
+    GROUP BY e.event_date
+    ORDER BY e.event_date DESC
     LIMIT 30
   `).all();
 }
