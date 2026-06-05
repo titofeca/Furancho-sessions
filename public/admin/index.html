@@ -2073,14 +2073,14 @@
         document.getElementById('reject-btn-wrap').style.display = 'block';
 
         // Countdown de aceptación (90s) + polling cada 3s para detectar aceptación
-        let secs = 90;
+        let secs = 180;
         const prog = document.getElementById('acceptance-progress');
         const countEl = document.getElementById('acceptance-countdown');
         if (_acceptanceInterval) clearInterval(_acceptanceInterval);
         _acceptanceInterval = setInterval(async () => {
           secs--;
           if (countEl) countEl.textContent = secs;
-          if (prog) prog.style.width = (secs / 90 * 100) + '%';
+          if (prog) prog.style.width = (secs / 180 * 100) + '%';
 
           // Cada 3s comprobar si el ganador ya aceptó
           if (secs % 3 === 0 && data.raffleId) {

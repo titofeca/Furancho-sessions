@@ -2767,15 +2767,14 @@
           : `<span style="color:var(--text-muted);">😬 Esta vez no — pero el próximo puede ser tuyo</span>`,
         pending_acceptance: (r, won) => won
           ? `<span style="color:var(--gold);">⏳ Esperando que aceptes el premio</span>`
-          : `<span style="color:var(--text-muted);">🎲 Sorteo en curso...</span>`,
-        pending:     (r, won) => won ? `<span style="color:var(--gold);">🏆 ¡Ganaste!</span>` : ``,
+          : `<span style="color:var(--text-muted);">🎲 Participaste — esperando resultado...</span>`,
+        pending:     (r, won) => won ? `<span style="color:var(--gold);">🏆 ¡Ganaste!</span>` : `<span style="color:var(--text-muted);">🎲 Participaste</span>`,
       };
 
       list.innerHTML = todayRaffles.map(r => {
         const won = r.is_winner === 1;
         const msgFn = statusMessages[r.status] || (() => '');
         const msg = msgFn(r, won);
-        if (!won && r.status === 'pending_acceptance') return '';
         const bg = (r.status === 'collected' || (won && r.status === 'accepted'))
           ? 'rgba(74,222,128,0.06)' : won ? 'rgba(196,151,58,0.06)' : 'rgba(42,21,9,0.03)';
         const border = (r.status === 'collected' || (won && r.status === 'accepted'))
@@ -2981,7 +2980,7 @@
           if (statusText) statusText.textContent = '🏆 ¡Has ganado! Acepta antes de que expire';
 
           // Mostrar banner de aceptación en perfil
-          showAcceptBanner(data.raffleId, data.prize, data.verificationCode, data.acceptWindow || 90);
+          showAcceptBanner(data.raffleId, data.prize, data.verificationCode, data.acceptWindow || 180);
           renderPrizes();
         } else {
           document.getElementById('raffle-loser').style.display = 'block';

@@ -86,10 +86,10 @@ router.post('/start', requireAuth, (req, res) => {
 
   // Revelar ganador tras 15s
   setTimeout(() => {
-    broadcast('raffle_result', { winnerWallet, verificationCode, prize, raffleId, acceptWindow: 90 });
+    broadcast('raffle_result', { winnerWallet, verificationCode, prize, raffleId, acceptWindow: 180 });
   }, 15000);
 
-  // Auto-rechazar si no acepta en 90s + 15s de animación
+  // Auto-rechazar si no acepta en 180s + 15s de animación
   setTimeout(() => {
     try {
       const { db } = require('../db/database');
@@ -100,7 +100,7 @@ router.post('/start', requireAuth, (req, res) => {
         console.log(`[Raffle] #${raffleId} rechazado automáticamente — tiempo agotado`);
       }
     } catch (e) { console.error('[Raffle] Error en auto-rechazo:', e.message); }
-  }, 105000);
+  }, 195000);
 
   return res.json({ success: true, participants: eligibleWallets.length, raffleId, winnerWallet, verificationCode });
 });
