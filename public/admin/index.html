@@ -1472,32 +1472,29 @@
     document.getElementById(`nav-${pageId}`).classList.add('active');
     if (pageId === 'events') loadEventsPage();
     loadVipBadge();
-    if (pageId === 'holders') { loadPeakHours(null); loadVisits('__totales__'); }
+    if (pageId === 'holders') { loadVisits('__totales__'); }
     if (pageId === 'raffles') { loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); loadScheduled(); }
-    if (pageId === 'holders') loadVisits();
   }
 
   // ==================== VISITAS ====================
   async function loadVisits(dateVal) {
-    // Sincronizar también las gráficas con la fecha seleccionada
-    loadPeakHours(dateVal || null);
+    // Para totales las gráficas usan null; para fecha específica usan esa fecha
+    loadPeakHours(dateVal === '__totales__' || !dateVal ? null : dateVal);
 
-    const url = '/api/admin/event-sessions' + (dateVal ? `?date=${dateVal}` : '');
+    const url = '/api/admin/event-sessions' + (dateVal && dateVal !== '__totales__' ? `?date=${dateVal}` : '');
     try {
       const data = await fetch(url, { headers: authHeaders() }).then(r => r.json());
 
-      // Rellenar selector: Totales + Hoy + fechas de eventos y sesiones reales
+      // Rellenar selector: solo Totales + fechas de eventos/sesiones (sin "Hoy" suelto)
       const sel = document.getElementById('visits-date-select');
       sel.innerHTML =
         `<option value="__totales__" ${dateVal==='__totales__'?'selected':''}>📊 Totales</option>` +
-        `<option value="" ${!dateVal||dateVal==='__totales__'?'':''}>Hoy</option>` +
         (data.dates || []).map(d => {
           const label = new Date(d.day + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short' });
           const count = d.count > 0 ? ` · ${d.count}` : '';
           return `<option value="${d.day}" ${d.day === dateVal ? 'selected' : ''}>${label}${count}</option>`;
         }).join('');
-      if (!dateVal) sel.value = '';
-      else if (dateVal === '__totales__') sel.value = '__totales__';
+      if (!dateVal || dateVal === '__totales__') sel.value = '__totales__';
 
       // Si se pidieron totales, no mostramos lista de sesiones individuales
       if (dateVal === '__totales__') {

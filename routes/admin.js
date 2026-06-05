@@ -204,13 +204,12 @@ router.get('/peak-hours', requireAuth, (req, res) => {
     const { db } = require('../db/database');
     const date = req.query.date || null;
 
-    // Filtro SQL: si hay fecha filtra ese día; para totales excluye sesiones de prueba del 4 jun
-    // Las sesiones se guardan en UTC. El evento del 4 jun empezó a las 19:30 CEST = 17:30 UTC.
-    // Los scans de prueba fueron antes de las 19:30 locales = antes de las 17:30 UTC.
-    const JUN4_TEST_CUTOFF = `'17:30:00'`; // 19:30 CEST en UTC
-    const dateWhere = date
-      ? `date(entry_time) = '${date.replace(/'/g, '')}'`
-      : `NOT (date(entry_time) = '2026-06-04' AND time(entry_time) < ${JUN4_TEST_CUTOFF})`;
+    // Filtro SQL: si hay fecha filtra ese día; para totales solo sesiones de días con evento
+    const safeDate = date ? date.replace(/'/g, '') : null;
+    const dateWhere = safeDate
+      ? `date(entry_time) = '${safeDate}'`
+      : `date(entry_time) IN (SELECT event_date FROM events)
+         AND NOT (date(entry_time) = '2026-06-04' AND time(entry_time) < '17:30:00')`;
 
     // SQLite guarda UTC; España = CEST (UTC+2 en verano). Ajustamos +2h para mostrar hora local.
     const TZ_OFFSET = `'+2 hours'`;

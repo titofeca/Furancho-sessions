@@ -13,7 +13,7 @@ const mintLimiter = rateLimit({
 });
 
 const { Wallet } = require('ethers');
-const { mintNFT, DEMO_MODE } = require('../services/polygon');
+const { mintNFT, DEMO_MODE, notifyQueue } = require('../services/polygon');
 const { insertMint, updateMintStatus, checkDuplicate } = require('../db/database');
 
 const LEVEL_NAMES = {
@@ -184,27 +184,16 @@ router.post('/', mintLimiter, async (req, res) => {
       ipAddress: req.ip
     });
 
-    // Mintear con Crossmint (o demo)
-    const result = await mintNFT({
-      email: sanitizedEmail,
-      walletAddress,
-      level: targetLevel,
-      levelName
-    });
-
-    // Actualizar estado en DB
-    updateMintStatus(mintId, 'success', result.walletAddress);
-
-    console.log(`✅ NFT minteado por visita ${visitCount}: ${levelName} → ${result.walletAddress} (${sanitizedEmail || 'anónimo'})`);
+    // Despertar la cola para procesar en segundo plano
+    notifyQueue();
 
     return res.json({
       success: true,
-      action: 'mint',
+      action: 'mint_queued',
       visitCount,
       levelName,
       level: targetLevel,
-      walletAddress: result.walletAddress,
-      demo: DEMO_MODE,
+      walletAddress,
       message: `¡Tu Pase ${levelName} está en camino!`
     });
 

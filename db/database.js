@@ -186,8 +186,16 @@ function insertMint({ email, level, levelName, walletAddress, crossmintActionId,
   return result.lastInsertRowid;
 }
 
-function updateMintStatus(id, status, walletAddress) {
-  db.prepare(`UPDATE mints SET status = ?, wallet_address = ? WHERE id = ?`).run(status, walletAddress, id);
+function updateMintStatus(id, status, walletAddress, txHash = null) {
+  if (txHash) {
+    db.prepare(`UPDATE mints SET status = ?, wallet_address = ?, crossmint_action_id = ? WHERE id = ?`).run(status, walletAddress, txHash, id);
+  } else {
+    db.prepare(`UPDATE mints SET status = ?, wallet_address = ? WHERE id = ?`).run(status, walletAddress, id);
+  }
+}
+
+function getNextPendingMint() {
+  return db.prepare(`SELECT * FROM mints WHERE status = 'pending' ORDER BY id ASC LIMIT 1`).get();
 }
 
 function insertVisit(walletAddress, email, ipAddress) {
@@ -397,6 +405,13 @@ function closeSession(walletAddress, manual = true) {
     ORDER BY entry_time DESC LIMIT 1
   `).get(walletAddress);
 
+  // Solo cuenta como visita si ese día tiene un evento activo en la agenda
+  const entryDay = session
+    ? session.entry_time.slice(0, 10)
+    : new Date().toISOString().slice(0, 10);
+  const hasEvent = !!db.prepare(`SELECT 1 FROM events WHERE event_date = ?`).get(entryDay);
+  const countVisit = hasEvent ? 1 : 0;
+
   if (session) {
     const entryDate = new Date(session.entry_time + 'Z');
     const now = new Date();
@@ -404,18 +419,20 @@ function closeSession(walletAddress, manual = true) {
     if (diffMinutes > 12 * 60 || diffMinutes < 0) diffMinutes = 60;
     db.prepare(`
       UPDATE sessions
-      SET exit_time = datetime('now'), duration_minutes = ?, counted_as_visit = 1, exit_points = ?
+      SET exit_time = datetime('now'), duration_minutes = ?, counted_as_visit = ?, exit_points = ?
       WHERE id = ?
-    `).run(diffMinutes, pts, session.id);
+    `).run(diffMinutes, countVisit, countVisit ? pts : 0, session.id);
   } else {
     db.prepare(`
       INSERT INTO sessions (wallet_address, entry_time, exit_time, duration_minutes, counted_as_visit, exit_points)
-      VALUES (?, datetime('now', '-60 minutes'), datetime('now'), 60, 1, ?)
-    `).run(walletAddress, pts);
+      VALUES (?, datetime('now', '-60 minutes'), datetime('now'), 60, ?, ?)
+    `).run(walletAddress, countVisit, countVisit ? pts : 0);
   }
 
-  // Registrar puntos
-  db.prepare(`INSERT INTO points (wallet_address, points, reason) VALUES (?, ?, ?)`).run(walletAddress, pts, reason);
+  // Solo registrar puntos si hay evento ese día
+  if (countVisit) {
+    db.prepare(`INSERT INTO points (wallet_address, points, reason) VALUES (?, ?, ?)`).run(walletAddress, pts, reason);
+  }
 }
 
 function getPoints(walletAddress) {
@@ -933,5 +950,6 @@ module.exports = {
   createScheduledRaffle,
   updateScheduledRaffle,
   deleteScheduledRaffle,
-  linkScheduledRaffle
+  linkScheduledRaffle,
+  getNextPendingMint
 };

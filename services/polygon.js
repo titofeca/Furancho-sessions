@@ -65,4 +65,50 @@ async function getMintStatus(txHash) {
   }
 }
 
-module.exports = { mintNFT, getMintStatus, DEMO_MODE };
+// --- COLA DE TRANSACCIONES EN SEGUNDO PLANO ---
+let isProcessing = false;
+
+async function startQueueWorker() {
+  if (isProcessing) return;
+  isProcessing = true;
+
+  try {
+    const { getNextPendingMint, updateMintStatus } = require('../db/database');
+    
+    let nextMint = getNextPendingMint();
+    while (nextMint) {
+      console.log(`[QueueWorker] Procesando minteo ID ${nextMint.id} para wallet ${nextMint.wallet_address}, nivel ${nextMint.level}`);
+      
+      try {
+        const result = await mintNFT({
+          walletAddress: nextMint.wallet_address,
+          level: nextMint.level,
+          levelName: nextMint.level_name
+        });
+
+        updateMintStatus(nextMint.id, 'success', result.walletAddress, result.txHash);
+        console.log(`[QueueWorker] ✅ Minteo ID ${nextMint.id} exitoso. Tx: ${result.txHash}`);
+      } catch (err) {
+        console.error(`[QueueWorker] ❌ Error en minteo ID ${nextMint.id}:`, err.message);
+        // Actualizamos a fallido para no bloquear permanentemente la cola
+        updateMintStatus(nextMint.id, 'failed', nextMint.wallet_address);
+      }
+
+      // Siguiente en la cola
+      nextMint = getNextPendingMint();
+    }
+  } catch (globalErr) {
+    console.error('[QueueWorker] Error crítico en bucle de cola:', globalErr);
+  } finally {
+    isProcessing = false;
+  }
+}
+
+function notifyQueue() {
+  setImmediate(startQueueWorker);
+}
+
+// Iniciar cola al cargar el módulo por si quedaron tareas pendientes de un reinicio previo
+setTimeout(startQueueWorker, 1000);
+
+module.exports = { mintNFT, getMintStatus, DEMO_MODE, notifyQueue };
