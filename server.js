@@ -31,7 +31,7 @@ app.use('/api/events', require('./routes/events'));
 app.use('/api/pdf', require('./routes/pdf'));
 
 // Rutas HTML explícitas — antes de express.static para evitar 301 con trailing slash
-app.get('/', (req, res) => res.redirect('/admin'));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html')));
 app.get('/claim', (req, res) => res.sendFile(path.join(__dirname, 'public', 'claim', 'index.html')));
 app.get('/entry', (req, res) => res.sendFile(path.join(__dirname, 'public', 'entry', 'index.html')));
