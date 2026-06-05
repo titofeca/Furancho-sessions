@@ -191,11 +191,26 @@ function getVisitCount(walletAddress) {
 }
 
 function getStats() {
-  const total = db.prepare(`SELECT COUNT(*) as count FROM mints WHERE status != 'failed'`).get();
+  // Total: wallets únicas con mint O con sesión
+  const total = db.prepare(`
+    SELECT COUNT(*) as count FROM (
+      SELECT wallet_address FROM mints WHERE status != 'failed'
+      UNION
+      SELECT wallet_address FROM sessions
+    )
+  `).get();
+
+  // Nivel efectivo: mint confirma el nivel; sesión sin mint = Nv1 implícito
   const byLevel = db.prepare(`
-    SELECT level, level_name, COUNT(*) as count
-    FROM mints WHERE status != 'failed'
-    GROUP BY level ORDER BY level
+    SELECT level, level_name, COUNT(*) as count FROM (
+      SELECT wallet_address, MAX(level) as level, MAX(level_name) as level_name
+      FROM mints WHERE status = 'success' GROUP BY wallet_address
+      UNION ALL
+      SELECT wallet_address, 1 as level, 'Cautivo' as level_name
+      FROM sessions
+      WHERE wallet_address NOT IN (SELECT wallet_address FROM mints WHERE status = 'success')
+      GROUP BY wallet_address
+    ) GROUP BY level ORDER BY level
   `).all();
   const recent = db.prepare(`
     SELECT level, level_name,

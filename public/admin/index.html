@@ -952,59 +952,65 @@
         </div>
       </div>
 
-      <!-- Visitas del evento con selector -->
+      <!-- Bloque: Visitas por sesión (colapsable) -->
+      <div class="glass-card" style="margin-bottom:16px;">
+        <!-- Cabecera colapsable -->
+        <div onclick="toggleSection('visits-section', 'visits-chevron')" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span class="card-title">🚪 Visitas por sesión</span>
+            <span id="visits-summary-pill" style="font-size:11px; color:var(--text-muted);"></span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <select id="visits-date-select" onchange="loadVisits(this.value); event.stopPropagation();" onclick="event.stopPropagation()" style="background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:5px 8px; font-size:11px; max-width:130px;">
+              <option value="">Hoy</option>
+            </select>
+            <span id="visits-chevron" style="font-size:16px; color:var(--text-muted); transition:transform 0.2s;">▼</span>
+          </div>
+        </div>
+        <!-- Cuerpo colapsable -->
+        <div id="visits-section" style="display:none; margin-top:14px;">
+          <div id="visits-summary" style="display:none; margin-bottom:12px;"></div>
+          <div id="visits-tbody" style="display:flex; flex-direction:column; gap:6px;">
+            <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:16px;">Cargando...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bloque: Estadísticas globales (colapsable) -->
       <div class="glass-card" style="margin-bottom:16px;" id="peak-hours-card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
-          <span class="card-title">🚪 Visitas por sesión</span>
-          <select id="visits-date-select" onchange="loadVisits(this.value)" style="background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:6px 10px; font-size:12px;">
-            <option value="">Hoy</option>
-          </select>
+        <div onclick="toggleSection('stats-section', 'stats-chevron')" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none;">
+          <span class="card-title">📊 Estadísticas globales</span>
+          <span id="stats-chevron" style="font-size:16px; color:var(--text-muted); transition:transform 0.2s;">▼</span>
         </div>
-
-        <div id="visits-summary" style="display:none; margin-bottom:12px;"></div>
-        <div id="visits-tbody" style="display:flex; flex-direction:column; gap:8px;">
-          <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:16px;">Cargando...</div>
+        <div id="stats-section" style="display:none; margin-top:14px;">
+          <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:18px;">
+            <div style="background:rgba(42,21,9,0.04); border-radius:12px; padding:12px; text-align:center;">
+              <p style="font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 4px;">En local ahora</p>
+              <p id="kpi-open" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:var(--wine); margin:0;">—</p>
+            </div>
+            <div style="background:rgba(42,21,9,0.04); border-radius:12px; padding:12px; text-align:center;">
+              <p style="font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 4px;">Estancia media</p>
+              <p id="kpi-avg" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:var(--gold); margin:0;">—</p>
+            </div>
+            <div style="background:rgba(42,21,9,0.04); border-radius:12px; padding:12px; text-align:center;">
+              <p style="font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 4px;">Total sesiones</p>
+              <p id="kpi-sessions" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text); margin:0;">—</p>
+            </div>
+            <div style="background:rgba(42,21,9,0.04); border-radius:12px; padding:12px; text-align:center;">
+              <p style="font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 4px;">Clientes únicos</p>
+              <p id="kpi-users" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text); margin:0;">—</p>
+            </div>
+          </div>
+          <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;">Afluencia por hora</p>
+          <div id="hour-chart" style="display:flex; align-items:flex-end; gap:3px; height:80px; margin-bottom:6px; padding:0 2px;"></div>
+          <div id="hour-labels" style="display:flex; gap:3px; padding:0 2px; margin-bottom:16px;"></div>
+          <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;">Días más activos</p>
+          <div id="weekday-chart" style="display:flex; gap:6px; margin-bottom:16px;"></div>
+          <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;">Últimas sesiones</p>
+          <div id="week-chart" style="display:flex; align-items:flex-end; gap:6px; height:60px; margin-bottom:6px;"></div>
+          <div id="week-labels" style="display:flex; gap:6px; margin-bottom:4px;"></div>
+          <span id="peak-label" style="font-size:11px; color:var(--gold); font-weight:700; display:block; margin-top:6px;"></span>
         </div>
-
-        <!-- Separador -->
-        <div style="border-top:1px solid var(--border); margin:20px 0 16px;"></div>
-
-        <!-- KPIs totales -->
-        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:18px;">
-          <div style="background:rgba(42,21,9,0.04); border-radius:12px; padding:12px; text-align:center;">
-            <p style="font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 4px;">En local ahora</p>
-            <p id="kpi-open" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:var(--wine); margin:0;">—</p>
-          </div>
-          <div style="background:rgba(42,21,9,0.04); border-radius:12px; padding:12px; text-align:center;">
-            <p style="font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 4px;">Estancia media</p>
-            <p id="kpi-avg" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:var(--gold); margin:0;">—</p>
-          </div>
-          <div style="background:rgba(42,21,9,0.04); border-radius:12px; padding:12px; text-align:center;">
-            <p style="font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 4px;">Total sesiones</p>
-            <p id="kpi-sessions" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text); margin:0;">—</p>
-          </div>
-          <div style="background:rgba(42,21,9,0.04); border-radius:12px; padding:12px; text-align:center;">
-            <p style="font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 4px;">Clientes únicos</p>
-            <p id="kpi-users" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text); margin:0;">—</p>
-          </div>
-        </div>
-
-        <!-- Gráfica por hora -->
-        <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;">Afluencia por hora</p>
-        <div id="hour-chart" style="display:flex; align-items:flex-end; gap:3px; height:80px; margin-bottom:6px; padding:0 2px;"></div>
-        <div id="hour-labels" style="display:flex; gap:3px; padding:0 2px; margin-bottom:16px;"></div>
-
-        <!-- Días de la semana -->
-        <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;">Días más activos</p>
-        <div id="weekday-chart" style="display:flex; gap:6px; margin-bottom:16px;"></div>
-
-        <!-- Últimos 7 días -->
-        <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;">Últimas sesiones</p>
-        <div id="week-chart" style="display:flex; align-items:flex-end; gap:6px; height:60px; margin-bottom:6px;"></div>
-        <div id="week-labels" style="display:flex; gap:6px; margin-bottom:4px;"></div>
-
-        <!-- Peak hora label -->
-        <span id="peak-label" style="font-size:11px; color:var(--gold); font-weight:700; display:block; margin-top:6px;"></span>
       </div>
 
       <!-- Holders con filtro por nivel -->
@@ -1448,17 +1454,21 @@
       const tbody = document.getElementById('visits-tbody');
 
       // Resumen
-      const open = sessions.filter(s => !s.exit_time).length;
+      const openSess = sessions.filter(s => !s.exit_time).length;
       const closed = sessions.filter(s => s.exit_time).length;
-      const avgMin = sessions.filter(s => s.duration_minutes > 0).length
-        ? Math.round(sessions.filter(s => s.duration_minutes > 0).reduce((a,s) => a + s.duration_minutes, 0) / sessions.filter(s => s.duration_minutes > 0).length)
-        : 0;
+      const durArr = sessions.filter(s => s.duration_minutes > 0);
+      const avgMin = durArr.length ? Math.round(durArr.reduce((a,s) => a + s.duration_minutes, 0) / durArr.length) : 0;
+
+      // Pill visible siempre en la cabecera
+      const pill = document.getElementById('visits-summary-pill');
+      if (pill) pill.textContent = sessions.length ? `${sessions.length} entradas · ${avgMin}m media` : 'Sin visitas';
+
       document.getElementById('visits-summary').innerHTML =
         `<div style="display:flex; gap:16px; flex-wrap:wrap;">
-          <div><div style="font-size:22px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text);">${sessions.length}</div><div style="font-size:11px; color:var(--text-muted);">total entradas</div></div>
+          <div><div style="font-size:22px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text);">${sessions.length}</div><div style="font-size:11px; color:var(--text-muted);">entradas</div></div>
           <div><div style="font-size:22px; font-weight:900; font-family:'Playfair Display',serif; color:#4ade80;">${closed}</div><div style="font-size:11px; color:var(--text-muted);">con salida</div></div>
-          <div><div style="font-size:22px; font-weight:900; font-family:'Playfair Display',serif; color:var(--gold);">${open}</div><div style="font-size:11px; color:var(--text-muted);">aún dentro</div></div>
-          <div><div style="font-size:22px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text);">${avgMin}m</div><div style="font-size:11px; color:var(--text-muted);">media estancia</div></div>
+          <div><div style="font-size:22px; font-weight:900; font-family:'Playfair Display',serif; color:var(--gold);">${openSess}</div><div style="font-size:11px; color:var(--text-muted);">dentro</div></div>
+          <div><div style="font-size:22px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text);">${avgMin}m</div><div style="font-size:11px; color:var(--text-muted);">media</div></div>
         </div>`;
       document.getElementById('visits-summary').style.display = 'block';
 
@@ -1608,6 +1618,14 @@
     } catch (e) {
       console.error('Error loading holders:', e);
     }
+  }
+
+  function toggleSection(sectionId, chevronId) {
+    const sec = document.getElementById(sectionId);
+    const chev = document.getElementById(chevronId);
+    const open = sec.style.display !== 'none';
+    sec.style.display = open ? 'none' : 'block';
+    if (chev) chev.style.transform = open ? '' : 'rotate(180deg)';
   }
 
   function filterHolders(level, btn) {
