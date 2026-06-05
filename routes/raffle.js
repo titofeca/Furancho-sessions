@@ -161,7 +161,22 @@ router.get('/my-wins', (req, res) => {
 router.get('/my-history', (req, res) => {
   const { wallet } = req.query;
   if (!wallet) return res.status(400).json({ error: 'Falta wallet' });
-  try { res.json(getRaffleParticipation(wallet)); } catch (e) { res.status(500).json({ error: e.message }); }
+  try {
+    // Auto-rechazar sorteos expirados antes de retornar el historial
+    const { db, rejectRaffle } = require('../db/database');
+    const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const expired = db.prepare(`
+      SELECT id, prize FROM raffles 
+      WHERE status = 'pending_acceptance' AND acceptance_deadline <= ?
+    `).all(nowStr);
+    
+    expired.forEach(r => {
+      rejectRaffle(r.id, 'Tiempo de aceptación agotado');
+      broadcast('raffle_timeout', { raffleId: r.id, prize: r.prize });
+    });
+
+    res.json(getRaffleParticipation(wallet));
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // PATCH /api/raffle/:id/collect — admin confirma que el premio fue entregado

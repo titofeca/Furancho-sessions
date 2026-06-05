@@ -1603,8 +1603,8 @@
             </div>
           </div>
           <!-- Puntos -->
-          <div style="text-align:right; flex-shrink:0;">
-            <div id="points-block" style="background:rgba(196,151,58,0.08); border:1px solid rgba(196,151,58,0.2); border-radius:14px; padding:10px 14px; min-width:90px;">
+          <div style="text-align:right; flex-shrink:0; display:none;">
+            <div id="points-block" style="background:rgba(196,151,58,0.08); border:1px solid rgba(196,151,58,0.2); border-radius:14px; padding:10px 14px; min-width:90px; display:none;">
               <p style="font-size:9px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--gold); margin:0 0 3px;">Puntos</p>
               <div style="display:flex; align-items:baseline; gap:3px;">
                 <span id="points-display" style="font-family:'Playfair Display',serif; font-size:26px; font-weight:900; color:var(--gold); line-height:1;">—</span>
@@ -1648,7 +1648,7 @@
           <p style="font-size:12px; color:var(--gold); font-weight:600; margin:0;" id="journey-next-text"></p>
         </div>
         <p style="font-size:11px; color:var(--text-muted); margin-top:12px; text-align:center; line-height:1.5;">
-          Ficha salida para ganar <strong style="color:var(--gold);">80 pts</strong> · Sin fichar: <strong>5 pts</strong>
+          ¡Recuerda registrar tu salida antes de marcharte! 🍷
         </p>
       </div>
 
@@ -1681,7 +1681,7 @@
           <p style="font-size:11px; color:var(--text-muted); margin-top:8px;">Muestra el código al staff del Furancho.</p>
         </div>
         <div id="my-prizes-section" style="display:none; margin-top:14px;">
-          <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;" id="prizes-header-title">Mis Premios y Canjes</p>
+          <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;" id="prizes-header-title">Mis Premios y Sorteos</p>
           <div id="prizes-list" style="display:flex; flex-direction:column; gap:8px;"></div>
         </div>
       </div>
@@ -2637,6 +2637,7 @@
 
     let _acceptRaffleId = null;
     let _acceptCountdownInterval = null;
+    let _prizesExpanded = false;
 
     function showAcceptBanner(raffleId, prize, code, windowSecs) {
       _acceptRaffleId = raffleId;
@@ -2657,6 +2658,7 @@
           clearInterval(_acceptCountdownInterval);
           hideAcceptBanner();
           if (modalCount) modalCount.textContent = '';
+          renderPrizes();
         }
       }, 1000);
     }
@@ -2706,23 +2708,7 @@
         
         const block = document.getElementById('points-block');
         if (block) {
-          block.style.background = 'rgba(196,151,58,0.08)';
-          block.style.borderColor = 'rgba(196,151,58,0.2)';
-          block.style.cursor = 'default';
-          block.style.transform = 'none';
-          block.onmouseenter = null;
-          block.onmouseleave = null;
-          block.onclick = null;
-          const pElements = block.querySelectorAll('p');
-          if (pElements.length > 0) {
-            pElements[0].style.color = 'var(--gold)';
-            pElements[0].textContent = 'Puntos';
-          }
-          const hintEl = pElements[pElements.length - 1];
-          if (hintEl) {
-            hintEl.textContent = 'Puntos acumulados';
-          }
-          bar.style.background = 'var(--gold)';
+          block.style.display = 'none';
         }
       } catch(e) {}
     }
@@ -2865,7 +2851,7 @@
         collected:          (r) => `<span style="color:#16a34a; font-weight:700;">✅ ¡Premio recogido!</span><span style="color:var(--text-muted);"> · ${r.prize}</span>`,
         accepted:           (r) => `<span style="color:var(--gold); font-weight:700;">🏆 ¡Ganaste!</span><span style="color:var(--text-muted);"> · ${r.prize}</span>`,
         rejected:           (r, won) => won
-          ? `<span style="color:var(--wine); font-weight:700;">🍷 ¡Estabas muy ocupado pasándolo bien!</span><br><span style="font-size:11px; color:var(--text-muted);">No viste el aviso a tiempo... eso pasa por disfrutar tanto 😄</span>`
+          ? `<span style="color:var(--wine); font-weight:700;">🍷 ¡Outra vez será, non fuches nada áxil!</span><br><span style="font-size:11px; color:var(--text-muted); padding-top:4px;">Eso pásache por estar de leria e durmir na palla... ¡Para a próxima espabila, ho! 😜</span>`
           : `<span style="color:var(--text-muted);">Sorteo finalizado · ${r.prize} (No premiado)</span>`,
         pending_acceptance: (r, won) => won
           ? `<span style="color:var(--gold); font-weight:700;">⏳ ¡Ganaste! Acepta el premio</span>`
@@ -2875,7 +2861,16 @@
           : `<span style="color:var(--text-muted);">🎲 Sorteo activo</span>`,
       };
 
-      list.innerHTML = history.map((r) => {
+      let itemsToRender = history;
+      let showToggle = false;
+      if (history.length > 3) {
+        showToggle = true;
+        if (!_prizesExpanded) {
+          itemsToRender = history.slice(0, 3);
+        }
+      }
+
+      list.innerHTML = itemsToRender.map((r) => {
         const won = r.is_winner === 1;
         const msg = (statusMsg[r.status] || (() => r.prize))(r, won);
         const isWin = won && r.status !== 'rejected';
@@ -2898,6 +2893,42 @@
           </div>
         </div>`;
       }).join('');
+
+      if (showToggle) {
+        const remainingCount = history.length - 3;
+        const toggleText = _prizesExpanded 
+          ? 'Contraer lista ▴' 
+          : `Mostrar todos los sorteos (+${remainingCount}) ▾`;
+        
+        const btnId = 'toggle-prizes-btn';
+        list.innerHTML += `
+          <button id="${btnId}" onclick="togglePrizesExpanded()" style="
+            width: 100%;
+            margin-top: 4px;
+            padding: 11px;
+            background: transparent;
+            border: 1px dashed rgba(139,25,24,0.3);
+            border-radius: 12px;
+            color: var(--wine);
+            font-family: 'Outfit', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+          " onmouseover="this.style.background='rgba(139,25,24,0.04)'; this.style.borderColor='var(--wine)';" onmouseout="this.style.background='transparent'; this.style.borderColor='rgba(139,25,24,0.3)';">
+            ${toggleText}
+          </button>
+        `;
+      }
+    }
+
+    function togglePrizesExpanded() {
+      _prizesExpanded = !_prizesExpanded;
+      renderPrizes();
     }
 
     function revealPrivateKey(btn) {

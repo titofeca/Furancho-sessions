@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (data.isNew) {
       document.getElementById('icon-container').innerText = '🍷';
       document.getElementById('title-container').innerText = '¡Benvido a Furancho Sessions!';
-      document.getElementById('msg-container').innerText = 'É a túa primeira vez aquí. Goza da experiencia e non esquezas fichar á saída para gañar puntos.';
+      document.getElementById('msg-container').innerText = 'É a túa primeira vez aquí. Goza da experiencia e non esquezas fichar á saída ao marchar.';
     } else {
       document.getElementById('icon-container').innerText = '🙌';
       document.getElementById('title-container').innerText = '¡Benvido de volta!';
