@@ -1,6 +1,8 @@
 node_modules/
 .env
 furancho.db
+furancho.db-shm
+furancho.db-wal
 qr-output/
 *.log
 .DS_Store
