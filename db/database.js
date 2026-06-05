@@ -125,6 +125,16 @@ db.exec(`
   );
 `);
 
+// Sesiones de prueba del 4 jun antes de las 19:30 no cuentan como visita real
+try {
+  db.exec(`
+    UPDATE sessions SET counted_as_visit = 0
+    WHERE date(entry_time) = '2026-06-04'
+      AND time(entry_time) < '19:30:00'
+      AND counted_as_visit = 1
+  `);
+} catch (_) {}
+
 // =====================
 // HELPERS
 // =====================
