@@ -146,8 +146,10 @@ router.post('/', mintLimiter, async (req, res) => {
         return res.status(409).json({ error: `Ya tienes el pase de ${LEVEL_NAMES[targetLevel]}.`, action: 'duplicate' });
       }
     } else {
-      if (visitCount === 4)  targetLevel = 3;
-      else if (visitCount === 12) targetLevel = 4;
+      if (visitCount === 1)       targetLevel = 1; // Nv1 Cautivo — 1ª visita
+      else if (visitCount === 2)  targetLevel = 2; // Nv2 O Cunqueiro — 2ª visita
+      else if (visitCount === 4)  targetLevel = 3; // Nv3 O Larpeiro — 4ª visita (NFT real)
+      else if (visitCount === 12) targetLevel = 4; // Nv4 O Presidente — 12ª visita (NFT real)
     }
 
     if (!targetLevel) {
@@ -238,6 +240,16 @@ router.get('/history', (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// GET /api/mint/points?wallet=0x...
+router.get('/points', (req, res) => {
+  const { wallet } = req.query;
+  if (!wallet) return res.status(400).json({ error: 'Wallet requerida' });
+  try {
+    const { getPoints, getPointsHistory } = require('../db/database');
+    res.json({ total: getPoints(wallet), history: getPointsHistory(wallet) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;

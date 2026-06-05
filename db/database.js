@@ -559,19 +559,22 @@ function getEligibleRaffleParticipants() {
 }
 
 function autoCloseSessionsAt23() {
-  // Cierra todas las sesiones abiertas del día actual a las 23:00 y las cuenta como visita
-  const result = db.prepare(`
+  // Cierra todas las sesiones abiertas y asigna 5 puntos (salida automática)
+  const open = db.prepare(`SELECT id, wallet_address FROM sessions WHERE exit_time IS NULL AND date(entry_time) = date('now')`).all();
+  const stmt = db.prepare(`
     UPDATE sessions
-    SET exit_time = datetime('now'), duration_minutes =
-      CASE WHEN (CAST((julianday('now') - julianday(entry_time)) * 1440 AS INTEGER)) > 720
-        THEN 240
-        ELSE CAST((julianday('now') - julianday(entry_time)) * 1440 AS INTEGER)
-      END,
-    counted_as_visit = 1
-    WHERE exit_time IS NULL AND date(entry_time) = date('now')
-  `).run();
-  console.log(`[Auto-checkout 23:00] Sesiones cerradas: ${result.changes}`);
-  return result.changes;
+    SET exit_time = datetime('now'),
+        duration_minutes = CASE WHEN (CAST((julianday('now') - julianday(entry_time)) * 1440 AS INTEGER)) > 720
+          THEN 240
+          ELSE CAST((julianday('now') - julianday(entry_time)) * 1440 AS INTEGER) END,
+        counted_as_visit = 1,
+        exit_points = 5
+    WHERE id = ?
+  `);
+  const pts = db.prepare(`INSERT INTO points (wallet_address, points, reason) VALUES (?, 5, 'Salida automática')`);
+  open.forEach(s => { stmt.run(s.id); pts.run(s.wallet_address); });
+  console.log(`[Auto-checkout 23:00] Sesiones cerradas: ${open.length}`);
+  return open.length;
 }
 
 function insertRaffle(prize, winnerWallet, verificationCode) {
@@ -713,6 +716,8 @@ module.exports = {
   getVisitCount,
   getEligibleRaffleParticipants,
   autoCloseSessionsAt23,
+  getPoints,
+  getPointsHistory,
   insertRaffle,
   collectRaffle,
   getRaffleHistory,
