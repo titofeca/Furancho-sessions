@@ -2016,6 +2016,9 @@
     );
     if (_restoreParam && /^0x[a-fA-F0-9]{40}$/.test(_restoreParam)) {
       localStorage.setItem('furancho_wallet_address', _restoreParam);
+      if (!localStorage.getItem('furancho_account_created_at')) {
+        localStorage.setItem('furancho_account_created_at', new Date().toISOString());
+      }
       history.replaceState(null, '', '/claim');
     }
 
@@ -2024,6 +2027,11 @@
     let userWalletPrivateKey = localStorage.getItem('furancho_wallet_private_key');
     let userClaimedLevels = [];
     const walletPreexistente = !!userWalletAddress; // true si ya había visitado antes
+
+    // Guardar fecha de creación si ya tiene wallet pero nunca se guardó
+    if (userWalletAddress && !localStorage.getItem('furancho_account_created_at')) {
+      localStorage.setItem('furancho_account_created_at', new Date().toISOString());
+    }
 
     // Inicializar billetera anónima
     async function initWallet() {
@@ -2056,6 +2064,9 @@
           userWalletPrivateKey = data.privateKey;
           localStorage.setItem('furancho_wallet_address', userWalletAddress);
           localStorage.setItem('furancho_wallet_private_key', userWalletPrivateKey);
+          if (!localStorage.getItem('furancho_account_created_at')) {
+            localStorage.setItem('furancho_account_created_at', new Date().toISOString());
+          }
           if (data.mnemonic) {
             localStorage.setItem('furancho_wallet_mnemonic', data.mnemonic);
           }
@@ -2277,14 +2288,18 @@
       // No aplicar tema oscuro en el perfil — mantener fondo crema siempre
       document.body.className = '';
 
-      // Buzón completo de mensajes
-      fetch(`/api/admin/inbox?level=${lvl}`)
+      // Buzón completo de mensajes — solo los de después de crear la cuenta
+      const _accountCreated = localStorage.getItem('furancho_account_created_at') || '';
+      const _inboxUrl = `/api/admin/inbox?level=${lvl}` + (_accountCreated ? `&since=${encodeURIComponent(_accountCreated)}` : '');
+      fetch(_inboxUrl)
         .then(r => r.json()).then(msgs => {
           if (!msgs || !msgs.length) return;
-          _allMessages = msgs;
+          // Separar activos de archivados
+          _allMessages = msgs.filter(m => !m.archived);
+          _archivedMessages = msgs.filter(m => m.archived);
           const readIds = getReadIds();
-          const unread = msgs.filter(m => !readIds.includes(msgKey(m)));
-          // Mostrar banner solo si hay mensajes no leídos
+          const unread = _allMessages.filter(m => !readIds.includes(msgKey(m)));
+          // Mostrar banner solo si hay mensajes no leídos y no archivados
           if (unread.length > 0) {
             const box = document.getElementById('profile-admin-msg');
             const body = document.getElementById('profile-admin-msg-body');
@@ -3451,6 +3466,9 @@
         localStorage.setItem('furancho_wallet_address', data.address);
         localStorage.setItem('furancho_wallet_private_key', data.privateKey);
         localStorage.setItem('furancho_wallet_mnemonic', words.join(' '));
+        if (!localStorage.getItem('furancho_account_created_at')) {
+          localStorage.setItem('furancho_account_created_at', new Date().toISOString());
+        }
         closeRestoreFlow();
         showToast('✅ ¡Cuenta recuperada! Bienvenido de vuelta.');
         setTimeout(() => location.reload(), 1200);
@@ -3471,6 +3489,7 @@
   // ==================== MENSAJES FLOTANTES ====================
 
   let _allMessages = [];
+  let _archivedMessages = [];
 
   function msgKey(m) { return m.id ?? m.sent_at; }   // clave única por mensaje
 
@@ -3506,38 +3525,58 @@
     badge.style.display = unread > 0 ? 'flex' : 'none';
   }
 
+  function _buildMsgCard(m, wasUnread) {
+    const myReaction = getMyReaction(m.id);
+    const r = m.reactions || {};
+    const emojis = ['🍷','🙌','😂','🔥'];
+    const reactionBar = emojis.map(e => {
+      const count = r[e] || 0;
+      const active = myReaction === e;
+      return `<button onclick="reactToMsg(${m.id}, '${e}', this)"
+        style="display:inline-flex; align-items:center; gap:4px; padding:5px 10px; border-radius:100px;
+          border:1.5px solid ${active ? 'var(--wine)' : 'rgba(42,21,9,0.12)'};
+          background:${active ? 'rgba(139,25,24,0.08)' : 'transparent'};
+          font-size:15px; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s;"
+        data-msg="${m.id}" data-emoji="${e}">
+        ${e}${count > 0 ? `<span style="font-size:11px; font-weight:700; color:${active ? 'var(--wine)' : 'var(--text-muted)'};">${count}</span>` : ''}
+      </button>`;
+    }).join('');
+    return `<div style="background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:14px; padding:14px 16px; position:relative; overflow:hidden;">
+      ${wasUnread ? '<div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--wine),var(--gold));"></div>' : ''}
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <p style="font-size:13px; font-weight:700; color:var(--text);">${m.subject}</p>
+        <p style="font-size:10px; color:var(--text-muted);">${new Date(m.sent_at).toLocaleDateString('es-ES')}</p>
+      </div>
+      <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin-bottom:10px;">${m.body}</p>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">${reactionBar}</div>
+    </div>`;
+  }
+
   function openMsgPanel() {
     markAllRead();
     const readIds = getReadIds();
     const panel = document.getElementById('msg-panel');
     const list = document.getElementById('msg-panel-list');
-    list.innerHTML = _allMessages.map(m => {
-      const wasUnread = !readIds.includes(msgKey(m));
-      const myReaction = getMyReaction(m.id);
-      const r = m.reactions || {};
-      const emojis = ['🍷','🙌','😂','🔥'];
-      const reactionBar = emojis.map(e => {
-        const count = r[e] || 0;
-        const active = myReaction === e;
-        return `<button onclick="reactToMsg(${m.id}, '${e}', this)"
-          style="display:inline-flex; align-items:center; gap:4px; padding:5px 10px; border-radius:100px;
-            border:1.5px solid ${active ? 'var(--wine)' : 'rgba(42,21,9,0.12)'};
-            background:${active ? 'rgba(139,25,24,0.08)' : 'transparent'};
-            font-size:15px; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s;"
-          data-msg="${m.id}" data-emoji="${e}">
-          ${e}${count > 0 ? `<span style="font-size:11px; font-weight:700; color:${active ? 'var(--wine)' : 'var(--text-muted)'};">${count}</span>` : ''}
-        </button>`;
-      }).join('');
-      return `<div style="background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:14px; padding:14px 16px; position:relative; overflow:hidden;">
-        ${wasUnread ? '<div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--wine),var(--gold));"></div>' : ''}
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-          <p style="font-size:13px; font-weight:700; color:var(--text);">${m.subject}</p>
-          <p style="font-size:10px; color:var(--text-muted);">${new Date(m.sent_at).toLocaleDateString('es-ES')}</p>
-        </div>
-        <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin-bottom:10px;">${m.body}</p>
-        <div style="display:flex; gap:6px; flex-wrap:wrap;">${reactionBar}</div>
-      </div>`;
-    }).join('');
+
+    // Mensajes activos (no archivados)
+    const activeHtml = _allMessages.length
+      ? _allMessages.map(m => _buildMsgCard(m, !readIds.includes(msgKey(m)))).join('')
+      : '<p style="font-size:13px; color:var(--text-muted); text-align:center; padding:12px 0;">No hay mensajes nuevos</p>';
+
+    // Mensajes archivados (anteriores a la creación de la cuenta) — colapsados
+    const archived = _archivedMessages || [];
+    const archivedHtml = archived.length
+      ? `<details style="margin-top:16px;">
+          <summary style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); cursor:pointer; list-style:none; display:flex; align-items:center; gap:6px; padding:8px 0; border-top:1px solid rgba(42,21,9,0.08);">
+            <span>📁 Archivados (${archived.length})</span>
+          </summary>
+          <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px; opacity:0.7;">
+            ${archived.map(m => _buildMsgCard(m, false)).join('')}
+          </div>
+        </details>`
+      : '';
+
+    list.innerHTML = activeHtml + archivedHtml;
     panel.style.display = 'flex';
     requestAnimationFrame(() => { panel.querySelector('.msg-panel-sheet').style.transform = 'translateY(0)'; });
     document.getElementById('profile-admin-msg').style.display = 'none';

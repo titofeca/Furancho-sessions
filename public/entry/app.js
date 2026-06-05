@@ -53,6 +53,9 @@ async function onboardingNew() {
     localStorage.setItem('furancho_wallet_address', data.address);
     localStorage.setItem('furancho_wallet_private_key', data.privateKey);
     if (data.mnemonic) localStorage.setItem('furancho_wallet_mnemonic', data.mnemonic);
+    if (!localStorage.getItem('furancho_account_created_at')) {
+      localStorage.setItem('furancho_account_created_at', new Date().toISOString());
+    }
     await doEntry(data.address);
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = '🍷 Es mi primera vez'; }
@@ -116,6 +119,9 @@ async function submitEntryRestore() {
       localStorage.setItem('furancho_wallet_address', data.address);
       localStorage.setItem('furancho_wallet_private_key', data.privateKey);
       localStorage.setItem('furancho_wallet_mnemonic', words.join(' '));
+      if (!localStorage.getItem('furancho_account_created_at')) {
+        localStorage.setItem('furancho_account_created_at', new Date().toISOString());
+      }
       await doEntry(data.address);
     } else {
       errorEl.textContent = data.error || 'Frase incorrecta. Revisa las palabras.';

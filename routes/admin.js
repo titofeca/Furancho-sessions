@@ -73,19 +73,25 @@ router.get('/current-message', (req, res) => {
   }
 });
 
-// GET /api/admin/inbox?level=2 — mensajes con reacciones (público para clientes)
+// GET /api/admin/inbox?level=2&since=ISO_DATE — mensajes para clientes
+// `since` = fecha de creación de cuenta del cliente; mensajes anteriores van marcados como archivados
 router.get('/inbox', (req, res) => {
   const level = req.query.level || '1';
+  const since = req.query.since || null; // ISO string, eg. "2026-06-05T18:00:00.000Z"
   try {
     const { db } = require('../db/database');
     const messages = db.prepare(`
       SELECT id, subject, body, sent_at FROM messages
       WHERE level_filter = 'all' OR level_filter = ?
-      ORDER BY sent_at DESC LIMIT 20
+      ORDER BY sent_at DESC LIMIT 30
     `).all(level.toString());
     const ids = messages.map(m => m.id);
     const reactions = ids.length ? getReactionsForMessages(ids) : {};
-    res.json(messages.map(m => ({ ...m, reactions: reactions[m.id] || {} })));
+    res.json(messages.map(m => ({
+      ...m,
+      reactions: reactions[m.id] || {},
+      archived: since ? m.sent_at < since : false
+    })));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
