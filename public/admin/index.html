@@ -1213,43 +1213,84 @@
     <div class="page" id="page-raffles">
       <div class="page-header">
         <h1 class="page-title">Sorteos en Vivo</h1>
-        <p class="page-subtitle">Lanza un sorteo para todos los clientes presentes en el local.</p>
+        <p class="page-subtitle">Hasta 2 sorteos por noche. Solo participan clientes con entrada fichada.</p>
       </div>
 
+      <!-- Premios configurados -->
+      <div class="glass-card" style="margin-bottom:16px;">
+        <div class="card-header" style="margin-bottom:12px;">
+          <span class="card-title">🎁 Premios configurados</span>
+          <button class="btn-download" onclick="loadPrizePresets()" style="font-size:11px; padding:6px 12px;">↻</button>
+        </div>
+        <div id="prize-presets-list" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;"></div>
+        <div style="display:flex; gap:8px;">
+          <input type="text" class="input-field" id="new-preset-input" placeholder="Ej: Botella Mencía, Tapa gratis..." style="flex:1; margin:0; font-size:14px;" />
+          <button onclick="addPreset()" style="background:var(--wine); color:#fff; border:none; border-radius:12px; padding:0 16px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap;">+ Añadir</button>
+        </div>
+      </div>
+
+      <!-- Lanzar sorteo -->
       <div class="message-form">
-        <div class="form-group">
-          <label class="form-label">Participantes Elegibles</label>
-          <div class="raffle-eligible-count" id="raffle-eligible-count">—</div>
-          <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px; font-weight: 300;">Clientes con la app abierta ahora mismo.</p>
-          <button class="btn-download" onclick="loadEligibleParticipants()" style="margin-top: 10px;">↻ Actualizar</button>
+        <div class="form-group" style="margin-bottom:12px;">
+          <label class="form-label">Participantes elegibles</label>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div class="raffle-eligible-count" id="raffle-eligible-count" style="flex:1;">—</div>
+            <button class="btn-download" onclick="loadEligibleParticipants()" style="font-size:11px; padding:6px 12px; flex-shrink:0;">↻</button>
+          </div>
+          <p style="font-size:11px; color:var(--text-muted); margin-top:4px; font-weight:300;">Sorteos esta noche: <strong id="raffle-count-tonight">—</strong> / 2</p>
         </div>
 
         <div class="form-group">
           <label class="form-label">Premio a sortear</label>
-          <input type="text" class="input-field" id="raffle-prize" placeholder="Ej: Botella de Mencía, Cena Gratis..." />
+          <div id="preset-buttons" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;"></div>
+          <input type="text" class="input-field" id="raffle-prize" placeholder="O escribe un premio personalizado..." style="font-size:14px;" />
         </div>
 
-        <button class="btn-primary" id="start-raffle-btn" onclick="startRaffle()" style="width: 100%; background: linear-gradient(135deg, var(--wine) 0%, var(--wine-dark) 100%);">
-          🎲 LANZAR SORTEO (15 Segundos)
+        <button class="btn-primary" id="start-raffle-btn" onclick="startRaffle()" style="width:100%; background:linear-gradient(135deg,var(--wine) 0%,var(--wine-dark) 100%);">
+          🎲 LANZAR SORTEO
         </button>
 
-        <div id="raffle-status" style="display: none;" class="raffle-status-box">
-          <h3 style="color: var(--gold); margin-bottom: 8px; font-family: 'Playfair Display', serif; font-size: 18px;" id="raffle-status-title">Sorteo en curso...</h3>
-          <p style="font-size: 13px; color: var(--text-muted); font-weight: 300;" id="raffle-status-desc">Espera a que termine la ruleta en los móviles de los clientes.</p>
+        <!-- Estado: animación en curso -->
+        <div id="raffle-status" style="display:none;" class="raffle-status-box">
+          <h3 style="color:var(--gold); margin-bottom:8px; font-family:'Playfair Display',serif; font-size:18px;" id="raffle-status-title">Sorteo en curso...</h3>
+          <p style="font-size:13px; color:var(--text-muted); font-weight:300;" id="raffle-status-desc">Ruleta girando en los móviles...</p>
 
-          <div id="raffle-winner-box" style="display: none; margin-top: 20px;">
-            <p style="font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #4ade80; margin-bottom: 4px;">Ganador seleccionado — código a verificar:</p>
+          <!-- Ganador + aceptación -->
+          <div id="raffle-winner-box" style="display:none; margin-top:20px;">
+            <p style="font-size:10px; text-transform:uppercase; letter-spacing:2px; color:#4ade80; margin-bottom:4px;">Ganador seleccionado</p>
             <p class="raffle-winner-code" id="raffle-winner-code">----</p>
-            <p style="font-size: 12px; color: var(--text-muted); font-weight: 300; margin-bottom: 16px;">El cliente ve este código en su móvil. Compruébalo y confirma la entrega.</p>
+
+            <!-- Countdown de aceptación -->
+            <div id="acceptance-countdown-wrap" style="margin:14px 0; text-align:center;">
+              <p style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">Esperando que el ganador acepte</p>
+              <div style="font-size:32px; font-weight:700; color:var(--gold);" id="acceptance-countdown">90</div>
+              <div style="height:4px; background:rgba(42,21,9,0.08); border-radius:100px; margin-top:8px; overflow:hidden;">
+                <div id="acceptance-progress" style="height:100%; background:linear-gradient(90deg,var(--wine),var(--gold)); width:100%; transition:width 1s linear;"></div>
+              </div>
+            </div>
+
+            <!-- Aceptado -->
+            <div id="accepted-banner" style="display:none; background:rgba(74,222,128,0.08); border:1px solid rgba(74,222,128,0.3); border-radius:14px; padding:12px 16px; margin-bottom:12px; text-align:center;">
+              <p style="color:#4ade80; font-weight:700; font-size:14px;">✅ ¡Premio aceptado por el ganador!</p>
+              <p style="font-size:11px; color:var(--text-muted); margin-top:4px;">Entrega el premio y confirma a continuación.</p>
+            </div>
 
             <!-- Botón confirmar entrega -->
-            <div id="collect-btn-wrap" style="display:none;">
+            <div id="collect-btn-wrap" style="display:none; margin-bottom:10px;">
               <input type="hidden" id="collect-raffle-id" value="">
               <button onclick="confirmPrizeDelivery()"
-                style="width:100%; padding:14px; background:linear-gradient(135deg,#4ade80,#16a34a); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(74,222,128,0.3);">
+                style="width:100%; padding:14px; background:linear-gradient(135deg,#4ade80,#16a34a); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer;">
                 ✅ Premio entregado — confirmar
               </button>
-              <p style="font-size:11px; color:var(--text-muted); text-align:center; margin-top:8px;">Al confirmar, el código desaparece del móvil del cliente.</p>
+            </div>
+
+            <!-- Botón rechazar -->
+            <div id="reject-btn-wrap" style="display:none;">
+              <button id="reject-raffle-btn" onclick="rejectCurrentRaffle()"
+                style="width:100%; padding:12px; background:rgba(139,25,24,0.08); color:var(--wine); border:1.5px solid rgba(139,25,24,0.2); border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:600; cursor:pointer;">
+                ✕ No respondió — rechazar y repetir
+              </button>
+              <p style="font-size:11px; color:var(--text-muted); text-align:center; margin-top:6px;">Podrás lanzar un nuevo sorteo.</p>
             </div>
           </div>
         </div>
@@ -1440,7 +1481,7 @@
     if (pageId === 'events') loadEventsPage();
     loadVipBadge();
     if (pageId === 'holders') { loadPeakHours(null); loadVisits('__totales__'); }
-    if (pageId === 'raffles') { loadEligibleParticipants(); loadRaffleHistory(); }
+    if (pageId === 'raffles') { loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); }
     if (pageId === 'holders') loadVisits();
   }
 
@@ -1917,27 +1958,83 @@
   }, 30000);
 
   // ==================== RAFFLES ====================
-  async function loadEligibleParticipants() {
+  let _acceptanceInterval = null;
+
+  async function loadPrizePresets() {
     try {
-      const res = await fetch('/api/raffle/eligible', {
-        headers: { 'x-admin-token': AUTH_TOKEN }
+      const presets = await fetch('/api/raffle/prizes', { headers: authHeaders() }).then(r => r.json());
+      const list = document.getElementById('prize-presets-list');
+      const btns = document.getElementById('preset-buttons');
+      if (list) {
+        list.innerHTML = presets.length ? presets.map(p => `
+          <div style="display:flex; align-items:center; gap:6px; background:rgba(42,21,9,0.05); border:1px solid rgba(42,21,9,0.1); border-radius:100px; padding:6px 12px;">
+            <span style="font-size:13px; font-weight:600; color:var(--text);">${p.name}</span>
+            <button onclick="deletePreset(${p.id}, this)" style="background:none; border:none; font-size:14px; color:var(--text-muted); cursor:pointer; line-height:1; padding:0 0 0 4px;">✕</button>
+          </div>`).join('') : '<p style="font-size:12px; color:var(--text-muted);">Sin premios configurados.</p>';
+      }
+      if (btns) {
+        btns.innerHTML = presets.map(p => `
+          <button onclick="selectPreset('${p.name.replace(/'/g,"\\'")}', this)"
+            style="padding:7px 14px; background:rgba(139,25,24,0.07); border:1.5px solid rgba(139,25,24,0.15); border-radius:100px; font-size:13px; font-weight:600; color:var(--wine); cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s;">
+            🎁 ${p.name}
+          </button>`).join('');
+      }
+    } catch(e) {}
+  }
+
+  function selectPreset(name, btn) {
+    document.getElementById('raffle-prize').value = name;
+    document.querySelectorAll('#preset-buttons button').forEach(b => { b.style.background = 'rgba(139,25,24,0.07)'; b.style.borderColor = 'rgba(139,25,24,0.15)'; });
+    if (btn) { btn.style.background = 'rgba(139,25,24,0.15)'; btn.style.borderColor = 'var(--wine)'; }
+  }
+
+  async function addPreset() {
+    const input = document.getElementById('new-preset-input');
+    const name = input.value.trim();
+    if (!name) return showToast('Escribe un nombre para el premio', true);
+    try {
+      const res = await fetch('/api/raffle/prizes', {
+        method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
       });
       const data = await res.json();
-      document.getElementById('raffle-eligible-count').textContent = data.count;
+      if (data.success) { input.value = ''; loadPrizePresets(); showToast('Premio añadido'); }
+      else showToast(data.error || 'Error', true);
+    } catch(e) { showToast('Error', true); }
+  }
+
+  async function deletePreset(id, btn) {
+    btn.disabled = true;
+    try {
+      await fetch(`/api/raffle/prizes/${id}`, { method: 'DELETE', headers: authHeaders() });
+      loadPrizePresets();
+    } catch(e) { btn.disabled = false; }
+  }
+
+  async function loadEligibleParticipants() {
+    try {
+      const data = await fetch('/api/raffle/eligible', { headers: authHeaders() }).then(r => r.json());
+      const el = document.getElementById('raffle-eligible-count');
+      if (el) el.textContent = data.count;
+      const tonight = document.getElementById('raffle-count-tonight');
+      if (tonight) tonight.textContent = data.tonight ?? '—';
     } catch (e) {
-      document.getElementById('raffle-eligible-count').textContent = '—';
+      const el = document.getElementById('raffle-eligible-count');
+      if (el) el.textContent = '—';
     }
   }
 
   async function startRaffle() {
     const prize = document.getElementById('raffle-prize').value.trim();
-    if (!prize) return showToast('Escribe un premio primero', true);
-
-    if (!confirm('¿Seguro que quieres lanzar el sorteo ahora a todos los móviles conectados?')) return;
+    if (!prize) return showToast('Selecciona o escribe un premio primero', true);
+    if (!confirm(`¿Lanzar sorteo ahora?\nPremio: ${prize}`)) return;
 
     document.getElementById('start-raffle-btn').disabled = true;
     document.getElementById('raffle-status').style.display = 'block';
     document.getElementById('raffle-winner-box').style.display = 'none';
+    document.getElementById('accepted-banner').style.display = 'none';
+    document.getElementById('collect-btn-wrap').style.display = 'none';
+    document.getElementById('reject-btn-wrap').style.display = 'none';
     document.getElementById('raffle-status-title').textContent = '🎲 Ruleta girando en los móviles...';
     document.getElementById('raffle-status-desc').textContent = 'Quedan 15 segundos';
 
@@ -1963,21 +2060,53 @@
         return showToast(data.error, true);
       }
 
-      // Guardar datos del sorteo activo para confirmar entrega luego
       window._activeRaffle = { id: data.raffleId, verificationCode: data.verificationCode, prize, winnerWallet: data.winnerWallet };
 
       setTimeout(() => {
-        document.getElementById('raffle-status-title').textContent = '🎉 ¡Sorteo Finalizado!';
-        document.getElementById('raffle-status-desc').textContent = `El ganador está viendo este código en su móvil.`;
+        clearInterval(interval);
+        document.getElementById('raffle-status-title').textContent = '⏳ Esperando aceptación del ganador';
+        document.getElementById('raffle-status-desc').textContent = `Código: ${data.verificationCode} · Premio: ${prize}`;
         document.getElementById('raffle-winner-box').style.display = 'block';
         document.getElementById('raffle-winner-code').textContent = data.verificationCode;
         document.getElementById('start-raffle-btn').disabled = false;
-        // Mostrar botón de confirmar entrega
-        if (data.raffleId) {
-          document.getElementById('collect-btn-wrap').style.display = 'block';
-          document.getElementById('collect-raffle-id').value = data.raffleId;
-        }
+        document.getElementById('collect-raffle-id').value = data.raffleId;
+        document.getElementById('reject-btn-wrap').style.display = 'block';
+
+        // Countdown de aceptación (90s) + polling cada 3s para detectar aceptación
+        let secs = 90;
+        const prog = document.getElementById('acceptance-progress');
+        const countEl = document.getElementById('acceptance-countdown');
+        if (_acceptanceInterval) clearInterval(_acceptanceInterval);
+        _acceptanceInterval = setInterval(async () => {
+          secs--;
+          if (countEl) countEl.textContent = secs;
+          if (prog) prog.style.width = (secs / 90 * 100) + '%';
+
+          // Cada 3s comprobar si el ganador ya aceptó
+          if (secs % 3 === 0 && data.raffleId) {
+            try {
+              const hist = await fetch('/api/raffle/history', { headers: authHeaders() }).then(r => r.json());
+              const raffle = hist.find(r => r.id === data.raffleId);
+              if (raffle?.status === 'accepted' || raffle?.status === 'collected') {
+                clearInterval(_acceptanceInterval);
+                document.getElementById('acceptance-countdown-wrap').style.display = 'none';
+                document.getElementById('accepted-banner').style.display = 'block';
+                document.getElementById('collect-btn-wrap').style.display = 'block';
+                document.getElementById('reject-btn-wrap').style.display = 'none';
+                document.getElementById('raffle-status-title').textContent = '✅ ¡Premio aceptado!';
+                showToast('🏆 El ganador aceptó el premio');
+              }
+            } catch(_) {}
+          }
+
+          if (secs <= 0) {
+            clearInterval(_acceptanceInterval);
+            document.getElementById('raffle-status-title').textContent = '⏰ Tiempo agotado — no respondió';
+          }
+        }, 1000);
+
         loadRaffleHistory();
+        loadEligibleParticipants();
       }, 15000);
 
     } catch (e) {
@@ -1987,34 +2116,54 @@
     }
   }
 
+  async function rejectCurrentRaffle() {
+    const raffleId = document.getElementById('collect-raffle-id').value;
+    if (!raffleId) return;
+    const btn = document.getElementById('reject-raffle-btn');
+    btn.disabled = true;
+    try {
+      await fetch(`/api/raffle/${raffleId}/reject`, {
+        method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note: 'No respondió a tiempo' })
+      });
+      if (_acceptanceInterval) clearInterval(_acceptanceInterval);
+      document.getElementById('raffle-status').style.display = 'none';
+      document.getElementById('start-raffle-btn').disabled = false;
+      showToast('Sorteo rechazado. Puedes lanzar uno nuevo.');
+      loadRaffleHistory();
+    } catch(e) {
+      btn.disabled = false;
+      showToast('Error', true);
+    }
+  }
+
   // ==================== SORTEOS — CONFIRMAR ENTREGA + HISTORIAL ====================
 
   async function confirmPrizeDelivery() {
     const raffleId = document.getElementById('collect-raffle-id').value;
     if (!raffleId) return showToast('No hay sorteo activo', true);
     const btn = document.querySelector('#collect-btn-wrap button');
-    btn.disabled = true;
-    btn.textContent = 'Confirmando...';
+    btn.disabled = true; btn.textContent = 'Confirmando...';
     try {
       const res = await fetch(`/api/raffle/${raffleId}/collect`, {
-        method: 'PATCH',
-        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        method: 'PATCH', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({})
       });
       const data = await res.json();
       if (data.success) {
+        if (_acceptanceInterval) clearInterval(_acceptanceInterval);
         document.getElementById('collect-btn-wrap').style.display = 'none';
+        document.getElementById('reject-btn-wrap').style.display = 'none';
+        document.getElementById('raffle-status-title').textContent = '✅ Premio entregado';
         showToast('✅ Premio entregado confirmado');
         loadRaffleHistory();
       } else {
         showToast(data.error || 'Error', true);
-        btn.disabled = false;
-        btn.textContent = '✅ Premio entregado — confirmar';
+        btn.disabled = false; btn.textContent = '✅ Premio entregado — confirmar';
       }
     } catch(e) {
       showToast('Error de conexión', true);
-      btn.disabled = false;
-      btn.textContent = '✅ Premio entregado — confirmar';
+      btn.disabled = false; btn.textContent = '✅ Premio entregado — confirmar';
     }
   }
 
@@ -2041,38 +2190,28 @@
         container.innerHTML = '<p style="font-size:13px; color:var(--text-muted); text-align:center; padding:20px 0;">Sin sorteos todavía.</p>';
         return;
       }
-      const pending = history.filter(r => !r.collected);
-      const done    = history.filter(r =>  r.collected);
-
-      const renderRow = (r, isPending) => `
-        <div style="display:flex; align-items:center; gap:12px; padding:12px 0; border-top:1px solid rgba(42,21,9,0.06);">
-          <div style="flex-shrink:0; width:36px; height:36px; border-radius:50%; background:${isPending ? 'rgba(74,222,128,0.12)' : 'rgba(42,21,9,0.05)'}; display:flex; align-items:center; justify-content:center; font-size:16px;">
-            ${isPending ? '🎁' : '✅'}
-          </div>
+      const renderRow = (r) => {
+        const statusIcon = r.status === 'collected' ? '✅' : r.status === 'rejected' ? '✕' : r.status === 'accepted' ? '🏆' : '⏳';
+        const statusColor = r.status === 'collected' ? '#4ade80' : r.status === 'rejected' ? 'var(--text-muted)' : r.status === 'accepted' ? 'var(--gold)' : 'var(--text-muted)';
+        const canCollect = r.status === 'accepted';
+        const when = new Date(r.created_at).toLocaleString('es-ES', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+        return `<div style="display:flex; align-items:center; gap:10px; padding:12px 0; border-top:1px solid rgba(42,21,9,0.06);">
+          <div style="flex-shrink:0; width:32px; height:32px; border-radius:50%; background:rgba(42,21,9,0.05); display:flex; align-items:center; justify-content:center; font-size:15px;">${statusIcon}</div>
           <div style="flex:1; min-width:0;">
             <p style="font-size:13px; font-weight:700; color:var(--text); margin:0 0 2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${r.prize}</p>
-            <p style="font-size:11px; color:var(--text-muted); margin:0;">${r.wallet_masked} · ${new Date(r.created_at).toLocaleDateString('es-ES', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</p>
+            <p style="font-size:10px; color:var(--text-muted); margin:0;">${r.wallet_masked} · ${when}</p>
+            ${r.status === 'rejected' ? `<p style="font-size:10px; color:var(--text-muted); margin:2px 0 0; font-style:italic;">${r.rejection_note || 'Rechazado'}</p>` : ''}
           </div>
           <div style="text-align:right; flex-shrink:0;">
-            <span style="font-family:monospace; font-size:14px; font-weight:900; letter-spacing:3px; color:${isPending ? '#4ade80' : 'var(--text-muted)'};">${r.verification_code}</span>
-            ${isPending ? `
-              <br><button onclick="collectHistoric(${r.id}, this)"
-                style="margin-top:6px; padding:5px 10px; background:rgba(74,222,128,0.12); border:1px solid rgba(74,222,128,0.3); border-radius:8px; font-size:11px; font-weight:700; color:#4ade80; cursor:pointer; font-family:'Outfit',sans-serif;">
-                Entregar ✓
-              </button>` : `
-              <br><span style="font-size:10px; color:var(--text-muted);">${r.collected_at ? new Date(r.collected_at).toLocaleDateString('es-ES') : '—'}</span>`}
+            <span style="font-family:monospace; font-size:13px; font-weight:900; letter-spacing:2px; color:${statusColor};">${r.status !== 'rejected' ? r.verification_code : '—'}</span>
+            ${canCollect ? `<br><button onclick="collectHistoric(${r.id}, this)"
+              style="margin-top:5px; padding:5px 10px; background:rgba(74,222,128,0.12); border:1px solid rgba(74,222,128,0.3); border-radius:8px; font-size:11px; font-weight:700; color:#4ade80; cursor:pointer; font-family:'Outfit',sans-serif;">
+              Entregar ✓</button>` : ''}
           </div>
         </div>`;
+      };
 
-      container.innerHTML = `
-        ${pending.length > 0 ? `
-          <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#4ade80; margin-bottom:4px;">Pendientes de entrega (${pending.length})</p>
-          ${pending.map(r => renderRow(r, true)).join('')}
-        ` : ''}
-        ${done.length > 0 ? `
-          <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-top:${pending.length ? '16px' : '0'}; margin-bottom:4px;">Entregados (${done.length})</p>
-          ${done.map(r => renderRow(r, false)).join('')}
-        ` : ''}`;
+      container.innerHTML = history.map(r => renderRow(r)).join('');
     } catch(e) {
       container.innerHTML = '<p style="font-size:12px; color:var(--text-muted); padding:12px 0;">Error cargando historial.</p>';
     }

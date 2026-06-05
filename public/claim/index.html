@@ -2590,78 +2590,164 @@
       btn.disabled = false;
     }
 
-    function togglePrizesMenu() {
-      const menu = document.getElementById('prizes-menu');
-      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    function updateJourney(visitCount, claimedLevels, currentLevel) {
+      const thresholds = [1, 2, 4, 12];
+      const icons = ['🍷','🍶','🌿','👑'];
+      const unlockedNodes = thresholds.map((t, i) =>
+        visitCount >= t || (claimedLevels && claimedLevels.includes(i+1)) || currentLevel > i
+      );
+
+      // Progreso de línea: posición entre nodos
+      // 4 nodos a 0%, 33%, 66%, 100% de la línea
+      const positions = [0, 33, 66, 100];
+      let lineWidth = 0;
+      if (unlockedNodes[3]) lineWidth = 100;
+      else if (unlockedNodes[2]) lineWidth = 66 + Math.min((visitCount - 4) / (12 - 4) * 34, 34);
+      else if (unlockedNodes[1]) lineWidth = 33 + Math.min((visitCount - 2) / (4 - 2) * 33, 33);
+      else if (unlockedNodes[0]) lineWidth = Math.min((visitCount - 1) / (2 - 1) * 33, 33);
+
+      setTimeout(() => {
+        const line = document.getElementById('journey-progress-line');
+        if (line) line.style.width = lineWidth + '%';
+      }, 400);
+
+      [1,2,3,4].forEach((n, i) => {
+        const dot = document.getElementById('jdot-' + n);
+        const tag = document.getElementById('jtag-' + n);
+        if (!dot) return;
+        if (unlockedNodes[i]) {
+          dot.style.background = i === 0 ? 'var(--wine)' : i === 1 ? '#2A6B8A' : i === 2 ? '#3A7A4A' : 'var(--gold)';
+          dot.style.borderColor = dot.style.background;
+          dot.style.boxShadow = `0 0 10px ${dot.style.background}55`;
+          dot.style.color = '#fff';
+          dot.innerHTML = icons[i];
+          if (tag) { tag.style.color = dot.style.background; }
+        } else {
+          dot.style.background = 'rgba(42,21,9,0.06)';
+          dot.style.borderColor = 'rgba(42,21,9,0.1)';
+          dot.style.boxShadow = 'none';
+          dot.innerHTML = '🔒';
+        }
+      });
+
+      // Siguiente hito
+      const nextHint = document.getElementById('journey-next-hint');
+      const nextText = document.getElementById('journey-next-text');
+      if (nextHint && nextText) {
+        const nextIdx = unlockedNodes.findIndex(u => !u);
+        if (nextIdx === -1) {
+          nextHint.style.display = 'none';
+        } else {
+          const labels = ['Cautivo (1ª visita)', 'O Cunqueiro (2ª visita)', 'O Larpeiro (4 visitas · NFT)', 'O Presidente (12 visitas · NFT)'];
+          const needed = thresholds[nextIdx] - visitCount;
+          nextText.textContent = `Siguiente: ${labels[nextIdx]} — ${needed} visita${needed !== 1 ? 's' : ''} más`;
+          nextHint.style.display = 'block';
+        }
+      }
+    }
+
+    let _acceptRaffleId = null;
+    let _acceptCountdownInterval = null;
+
+    function showAcceptBanner(raffleId, prize, code, windowSecs) {
+      _acceptRaffleId = raffleId;
+      const banner = document.getElementById('accept-prize-banner');
+      document.getElementById('accept-prize-name').textContent = prize;
+      document.getElementById('accept-prize-code').textContent = code;
+      banner.style.display = 'block';
+
+      const countEl = document.getElementById('accept-countdown');
+      let remaining = windowSecs;
+      if (_acceptCountdownInterval) clearInterval(_acceptCountdownInterval);
+      _acceptCountdownInterval = setInterval(() => {
+        remaining--;
+        if (countEl) countEl.textContent = remaining;
+        if (remaining <= 0) {
+          clearInterval(_acceptCountdownInterval);
+          hideAcceptBanner();
+        }
+      }, 1000);
+    }
+
+    function hideAcceptBanner() {
+      document.getElementById('accept-prize-banner').style.display = 'none';
+      if (_acceptCountdownInterval) clearInterval(_acceptCountdownInterval);
+      _acceptRaffleId = null;
+    }
+
+    async function acceptPrize() {
+      if (!_acceptRaffleId || !userWalletAddress) return;
+      const btn = document.getElementById('accept-prize-btn');
+      btn.disabled = true;
+      btn.textContent = 'Aceptando...';
+      try {
+        const res = await fetch(`/api/raffle/${_acceptRaffleId}/accept`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ wallet: userWalletAddress })
+        });
+        if (res.ok) {
+          btn.textContent = '✅ ¡Premio aceptado! Muestra el código al staff';
+          btn.style.background = 'linear-gradient(135deg,#4ade80,#16a34a)';
+          document.getElementById('accept-countdown-wrap').style.display = 'none';
+          if (_acceptCountdownInterval) clearInterval(_acceptCountdownInterval);
+          renderPrizes();
+        } else {
+          btn.disabled = false;
+          btn.textContent = '¡Soy yo! Reclamar premio 🎉';
+        }
+      } catch(e) {
+        btn.disabled = false;
+        btn.textContent = '¡Soy yo! Reclamar premio 🎉';
+      }
     }
 
     async function renderPrizes() {
       const list = document.getElementById('prizes-list');
-      const pendingBanner = document.getElementById('prizes-pending-banner');
+      const section = document.getElementById('my-prizes-section');
       if (!list || !userWalletAddress) return;
 
-      let wins = [];
+      let history = [];
       try {
-        wins = await fetch(`/api/raffle/my-wins?wallet=${userWalletAddress}`).then(r => r.json());
-      } catch(e) {
-        // Fallback localStorage
-        const local = JSON.parse(localStorage.getItem('furancho_prizes') || '[]');
-        wins = local.map(p => ({ id: null, prize: p.prize, verification_code: p.code, created_at: p.date, collected: 0 }));
-      }
+        history = await fetch(`/api/raffle/my-history?wallet=${userWalletAddress}`).then(r => r.json());
+      } catch(e) { return; }
 
-      // Fusionar con localStorage por si hay premios muy recientes
-      const local = JSON.parse(localStorage.getItem('furancho_prizes') || '[]');
-      const serverCodes = new Set(wins.map(w => w.verification_code));
-      const localOnly = local.filter(l => !serverCodes.has(l.code))
-        .map(p => ({ id: null, prize: p.prize, verification_code: p.code, created_at: p.date, collected: 0 }));
-      const allWins = [...wins, ...localOnly];
+      // Filtrar solo sorteos de hoy
+      const today = new Date().toISOString().slice(0, 10);
+      const todayRaffles = history.filter(r => r.created_at && r.created_at.startsWith(today));
 
-      if (!allWins.length) {
-        pendingBanner.style.display = 'none';
-        return;
-      }
+      if (!todayRaffles.length) { section.style.display = 'none'; return; }
+      section.style.display = 'block';
 
-      const pending = allWins.filter(w => !w.collected);
-      const collected = allWins.filter(w => w.collected);
+      const statusMessages = {
+        collected:   (r) => `<span style="color:#4ade80;">✅ ¡Premio recogido!</span> — ${r.prize}`,
+        accepted:    (r) => `<span style="color:var(--gold);">🏆 Has ganado</span> — ${r.prize}`,
+        rejected:    (r, won) => won
+          ? `<span style="color:var(--wine);">🍷 ¡Estabas muy ocupado pasándolo bien!</span><br><span style="font-size:11px; color:var(--text-muted);">No viste el aviso a tiempo... eso pasa por disfrutar tanto 😄</span>`
+          : `<span style="color:var(--text-muted);">😬 Esta vez no — pero el próximo puede ser tuyo</span>`,
+        pending_acceptance: (r, won) => won
+          ? `<span style="color:var(--gold);">⏳ Esperando que aceptes el premio</span>`
+          : `<span style="color:var(--text-muted);">🎲 Sorteo en curso...</span>`,
+        pending:     (r, won) => won ? `<span style="color:var(--gold);">🏆 ¡Ganaste!</span>` : ``,
+      };
 
-      // Mostrar/ocultar badge de pendientes
-      pendingBanner.style.display = pending.length > 0 ? 'block' : 'none';
-
-      // Renderizar lista completa en el menú
-      const pendingHtml = pending.length > 0 ? `
-        <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#4ade80; margin-bottom:8px;">Pendiente de recoger</p>
-        ${pending.map(p => `
-          <div style="background:rgba(74,222,128,0.07); border:1.5px solid rgba(74,222,128,0.3); border-radius:14px; padding:14px 16px; position:relative; overflow:hidden;">
-            <div style="position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,#4ade80,var(--gold));"></div>
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
-              <div style="flex:1;">
-                <p style="font-size:14px; font-weight:700; color:var(--text); margin:0 0 3px;">🎁 ${p.prize}</p>
-                <p style="font-size:11px; color:var(--text-muted); margin:0;">${new Date(p.created_at).toLocaleString('es-ES', {dateStyle:'short',timeStyle:'short'})}</p>
-              </div>
-              <div style="background:rgba(74,222,128,0.15); border:1.5px solid rgba(74,222,128,0.4); border-radius:12px; padding:10px 14px; text-align:center; flex-shrink:0;">
-                <p style="font-size:9px; color:rgba(74,222,128,0.7); letter-spacing:1px; text-transform:uppercase; margin:0 0 3px;">Código</p>
-                <p style="font-family:monospace; font-size:24px; font-weight:900; letter-spacing:5px; color:#4ade80; line-height:1; margin:0;">${p.verification_code}</p>
-              </div>
-            </div>
-          </div>
-        `).join('')}
-      ` : '';
-
-      const collectedHtml = collected.length > 0 ? `
-        <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-top:${pending.length>0?'16px':'0'}; margin-bottom:8px;">Premios recogidos</p>
-        ${collected.map(p => `
-          <div style="background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:14px; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; gap:12px; opacity:0.7;">
-            <div style="flex:1;">
-              <p style="font-size:13px; font-weight:600; color:var(--text-muted); margin:0 0 2px;">✅ ${p.prize}</p>
-              <p style="font-size:10px; color:var(--text-muted); margin:0;">Recogido · ${p.collected_at ? new Date(p.collected_at).toLocaleDateString('es-ES') : '—'}</p>
-            </div>
-            <span style="font-size:20px; opacity:0.4;">🏅</span>
-          </div>
-        `).join('')}
-      ` : '';
-
-      list.innerHTML = pendingHtml + collectedHtml ||
-        '<p style="font-size:13px; color:var(--text-muted); text-align:center; padding:12px 0;">Sin premios todavía.</p>';
+      list.innerHTML = todayRaffles.map(r => {
+        const won = r.is_winner === 1;
+        const msgFn = statusMessages[r.status] || (() => '');
+        const msg = msgFn(r, won);
+        if (!won && r.status === 'pending_acceptance') return '';
+        const bg = (r.status === 'collected' || (won && r.status === 'accepted'))
+          ? 'rgba(74,222,128,0.06)' : won ? 'rgba(196,151,58,0.06)' : 'rgba(42,21,9,0.03)';
+        const border = (r.status === 'collected' || (won && r.status === 'accepted'))
+          ? 'rgba(74,222,128,0.25)' : won ? 'rgba(196,151,58,0.3)' : 'rgba(42,21,9,0.08)';
+        return `<div style="background:${bg}; border:1px solid ${border}; border-radius:14px; padding:12px 14px;">
+          <p style="font-size:13px; font-weight:600; color:var(--text); margin:0 0 4px; line-height:1.5;">${msg || r.prize}</p>
+          ${won && r.verification_code && r.status !== 'rejected' ? `
+            <div style="font-family:monospace; font-size:22px; font-weight:700; letter-spacing:5px; color:var(--wine);">${r.verification_code}</div>
+          ` : ''}
+          <p style="font-size:10px; color:var(--text-muted); margin:4px 0 0;">${new Date(r.created_at).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</p>
+        </div>`;
+      }).join('');
     }
 
     function revealPrivateKey(btn) {
@@ -2856,8 +2942,6 @@
 
         const dot = document.getElementById('raffle-live-dot');
         const statusText = document.getElementById('raffle-status-text');
-        if (dot) dot.classList.remove('live');
-        if (statusText) statusText.textContent = 'Esperando próximo sorteo...';
 
         if (data.winnerWallet === myWallet) {
           document.getElementById('raffle-winner').style.display = 'block';
@@ -2866,21 +2950,49 @@
           launchParticles();
           if (navigator.vibrate) navigator.vibrate([100,50,100,50,100,50,100,50,500,100,500,100,800]);
 
-          // Guardar premio en historial local
-          const prizes = JSON.parse(localStorage.getItem('furancho_prizes') || '[]');
-          prizes.unshift({ prize: data.prize, code: data.verificationCode, date: new Date().toLocaleString('es-ES') });
-          localStorage.setItem('furancho_prizes', JSON.stringify(prizes.slice(0, 20)));
+          if (dot) dot.classList.add('live');
+          if (statusText) statusText.textContent = '🏆 ¡Has ganado! Acepta antes de que expire';
+
+          // Mostrar banner de aceptación en perfil
+          showAcceptBanner(data.raffleId, data.prize, data.verificationCode, data.acceptWindow || 90);
           renderPrizes();
         } else {
           document.getElementById('raffle-loser').style.display = 'block';
           document.getElementById('raffle-loser-prize').textContent = data.prize;
-          // Vibración perdedor — un golpe corto
           if (navigator.vibrate) navigator.vibrate([200]);
+          if (dot) dot.classList.remove('live');
+          if (statusText) statusText.textContent = 'Esperando próximo sorteo...';
+          renderPrizes();
         }
       });
 
-      // Admin confirma entrega → el badge desaparece en tiempo real
+      evtSource.addEventListener('raffle_timeout', () => {
+        hideAcceptBanner();
+        const statusText = document.getElementById('raffle-status-text');
+        const dot = document.getElementById('raffle-live-dot');
+        if (statusText) statusText.textContent = 'Esperando próximo sorteo...';
+        if (dot) dot.classList.remove('live');
+        renderPrizes();
+      });
+
+      evtSource.addEventListener('raffle_rejected', () => {
+        hideAcceptBanner();
+        const statusText = document.getElementById('raffle-status-text');
+        const dot = document.getElementById('raffle-live-dot');
+        if (statusText) statusText.textContent = 'Esperando próximo sorteo...';
+        if (dot) dot.classList.remove('live');
+        renderPrizes();
+      });
+
+      evtSource.addEventListener('raffle_accepted', () => {
+        const statusText = document.getElementById('raffle-status-text');
+        if (statusText) statusText.textContent = 'Premio aceptado ✅';
+        renderPrizes();
+      });
+
+      // Admin confirma entrega → actualizar
       evtSource.addEventListener('prize_collected', () => {
+        hideAcceptBanner();
         renderPrizes();
       });
 
