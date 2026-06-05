@@ -1512,7 +1512,8 @@
       }
 
       const levelColors = { 0:'#888', 1:'#cd7f32', 2:'#aaa', 3:'#ffd700', 4:'#e5007e' };
-      const fmtTime = t => t ? new Date(t).toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' }) : '—';
+      // SQLite guarda UTC sin 'Z' — añadirlo fuerza parseo UTC y el navegador muestra hora local (España)
+      const fmtTime = t => t ? new Date(t.replace(' ','T')+'Z').toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' }) : '—';
 
       tbody.innerHTML = sessions.map(s => {
         const col = levelColors[s.level] || '#888';

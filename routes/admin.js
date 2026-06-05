@@ -212,19 +212,22 @@ router.get('/peak-hours', requireAuth, (req, res) => {
       ? `date(entry_time) = '${date.replace(/'/g, '')}'`
       : `NOT (date(entry_time) = '2026-06-04' AND time(entry_time) < ${JUN4_TEST_CUTOFF})`;
 
+    // SQLite guarda UTC; España = CEST (UTC+2 en verano). Ajustamos +2h para mostrar hora local.
+    const TZ_OFFSET = `'+2 hours'`;
+
     const hourCounts = db.prepare(`
       SELECT hour, COUNT(*) as sessions, COUNT(DISTINCT wallet_address) as unique_users
       FROM (
-        SELECT wallet_address, CAST(strftime('%H', entry_time) AS INTEGER) as hour
+        SELECT wallet_address, CAST(strftime('%H', entry_time, ${TZ_OFFSET}) AS INTEGER) as hour
         FROM sessions WHERE entry_time IS NOT NULL AND ${dateWhere}
         UNION ALL
-        SELECT wallet_address, CAST(strftime('%H', exit_time) AS INTEGER) as hour
+        SELECT wallet_address, CAST(strftime('%H', exit_time, ${TZ_OFFSET}) AS INTEGER) as hour
         FROM sessions WHERE exit_time IS NOT NULL AND ${dateWhere}
       ) GROUP BY hour ORDER BY hour
     `).all();
 
     const avgByHour = db.prepare(`
-      SELECT CAST(strftime('%H', entry_time) AS INTEGER) as hour,
+      SELECT CAST(strftime('%H', entry_time, ${TZ_OFFSET}) AS INTEGER) as hour,
              ROUND(AVG(duration_minutes), 0) as avg_min, COUNT(*) as count
       FROM sessions
       WHERE exit_time IS NOT NULL AND duration_minutes > 0 AND duration_minutes < 300 AND ${dateWhere}
@@ -232,7 +235,7 @@ router.get('/peak-hours', requireAuth, (req, res) => {
     `).all();
 
     const byWeekday = date ? [] : db.prepare(`
-      SELECT CAST(strftime('%w', entry_time) AS INTEGER) as weekday,
+      SELECT CAST(strftime('%w', entry_time, ${TZ_OFFSET}) AS INTEGER) as weekday,
              COUNT(*) as sessions, COUNT(DISTINCT wallet_address) as unique_users
       FROM sessions WHERE entry_time IS NOT NULL AND ${dateWhere}
       GROUP BY weekday ORDER BY weekday
