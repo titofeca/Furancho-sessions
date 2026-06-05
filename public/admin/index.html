@@ -757,6 +757,163 @@
       .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; }
       .bottom-nav { display: flex; }
     }
+    @media print {
+      body { background: white !important; }
+      #login-screen, .nav-bar, .bottom-nav, .top-header { display: none !important; }
+      .page:not(.active) { display: none !important; }
+      .glass-card { box-shadow: none !important; border: 1px solid #ccc !important; }
+      button:not(.print-include) { display: none !important; }
+      .print-show { display: block !important; }
+      .print-hide { display: none !important; }
+      .main-content { margin: 0 !important; padding: 16px !important; }
+    }
+    /* ========== ANALYTICS PAGE ========== */
+    .analytics-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .analytics-kpi {
+      background: rgba(42,21,9,0.04);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 14px;
+      text-align: center;
+    }
+    .analytics-kpi .kpi-value {
+      font-family: 'Playfair Display', serif;
+      font-size: 28px;
+      font-weight: 900;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .analytics-kpi .kpi-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      font-weight: 500;
+    }
+    .funnel-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .funnel-bar-label {
+      font-size: 12px;
+      font-weight: 600;
+      width: 130px;
+      flex-shrink: 0;
+      color: var(--text);
+    }
+    .funnel-bar-track {
+      flex: 1;
+      background: rgba(42,21,9,0.07);
+      border-radius: 8px;
+      height: 28px;
+      overflow: hidden;
+      position: relative;
+    }
+    .funnel-bar-fill {
+      height: 100%;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      transition: width 0.6s ease;
+    }
+    .funnel-bar-count {
+      font-size: 12px;
+      font-weight: 700;
+      width: 60px;
+      text-align: right;
+      flex-shrink: 0;
+      color: var(--text-muted);
+    }
+    .seg-tabs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .seg-tab {
+      padding: 7px 14px;
+      border-radius: 50px;
+      border: 1.5px solid var(--border);
+      background: transparent;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-family: 'Outfit', sans-serif;
+      transition: all 0.18s;
+    }
+    .seg-tab.active {
+      background: var(--wine);
+      border-color: var(--wine);
+      color: #fff;
+    }
+    .seg-panel { display: none; }
+    .seg-panel.active { display: block; animation: pageEnter 0.25s ease both; }
+    .seg-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 9px 12px;
+      border-radius: 10px;
+      background: rgba(42,21,9,0.03);
+      border: 1px solid var(--border);
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+    .seg-wallet { font-family: monospace; font-size: 12px; color: var(--text); }
+    .seg-meta { font-size: 11px; color: var(--text-muted); }
+    .noshow-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .noshow-table th { text-align: left; padding: 8px 6px; color: var(--text-muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; border-bottom: 1px solid var(--border); }
+    .noshow-table td { padding: 10px 6px; border-bottom: 1px solid rgba(42,21,9,0.05); }
+    .chart-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+      height: 100px;
+      margin-top: 8px;
+      margin-bottom: 4px;
+    }
+    .chart-bar-group { display: flex; flex-direction: column; align-items: center; flex: 1; gap: 2px; }
+    .chart-bar-entry { background: rgba(74,222,128,0.6); border-radius: 4px 4px 0 0; width: 100%; }
+    .chart-bar-exit { background: rgba(239,68,68,0.5); border-radius: 4px 4px 0 0; width: 100%; }
+    .chart-bar-label { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+    .export-btn-wrap { position: relative; display: inline-block; }
+    .export-dropdown {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: calc(100% + 6px);
+      background: var(--cream);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      min-width: 190px;
+      z-index: 500;
+      overflow: hidden;
+    }
+    .export-dropdown.open { display: block; }
+    .export-dropdown button {
+      width: 100%;
+      display: block;
+      padding: 11px 16px;
+      text-align: left;
+      background: none;
+      border: none;
+      font-size: 13px;
+      font-family: 'Outfit', sans-serif;
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .export-dropdown button:hover { background: rgba(42,21,9,0.05); }
   </style>
 </head>
 <body>
@@ -786,6 +943,13 @@
       <div class="top-header-sub">Admin Panel</div>
     </div>
     <div class="top-header-spacer"></div>
+    <div class="export-btn-wrap">
+      <button onclick="toggleExportMenu()" style="padding:6px 14px; background:rgba(42,21,9,0.06); border:1px solid var(--border); border-radius:50px; font-size:12px; font-weight:600; color:var(--text-muted); cursor:pointer; font-family:'Outfit',sans-serif;">⬇ Exportar</button>
+      <div class="export-dropdown" id="export-dropdown">
+        <button onclick="window.print(); toggleExportMenu();">🖨 Imprimir / PDF</button>
+        <button onclick="showPage('analytics'); toggleExportMenu();">📊 Ver Analíticas</button>
+      </div>
+    </div>
     <div class="demo-badge" id="demo-badge" style="display:none;">🟡 Demo</div>
   </header>
 
@@ -1015,6 +1179,87 @@
         </div>
         <div id="multilevel-cards" style="display:flex; flex-direction:column; gap:8px;">
           <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:16px;">Cargando...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== ANALYTICS ==================== -->
+    <div class="page" id="page-analytics">
+      <div class="page-header">
+        <h1 class="page-title">Analíticas</h1>
+        <p class="page-subtitle">Métricas de fidelización y comportamiento de clientes</p>
+      </div>
+
+      <!-- SECCIÓN 1: RESUMEN EJECUTIVO -->
+      <div class="glass-card" style="margin-bottom:20px;">
+        <div class="card-title" style="margin-bottom:16px;">📈 Resumen Ejecutivo</div>
+        <div class="analytics-kpi-grid" id="kpi-grid">
+          <div class="analytics-kpi"><div class="kpi-value" style="color:var(--wine);">—</div><div class="kpi-label">Retorno 30d</div></div>
+          <div class="analytics-kpi"><div class="kpi-value" style="color:var(--gold);">—</div><div class="kpi-label">Días entre visitas</div></div>
+          <div class="analytics-kpi"><div class="kpi-value" style="color:#ef4444;">—</div><div class="kpi-label">No-show rate</div></div>
+          <div class="analytics-kpi"><div class="kpi-value" style="color:#4ade80;">—</div><div class="kpi-label">Activos &lt;45d</div></div>
+          <div class="analytics-kpi"><div class="kpi-value" style="color:var(--gold);">—</div><div class="kpi-label">Cerca de premio</div></div>
+        </div>
+      </div>
+
+      <!-- SECCIÓN 2: FUNNEL DE CONVERSIÓN -->
+      <div class="glass-card" style="margin-bottom:20px;">
+        <div class="card-title" style="margin-bottom:16px;">🔽 Funnel de Conversión</div>
+        <div id="funnel-bars" style="margin-bottom:20px;">
+          <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Cargando funnel...</div>
+        </div>
+        <div class="card-title" style="font-size:13px; margin-bottom:10px; color:var(--text-muted);">Nuevos clientes por evento</div>
+        <div id="new-by-event-table">
+          <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:12px;">Cargando...</div>
+        </div>
+      </div>
+
+      <!-- SECCIÓN 3: SEGMENTOS -->
+      <div class="glass-card" style="margin-bottom:20px;">
+        <div class="card-title" style="margin-bottom:16px;">👥 Segmentos de Clientes</div>
+        <div class="seg-tabs" id="seg-tabs">
+          <button class="seg-tab active" onclick="switchSegTab('nuevos', this)">🌱 Nuevos <span id="seg-count-nuevos"></span></button>
+          <button class="seg-tab" onclick="switchSegTab('habituales', this)">⭐ Habituales <span id="seg-count-habituales"></span></button>
+          <button class="seg-tab" onclick="switchSegTab('vip', this)">💎 VIP <span id="seg-count-vip"></span></button>
+          <button class="seg-tab" onclick="switchSegTab('cerca', this)">🎁 Premio <span id="seg-count-cerca"></span></button>
+          <button class="seg-tab" onclick="switchSegTab('inactivos', this)">💤 Inactivos <span id="seg-count-inactivos"></span></button>
+        </div>
+        <div id="seg-panel-nuevos" class="seg-panel active">
+          <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Cargando...</div>
+        </div>
+        <div id="seg-panel-habituales" class="seg-panel"></div>
+        <div id="seg-panel-vip" class="seg-panel"></div>
+        <div id="seg-panel-cerca" class="seg-panel"></div>
+        <div id="seg-panel-inactivos" class="seg-panel"></div>
+      </div>
+
+      <!-- SECCIÓN 4: AFORO POR HORA -->
+      <div class="glass-card" style="margin-bottom:20px;">
+        <div class="card-title" style="margin-bottom:12px;">⏱ Aforo por Hora</div>
+        <div style="display:flex; gap:10px; align-items:center; margin-bottom:16px; flex-wrap:wrap;">
+          <select id="hourly-date-select" onchange="loadHourlyChart(this.value)" style="background:rgba(42,21,9,0.05); border:1.5px solid var(--border); border-radius:12px; padding:9px 14px; font-size:13px; color:var(--text); font-family:'Outfit',sans-serif; flex:1; min-width:180px;">
+            <option value="">Selecciona un evento...</option>
+          </select>
+        </div>
+        <div id="hourly-metrics" style="display:none; display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:10px; margin-bottom:16px;"></div>
+        <div id="hourly-chart-area">
+          <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Selecciona un evento para ver el aforo por hora</div>
+        </div>
+      </div>
+
+      <!-- SECCIÓN 5: ASISTENCIA vs RSVP -->
+      <div class="glass-card" style="margin-bottom:20px;">
+        <div class="card-title" style="margin-bottom:16px;">📋 Asistencia vs RSVP (No-Show)</div>
+        <div id="noshow-table-wrap">
+          <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Cargando...</div>
+        </div>
+      </div>
+
+      <!-- SECCIÓN 6: ENGAGEMENT MENSAJES -->
+      <div class="glass-card" style="margin-bottom:20px;">
+        <div class="card-title" style="margin-bottom:16px;">💬 Engagement de Mensajes</div>
+        <div id="msg-stats-table">
+          <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Cargando...</div>
         </div>
       </div>
     </div>
@@ -1361,6 +1606,10 @@
       <span class="nav-icon">🎰</span>
       <span>Rifa</span>
     </button>
+    <button class="nav-item" onclick="showPage('analytics')" id="nav-analytics">
+      <span class="nav-icon">📊</span>
+      <span>Analíticas</span>
+    </button>
 <button class="nav-item" onclick="showPage('events')" id="nav-events" style="position:relative;">
       <span class="nav-icon">📅</span>
       <span>Eventos</span>
@@ -1473,6 +1722,7 @@
     document.getElementById(`page-${pageId}`).classList.add('active');
     document.getElementById(`nav-${pageId}`).classList.add('active');
     if (pageId === 'events') loadEventsPage();
+    if (pageId === 'analytics') loadAnalyticsPage();
     loadVipBadge();
     if (pageId === 'holders') { loadVisits('__totales__'); }
     if (pageId === 'raffles') { loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); loadScheduled(); }
@@ -2639,6 +2889,342 @@
         showToast(data.error || 'Error', true);
       }
     } catch(e) { showToast('Error', true); }
+  }
+
+  // ==================== EXPORT MENU ====================
+  function toggleExportMenu() {
+    document.getElementById('export-dropdown').classList.toggle('open');
+  }
+  document.addEventListener('click', function(e) {
+    const wrap = document.querySelector('.export-btn-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+      document.getElementById('export-dropdown').classList.remove('open');
+    }
+  });
+
+  // ==================== ANALYTICS PAGE ====================
+  let analyticsLoaded = false;
+
+  async function loadAnalyticsPage() {
+    if (analyticsLoaded) return; // No recargar si ya están los datos
+    analyticsLoaded = false; // Permitir recarga
+    try {
+      const [funnelData, segmentsData, msgStats] = await Promise.all([
+        fetch('/api/admin/funnel', { headers: authHeaders() }).then(r => r.json()),
+        fetch('/api/admin/segments', { headers: authHeaders() }).then(r => r.json()),
+        fetch('/api/admin/message-stats', { headers: authHeaders() }).then(r => r.json())
+      ]);
+
+      renderExecutiveSummary(funnelData, segmentsData);
+      renderFunnel(funnelData);
+      renderSegments(segmentsData);
+      renderNoShow(funnelData);
+      renderMessageStats(msgStats);
+      loadHourlyDateOptions();
+      analyticsLoaded = true;
+    } catch(e) {
+      console.error('Error cargando analíticas:', e);
+    }
+  }
+
+  function renderExecutiveSummary(funnelData, segmentsData) {
+    const noshow = funnelData.noshow || [];
+    let totalRsvp = 0, totalActual = 0;
+    noshow.forEach(n => { totalRsvp += (n.rsvp_count || 0); totalActual += (n.actual_count || 0); });
+    const noshowRate = totalRsvp > 0 ? Math.round((1 - totalActual / totalRsvp) * 100) : null;
+
+    const grid = document.getElementById('kpi-grid');
+    grid.innerHTML = `
+      <div class="analytics-kpi">
+        <div class="kpi-value" style="color:var(--wine);">${funnelData.retorno_30d_pct != null ? funnelData.retorno_30d_pct + '%' : '—'}</div>
+        <div class="kpi-label">Retorno 30 días</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">${funnelData.returned_30d || 0} de ${funnelData.total_with_2plus || 0} vuelven</div>
+      </div>
+      <div class="analytics-kpi">
+        <div class="kpi-value" style="color:var(--gold);">${funnelData.avg_gap != null ? funnelData.avg_gap + 'd' : '—'}</div>
+        <div class="kpi-label">Entre visitas</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">días promedio</div>
+      </div>
+      <div class="analytics-kpi">
+        <div class="kpi-value" style="color:#ef4444;">${noshowRate != null ? noshowRate + '%' : '—'}</div>
+        <div class="kpi-label">No-show rate</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">${totalRsvp} RSVP vs ${totalActual} asistieron</div>
+      </div>
+      <div class="analytics-kpi">
+        <div class="kpi-value" style="color:#4ade80;">${segmentsData.counts?.nuevos_count ?? '—'}</div>
+        <div class="kpi-label">Activos &lt;45d</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">clientes recientes</div>
+      </div>
+      <div class="analytics-kpi">
+        <div class="kpi-value" style="color:var(--gold);">${segmentsData.counts?.cerca_premio_count ?? '—'}</div>
+        <div class="kpi-label">Cerca de premio</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">240–299 puntos</div>
+      </div>
+    `;
+  }
+
+  function renderFunnel(funnelData) {
+    const funnel = funnelData.funnel || [];
+    const colors = ['#8B1918', '#B52A2A', '#C4973A', '#5C8A4A'];
+    const maxCount = Math.max(...funnel.map(f => f.count), 1);
+
+    const barsHtml = funnel.map((f, i) => {
+      const pct = Math.round(f.count / maxCount * 100);
+      const convLabel = i === 0 ? '100% base' : `${f.pct_prev}% del anterior`;
+      return `<div class="funnel-bar">
+        <div class="funnel-bar-label">${f.name}</div>
+        <div class="funnel-bar-track">
+          <div class="funnel-bar-fill" style="width:${pct}%; background:${colors[i]}; color:#fff;">
+            <span style="font-size:11px; font-weight:700;">${f.count}</span>
+          </div>
+        </div>
+        <div class="funnel-bar-count" style="color:${colors[i]};">${convLabel}</div>
+      </div>`;
+    }).join('');
+
+    document.getElementById('funnel-bars').innerHTML = barsHtml || '<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:12px;">Sin datos de niveles aún</div>';
+
+    const events = funnelData.newByEvent || [];
+    if (events.length) {
+      const rows = events.map(e => {
+        const d = new Date(e.event_date + 'T12:00:00').toLocaleDateString('es-ES', { day:'numeric', month:'short', year:'numeric' });
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:10px;background:rgba(42,21,9,0.03);border:1px solid var(--border);margin-bottom:6px;">
+          <span style="font-size:13px;color:var(--text);">${d}</span>
+          <span style="font-family:'Playfair Display',serif;font-size:18px;font-weight:900;color:var(--wine);">${e.new_clients} <span style="font-size:11px;font-family:'Outfit',sans-serif;color:var(--text-muted);font-weight:400;">nuevos</span></span>
+        </div>`;
+      }).join('');
+      document.getElementById('new-by-event-table').innerHTML = rows;
+    } else {
+      document.getElementById('new-by-event-table').innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:12px;">Sin datos por ahora</div>';
+    }
+  }
+
+  function renderSegments(segmentsData) {
+    const counts = segmentsData.counts || {};
+    document.getElementById('seg-count-nuevos').textContent = counts.nuevos_count ? `(${counts.nuevos_count})` : '';
+    document.getElementById('seg-count-habituales').textContent = counts.habituales_count ? `(${counts.habituales_count})` : '';
+    document.getElementById('seg-count-vip').textContent = counts.vip_count ? `(${counts.vip_count})` : '';
+    document.getElementById('seg-count-cerca').textContent = counts.cerca_premio_count ? `(${counts.cerca_premio_count})` : '';
+    document.getElementById('seg-count-inactivos').textContent = counts.inactivos_count ? `(${counts.inactivos_count})` : '';
+
+    const emptyMsg = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Sin clientes en este segmento</div>';
+
+    // Nuevos
+    const nuevos = segmentsData.nuevos || [];
+    document.getElementById('seg-panel-nuevos').innerHTML = nuevos.length ? nuevos.slice(0,10).map(c => `
+      <div class="seg-row">
+        <div><div class="seg-wallet">${c.wallet_masked}</div><div class="seg-meta">${c.primera_visita ? new Date(c.primera_visita).toLocaleDateString('es-ES') : '—'}</div></div>
+        <div style="text-align:right"><div style="font-size:13px;font-weight:700;color:var(--wine);">${c.puntos || 0} pts</div></div>
+      </div>`).join('') + (nuevos.length > 10 ? `<div style="text-align:center;font-size:11px;color:var(--text-muted);padding:6px;">+${nuevos.length-10} más</div>` : '') : emptyMsg;
+
+    // Habituales
+    const hab = segmentsData.habituales || [];
+    document.getElementById('seg-panel-habituales').innerHTML = hab.length ? hab.slice(0,10).map(c => `
+      <div class="seg-row">
+        <div><div class="seg-wallet">${c.wallet_masked}</div><div class="seg-meta">Nv${c.nivel || 1} · ${c.total_visits} visitas</div></div>
+        <div style="text-align:right"><div style="font-size:13px;font-weight:700;color:var(--wine);">${c.puntos || 0} pts</div></div>
+      </div>`).join('') + (hab.length > 10 ? `<div style="text-align:center;font-size:11px;color:var(--text-muted);padding:6px;">+${hab.length-10} más</div>` : '') : emptyMsg;
+
+    // VIP candidatos
+    const vip = segmentsData.vip_candidatos || [];
+    document.getElementById('seg-panel-vip').innerHTML = vip.length ? vip.slice(0,10).map(c => `
+      <div class="seg-row">
+        <div><div class="seg-wallet">${c.wallet_masked}</div><div class="seg-meta">Nv${c.nivel || 1} · ${c.visitas} visitas · ${c.ultima_visita ? new Date(c.ultima_visita).toLocaleDateString('es-ES') : '—'}</div></div>
+        <div style="text-align:right"><div style="font-size:13px;font-weight:700;color:var(--gold);">${c.puntos || 0} pts</div></div>
+      </div>`).join('') + (vip.length > 10 ? `<div style="text-align:center;font-size:11px;color:var(--text-muted);padding:6px;">+${vip.length-10} más</div>` : '') : emptyMsg;
+
+    // Cerca de premio
+    const cerca = segmentsData.cerca_premio || [];
+    document.getElementById('seg-panel-cerca').innerHTML = cerca.length ? cerca.map(c => `
+      <div class="seg-row">
+        <div class="seg-wallet">${c.wallet_masked}</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="background:rgba(196,151,58,0.15);border-radius:50px;padding:3px 10px;font-size:13px;font-weight:700;color:var(--gold);">${c.puntos} pts</div>
+          <div style="font-size:11px;color:var(--text-muted);">faltan ${300 - c.puntos}</div>
+        </div>
+      </div>`).join('') : emptyMsg;
+
+    // Inactivos
+    const inact = segmentsData.inactivos || [];
+    document.getElementById('seg-panel-inactivos').innerHTML = inact.length ? inact.slice(0,10).map(c => `
+      <div class="seg-row">
+        <div><div class="seg-wallet">${c.wallet_masked}</div><div class="seg-meta">Nv${c.nivel || 1} · ${c.total_visits} visitas totales</div></div>
+        <div style="text-align:right"><div style="font-size:13px;font-weight:700;color:#ef4444;">${c.dias_sin_visita}d sin visita</div></div>
+      </div>`).join('') + (inact.length > 10 ? `<div style="text-align:center;font-size:11px;color:var(--text-muted);padding:6px;">+${inact.length-10} más</div>` : '') : emptyMsg;
+  }
+
+  function switchSegTab(name, btn) {
+    document.querySelectorAll('.seg-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.seg-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(`seg-panel-${name}`).classList.add('active');
+  }
+
+  async function loadHourlyDateOptions() {
+    try {
+      const data = await fetch('/api/admin/event-sessions', { headers: authHeaders() }).then(r => r.json());
+      const sel = document.getElementById('hourly-date-select');
+      const dates = (data.dates || []).filter(d => d.count > 0);
+      sel.innerHTML = '<option value="">Selecciona un evento...</option>' +
+        dates.map(d => {
+          const label = new Date(d.day + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+          return `<option value="${d.day}">${label} (${d.count} visitas)</option>`;
+        }).join('');
+      if (dates.length) loadHourlyChart(dates[0].day);
+    } catch(e) {}
+  }
+
+  async function loadHourlyChart(date) {
+    if (!date) return;
+    const area = document.getElementById('hourly-chart-area');
+    const metricsEl = document.getElementById('hourly-metrics');
+    area.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Cargando...</div>';
+    try {
+      const data = await fetch(`/api/admin/hourly?date=${date}`, { headers: authHeaders() }).then(r => r.json());
+      if (data.error) { area.innerHTML = `<div style="color:#ef4444;font-size:13px;padding:12px;">${data.error}</div>`; return; }
+
+      const hours = data.inside_by_hour || [];
+      const entries = data.entries_by_hour || [];
+      const exits = data.exits_by_hour || [];
+      const raffleHrs = (data.raffle_hours || []).map(r => r.hour);
+
+      const maxBar = Math.max(...hours.map(h => h.count), ...entries.map(e => e.count), 1);
+
+      // Métricas del día
+      metricsEl.style.display = 'grid';
+      metricsEl.innerHTML = `
+        <div class="analytics-kpi" style="padding:10px;">
+          <div class="kpi-value" style="font-size:22px;color:var(--wine);">${data.max_inside}</div>
+          <div class="kpi-label">Aforo máx</div>
+        </div>
+        <div class="analytics-kpi" style="padding:10px;">
+          <div class="kpi-value" style="font-size:22px;color:var(--gold);">${data.avg_duration ? data.avg_duration + 'min' : '—'}</div>
+          <div class="kpi-label">Estancia media</div>
+        </div>
+        <div class="analytics-kpi" style="padding:10px;">
+          <div class="kpi-value" style="font-size:22px;color:#4ade80;">${data.total_entries}</div>
+          <div class="kpi-label">Entradas totales</div>
+        </div>
+        <div class="analytics-kpi" style="padding:10px;">
+          <div class="kpi-value" style="font-size:22px;color:var(--text);">${data.peak_hour != null ? data.peak_hour + ':00' : '—'}</div>
+          <div class="kpi-label">Hora pico</div>
+        </div>
+      `;
+
+      // Gráfica barras + línea SVG inline
+      const allHours = Array.from({length: 8}, (_, i) => i + 16); // 16-23
+      const entryMap = {}, exitMap = {}, insideMap = {};
+      entries.forEach(e => { entryMap[e.hour] = e.count; });
+      exits.forEach(e => { exitMap[e.hour] = e.count; });
+      hours.forEach(h => { insideMap[h.hour] = h.count; });
+
+      const barW = 100 / allHours.length;
+      const svgH = 100;
+      const svgW = 100; // usamos porcentajes
+
+      const linePoints = allHours.map((h, i) => {
+        const x = (i + 0.5) * barW;
+        const y = insideMap[h] != null ? svgH - (insideMap[h] / maxBar * svgH * 0.9) : svgH;
+        return `${x},${y}`;
+      }).join(' ');
+
+      const barsHtml = allHours.map((h, i) => {
+        const ec = entryMap[h] || 0;
+        const xc = exitMap[h] || 0;
+        const entryH = ec > 0 ? Math.max(4, Math.round(ec / maxBar * 80)) : 0;
+        const exitH = xc > 0 ? Math.max(4, Math.round(xc / maxBar * 80)) : 0;
+        const raffleIcon = raffleHrs.includes(h) ? `<div style="font-size:14px;text-align:center;">⚡</div>` : '';
+        return `<div class="chart-bar-group">
+          <div style="display:flex;gap:2px;align-items:flex-end;height:80px;">
+            <div class="chart-bar-entry" style="height:${entryH}px;" title="${ec} entradas a las ${h}:00"></div>
+            <div class="chart-bar-exit" style="height:${exitH}px;" title="${xc} salidas a las ${h}:00"></div>
+          </div>
+          ${raffleIcon}
+          <div class="chart-bar-label">${h}h</div>
+        </div>`;
+      }).join('');
+
+      area.innerHTML = `
+        <div style="position:relative;">
+          <div style="display:flex;align-items:flex-end;justify-content:flex-end;gap:12px;margin-bottom:6px;flex-wrap:wrap;">
+            <span style="font-size:11px;color:var(--text-muted);"><span style="display:inline-block;width:10px;height:10px;background:rgba(74,222,128,0.6);border-radius:2px;margin-right:4px;"></span>Entradas</span>
+            <span style="font-size:11px;color:var(--text-muted);"><span style="display:inline-block;width:10px;height:10px;background:rgba(239,68,68,0.5);border-radius:2px;margin-right:4px;"></span>Salidas</span>
+            <span style="font-size:11px;color:var(--wine);"><span style="display:inline-block;width:10px;height:3px;background:var(--wine);margin-right:4px;vertical-align:middle;"></span>Aforo dentro</span>
+          </div>
+          <div style="position:relative; padding-bottom:4px;">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;top:0;left:0;width:100%;height:80px;pointer-events:none;overflow:visible;">
+              <polyline points="${linePoints}" fill="none" stroke="var(--wine)" stroke-width="0.8" stroke-linejoin="round" opacity="0.85"/>
+              ${allHours.map((h, i) => {
+                const x = (i + 0.5) * barW;
+                const y = insideMap[h] != null ? svgH - (insideMap[h] / maxBar * svgH * 0.9) : svgH;
+                return `<circle cx="${x}" cy="${y}" r="1.2" fill="var(--wine)" opacity="0.85"/>`;
+              }).join('')}
+            </svg>
+            <div class="chart-bars" style="height:80px;">${barsHtml}</div>
+          </div>
+          ${raffleHrs.length ? `<div style="font-size:11px;color:var(--text-muted);margin-top:6px;">⚡ Sorteo lanzado a las: ${raffleHrs.map(h=>h+':00').join(', ')}</div>` : ''}
+        </div>
+      `;
+    } catch(e) {
+      area.innerHTML = '<div style="color:#ef4444;font-size:13px;padding:12px;">Error cargando aforo</div>';
+    }
+  }
+
+  function renderNoShow(funnelData) {
+    const noshow = funnelData.noshow || [];
+    if (!noshow.length) {
+      document.getElementById('noshow-table-wrap').innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Sin eventos registrados aún</div>';
+      return;
+    }
+    const rows = noshow.map(e => {
+      const d = new Date(e.event_date + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short' });
+      const noShowN = (e.rsvp_count || 0) - (e.actual_count || 0);
+      const noShowPct = e.rsvp_count > 0 ? Math.round(noShowN / e.rsvp_count * 100) : 0;
+      const colorPct = noShowPct < 20 ? '#4ade80' : noShowPct < 40 ? '#f59e0b' : '#ef4444';
+      const conv = e.rsvp_count > 0 ? Math.round(e.actual_count / e.rsvp_count * 100) : 0;
+      return `<tr>
+        <td>${d}</td>
+        <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.title || '—'}</td>
+        <td style="text-align:center;">${e.rsvp_count || 0}</td>
+        <td style="text-align:center;font-weight:700;color:var(--wine);">${e.actual_count || 0}</td>
+        <td style="text-align:center;font-weight:700;color:${colorPct};">${noShowPct}%</td>
+        <td style="text-align:center;color:var(--text-muted);">${conv}%</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('noshow-table-wrap').innerHTML = `
+      <table class="noshow-table">
+        <thead><tr>
+          <th>Fecha</th><th>Evento</th><th>RSVP</th><th>Asistencia</th><th>No-show</th><th>Conversión</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  function renderMessageStats(msgs) {
+    if (!msgs.length) {
+      document.getElementById('msg-stats-table').innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Sin mensajes enviados aún</div>';
+      return;
+    }
+    const rows = msgs.map(m => {
+      const d = m.sent_at ? new Date(m.sent_at).toLocaleDateString('es-ES', { day:'numeric', month:'short' }) : '—';
+      const emojiStr = (m.emojis || []).map(e => `<span title="${e.count} reacciones" style="cursor:default;">${e.emoji}${e.count}</span>`).join(' ');
+      return `<tr>
+        <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;">${m.subject || '—'}</td>
+        <td>${d}</td>
+        <td style="text-align:center;">${m.unique_reactors || 0}</td>
+        <td style="text-align:center;font-weight:700;color:${m.engagement_pct > 20 ? '#4ade80' : 'var(--text-muted)'};">${m.engagement_pct || 0}%</td>
+        <td>${emojiStr || '<span style="color:var(--text-muted)">—</span>'}</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('msg-stats-table').innerHTML = `
+      <table class="noshow-table">
+        <thead><tr>
+          <th>Mensaje</th><th>Enviado</th><th>Reactores</th><th>Engagement</th><th>Emojis</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
   }
 
 </script>

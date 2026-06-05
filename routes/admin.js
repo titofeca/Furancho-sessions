@@ -280,5 +280,317 @@ router.get('/peak-hours', requireAuth, (req, res) => {
   }
 });
 
+// GET /api/admin/funnel — Funnel de conversión por niveles
+router.get('/funnel', requireAuth, (req, res) => {
+  try {
+    const { db } = require('../db/database');
+
+    const levelRows = db.prepare(`
+      SELECT level, COUNT(DISTINCT wallet_address) as count FROM mints WHERE status='success' GROUP BY level
+    `).all();
+    const levelMap = {};
+    levelRows.forEach(r => { levelMap[r.level] = r.count; });
+    const nv1 = levelMap[1] || 0;
+    const nv2 = levelMap[2] || 0;
+    const nv3 = levelMap[3] || 0;
+    const nv4 = levelMap[4] || 0;
+
+    const funnel = [
+      { level: 1, name: 'Nv1 — Cautivo', count: nv1, pct_prev: 100 },
+      { level: 2, name: 'Nv2 — Cunqueiro', count: nv2, pct_prev: nv1 > 0 ? Math.round(nv2 / nv1 * 100) : 0 },
+      { level: 3, name: 'Nv3 — Larpeiro', count: nv3, pct_prev: nv2 > 0 ? Math.round(nv3 / nv2 * 100) : 0 },
+      { level: 4, name: 'Nv4 — Presidente', count: nv4, pct_prev: nv3 > 0 ? Math.round(nv4 / nv3 * 100) : 0 }
+    ];
+
+    const noshow = db.prepare(`
+      SELECT e.event_date, e.title,
+        (SELECT COUNT(*) FROM rsvps WHERE event_id=e.id) as rsvp_count,
+        (SELECT COUNT(DISTINCT wallet_address) FROM sessions WHERE date(entry_time)=e.event_date) as actual_count
+      FROM events e WHERE e.active=1 ORDER BY e.event_date DESC LIMIT 6
+    `).all();
+
+    const newByEvent = db.prepare(`
+      SELECT date(MIN(m.minted_at)) as event_date, COUNT(DISTINCT m.wallet_address) as new_clients
+      FROM mints m WHERE m.status='success'
+      GROUP BY date(m.minted_at) HAVING event_date IN (SELECT event_date FROM events)
+      ORDER BY event_date DESC LIMIT 6
+    `).all();
+
+    const gapRow = db.prepare(`
+      SELECT AVG(gap) as avg_gap FROM (
+        SELECT wallet_address,
+          CAST(julianday(nth_visit) - julianday(first_visit) AS INTEGER) as gap
+        FROM (
+          SELECT wallet_address,
+            MIN(entry_time) as first_visit,
+            (SELECT entry_time FROM sessions s2 WHERE s2.wallet_address=s.wallet_address AND s2.counted_as_visit=1 AND s2.entry_time > MIN(s.entry_time) ORDER BY s2.entry_time ASC LIMIT 1) as nth_visit
+          FROM sessions s WHERE counted_as_visit=1
+          GROUP BY wallet_address HAVING COUNT(*) >= 2
+        ) WHERE nth_visit IS NOT NULL
+      )
+    `).get();
+
+    const retornoRow = db.prepare(`
+      SELECT
+        COUNT(DISTINCT wallet_address) as total_with_2plus,
+        COUNT(DISTINCT CASE WHEN gap <= 30 THEN wallet_address END) as returned_30d
+      FROM (
+        SELECT wallet_address,
+          CAST(julianday(nth_visit) - julianday(first_visit) AS INTEGER) as gap
+        FROM (
+          SELECT wallet_address,
+            MIN(entry_time) as first_visit,
+            (SELECT entry_time FROM sessions s2 WHERE s2.wallet_address=s.wallet_address AND s2.counted_as_visit=1 AND s2.entry_time > MIN(s.entry_time) ORDER BY s2.entry_time ASC LIMIT 1) as nth_visit
+          FROM sessions s WHERE counted_as_visit=1
+          GROUP BY wallet_address HAVING COUNT(*) >= 2
+        ) WHERE nth_visit IS NOT NULL
+      )
+    `).get();
+
+    const total2plus = retornoRow?.total_with_2plus || 0;
+    const returned30d = retornoRow?.returned_30d || 0;
+    const retorno_30d_pct = total2plus > 0 ? Math.round(returned30d / total2plus * 100) : 0;
+
+    res.json({
+      funnel,
+      noshow,
+      newByEvent,
+      avg_gap: gapRow?.avg_gap ? Math.round(gapRow.avg_gap) : null,
+      retorno_30d_pct,
+      returned_30d,
+      total_with_2plus: total2plus
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/segments — Segmentos de clientes
+router.get('/segments', requireAuth, (req, res) => {
+  try {
+    const { db } = require('../db/database');
+
+    const nuevos = db.prepare(`
+      SELECT substr(wallet_address,1,6)||'...'||substr(wallet_address,-4) as wallet_masked,
+        MIN(entry_time) as primera_visita,
+        (SELECT SUM(p.points) FROM points p WHERE p.wallet_address=s.wallet_address) as puntos
+      FROM sessions s WHERE counted_as_visit=1
+      GROUP BY wallet_address
+      HAVING julianday('now') - julianday(MIN(entry_time)) < 45
+      ORDER BY primera_visita DESC
+    `).all();
+
+    const habituales = db.prepare(`
+      SELECT substr(s.wallet_address,1,6)||'...'||substr(s.wallet_address,-4) as wallet_masked,
+        COUNT(*) as total_visits,
+        (SELECT MAX(m.level) FROM mints m WHERE m.wallet_address=s.wallet_address AND m.status='success') as nivel,
+        (SELECT SUM(p.points) FROM points p WHERE p.wallet_address=s.wallet_address) as puntos
+      FROM sessions s WHERE counted_as_visit=1
+      GROUP BY wallet_address HAVING COUNT(*) >= 3
+      ORDER BY total_visits DESC
+    `).all();
+
+    const vip_candidatos = db.prepare(`
+      SELECT substr(s.wallet_address,1,6)||'...'||substr(s.wallet_address,-4) as wallet_masked,
+        (SELECT MAX(m.level) FROM mints m WHERE m.wallet_address=s.wallet_address AND m.status='success') as nivel,
+        COUNT(*) as visitas,
+        (SELECT SUM(p.points) FROM points p WHERE p.wallet_address=s.wallet_address) as puntos,
+        MAX(entry_time) as ultima_visita
+      FROM sessions s WHERE counted_as_visit=1
+      GROUP BY s.wallet_address
+      HAVING COUNT(*) >= 2 AND (SELECT MAX(m.level) FROM mints m WHERE m.wallet_address=s.wallet_address AND m.status='success') >= 2
+      ORDER BY (SELECT MAX(m.level) FROM mints m WHERE m.wallet_address=s.wallet_address AND m.status='success') DESC, COUNT(*) DESC
+    `).all();
+
+    const cerca_premio = db.prepare(`
+      SELECT substr(wallet_address,1,6)||'...'||substr(wallet_address,-4) as wallet_masked,
+        SUM(points) as puntos
+      FROM points GROUP BY wallet_address
+      HAVING puntos BETWEEN 240 AND 299
+      ORDER BY puntos DESC
+    `).all();
+
+    const inactivos = db.prepare(`
+      SELECT substr(s.wallet_address,1,6)||'...'||substr(s.wallet_address,-4) as wallet_masked,
+        CAST(julianday('now') - julianday(MAX(entry_time)) AS INTEGER) as dias_sin_visita,
+        (SELECT MAX(m.level) FROM mints m WHERE m.wallet_address=s.wallet_address AND m.status='success') as nivel,
+        COUNT(*) as total_visits
+      FROM sessions s WHERE counted_as_visit=1
+      GROUP BY s.wallet_address
+      HAVING CAST(julianday('now') - julianday(MAX(entry_time)) AS INTEGER) > 45 AND COUNT(*) >= 1
+      ORDER BY dias_sin_visita DESC
+    `).all();
+
+    res.json({
+      nuevos,
+      habituales,
+      vip_candidatos,
+      cerca_premio,
+      inactivos,
+      counts: {
+        nuevos_count: nuevos.length,
+        habituales_count: habituales.length,
+        vip_count: vip_candidatos.length,
+        cerca_premio_count: cerca_premio.length,
+        inactivos_count: inactivos.length
+      }
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/hourly?date=YYYY-MM-DD — Aforo por hora
+router.get('/hourly', requireAuth, (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const date = (req.query.date || '').replace(/'/g, '');
+    if (!date) return res.status(400).json({ error: 'Falta date' });
+
+    const TZ = `'+2 hours'`;
+
+    const entries_by_hour = db.prepare(`
+      SELECT CAST(strftime('%H', entry_time, ${TZ}) AS INTEGER) as hour, COUNT(*) as count
+      FROM sessions WHERE date(entry_time, ${TZ}) = '${date}'
+      GROUP BY hour ORDER BY hour
+    `).all();
+
+    const exits_by_hour = db.prepare(`
+      SELECT CAST(strftime('%H', exit_time, ${TZ}) AS INTEGER) as hour, COUNT(*) as count
+      FROM sessions WHERE exit_time IS NOT NULL AND date(exit_time, ${TZ}) = '${date}'
+      GROUP BY hour ORDER BY hour
+    `).all();
+
+    const inside_by_hour = [];
+    for (let h = 16; h <= 23; h++) {
+      const row = db.prepare(`
+        SELECT COUNT(*) as count FROM sessions
+        WHERE date(entry_time, ${TZ}) = '${date}'
+          AND CAST(strftime('%H', entry_time, ${TZ}) AS INTEGER) <= ${h}
+          AND (exit_time IS NULL OR CAST(strftime('%H', exit_time, ${TZ}) AS INTEGER) > ${h})
+      `).get();
+      inside_by_hour.push({ hour: h, count: row?.count || 0 });
+    }
+
+    const max_inside = Math.max(...inside_by_hour.map(x => x.count), 0);
+
+    const durRow = db.prepare(`
+      SELECT ROUND(AVG(duration_minutes), 0) as avg_duration
+      FROM sessions
+      WHERE exit_time IS NOT NULL AND duration_minutes > 0 AND duration_minutes < 300
+        AND date(entry_time, ${TZ}) = '${date}'
+    `).get();
+
+    const peakEntry = entries_by_hour.reduce((a, b) => b.count > (a?.count || 0) ? b : a, null);
+    const total_entries = entries_by_hour.reduce((s, r) => s + r.count, 0);
+
+    const raffle_hours = db.prepare(`
+      SELECT DISTINCT CAST(strftime('%H', created_at, ${TZ}) AS INTEGER) as hour
+      FROM raffles WHERE date(created_at, ${TZ}) = '${date}'
+      ORDER BY hour
+    `).all();
+
+    res.json({
+      date,
+      entries_by_hour,
+      exits_by_hour,
+      inside_by_hour,
+      avg_duration: durRow?.avg_duration || null,
+      max_inside,
+      peak_hour: peakEntry?.hour || null,
+      total_entries,
+      raffle_hours
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/message-stats — Engagement de mensajes
+router.get('/message-stats', requireAuth, (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const rows = db.prepare(`
+      SELECT m.id, m.subject, m.sent_at, m.recipient_count,
+        COUNT(mr.id) as total_reactions,
+        COUNT(DISTINCT mr.wallet_address) as unique_reactors
+      FROM messages m LEFT JOIN message_reactions mr ON m.id=mr.message_id
+      GROUP BY m.id ORDER BY m.sent_at DESC LIMIT 20
+    `).all();
+
+    const result = rows.map(row => {
+      const emojiRows = db.prepare(`
+        SELECT emoji, COUNT(*) as count FROM message_reactions WHERE message_id=? GROUP BY emoji
+      `).all(row.id);
+      const engagement_pct = row.recipient_count > 0
+        ? Math.round(row.unique_reactors / row.recipient_count * 100)
+        : 0;
+      return { ...row, emojis: emojiRows, engagement_pct };
+    });
+
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/report-data?date=YYYY-MM-DD — Datos completos para PDF/reporte
+router.get('/report-data', requireAuth, (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const date = req.query.date || null;
+
+    const stats = getStats();
+
+    const levelRows = db.prepare(`SELECT level, COUNT(DISTINCT wallet_address) as count FROM mints WHERE status='success' GROUP BY level`).all();
+    const levelMap = {};
+    levelRows.forEach(r => { levelMap[r.level] = r.count; });
+    const nv1 = levelMap[1] || 0, nv2 = levelMap[2] || 0, nv3 = levelMap[3] || 0, nv4 = levelMap[4] || 0;
+
+    const noshow = db.prepare(`
+      SELECT e.event_date, e.title,
+        (SELECT COUNT(*) FROM rsvps WHERE event_id=e.id) as rsvp_count,
+        (SELECT COUNT(DISTINCT wallet_address) FROM sessions WHERE date(entry_time)=e.event_date) as actual_count
+      FROM events e WHERE e.active=1 ORDER BY e.event_date DESC LIMIT 6
+    `).all();
+
+    const topPoints = db.prepare(`
+      SELECT wallet_address, substr(wallet_address,1,6)||'...'||substr(wallet_address,-4) as wallet_masked, SUM(points) as total_points
+      FROM points GROUP BY wallet_address ORDER BY total_points DESC LIMIT 8
+    `).all();
+
+    const segCounts = {
+      nuevos_count: db.prepare(`SELECT COUNT(DISTINCT wallet_address) as c FROM sessions WHERE counted_as_visit=1 GROUP BY wallet_address HAVING julianday('now') - julianday(MIN(entry_time)) < 45`).all().length,
+      cerca_premio_count: db.prepare(`SELECT COUNT(*) as c FROM (SELECT wallet_address FROM points GROUP BY wallet_address HAVING SUM(points) BETWEEN 240 AND 299)`).get()?.c || 0
+    };
+
+    let hourly = null;
+    if (date && date !== 'totales') {
+      const TZ = `'+2 hours'`;
+      const safeDate = date.replace(/'/g, '');
+      hourly = {
+        entries_by_hour: db.prepare(`SELECT CAST(strftime('%H', entry_time, ${TZ}) AS INTEGER) as hour, COUNT(*) as count FROM sessions WHERE date(entry_time, ${TZ}) = '${safeDate}' GROUP BY hour ORDER BY hour`).all()
+      };
+    }
+
+    res.json({
+      stats,
+      funnel: [
+        { level: 1, name: 'Nv1', count: nv1 },
+        { level: 2, name: 'Nv2', count: nv2, pct: nv1 > 0 ? Math.round(nv2/nv1*100) : 0 },
+        { level: 3, name: 'Nv3', count: nv3, pct: nv2 > 0 ? Math.round(nv3/nv2*100) : 0 },
+        { level: 4, name: 'Nv4', count: nv4, pct: nv3 > 0 ? Math.round(nv4/nv3*100) : 0 }
+      ],
+      noshow,
+      topPoints,
+      segCounts,
+      hourly,
+      generatedAt: new Date().toISOString()
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;
 module.exports.requireAuth = requireAuth;
