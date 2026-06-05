@@ -14,6 +14,13 @@ try { db.exec(`ALTER TABLE events ADD COLUMN vip_max INTEGER DEFAULT 15`); } cat
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected INTEGER DEFAULT 0`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_at TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_by TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN status TEXT DEFAULT 'pending_acceptance'`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN acceptance_deadline TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN accepted_at TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN rejected_at TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN rejection_note TEXT`); } catch (_) {}
+try { db.exec(`CREATE TABLE IF NOT EXISTS prize_presets (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, active INTEGER DEFAULT 1, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
+try { db.exec(`CREATE TABLE IF NOT EXISTS raffle_participants (raffle_id INTEGER NOT NULL, wallet_address TEXT NOT NULL, PRIMARY KEY (raffle_id, wallet_address))`); } catch (_) {}
 // Limpiar reservas VIP huérfanas (apuntan a eventos que ya no existen)
 try {
   db.exec(`DELETE FROM vip_reservations WHERE event_id NOT IN (SELECT id FROM events)`);
@@ -577,16 +584,35 @@ function autoCloseSessionsAt23() {
   return open.length;
 }
 
-function insertRaffle(prize, winnerWallet, verificationCode) {
-  return db.prepare(`
-    INSERT INTO raffles (prize, winner_wallet, verification_code)
-    VALUES (?, ?, ?)
-  `).run(prize, winnerWallet, verificationCode).lastInsertRowid;
+function insertRaffle(prize, winnerWallet, verificationCode, participantWallets = []) {
+  const deadline = new Date(Date.now() + 90000).toISOString().replace('T', ' ').slice(0, 19);
+  const id = db.prepare(`
+    INSERT INTO raffles (prize, winner_wallet, verification_code, status, acceptance_deadline)
+    VALUES (?, ?, ?, 'pending_acceptance', ?)
+  `).run(prize, winnerWallet, verificationCode, deadline).lastInsertRowid;
+  if (participantWallets.length) {
+    const stmt = db.prepare(`INSERT OR IGNORE INTO raffle_participants (raffle_id, wallet_address) VALUES (?, ?)`);
+    participantWallets.forEach(w => stmt.run(id, w));
+  }
+  return id;
+}
+
+function acceptRaffle(raffleId, walletAddress) {
+  const raffle = db.prepare(`SELECT winner_wallet, status FROM raffles WHERE id = ?`).get(raffleId);
+  if (!raffle) throw new Error('Sorteo no encontrado');
+  if (raffle.winner_wallet !== walletAddress) throw new Error('No eres el ganador');
+  if (raffle.status !== 'pending_acceptance') throw new Error('Este sorteo ya no está activo');
+  db.prepare(`UPDATE raffles SET status = 'accepted', accepted_at = datetime('now') WHERE id = ?`).run(raffleId);
+}
+
+function rejectRaffle(raffleId, note) {
+  db.prepare(`UPDATE raffles SET status = 'rejected', rejected_at = datetime('now'), rejection_note = ? WHERE id = ?`)
+    .run(note || null, raffleId);
 }
 
 function collectRaffle(raffleId, adminNote) {
   db.prepare(`
-    UPDATE raffles SET collected = 1, collected_at = datetime('now'), collected_by = ?
+    UPDATE raffles SET collected = 1, status = 'collected', collected_at = datetime('now'), collected_by = ?
     WHERE id = ?
   `).run(adminNote || null, raffleId);
 }
@@ -595,9 +621,8 @@ function getRaffleHistory() {
   return db.prepare(`
     SELECT id, prize,
            substr(winner_wallet,1,6)||'...'||substr(winner_wallet,-4) as wallet_masked,
-           winner_wallet,
-           verification_code, created_at,
-           collected, collected_at, collected_by
+           winner_wallet, verification_code, created_at,
+           collected, collected_at, collected_by, status, rejection_note, accepted_at
     FROM raffles
     ORDER BY created_at DESC LIMIT 100
   `).all();
@@ -606,9 +631,37 @@ function getRaffleHistory() {
 function getMyWins(walletAddress) {
   return db.prepare(`
     SELECT id, prize, verification_code, created_at, collected, collected_at
-    FROM raffles WHERE winner_wallet = ?
+    FROM raffles WHERE winner_wallet = ? AND status IN ('accepted','collected')
     ORDER BY created_at DESC LIMIT 20
   `).all(walletAddress);
+}
+
+function getRaffleParticipation(walletAddress) {
+  return db.prepare(`
+    SELECT r.id, r.prize, r.status, r.created_at, r.collected, r.collected_at, r.rejection_note,
+           CASE WHEN r.winner_wallet = ? THEN 1 ELSE 0 END as is_winner,
+           CASE WHEN r.winner_wallet = ? THEN r.verification_code ELSE NULL END as verification_code
+    FROM raffles r
+    WHERE r.id IN (SELECT raffle_id FROM raffle_participants WHERE wallet_address = ?)
+       OR r.winner_wallet = ?
+    ORDER BY r.created_at DESC LIMIT 30
+  `).all(walletAddress, walletAddress, walletAddress, walletAddress);
+}
+
+function getPrizePresets() {
+  return db.prepare(`SELECT id, name FROM prize_presets WHERE active = 1 ORDER BY created_at ASC`).all();
+}
+
+function addPrizePreset(name) {
+  return db.prepare(`INSERT INTO prize_presets (name) VALUES (?) ON CONFLICT(name) DO UPDATE SET active=1`).run(name).lastInsertRowid;
+}
+
+function deletePrizePreset(id) {
+  db.prepare(`UPDATE prize_presets SET active = 0 WHERE id = ?`).run(id);
+}
+
+function getRaffleCountTonight() {
+  return db.prepare(`SELECT COUNT(*) as count FROM raffles WHERE date(created_at) = date('now')`).get()?.count || 0;
 }
 
 const ALLOWED_REACTIONS = ['🍷', '🙌', '😂', '🔥'];
@@ -744,5 +797,12 @@ module.exports = {
   addReaction,
   getReactions,
   getReactionsForMessages,
-  ALLOWED_REACTIONS
+  ALLOWED_REACTIONS,
+  acceptRaffle,
+  rejectRaffle,
+  getRaffleParticipation,
+  getPrizePresets,
+  addPrizePreset,
+  deletePrizePreset,
+  getRaffleCountTonight
 };

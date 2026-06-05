@@ -1,13 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { getEligibleRaffleParticipants, insertRaffle, collectRaffle, getRaffleHistory, getMyWins } = require('../db/database');
+const {
+  getEligibleRaffleParticipants, insertRaffle, acceptRaffle, rejectRaffle,
+  collectRaffle, getRaffleHistory, getMyWins, getRaffleParticipation,
+  getPrizePresets, addPrizePreset, deletePrizePreset, getRaffleCountTonight
+} = require('../db/database');
 const { requireAuth } = require('./admin');
 const { sendPushToAll } = require('../services/push');
 
-// Mantenemos las conexiones SSE de los clientes
 let clients = [];
 
-// Envía evento a todos los clientes o solo a uno por wallet
 function broadcast(event, data, targetWallet = null) {
   const dead = [];
   const targets = targetWallet
@@ -29,7 +31,7 @@ router.get('/stream', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no'); // desactiva buffering en Nginx/Railway
+  res.setHeader('X-Accel-Buffering', 'no');
 
   res.write('data: {"connected": true}\n\n');
 
@@ -38,7 +40,6 @@ router.get('/stream', (req, res) => {
   const newClient = { id: clientId, res, walletAddress };
   clients.push(newClient);
 
-  // Keepalive cada 20 segundos para evitar timeout del proxy de Railway
   const keepalive = setInterval(() => {
     try {
       res.write(': ping\n\n');
@@ -55,73 +56,93 @@ router.get('/stream', (req, res) => {
   });
 });
 
-// POST /api/raffle/start
-// Solo llamado por el admin para iniciar un sorteo
+// POST /api/raffle/start — admin lanza sorteo
 router.post('/start', requireAuth, (req, res) => {
   const { prize } = req.body;
-  
-  if (!prize) {
-    return res.status(400).json({ error: 'Falta el nombre del premio' });
-  }
+  if (!prize) return res.status(400).json({ error: 'Falta el nombre del premio' });
 
-  // Solo participan clientes que han fichado entrada y aún no han salido
-  const connectedWallets = [...new Set(
-    clients.filter(c => c.walletAddress).map(c => c.walletAddress)
-  )];
-  const sessionWallets = getEligibleRaffleParticipants(); // sesiones abiertas en DB
-  // Intersección: tienen sesión abierta (ficharon entrada) Y tienen la app abierta
-  // Si nadie tiene la app abierta, usar solo sesiones DB
+  const connectedWallets = [...new Set(clients.filter(c => c.walletAddress).map(c => c.walletAddress))];
+  const sessionWallets = getEligibleRaffleParticipants();
   const eligibleWallets = connectedWallets.length > 0
     ? sessionWallets.filter(w => connectedWallets.includes(w))
     : sessionWallets;
 
   if (eligibleWallets.length === 0) {
-    return res.status(400).json({ error: 'No hay clientes con entrada fichada en este momento. Deben escanear el QR de entrada para participar.' });
+    return res.status(400).json({ error: 'No hay clientes con entrada fichada.' });
   }
 
   const winnerIndex = Math.floor(Math.random() * eligibleWallets.length);
   const winnerWallet = eligibleWallets[winnerIndex];
-  
-  // Generar código de verificación corto (ej. A8K9)
+
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let verificationCode = '';
-  for (let i = 0; i < 4; i++) {
-    verificationCode += characters.charAt(Math.floor(Math.random() * characters.length));
-  }
+  for (let i = 0; i < 4; i++) verificationCode += characters.charAt(Math.floor(Math.random() * characters.length));
 
-  // Guardar en DB
-  const raffleId = insertRaffle(prize, winnerWallet, verificationCode);
+  const raffleId = insertRaffle(prize, winnerWallet, verificationCode, eligibleWallets);
 
-  // Informar a todos los móviles que EMPIEZA el sorteo (Ruleta de 30 segundos)
-  console.log(`[Raffle] Iniciando sorteo. Clientes SSE: ${clients.length}, con wallet: ${connectedWallets.length}, sesiones DB: ${sessionWallets.length}`);
-  broadcast('raffle_start', { duration: 15, prize });
+  console.log(`[Raffle] #${raffleId} iniciado. Participantes: ${eligibleWallets.length}, SSE: ${connectedWallets.length}`);
+  broadcast('raffle_start', { duration: 15, prize, raffleId });
+  sendPushToAll('🎰 ¡Sorteo en Furancho!', `Se sortea: ${prize} — ¡Abre la app ahora!`, { url: '/claim' });
 
-  sendPushToAll('🎰 ¡Sorteo en Furancho!', `Se está sorteando: ${prize} — ¡Abre la app ahora!`, { url: '/claim' });
-
+  // Revelar ganador tras 15s
   setTimeout(() => {
-    broadcast('raffle_result', { winnerWallet, verificationCode, prize });
+    broadcast('raffle_result', { winnerWallet, verificationCode, prize, raffleId, acceptWindow: 90 });
   }, 15000);
 
-  return res.json({
-    success: true,
-    message: 'Sorteo iniciado',
-    participants: eligibleWallets.length,
-    connected: connectedWallets.length,
-    verificationCode,
-    winnerWallet,
-    raffleId
-  });
+  // Auto-rechazar si no acepta en 90s + 15s de animación
+  setTimeout(() => {
+    try {
+      const { db } = require('../db/database');
+      const raffle = db.prepare(`SELECT status FROM raffles WHERE id = ?`).get(raffleId);
+      if (raffle?.status === 'pending_acceptance') {
+        rejectRaffle(raffleId, 'Tiempo de aceptación agotado');
+        broadcast('raffle_timeout', { raffleId, prize });
+        console.log(`[Raffle] #${raffleId} rechazado automáticamente — tiempo agotado`);
+      }
+    } catch (e) { console.error('[Raffle] Error en auto-rechazo:', e.message); }
+  }, 105000);
+
+  return res.json({ success: true, participants: eligibleWallets.length, raffleId, winnerWallet, verificationCode });
+});
+
+// POST /api/raffle/:id/accept — ganador acepta el premio (público, valida wallet)
+router.post('/:id/accept', (req, res) => {
+  const { wallet } = req.body;
+  if (!wallet) return res.status(400).json({ error: 'Falta wallet' });
+  try {
+    acceptRaffle(parseInt(req.params.id), wallet);
+    // Notificar al admin via SSE broadcast
+    broadcast('raffle_accepted', { raffleId: parseInt(req.params.id) });
+    res.json({ success: true });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// POST /api/raffle/:id/reject — admin rechaza (no cobró / no respondió)
+router.post('/:id/reject', requireAuth, (req, res) => {
+  const { note } = req.body;
+  try {
+    rejectRaffle(parseInt(req.params.id), note || 'Rechazado por admin');
+    broadcast('raffle_rejected', { raffleId: parseInt(req.params.id) });
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // GET /api/raffle/my-wins?wallet=0x...
 router.get('/my-wins', (req, res) => {
   const { wallet } = req.query;
   if (!wallet) return res.status(400).json({ error: 'Falta wallet' });
-  try {
-    res.json(getMyWins(wallet));
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  try { res.json(getMyWins(wallet)); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/raffle/my-history?wallet=0x... — todos los sorteos en que participé
+router.get('/my-history', (req, res) => {
+  const { wallet } = req.query;
+  if (!wallet) return res.status(400).json({ error: 'Falta wallet' });
+  try { res.json(getRaffleParticipation(wallet)); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // PATCH /api/raffle/:id/collect — admin confirma que el premio fue entregado
@@ -129,7 +150,6 @@ router.patch('/:id/collect', requireAuth, (req, res) => {
   const { note } = req.body;
   try {
     collectRaffle(parseInt(req.params.id), note || null);
-    // Notificar al ganador via SSE si está conectado
     const { db } = require('../db/database');
     const raffle = db.prepare(`SELECT winner_wallet FROM raffles WHERE id = ?`).get(parseInt(req.params.id));
     if (raffle?.winner_wallet) {
@@ -142,28 +162,44 @@ router.patch('/:id/collect', requireAuth, (req, res) => {
       }
     }
     res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/raffle/history — historial completo de sorteos (admin)
+// GET /api/raffle/history — historial completo (admin)
 router.get('/history', requireAuth, (req, res) => {
-  try {
-    res.json(getRaffleHistory());
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  try { res.json(getRaffleHistory()); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // GET /api/raffle/eligible
 router.get('/eligible', requireAuth, (req, res) => {
   const connected = [...new Set(clients.filter(c => c.walletAddress).map(c => c.walletAddress))];
-  const sessions  = getEligibleRaffleParticipants();
-  const eligible  = connected.length > 0
-    ? sessions.filter(w => connected.includes(w))
-    : sessions;
-  res.json({ count: eligible.length, withApp: connected.length, checkedIn: sessions.length });
+  const sessions = getEligibleRaffleParticipants();
+  const eligible = connected.length > 0 ? sessions.filter(w => connected.includes(w)) : sessions;
+  const tonight = getRaffleCountTonight();
+  res.json({ count: eligible.length, withApp: connected.length, checkedIn: sessions.length, tonight });
+});
+
+// GET /api/raffle/prizes — lista de premios preset
+router.get('/prizes', requireAuth, (req, res) => {
+  try { res.json(getPrizePresets()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/raffle/prizes — añadir preset
+router.post('/prizes', requireAuth, (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Falta el nombre del premio' });
+  try {
+    const id = addPrizePreset(name.trim());
+    res.json({ success: true, id });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// DELETE /api/raffle/prizes/:id — eliminar preset
+router.delete('/prizes/:id', requireAuth, (req, res) => {
+  try {
+    deletePrizePreset(parseInt(req.params.id));
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;
