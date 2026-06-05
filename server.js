@@ -30,11 +30,12 @@ app.use('/api/push', require('./routes/push'));
 app.use('/api/events', require('./routes/events'));
 app.use('/api/pdf', require('./routes/pdf'));
 
-// Rutas HTML explícitas — antes de express.static para evitar 301 con trailing slash
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html')));
-app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html')));
-app.get('/claim', (req, res) => res.sendFile(path.join(__dirname, 'public', 'claim', 'index.html')));
-app.get('/entry', (req, res) => res.sendFile(path.join(__dirname, 'public', 'entry', 'index.html')));
+// Rutas HTML explícitas — sin caché para siempre recibir versión actualizada
+const NO_CACHE = { 'Cache-Control': 'no-cache, no-store, must-revalidate', Pragma: 'no-cache', Expires: '0' };
+app.get('/', (req, res) => res.set(NO_CACHE).sendFile(path.join(__dirname, 'public', 'admin', 'index.html')));
+app.get('/admin', (req, res) => res.set(NO_CACHE).sendFile(path.join(__dirname, 'public', 'admin', 'index.html')));
+app.get('/claim', (req, res) => res.set(NO_CACHE).sendFile(path.join(__dirname, 'public', 'claim', 'index.html')));
+app.get('/entry', (req, res) => res.set(NO_CACHE).sendFile(path.join(__dirname, 'public', 'entry', 'index.html')));
 
 // Archivos estáticos (assets y demás)
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
