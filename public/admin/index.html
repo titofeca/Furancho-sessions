@@ -1010,6 +1010,10 @@
           <div id="week-chart" style="display:flex; align-items:flex-end; gap:6px; height:60px; margin-bottom:6px;"></div>
           <div id="week-labels" style="display:flex; gap:6px; margin-bottom:4px;"></div>
           <span id="peak-label" style="font-size:11px; color:var(--gold); font-weight:700; display:block; margin-top:6px;"></span>
+
+          <!-- Puntos: ranking hacia tapa gratis -->
+          <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:16px 0 10px;">🍽️ Puntos hacia tapa gratis (300pts)</p>
+          <div id="top-points"></div>
         </div>
       </div>
 
@@ -1428,27 +1432,42 @@
     document.getElementById(`nav-${pageId}`).classList.add('active');
     if (pageId === 'events') loadEventsPage();
     loadVipBadge();
-    if (pageId === 'holders') loadPeakHours();
+    if (pageId === 'holders') { loadPeakHours(null); loadVisits('__totales__'); }
     if (pageId === 'raffles') { loadEligibleParticipants(); loadRaffleHistory(); }
     if (pageId === 'holders') loadVisits();
   }
 
   // ==================== VISITAS ====================
   async function loadVisits(dateVal) {
+    // Sincronizar también las gráficas con la fecha seleccionada
+    loadPeakHours(dateVal || null);
+
     const url = '/api/admin/event-sessions' + (dateVal ? `?date=${dateVal}` : '');
     try {
       const data = await fetch(url, { headers: authHeaders() }).then(r => r.json());
 
-      // Rellenar selector de fechas
+      // Rellenar selector: Totales + Hoy + fechas de eventos y sesiones reales
       const sel = document.getElementById('visits-date-select');
-      const currentVal = sel.value;
-      sel.innerHTML = '<option value="">Hoy</option>' +
+      sel.innerHTML =
+        `<option value="__totales__" ${dateVal==='__totales__'?'selected':''}>📊 Totales</option>` +
+        `<option value="" ${!dateVal||dateVal==='__totales__'?'':''}>Hoy</option>` +
         (data.dates || []).map(d => {
           const label = new Date(d.day + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short' });
-          const count = d.count > 0 ? ` · ${d.count} visitas` : ' · sin visitas';
-          return `<option value="${d.day}" ${d.day === (dateVal||'') ? 'selected' : ''}>${label}${count}</option>`;
+          const count = d.count > 0 ? ` · ${d.count}` : '';
+          return `<option value="${d.day}" ${d.day === dateVal ? 'selected' : ''}>${label}${count}</option>`;
         }).join('');
       if (!dateVal) sel.value = '';
+      else if (dateVal === '__totales__') sel.value = '__totales__';
+
+      // Si se pidieron totales, no mostramos lista de sesiones individuales
+      if (dateVal === '__totales__') {
+        const pill = document.getElementById('visits-summary-pill');
+        if (pill) pill.textContent = 'Vista global';
+        document.getElementById('visits-summary').style.display = 'none';
+        document.getElementById('visits-tbody').innerHTML =
+          `<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:16px;background:var(--surface);border-radius:14px;">Selecciona una fecha para ver el detalle de entradas y salidas</div>`;
+        return;
+      }
 
       const sessions = data.sessions || [];
       const tbody = document.getElementById('visits-tbody');
@@ -1629,94 +1648,135 @@
   }
 
   function filterHolders(level, btn) {
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+    // Solo afecta los botones del bloque de holders, no otros filter-btn de la página
+    document.querySelectorAll('#fbtn-all, #fbtn-1, #fbtn-2, #fbtn-3, #fbtn-4')
+      .forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
     loadHolders(level);
   }
 
   // ==================== PEAK HOURS ====================
-  async function loadPeakHours() {
+  async function loadPeakHours(dateVal) {
     try {
-      const data = await fetch('/api/admin/peak-hours', { headers: authHeaders() }).then(r => r.json());
+      const url = '/api/admin/peak-hours' + (dateVal ? `?date=${dateVal}` : '');
+      const data = await fetch(url, { headers: authHeaders() }).then(r => r.json());
       if (data.error) return;
 
       const DAYS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
       const WINE = '#8B1918', GOLD = '#C4973A', MUTED = 'rgba(42,21,9,0.15)';
+      const isTotal = !dateVal;
 
       // KPIs
-      document.getElementById('kpi-open').textContent = data.totals.open_now ?? '—';
+      document.getElementById('kpi-open').textContent = isTotal ? (data.totals.total_users ?? '—') : (data.totals.open_now ?? '—');
+      document.getElementById('kpi-open').parentElement.querySelector('p:first-child').textContent = isTotal ? 'CLIENTES ÚNICOS' : 'EN LOCAL AHORA';
       document.getElementById('kpi-avg').textContent = data.totals.avg_duration ? data.totals.avg_duration + ' min' : '—';
       document.getElementById('kpi-sessions').textContent = data.totals.total_sessions ?? '—';
-      document.getElementById('kpi-users').textContent = data.totals.total_users ?? '—';
+      document.getElementById('kpi-users').textContent = isTotal ? (data.regulars ?? '—') : (data.totals.total_users ?? '—');
+      document.getElementById('kpi-users').parentElement.querySelector('p:first-child').textContent = isTotal ? 'HABITUALES (3+)' : 'CLIENTES ÚNICOS';
+
+      const peakEl = document.getElementById('peak-label');
       if (data.peakHour) {
         const h = data.peakHour.hour;
-        document.getElementById('peak-label').textContent =
-          `Hora pico: ${String(h).padStart(2,'0')}:00–${String(h+1).padStart(2,'0')}:00`;
-      }
+        peakEl.textContent = `⏰ Hora pico: ${String(h).padStart(2,'0')}:00–${String(h+1).padStart(2,'0')}:00 · ${data.peakHour.unique_users} clientes`;
+      } else { peakEl.textContent = ''; }
 
-      // Gráfica barras por hora (0–23)
+      // Gráfica por hora (rango 17–23 si hay datos en ese rango, si no 0–23)
       const hourMap = {};
       data.hourCounts.forEach(r => { hourMap[r.hour] = r.unique_users; });
-      const maxH = Math.max(1, ...Object.values(hourMap));
-      const eventHours = [];
-      for (let h = 17; h <= 23; h++) eventHours.push(h); // horas del evento
-      const allHours = eventHours.length > 0 ? eventHours : Array.from({length:24},(_,i)=>i);
-
-      const chartEl = document.getElementById('hour-chart');
-      const labelsEl = document.getElementById('hour-labels');
+      const hasEveningData = [17,18,19,20,21,22,23].some(h => hourMap[h] > 0);
+      const allHours = hasEveningData
+        ? [17,18,19,20,21,22,23]
+        : Array.from({length:24},(_,i)=>i).filter(h => hourMap[h] > 0 || h >= 17);
+      const maxH = Math.max(1, ...allHours.map(h => hourMap[h]||0));
       const isPeak = h => data.peakHour && h === data.peakHour.hour;
 
-      chartEl.innerHTML = allHours.map(h => {
+      document.getElementById('hour-chart').innerHTML = allHours.map(h => {
         const v = hourMap[h] || 0;
         const pct = Math.round((v / maxH) * 100);
         const color = isPeak(h) ? GOLD : v > 0 ? WINE : MUTED;
-        const avgRow = data.avgByHour.find(r => r.hour === h);
-        const tooltip = v > 0 ? `${v} clientes${avgRow ? ' · media '+avgRow.avg_min+'min' : ''}` : 'sin datos';
-        return `<div title="${h}:00 — ${tooltip}" style="flex:1; display:flex; flex-direction:column; justify-content:flex-end; cursor:default;">
-          <div style="width:100%; background:${color}; border-radius:4px 4px 0 0; height:${Math.max(2,pct*0.8)}px; transition:height 0.4s; position:relative;">
-            ${v > 0 ? `<span style="position:absolute; top:-16px; left:50%; transform:translateX(-50%); font-size:9px; font-weight:700; color:${color}; white-space:nowrap;">${v}</span>` : ''}
-          </div>
-        </div>`;
+        const avgRow = (data.avgByHour||[]).find(r => r.hour === h);
+        return `<div title="${String(h).padStart(2,'0')}:00 — ${v > 0 ? v+' clientes'+(avgRow?' · '+avgRow.avg_min+'min':'') : 'sin datos'}" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;cursor:default;">
+          <div style="width:100%;background:${color};border-radius:4px 4px 0 0;height:${Math.max(2,pct*0.8)}px;transition:height 0.4s;position:relative;">
+            ${v>0?`<span style="position:absolute;top:-15px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:${color};">${v}</span>`:''}
+          </div></div>`;
       }).join('');
-
-      labelsEl.innerHTML = allHours.map(h =>
-        `<div style="flex:1; text-align:center; font-size:9px; color:${isPeak(h)?'var(--gold)':'var(--text-muted)'}; font-weight:${isPeak(h)?'700':'400'};">${String(h).padStart(2,'0')}</div>`
+      document.getElementById('hour-labels').innerHTML = allHours.map(h =>
+        `<div style="flex:1;text-align:center;font-size:9px;color:${isPeak(h)?'var(--gold)':'var(--text-muted)'};font-weight:${isPeak(h)?'700':'400'};">${String(h).padStart(2,'0')}</div>`
       ).join('');
 
-      // Días de la semana
-      const wdMax = Math.max(1, ...data.byWeekday.map(r => r.unique_users));
-      document.getElementById('weekday-chart').innerHTML = DAYS.map((d, i) => {
-        const row = data.byWeekday.find(r => r.weekday === i);
-        const v = row ? row.unique_users : 0;
-        const pct = Math.round((v / wdMax) * 100);
-        const isTop = row && row.unique_users === wdMax && v > 0;
-        return `<div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;">
-          <span style="font-size:10px; font-weight:700; color:${isTop?'var(--gold)':'var(--text-muted)'};">${v||''}</span>
-          <div style="width:100%; height:32px; background:rgba(42,21,9,0.06); border-radius:6px; display:flex; align-items:flex-end; overflow:hidden;">
-            <div style="width:100%; height:${Math.max(0,pct)}%; background:${isTop?GOLD:WINE}; opacity:${v>0?1:0.2}; border-radius:6px; transition:height 0.4s;"></div>
-          </div>
-          <span style="font-size:9px; color:${isTop?'var(--gold)':'var(--text-muted)'}; font-weight:${isTop?'700':'400'};">${d}</span>
-        </div>`;
-      }).join('');
+      // Días de la semana (solo en totales)
+      const wdEl = document.getElementById('weekday-chart');
+      if (isTotal && data.byWeekday && data.byWeekday.length) {
+        const wdMax = Math.max(1, ...data.byWeekday.map(r => r.unique_users));
+        wdEl.innerHTML = DAYS.map((d,i) => {
+          const row = data.byWeekday.find(r => r.weekday === i);
+          const v = row ? row.unique_users : 0;
+          const pct = Math.round((v/wdMax)*100);
+          const isTop = v === wdMax && v > 0;
+          return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+            <span style="font-size:10px;font-weight:700;color:${isTop?'var(--gold)':'var(--text-muted)'};">${v||''}</span>
+            <div style="width:100%;height:32px;background:rgba(42,21,9,0.06);border-radius:6px;display:flex;align-items:flex-end;overflow:hidden;">
+              <div style="width:100%;height:${Math.max(0,pct)}%;background:${isTop?GOLD:WINE};opacity:${v>0?1:0.2};border-radius:6px;transition:height 0.4s;"></div>
+            </div>
+            <span style="font-size:9px;color:${isTop?'var(--gold)':'var(--text-muted)'};font-weight:${isTop?'700':'400'};">${d}</span>
+          </div>`;
+        }).join('');
+        wdEl.previousElementSibling.style.display = '';
+      } else {
+        wdEl.innerHTML = '';
+        if (wdEl.previousElementSibling) wdEl.previousElementSibling.style.display = 'none';
+      }
 
-      // Últimos 7 días
-      if (data.last7days.length > 0) {
-        const wMax = Math.max(1, ...data.last7days.map(r => r.unique_users));
-        document.getElementById('week-chart').innerHTML = data.last7days.map(r => {
-          const pct = Math.round((r.unique_users / wMax) * 100);
-          const d = new Date(r.day + 'T00:00:00');
-          return `<div title="${r.day}: ${r.unique_users} clientes" style="flex:1; display:flex; flex-direction:column; justify-content:flex-end;">
-            <div style="width:100%; background:${WINE}; border-radius:4px 4px 0 0; height:${Math.max(2,pct*0.6)}px;">
-              <span style="display:block; text-align:center; font-size:9px; color:${WINE}; margin-top:-14px; font-weight:700;">${r.unique_users}</span>
+      // Timeline: en totales = histórico por día; en fecha = vacío (ya tenemos gráfica horaria)
+      const weekEl = document.getElementById('week-chart');
+      const weekLbl = document.getElementById('week-labels');
+      const weekTitle = weekEl.previousElementSibling;
+      const timelineData = isTotal ? (data.timeline || []) : [];
+      if (timelineData.length) {
+        const tMax = Math.max(1, ...timelineData.map(r => r.unique_users));
+        weekEl.innerHTML = [...timelineData].reverse().map(r => {
+          const pct = Math.round((r.unique_users/tMax)*100);
+          const d = new Date(r.day+'T12:00:00');
+          return `<div title="${r.day}: ${r.unique_users} clientes" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;">
+            <div style="width:100%;background:${WINE};border-radius:4px 4px 0 0;height:${Math.max(2,pct*0.6)}px;">
+              <span style="display:block;text-align:center;font-size:9px;color:${WINE};margin-top:-14px;font-weight:700;">${r.unique_users}</span>
+            </div></div>`;
+        }).join('');
+        weekLbl.innerHTML = [...timelineData].reverse().map(r => {
+          const d = new Date(r.day+'T12:00:00');
+          return `<div style="flex:1;text-align:center;font-size:9px;color:var(--text-muted);">${d.getDate()}/${d.getMonth()+1}</div>`;
+        }).join('');
+        if (weekTitle) weekTitle.textContent = 'Sesiones por fecha';
+        weekEl.style.display = 'flex'; weekLbl.style.display = 'flex';
+      } else {
+        weekEl.innerHTML = ''; weekLbl.innerHTML = '';
+        if (weekTitle) weekTitle.style.display = 'none';
+        weekEl.style.display = 'none'; weekLbl.style.display = 'none';
+      }
+
+      // Puntos: ranking clientes
+      const topEl = document.getElementById('top-points');
+      if (topEl && data.topPoints && data.topPoints.length) {
+        const maxPts = data.topPoints[0].total_points || 1;
+        topEl.innerHTML = data.topPoints.map((p,i) => {
+          const pct = Math.round((p.total_points / maxPts) * 100);
+          const atGoal = p.total_points >= 300;
+          return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <span style="font-size:11px;color:var(--text-muted);width:14px;text-align:right;">${i+1}</span>
+            <div style="flex:1;">
+              <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+                <span style="font-family:monospace;font-size:11px;color:var(--text);">${p.wallet_masked}</span>
+                <span style="font-size:11px;font-weight:700;color:${atGoal?'#4ade80':'var(--gold)'};">${p.total_points}pts${atGoal?' 🍽️':''}</span>
+              </div>
+              <div style="height:4px;background:rgba(42,21,9,0.1);border-radius:2px;">
+                <div style="height:4px;width:${pct}%;background:${atGoal?'#4ade80':'var(--wine)'};border-radius:2px;transition:width 0.4s;"></div>
+              </div>
             </div>
           </div>`;
         }).join('');
-        document.getElementById('week-labels').innerHTML = data.last7days.map(r => {
-          const d = new Date(r.day + 'T00:00:00');
-          return `<div style="flex:1; text-align:center; font-size:9px; color:var(--text-muted);">${d.getDate()}/${d.getMonth()+1}</div>`;
-        }).join('');
-      } else {
-        document.getElementById('week-chart').innerHTML = '<p style="font-size:12px;color:var(--text-muted);padding:8px 0;">Sin datos esta semana</p>';
+        topEl.previousElementSibling.style.display = '';
+      } else if (topEl) {
+        topEl.innerHTML = '<p style="font-size:12px;color:var(--text-muted);padding:4px 0;">Sin puntos registrados aún</p>';
       }
 
     } catch(e) { console.error('Peak hours error:', e); }

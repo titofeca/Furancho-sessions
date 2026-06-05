@@ -198,85 +198,80 @@ router.get('/event-sessions', requireAuth, (req, res) => {
   }
 });
 
-// GET /api/admin/peak-hours — datos de horas pico para gráfica
+// GET /api/admin/peak-hours?date=YYYY-MM-DD — estadísticas por fecha o totales
 router.get('/peak-hours', requireAuth, (req, res) => {
   try {
     const { db } = require('../db/database');
+    const date = req.query.date || null;
 
-    // Presencia por hora: cuenta cuántas sesiones estaban activas en cada franja horaria
-    // Una sesión cubre desde entry_time hasta exit_time (o ahora si está abierta)
+    // Filtro SQL: si hay fecha filtra ese día; si no, excluye las pruebas de Jun 4 antes de 19:30
+    const dateWhere = date
+      ? (date === '2026-06-04'
+          ? `date(entry_time) = '2026-06-04' AND time(entry_time) >= '19:30:00'`
+          : `date(entry_time) = '${date.replace(/'/g, '')}'`)
+      : `NOT (date(entry_time) = '2026-06-04' AND time(entry_time) < '19:30:00')`;
+
     const hourCounts = db.prepare(`
-      SELECT
-        hour,
-        COUNT(*) as sessions,
-        COUNT(DISTINCT wallet_address) as unique_users
+      SELECT hour, COUNT(*) as sessions, COUNT(DISTINCT wallet_address) as unique_users
       FROM (
-        SELECT
-          wallet_address,
-          CAST(strftime('%H', entry_time) AS INTEGER) as hour
-        FROM sessions
-        WHERE entry_time IS NOT NULL
+        SELECT wallet_address, CAST(strftime('%H', entry_time) AS INTEGER) as hour
+        FROM sessions WHERE entry_time IS NOT NULL AND ${dateWhere}
         UNION ALL
-        SELECT
-          wallet_address,
-          CAST(strftime('%H', exit_time) AS INTEGER) as hour
-        FROM sessions
-        WHERE exit_time IS NOT NULL
-      )
-      GROUP BY hour
-      ORDER BY hour
+        SELECT wallet_address, CAST(strftime('%H', exit_time) AS INTEGER) as hour
+        FROM sessions WHERE exit_time IS NOT NULL AND ${dateWhere}
+      ) GROUP BY hour ORDER BY hour
     `).all();
 
-    // Duración media por hora de entrada
     const avgByHour = db.prepare(`
-      SELECT
-        CAST(strftime('%H', entry_time) AS INTEGER) as hour,
-        ROUND(AVG(duration_minutes), 0) as avg_min,
-        COUNT(*) as count
+      SELECT CAST(strftime('%H', entry_time) AS INTEGER) as hour,
+             ROUND(AVG(duration_minutes), 0) as avg_min, COUNT(*) as count
       FROM sessions
-      WHERE exit_time IS NOT NULL AND duration_minutes > 0 AND duration_minutes < 300
-      GROUP BY hour
-      ORDER BY hour
+      WHERE exit_time IS NOT NULL AND duration_minutes > 0 AND duration_minutes < 300 AND ${dateWhere}
+      GROUP BY hour ORDER BY hour
     `).all();
 
-    // Día de la semana más activo
-    const byWeekday = db.prepare(`
-      SELECT
-        CAST(strftime('%w', entry_time) AS INTEGER) as weekday,
-        COUNT(*) as sessions,
-        COUNT(DISTINCT wallet_address) as unique_users
-      FROM sessions
-      WHERE entry_time IS NOT NULL
-      GROUP BY weekday
-      ORDER BY weekday
+    const byWeekday = date ? [] : db.prepare(`
+      SELECT CAST(strftime('%w', entry_time) AS INTEGER) as weekday,
+             COUNT(*) as sessions, COUNT(DISTINCT wallet_address) as unique_users
+      FROM sessions WHERE entry_time IS NOT NULL AND ${dateWhere}
+      GROUP BY weekday ORDER BY weekday
     `).all();
 
-    // Hora pico (la más concurrida)
     const peakHour = hourCounts.reduce((a, b) => b.unique_users > (a?.unique_users || 0) ? b : a, null);
 
-    // Total sesiones históricas
     const totals = db.prepare(`
-      SELECT
-        COUNT(*) as total_sessions,
-        COUNT(DISTINCT wallet_address) as total_users,
-        ROUND(AVG(CASE WHEN duration_minutes > 0 AND duration_minutes < 300 THEN duration_minutes END), 0) as avg_duration,
-        COUNT(CASE WHEN exit_time IS NULL THEN 1 END) as open_now
-      FROM sessions
+      SELECT COUNT(*) as total_sessions,
+             COUNT(DISTINCT wallet_address) as total_users,
+             ROUND(AVG(CASE WHEN duration_minutes > 0 AND duration_minutes < 300 THEN duration_minutes END), 0) as avg_duration,
+             COUNT(CASE WHEN exit_time IS NULL THEN 1 END) as open_now
+      FROM sessions WHERE ${dateWhere}
     `).get();
 
-    // Sesiones de los últimos 7 días por día
-    const last7days = db.prepare(`
-      SELECT
-        date(entry_time) as day,
-        COUNT(*) as sessions,
-        COUNT(DISTINCT wallet_address) as unique_users
-      FROM sessions
-      WHERE entry_time >= datetime('now', '-7 days')
-      GROUP BY day
-      ORDER BY day
+    // Clientes habituales (3+ visitas)
+    const regulars = db.prepare(`
+      SELECT COUNT(*) as count FROM (
+        SELECT wallet_address FROM sessions
+        WHERE counted_as_visit = 1 AND ${dateWhere.replace(/entry_time/g, 'entry_time')}
+        GROUP BY wallet_address HAVING COUNT(*) >= 3
+      )
+    `).get();
+
+    // Puntos: top clientes por puntos acumulados
+    const topPoints = db.prepare(`
+      SELECT wallet_address,
+             substr(wallet_address,1,6)||'...'||substr(wallet_address,-4) as wallet_masked,
+             SUM(points) as total_points
+      FROM points GROUP BY wallet_address ORDER BY total_points DESC LIMIT 8
     `).all();
 
-    res.json({ hourCounts, avgByHour, byWeekday, peakHour, totals, last7days });
+    // Timeline por día para totales (o datos del día seleccionado por hora ya en hourCounts)
+    const timeline = !date ? db.prepare(`
+      SELECT date(entry_time) as day, COUNT(*) as sessions, COUNT(DISTINCT wallet_address) as unique_users
+      FROM sessions WHERE entry_time IS NOT NULL AND ${dateWhere}
+      GROUP BY day ORDER BY day DESC LIMIT 20
+    `).all() : [];
+
+    res.json({ hourCounts, avgByHour, byWeekday, peakHour, totals, regulars: regulars?.count || 0, topPoints, timeline });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
