@@ -1586,44 +1586,8 @@
         </div>
       </div>
 
-      <!-- ② TUS VISITAS -->
-      <div class="profile-progress-card" style="padding: 22px;">
-
-        <!-- Visitas + hint -->
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;">
-          <div>
-            <p style="font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">Tus visitas</p>
-            <div style="display:flex; align-items:baseline; gap:6px;">
-              <span id="visit-count-display" style="font-family:'Playfair Display',serif; font-size:48px; font-weight:900; color:var(--wine); line-height:1;">0</span>
-              <span id="visit-total-display" style="font-size:14px; color:var(--text-muted);">/ 12</span>
-            </div>
-          </div>
-          <div style="text-align:right;">
-            <p id="profile-progress-hint" style="font-size:13px; color:var(--text-muted); line-height:1.5; max-width:150px;"></p>
-          </div>
-        </div>
-
-        <!-- Línea de progreso con hitos -->
-        <div style="position:relative; margin-bottom:8px;">
-          <div style="height:8px; background:rgba(42,21,9,0.08); border-radius:100px; overflow:visible; position:relative;">
-            <div id="profile-progress-fill" style="height:100%; background:linear-gradient(90deg,var(--wine),var(--gold)); border-radius:100px; transition:width 1.2s cubic-bezier(0.22,1,0.36,1); width:0%; position:relative;">
-              <div style="position:absolute; right:-6px; top:50%; transform:translateY(-50%); width:14px; height:14px; background:var(--gold); border-radius:50%; border:2px solid #fff; box-shadow:0 0 8px rgba(196,151,58,0.6);"></div>
-            </div>
-          </div>
-          <div style="position:absolute; left:33%; top:50%; transform:translate(-50%,-50%);">
-            <div id="milestone-3" style="width:20px; height:20px; border-radius:50%; background:#fff; border:2.5px solid rgba(42,21,9,0.15); display:flex; align-items:center; justify-content:center; font-size:10px; transition:all 0.4s;">🏅</div>
-          </div>
-          <div style="position:absolute; right:-4px; top:50%; transform:translateY(-50%);">
-            <div id="milestone-4" style="width:24px; height:24px; border-radius:50%; background:#fff; border:2.5px solid rgba(42,21,9,0.15); display:flex; align-items:center; justify-content:center; font-size:12px; transition:all 0.4s;">👑</div>
-          </div>
-        </div>
-
-        <div style="display:flex; justify-content:space-between; margin-top:10px; padding:0 2px;">
-          <span style="font-size:10px; color:var(--text-muted);">Inicio</span>
-          <span style="font-size:10px; color:var(--text-muted); margin-left:22%;">4 vis. · NFT</span>
-          <span style="font-size:10px; color:var(--text-muted);">12 vis. · NFT</span>
-        </div>
-      </div>
+      <!-- ② TU CAMINO — visitas + journey unificados -->
+      <div class="profile-progress-card" style="padding:22px; margin-bottom:20px;">
 
       <!-- ③ PREMIOS -->
       <div class="raffle-section" id="raffle-section" style="margin-bottom: 20px;">
@@ -1672,63 +1636,65 @@
         </div>
       </div>
 
-      <!-- ⑤ HITOS — Journey horizontal -->
-      <div style="margin-bottom: 20px;">
-        <p class="profile-visits-label" style="font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 16px; color:var(--text-muted);">Tu camino en Furancho</p>
-        <div style="background:#fff; border:1px solid rgba(42,21,9,0.09); border-radius:20px; padding:20px 16px 16px;">
-
-          <!-- Línea de progreso con nodos -->
-          <div style="position:relative; display:flex; align-items:flex-start; justify-content:space-between; gap:0;">
-            <!-- Línea base -->
-            <div style="position:absolute; top:18px; left:18px; right:18px; height:3px; background:rgba(42,21,9,0.08); border-radius:100px; z-index:0;"></div>
-            <!-- Línea activa -->
-            <div id="journey-progress-line" style="position:absolute; top:18px; left:18px; height:3px; background:linear-gradient(90deg,var(--wine),var(--gold)); border-radius:100px; z-index:1; width:0%; transition:width 1.2s cubic-bezier(0.22,1,0.36,1);"></div>
-
-            <!-- Nodo 1 -->
-            <div class="journey-node" id="jnode-1" style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; flex:1;">
-              <div class="journey-dot" id="jdot-1" style="width:36px; height:36px; border-radius:50%; background:rgba(42,21,9,0.07); border:2.5px solid rgba(42,21,9,0.12); display:flex; align-items:center; justify-content:center; font-size:16px; transition:all 0.5s; margin-bottom:8px;">🍷</div>
-              <div style="text-align:center;">
-                <div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-1">NV1</div>
-                <div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;" id="jname-1">Cautivo</div>
-                <div style="font-size:10px; color:var(--text-muted); margin-top:1px;">1ª vis.</div>
-              </div>
+        <!-- Contador de visitas + hint -->
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:22px;">
+          <div>
+            <p style="font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">Tu camino en O Furancho</p>
+            <div style="display:flex; align-items:baseline; gap:6px;">
+              <span id="visit-count-display" style="font-family:'Playfair Display',serif; font-size:48px; font-weight:900; color:var(--wine); line-height:1;">0</span>
+              <span id="visit-total-display" style="font-size:14px; color:var(--text-muted);">visitas</span>
             </div>
+          </div>
+          <div style="text-align:right;">
+            <p id="profile-progress-hint" style="font-size:13px; color:var(--text-muted); line-height:1.5; max-width:150px;"></p>
+          </div>
+        </div>
 
-            <!-- Nodo 2 -->
-            <div class="journey-node" id="jnode-2" style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; flex:1;">
-              <div class="journey-dot" id="jdot-2" style="width:36px; height:36px; border-radius:50%; background:rgba(42,21,9,0.07); border:2.5px solid rgba(42,21,9,0.12); display:flex; align-items:center; justify-content:center; font-size:16px; transition:all 0.5s; margin-bottom:8px;">🍶</div>
-              <div style="text-align:center;">
-                <div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-2">NV2</div>
-                <div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;" id="jname-2">Cunqueiro</div>
-                <div style="font-size:10px; color:var(--text-muted); margin-top:1px;">2ª vis.</div>
-              </div>
-            </div>
+        <!-- Journey: línea con 4 nodos -->
+        <div style="position:relative; display:flex; align-items:flex-start; justify-content:space-between;">
+          <div style="position:absolute; top:18px; left:18px; right:18px; height:3px; background:rgba(42,21,9,0.08); border-radius:100px; z-index:0;"></div>
+          <div id="journey-progress-line" style="position:absolute; top:18px; left:18px; height:3px; background:linear-gradient(90deg,var(--wine),var(--gold)); border-radius:100px; z-index:1; width:0%; transition:width 1.2s cubic-bezier(0.22,1,0.36,1);"></div>
 
-            <!-- Nodo 3 -->
-            <div class="journey-node" id="jnode-3" style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; flex:1;">
-              <div class="journey-dot" id="jdot-3" style="width:36px; height:36px; border-radius:50%; background:rgba(42,21,9,0.07); border:2.5px solid rgba(42,21,9,0.12); display:flex; align-items:center; justify-content:center; font-size:16px; transition:all 0.5s; margin-bottom:8px;">🌿</div>
-              <div style="text-align:center;">
-                <div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-3">NV3</div>
-                <div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;" id="jname-3">Larpeiro</div>
-                <div style="font-size:10px; color:var(--text-muted); margin-top:1px;">4 vis. 🏅</div>
-              </div>
-            </div>
-
-            <!-- Nodo 4 -->
-            <div class="journey-node" id="jnode-4" style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; flex:1;">
-              <div class="journey-dot" id="jdot-4" style="width:36px; height:36px; border-radius:50%; background:rgba(42,21,9,0.07); border:2.5px solid rgba(42,21,9,0.12); display:flex; align-items:center; justify-content:center; font-size:16px; transition:all 0.5s; margin-bottom:8px;">👑</div>
-              <div style="text-align:center;">
-                <div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-4">NV4</div>
-                <div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;" id="jname-4">Presidente</div>
-                <div style="font-size:10px; color:var(--text-muted); margin-top:1px;">12 vis. 👑</div>
-              </div>
+          <div id="jnode-1" style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; flex:1;">
+            <div id="jdot-1" style="width:36px; height:36px; border-radius:50%; background:rgba(42,21,9,0.07); border:2.5px solid rgba(42,21,9,0.12); display:flex; align-items:center; justify-content:center; font-size:16px; transition:all 0.5s; margin-bottom:8px;">🍷</div>
+            <div style="text-align:center;">
+              <div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-1">NV1</div>
+              <div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;">Cautivo</div>
+              <div style="font-size:10px; color:var(--text-muted); margin-top:1px;">1ª vis.</div>
             </div>
           </div>
 
-          <!-- Siguiente hito -->
-          <div id="journey-next-hint" style="margin-top:16px; padding:10px 14px; background:rgba(196,151,58,0.06); border:1px solid rgba(196,151,58,0.2); border-radius:12px; text-align:center; display:none;">
-            <p style="font-size:12px; color:var(--gold); font-weight:600; margin:0;" id="journey-next-text"></p>
+          <div id="jnode-2" style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; flex:1;">
+            <div id="jdot-2" style="width:36px; height:36px; border-radius:50%; background:rgba(42,21,9,0.07); border:2.5px solid rgba(42,21,9,0.12); display:flex; align-items:center; justify-content:center; font-size:16px; transition:all 0.5s; margin-bottom:8px;">🍶</div>
+            <div style="text-align:center;">
+              <div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-2">NV2</div>
+              <div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;">Cunqueiro</div>
+              <div style="font-size:10px; color:var(--text-muted); margin-top:1px;">2ª vis.</div>
+            </div>
           </div>
+
+          <div id="jnode-3" style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; flex:1;">
+            <div id="jdot-3" style="width:36px; height:36px; border-radius:50%; background:rgba(42,21,9,0.07); border:2.5px solid rgba(42,21,9,0.12); display:flex; align-items:center; justify-content:center; font-size:16px; transition:all 0.5s; margin-bottom:8px;">🌿</div>
+            <div style="text-align:center;">
+              <div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-3">NV3</div>
+              <div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;">Larpeiro</div>
+              <div style="font-size:10px; color:var(--text-muted); margin-top:1px;">4 vis. 🏅</div>
+            </div>
+          </div>
+
+          <div id="jnode-4" style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; flex:1;">
+            <div id="jdot-4" style="width:36px; height:36px; border-radius:50%; background:rgba(42,21,9,0.07); border:2.5px solid rgba(42,21,9,0.12); display:flex; align-items:center; justify-content:center; font-size:16px; transition:all 0.5s; margin-bottom:8px;">👑</div>
+            <div style="text-align:center;">
+              <div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-4">NV4</div>
+              <div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;">Presidente</div>
+              <div style="font-size:10px; color:var(--text-muted); margin-top:1px;">12 vis. 👑</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Siguiente hito -->
+        <div id="journey-next-hint" style="display:none; margin-top:16px; padding:10px 14px; background:rgba(196,151,58,0.06); border:1px solid rgba(196,151,58,0.2); border-radius:12px; text-align:center;">
+          <p style="font-size:12px; color:var(--gold); font-weight:600; margin:0;" id="journey-next-text"></p>
         </div>
       </div>
 
@@ -2239,23 +2205,9 @@
       document.getElementById('profile-card-level-tag').textContent = 'NIVEL ' + lvl;
       document.getElementById('profile-card-name').textContent = levelName;
 
-      // Contador de visitas y barra de progreso
-      const pct = getProgressPct(visitCount);
+      // Contador de visitas
       document.getElementById('visit-count-display').textContent = visitCount;
-      document.getElementById('visit-total-display').textContent = visitCount >= 12 ? '✓ Máximo' : '/ 12';
-
-      setTimeout(() => {
-        document.getElementById('profile-progress-fill').style.width = pct + '%';
-        // Activar hitos según progreso
-        if (visitCount >= 4 || claimedLevels.includes(3) || claimedLevels.includes(4)) {
-          const m3 = document.getElementById('milestone-3');
-          if (m3) { m3.style.background = 'var(--gold)'; m3.style.borderColor = 'var(--gold)'; m3.style.boxShadow = '0 0 10px rgba(196,151,58,0.5)'; }
-        }
-        if (visitCount >= 12 || claimedLevels.includes(4)) {
-          const m4 = document.getElementById('milestone-4');
-          if (m4) { m4.style.background = 'var(--gold)'; m4.style.borderColor = 'var(--gold)'; m4.style.boxShadow = '0 0 12px rgba(196,151,58,0.6)'; }
-        }
-      }, 400);
+      document.getElementById('visit-total-display').textContent = visitCount >= 12 ? '✓ Máximo' : 'visitas';
 
       // Hint
       const hint = document.getElementById('profile-progress-hint');
