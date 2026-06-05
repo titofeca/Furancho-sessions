@@ -24,29 +24,30 @@ const LEVEL_NAMES = {
 };
 
 
-// POST /api/mint/entry
+// POST /api/mint/entry — abre sesión y cuenta la visita en el momento de entrada
 router.post('/entry', mintLimiter, async (req, res) => {
-  const { walletAddress, email } = req.body;
+  const { walletAddress } = req.body;
   if (!walletAddress) return res.status(400).json({ error: 'Falta walletAddress' });
 
   try {
-    const { getVisitCount, checkRecentVisit, openSession, insertVisit } = require('../db/database');
-    const visitCount = getVisitCount(walletAddress);
+    const { getVisitCount, checkRecentVisit, openSession } = require('../db/database');
     const alreadyVisitedThisWeek = checkRecentVisit(walletAddress, 168);
 
-    // Abrir sesión al entrar (no insertamos visita hasta cerrar sesión para evitar doble conteo y cooldown en salida)
+    // Abrir sesión — se marca como visita en openSession si hai evento hoxe
     openSession(walletAddress);
 
-    const newVisitCount = alreadyVisitedThisWeek ? visitCount : visitCount + 1;
+    // Visit count post-entrada (xa inclúe a visita de hoxe se hai evento)
+    const visitCount = getVisitCount(walletAddress);
 
     return res.json({
       success: true,
       action: 'entry',
-      isNew: visitCount === 0,
-      visitCount: newVisitCount,
-      message: visitCount === 0
+      isNew: visitCount === 1 && !alreadyVisitedThisWeek,
+      visitCount,
+      alreadyCounted: alreadyVisitedThisWeek,
+      message: visitCount === 1 && !alreadyVisitedThisWeek
         ? '¡Benvido a Furancho Sessions!'
-        : `¡Benvido de volta! Llevas ${newVisitCount} visita${newVisitCount !== 1 ? 's' : ''}.`
+        : `¡Benvido de volta! Levas ${visitCount} visita${visitCount !== 1 ? 's' : ''}.`
     });
   } catch (error) {
     console.error('Error en /entry:', error.message);
@@ -222,10 +223,11 @@ router.get('/history', (req, res) => {
   const { wallet } = req.query;
   if (!wallet) return res.status(400).json({ error: 'Wallet es requerida' });
   try {
-    const { getClaimedLevels, getVisitCount } = require('../db/database');
+    const { getClaimedLevels, getVisitCount, db } = require('../db/database');
     const levels = getClaimedLevels(wallet);
     const visitCount = getVisitCount(wallet);
-    res.json({ levels, visitCount });
+    const activeSession = db.prepare(`SELECT id FROM sessions WHERE wallet_address = ? AND exit_time IS NULL LIMIT 1`).get(wallet);
+    res.json({ levels, visitCount, hasActiveSession: !!activeSession });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

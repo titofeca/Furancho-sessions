@@ -28,14 +28,22 @@ async function doEntry(walletAddress) {
     const screen = document.getElementById('screen-success');
     screen.style.display = 'flex';
 
+    const msgs = [
+      'Xa podías tardar máis, ho.',
+      'O teu sitio xa te estaba botando de menos.',
+      'Que goces como sempre. Que é moito.',
+      'Esta noite promete. Como todas no Furancho.',
+      'Vaia, xa volveu o mellor cliente.',
+    ];
+    const randomMsg = msgs[Math.floor(Math.random() * msgs.length)];
     if (data.isNew) {
       document.getElementById('icon-container').innerText = '🍷';
-      document.getElementById('title-container').innerText = '¡Benvido a Furancho Sessions!';
-      document.getElementById('msg-container').innerText = 'É a túa primeira vez aquí. Goza da experiencia e non esquezas fichar á saída ao marchar.';
+      document.getElementById('title-container').innerText = '¡Benvido ao Furancho!';
+      document.getElementById('msg-container').innerText = 'Primeira vez por aquí. Que non sexa a última. Esta noite xa conta como visita.';
     } else {
       document.getElementById('icon-container').innerText = '🙌';
-      document.getElementById('title-container').innerText = '¡Benvido de volta!';
-      document.getElementById('msg-container').innerText = 'Que goces moito esta sesión. Non esquezas fichar á saída para acumular a túa visita.';
+      document.getElementById('title-container').innerText = `¡Ola, de volta pola casa!`;
+      document.getElementById('msg-container').innerText = `${randomMsg} Levas ${data.visitCount} visita${data.visitCount !== 1 ? 's' : ''} no Furancho.`;
     }
 
   } catch (e) {
@@ -141,8 +149,8 @@ function showError(msg) {
   document.getElementById('screen-loading').style.display = 'none';
   document.getElementById('screen-onboarding').style.display = 'none';
   document.getElementById('screen-success').style.display = 'flex';
-  document.getElementById('icon-container').innerText = '⚠️';
-  document.getElementById('title-container').innerText = 'Algo fue mal';
+  document.getElementById('icon-container').innerText = '😬';
+  document.getElementById('title-container').innerText = 'Caíuse o viño...';
   document.getElementById('msg-container').innerText = msg;
 }
 

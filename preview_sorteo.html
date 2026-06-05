@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Furancho Sessions - Demo Animación de Sorteo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --wine: #8B1918;
+      --wine-dark: #5C0F0F;
+      --wine-light: #B52A2A;
+      --cream: #F2EDE3;
+      --cream-dark: #E8DDD0;
+      --cream-mid: #EAE0D0;
+      --dark: #1C0E06;
+      --dark-2: #2A1509;
+      --navy: #1C2B35;
+      --gold: #C4973A;
+      --text: #2A1509;
+      --text-muted: #7A6A5A;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #121214;
+      font-family: 'Outfit', sans-serif;
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    .demo-container {
+      display: flex;
+      flex-direction: row;
+      gap: 40px;
+      align-items: center;
+      max-width: 1000px;
+      width: 100%;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    /* Panel de controles */
+    .controls-panel {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+    }
+
+    .controls-panel h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 28px;
+      color: var(--gold);
+      margin-bottom: 15px;
+    }
+
+    .controls-panel p {
+      font-size: 14px;
+      color: #ccc;
+      line-height: 1.6;
+      margin-bottom: 25px;
+    }
+
+    .btn-control {
+      display: block;
+      width: 100%;
+      padding: 14px 20px;
+      margin-bottom: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .btn-control:hover {
+      background: rgba(196, 151, 58, 0.15);
+      border-color: var(--gold);
+      transform: translateX(5px);
+    }
+
+    .btn-control.active {
+      background: var(--wine);
+      border-color: var(--wine-light);
+      box-shadow: 0 4px 15px rgba(139, 25, 24, 0.4);
+    }
+
+    /* Marco del móvil */
+    .phone-wrapper {
+      position: relative;
+      width: 375px;
+      height: 760px;
+      border-radius: 45px;
+      border: 12px solid #2d2d30;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+      overflow: hidden;
+      background: var(--cream);
+      flex-shrink: 0;
+    }
+
+    .phone-screen {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Fondo decorativo del claim */
+    .bg-pattern {
+      position: absolute;
+      inset: 0;
+      background-image:
+        radial-gradient(ellipse at 20% 0%, rgba(139, 25, 24, 0.07) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 100%, rgba(196, 151, 58, 0.08) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* MODAL DE SORTEO (Simulación de claim/index.html) */
+    .raffle-modal-demo {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      background: rgba(242, 237, 227, 0.99);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 32px 24px;
+      color: var(--text);
+    }
+
+    .raffle-title-demo {
+      font-family: 'Playfair Display', serif;
+      font-size: 30px;
+      font-weight: 900;
+      color: var(--gold);
+      margin-bottom: 8px;
+    }
+
+    .raffle-prize-text-demo {
+      font-size: 15px;
+      color: var(--text);
+      margin-bottom: 36px;
+      font-weight: 300;
+    }
+
+    /* Spinner de ruleta */
+    .spin-container {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 32px;
+    }
+
+    .spin-ring-demo {
+      position: absolute;
+      inset: -8px;
+      border-radius: 50%;
+      background: conic-gradient(var(--wine), var(--gold), #fff, var(--wine));
+      animation: spinRingDemo 1s linear infinite;
+    }
+
+    .spin-inner-demo {
+      position: absolute;
+      inset: 3px;
+      border-radius: 50%;
+      background: var(--cream);
+    }
+
+    .spin-logo-demo {
+      position: absolute;
+      inset: 8px;
+      border-radius: 50%;
+      background: var(--wine);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 44px;
+      color: #fff;
+      animation: logoPulseDemo 0.8s ease-in-out infinite alternate;
+      box-shadow: 0 4px 15px rgba(139, 25, 24, 0.3);
+    }
+
+    .raffle-searching-demo {
+      font-size: 14px;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+      animation: searchPulseDemo 1.2s ease-in-out infinite;
+    }
+
+    /* Animaciones CSS exactas */
+    @keyframes spinRingDemo {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+    @keyframes logoPulseDemo {
+      from { transform: scale(0.95); }
+      to   { transform: scale(1.05); }
+    }
+    @keyframes searchPulseDemo {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+
+    /* VISTA DE GANADOR */
+    .winner-emoji-demo {
+      font-size: 64px;
+      display: block;
+      margin-bottom: 12px;
+      animation: bounceDemo 0.6s ease infinite alternate;
+    }
+
+    @keyframes bounceDemo {
+      from { transform: translateY(0); }
+      to   { transform: translateY(-10px); }
+    }
+
+    .winner-title-demo {
+      font-family: 'Playfair Display', serif;
+      font-size: 26px;
+      font-weight: 900;
+      color: var(--wine);
+      letter-spacing: 1.5px;
+      margin-bottom: 6px;
+    }
+
+    .winner-box-demo {
+      background: rgba(196, 151, 58, 0.08);
+      border: 1.5px dashed var(--gold);
+      border-radius: 16px;
+      padding: 16px;
+      margin: 20px 0;
+    }
+
+    .code-label-demo {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .code-text-demo {
+      font-family: monospace;
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--wine);
+      letter-spacing: 4px;
+    }
+
+    .btn-claim-demo {
+      display: block;
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, var(--wine), var(--wine-dark));
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(139, 25, 24, 0.3);
+      transition: transform 0.2s;
+    }
+
+    .btn-claim-demo:active {
+      transform: scale(0.97);
+    }
+
+    .raffle-note-demo {
+      margin-top: 14px;
+      font-size: 11.5px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* VISTA DE PERDEDOR */
+    .loser-emoji-demo {
+      font-size: 64px;
+      margin-bottom: 18px;
+    }
+
+    .loser-title-demo {
+      font-family: 'Playfair Display', serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+
+    .btn-close-demo {
+      padding: 12px 30px;
+      background: transparent;
+      border: 1.5px solid rgba(42, 21, 9, 0.2);
+      border-radius: 50px;
+      color: var(--text);
+      font-family: 'Outfit', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* Partículas de confetti */
+    .confetti-particle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      pointer-events: none;
+      z-index: 5;
+      animation: fallDemo 4s linear infinite;
+    }
+
+    @keyframes fallDemo {
+      0% {
+        transform: translateY(-20px) rotate(0deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(780px) rotate(360deg);
+        opacity: 0;
+      }
+    }
+
+    /* Pantalla base del perfil (Fondo difuminado detrás del modal) */
+    .profile-bg-preview {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+      padding: 20px;
+      z-index: 2;
+    }
+
+    .profile-card-preview {
+      background: rgba(255, 255, 255, 0.6);
+      border: 1.5px solid rgba(255, 255, 255, 0.5);
+      border-radius: 24px;
+      padding: 24px;
+      text-align: center;
+      margin-top: 100px;
+      box-shadow: 0 8px 32px rgba(42, 21, 9, 0.05);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="demo-container">
+    
+    <!-- PANEL DE CONTROLES -->
+    <div class="controls-panel">
+      <h1>Sorteo en Directo</h1>
+      <p>Este prototipo interactivo te permite ver **las animaciones CSS y pantallas exactas** que ven los clientes en sus móviles durante un sorteo del Furancho Sessions.</p>
+      
+      <button class="btn-control active" onclick="showState('roulette')">
+        🎬 1. Animación de Ruleta (Spinning)
+      </button>
+      <button class="btn-control" onclick="showState('winner')">
+        🏆 2. Pantalla de Ganador (Con Confetti)
+      </button>
+      <button class="btn-control" onclick="showState('loser')">
+        😔 3. Pantalla de Consolación (Perdedor)
+      </button>
+
+      <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.1); font-size: 13px; color: #aaa; line-height: 1.5;">
+        <span style="color: var(--gold); font-weight: bold;">💡 Instrucciones de Mac:</span><br>
+        1. Para verlo en tu pantalla, abre el archivo <code style="background: rgba(255, 255, 255, 0.1); padding: 2px 4px; border-radius: 4px; color: #fff;">preview_sorteo.html</code> en Finder (en el escritorio de tu Mac).<br>
+        2. Ábrelo con Safari o Chrome.<br>
+        3. ¡Pulsa los botones interactivos para alternar entre las tres fases!
+      </div>
+    </div>
+
+    <!-- VISTA DEL MÓVIL -->
+    <div class="phone-wrapper">
+      <div class="phone-screen">
+        <div class="bg-pattern"></div>
+
+        <!-- Pantalla de perfil detrás (difuminada) -->
+        <div class="profile-bg-preview">
+          <div style="text-align:center; font-family:'Playfair Display', serif; font-size: 20px; font-weight:700; color:var(--wine);">Furancho Sessions</div>
+          <div class="profile-card-preview">
+            <div style="font-size: 48px;">🍷</div>
+            <h3 style="margin: 10px 0 5px; font-family:'Playfair Display', serif;">Mi Tarjeta VIP</h3>
+            <p style="color:var(--text-muted); font-size:13px;">Acumula tus visitas y gana premios especiales</p>
+          </div>
+        </div>
+
+        <!-- MODAL DE SORTEO INTERACTIVO -->
+        <div class="raffle-modal-demo" id="raffle-modal">
+          
+          <!-- CONTENEDOR 1: RULETA -->
+          <div id="demo-roulette" style="width: 100%;">
+            <h2 class="raffle-title-demo">Sorteo Especial</h2>
+            <p class="raffle-prize-text-demo">Sorteando: <strong style="color: var(--wine); font-weight:700;">Botella Magnum Mencía</strong></p>
+
+            <div class="spin-container">
+              <div class="spin-ring-demo"></div>
+              <div class="spin-inner-demo"></div>
+              <div class="spin-logo-demo">🍷</div>
+            </div>
+
+            <p class="raffle-searching-demo">Eligiendo al afortunado...</p>
+          </div>
+
+          <!-- CONTENEDOR 2: GANADOR -->
+          <div id="demo-winner" style="display: none; width: 100%;">
+            <span class="winner-emoji-demo">🏆</span>
+            <h2 class="winner-title-demo">¡ERES EL GANADOR!</h2>
+            <p style="font-size: 14px; font-weight: 300;">Has ganado: <strong style="color: var(--gold); font-weight: 700;">Botella Magnum Mencía</strong></p>
+            
+            <div class="winner-box-demo">
+              <p class="code-label-demo">Código de Verificación</p>
+              <p class="code-text-demo">H4K9</p>
+            </div>
+
+            <button class="btn-claim-demo">
+              ¡Acepto el premio! <span id="countdown-demo" style="opacity:0.8; font-size:13px; margin-left: 8px;">(180s)</span>
+            </button>
+            <p class="raffle-note-demo">🍷 Pulsa el botón y muestra la pantalla al personal del Furancho.</p>
+          </div>
+
+          <!-- CONTENEDOR 3: PERDEDOR -->
+          <div id="demo-loser" style="display: none; width: 100%;">
+            <div class="loser-emoji-demo">😔</div>
+            <h2 class="loser-title-demo">¡Casi!</h2>
+            <p style="font-size: 14.5px; color: var(--text-muted); margin-bottom: 28px; font-weight: 300; line-height: 1.6;">
+              El ganador de <strong style="color: var(--text);">Botella Magnum Mencía</strong> ha sido otra persona.<br>
+              ¡Suerte la próxima vez!
+            </p>
+            <button class="btn-close-demo">Cerrar</button>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let timerInterval = null;
+    let secondsLeft = 180;
+    let confettiInterval = null;
+
+    function showState(state) {
+      // Activar botón en panel de control
+      const buttons = document.querySelectorAll('.btn-control');
+      buttons.forEach(btn => btn.classList.remove('active'));
+      
+      // Limpiar temporizador y confetti
+      clearInterval(timerInterval);
+      clearInterval(confettiInterval);
+      removeConfetti();
+
+      // Buscar vistas del móvil
+      const roulette = document.getElementById('demo-roulette');
+      const winner = document.getElementById('demo-winner');
+      const loser = document.getElementById('demo-loser');
+
+      if (state === 'roulette') {
+        buttons[0].classList.add('active');
+        roulette.style.display = 'block';
+        winner.style.display = 'none';
+        loser.style.display = 'none';
+      } 
+      else if (state === 'winner') {
+        buttons[1].classList.add('active');
+        roulette.style.display = 'none';
+        winner.style.display = 'block';
+        loser.style.display = 'none';
+        
+        // Iniciar cuenta atrás del botón
+        secondsLeft = 180;
+        document.getElementById('countdown-demo').textContent = `(${secondsLeft}s)`;
+        timerInterval = setInterval(() => {
+          secondsLeft--;
+          document.getElementById('countdown-demo').textContent = `(${secondsLeft}s)`;
+          if (secondsLeft <= 0) clearInterval(timerInterval);
+        }, 1000);
+
+        // Lanzar confetti
+        startConfetti();
+      } 
+      else if (state === 'loser') {
+        buttons[2].classList.add('active');
+        roulette.style.display = 'none';
+        winner.style.display = 'none';
+        loser.style.display = 'block';
+      }
+    }
+
+    // Efecto Confetti
+    function startConfetti() {
+      const container = document.getElementById('raffle-modal');
+      const colors = ['#C4973A', '#8B1918', '#4ade80', '#fff', '#B52A2A'];
+      
+      confettiInterval = setInterval(() => {
+        const p = document.createElement('div');
+        p.className = 'confetti-particle';
+        
+        // Propiedades aleatorias
+        p.style.left = Math.random() * 350 + 'px';
+        p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        p.style.transform = `scale(${Math.random() * 0.8 + 0.5})`;
+        p.style.animationDuration = (Math.random() * 2 + 2) + 's';
+        
+        container.appendChild(p);
+        
+        // Eliminar partícula vieja
+        setTimeout(() => p.remove(), 4000);
+      }, 150);
+    }
+
+    function removeConfetti() {
+      const particles = document.querySelectorAll('.confetti-particle');
+      particles.forEach(p => p.remove());
+    }
+
+    // Inicializar estado ruleta
+    showState('roulette');
+  </script>
+
+</body>
+</html>

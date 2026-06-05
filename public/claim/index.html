@@ -1278,29 +1278,32 @@
       <p style="font-size:14px; color:var(--text-muted); margin-bottom:36px; line-height:1.6; font-weight:300;">Afterwork · Viño e Tapas</p>
 
       <div style="background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:20px; padding:22px; margin-bottom:14px;">
-        <p style="font-size:16px; font-weight:700; color:var(--text); margin-bottom:6px;">¿Ya tienes cuenta?</p>
-        <p style="font-size:13px; color:var(--text-muted); margin-bottom:20px; line-height:1.5; font-weight:300;">Si es tu primera vez, crea una cuenta nueva. Si ya viniste antes, recupera tu cuenta existente.</p>
+        <p style="font-size:16px; font-weight:700; color:var(--text); margin-bottom:6px;">¿Xa estivestes por aquí?</p>
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:20px; line-height:1.5; font-weight:300;">Se é a túa primeira vez, crea o pase. Se xa viñeches antes, recupera a túa conta.</p>
 
         <button onclick="startNewAccount()" class="btn-primary btn-accent" style="margin-bottom:10px;">
-          🍷 Es mi primera vez
+          🍷 Primeira vez no Furancho
         </button>
 
         <button onclick="showOnboardingRecovery()" style="width:100%; padding:16px 24px; background:transparent; border:1.5px solid rgba(139,25,24,0.3); border-radius:50px; color:var(--wine); font-family:'Outfit',sans-serif; font-size:15px; font-weight:600; cursor:pointer; letter-spacing:0.3px; transition:all 0.2s;" onmouseover="this.style.background='rgba(139,25,24,0.06)'" onmouseout="this.style.background='transparent'">
-          🔑 Ya tengo cuenta
+          🔑 Xa veño de antes
         </button>
       </div>
 
-      <!-- Opciones de recuperación (ocultas por defecto) -->
+      <!-- Opciones de recuperación (ocultas por defecto) — QR primero -->
       <div id="onboarding-recovery" style="display:none; background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:20px; padding:20px; text-align:left;">
-        <p style="font-size:14px; font-weight:700; color:var(--text); margin-bottom:14px;">¿Cómo recuperas tu cuenta?</p>
+        <p style="font-size:14px; font-weight:700; color:var(--text); margin-bottom:14px;">¿Como recuperas a túa conta?</p>
 
-        <div style="margin-bottom:12px; padding:14px 16px; background:rgba(196,151,58,0.07); border:1px solid rgba(196,151,58,0.22); border-radius:14px;">
-          <p style="font-size:13px; font-weight:700; color:var(--gold); margin-bottom:5px;">📱 Con el QR de recuperación</p>
-          <p style="font-size:12px; color:var(--text-muted); line-height:1.55; margin:0;">Abre la cámara de tu móvil y escanea el QR de tu cuenta (<em>furancho-mi-pase.png</em>). Se abrirá la app con tu cuenta restaurada automáticamente.</p>
+        <!-- QR — opción principal -->
+        <div style="margin-bottom:14px; padding:16px; background:rgba(196,151,58,0.07); border:1.5px solid rgba(196,151,58,0.3); border-radius:14px;">
+          <p style="font-size:13px; font-weight:700; color:var(--gold); margin-bottom:6px;">📱 Co QR de recuperación <span style="font-size:10px; background:rgba(196,151,58,0.2); padding:2px 7px; border-radius:100px; margin-left:4px;">MÁIS FÁCIL</span></p>
+          <p style="font-size:12px; color:var(--text-muted); line-height:1.6; margin:0;">Abre a cámara do móbil e escanea o QR da túa conta <em>(furancho-mi-pase.png)</em>. A app ábrese con todo restaurado. Sen máis.</p>
         </div>
 
-        <button onclick="openRestoreFlow()" style="width:100%; padding:15px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(139,25,24,0.3); letter-spacing:0.3px;">
-          📝 Usar mis 12 palabras
+        <!-- Palabras — opción secundaria -->
+        <button onclick="openRestoreFlow()" style="width:100%; padding:14px; background:transparent; border:1.5px solid rgba(42,21,9,0.15); border-radius:14px; font-family:'Outfit',sans-serif; font-size:13px; font-weight:600; color:var(--text-muted); cursor:pointer; text-align:left; display:flex; align-items:center; gap:10px;">
+          <span style="font-size:16px;">📝</span>
+          <span>Usar as miñas 12 palabras de recuperación</span>
         </button>
       </div>
     </div>
@@ -1411,8 +1414,8 @@
       </div>
 
       <p class="footer-note">
-        No necesitas contraseña ni crear una cuenta manualmente.<br>
-        Tu pase se guarda localmente en el móvil de forma segura.
+        Sen contrasinais nin rexistros. O teu pase gárdase<br>
+        só no teu móbil, como un segredo ben gardado.
       </p>
     </div>
   </div>
@@ -1424,10 +1427,10 @@
         <div class="spinner"></div>
         <div class="spinner-inner"></div>
       </div>
-      <h2 class="loading-title">Creando tu usuario...</h2>
+      <h2 class="loading-title">Preparando o teu pase...</h2>
       <p class="loading-sub">
-        Estamos registrando tu pase oficial.<br>
-        Esto tarda unos segundos. ¡No cierres la página!
+        Tarda dous segundos. Como o viño que non chegou aínda.<br>
+        Non peches a páxina, ho.
       </p>
     </div>
   </div>
@@ -1626,17 +1629,38 @@
         </div>
       </div>
 
-      <!-- ① TU CAMINO — visitas + puntos + journey -->
+      <!-- BOTÓN MARCHO — visible solo con sesión activa -->
+      <div id="marcho-banner" style="display:none; margin-bottom:16px;">
+        <button onclick="marcharDoFurancho()" style="
+          width:100%; padding:16px 20px;
+          background:rgba(42,21,9,0.05);
+          border:1.5px solid rgba(42,21,9,0.15);
+          border-radius:16px;
+          font-family:'Outfit',sans-serif; font-size:15px; font-weight:600;
+          color:var(--text-muted); cursor:pointer;
+          display:flex; align-items:center; justify-content:center; gap:10px;
+          transition:all 0.2s;"
+          onmouseover="this.style.borderColor='rgba(42,21,9,0.3)'; this.style.background='rgba(42,21,9,0.08)'"
+          onmouseout="this.style.borderColor='rgba(42,21,9,0.15)'; this.style.background='rgba(42,21,9,0.05)'">
+          <span style="font-size:18px;">🚪</span>
+          <span>Marcho que teño que marchar</span>
+        </button>
+      </div>
+
+      <!-- ① TU CAMINO — visitas + journey -->
       <div class="profile-progress-card" style="padding:22px; margin-bottom:20px;">
 
-        <!-- Visitas + puntos -->
         <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:22px; gap:12px;">
           <div>
-            <p style="font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">Tu camino en O Furancho</p>
+            <p style="font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">O teu camiño no Furancho</p>
             <div style="display:flex; align-items:baseline; gap:6px;">
               <span id="visit-count-display" style="font-family:'Playfair Display',serif; font-size:48px; font-weight:900; color:var(--wine); line-height:1;">0</span>
               <span id="visit-total-display" style="font-size:14px; color:var(--text-muted);">visitas</span>
             </div>
+          </div>
+          <!-- Indicador sesión activa -->
+          <div id="session-active-badge" style="display:none; flex-shrink:0; background:rgba(74,222,128,0.12); border:1px solid rgba(74,222,128,0.3); border-radius:100px; padding:6px 12px; font-size:11px; font-weight:700; color:#16a34a; white-space:nowrap; margin-top:4px;">
+            ● Estás aquí
           </div>
         </div>
 
@@ -1676,7 +1700,7 @@
           <span class="raffle-section-icon">🎁</span>
           <div style="flex:1;">
             <p class="raffle-section-title">Premios</p>
-            <p class="raffle-section-sub" id="raffle-status-text">Esperando próximo sorteo...</p>
+            <p class="raffle-section-sub" id="raffle-status-text">O bombo xa quere soar...</p>
           </div>
           <div class="raffle-live-dot" id="raffle-live-dot"></div>
         </div>
@@ -2079,7 +2103,7 @@
         }
       } catch (e) {
         console.error(e);
-        if (btn) { btn.disabled = false; btn.textContent = '🍷 Es mi primera vez'; }
+        if (btn) { btn.disabled = false; btn.textContent = '🍷 Primeira vez no Furancho'; }
         alert('Error al crear cuenta. Comprueba tu conexión e inténtalo de nuevo.');
       }
     }
@@ -2087,6 +2111,42 @@
     function showOnboardingRecovery() {
       const el = document.getElementById('onboarding-recovery');
       if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function marcharDoFurancho() {
+      const btn = document.querySelector('#marcho-banner button');
+      if (btn) { btn.disabled = true; btn.querySelector('span:last-child').textContent = 'Marchando...'; }
+      try {
+        const res = await fetch('/api/mint', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ walletAddress: userWalletAddress })
+        });
+        const data = await res.json();
+        document.getElementById('marcho-banner').style.display = 'none';
+        document.getElementById('session-active-badge').style.display = 'none';
+        const saidaTexts = [
+          'Ata logo! Que non tarden en volver.',
+          'Vai co vento, xa sabemos que volves.',
+          '¡Ata o próximo Furancho, ho!',
+          'Coidado coa porta ao saír. Xa a coñecedes.',
+          'Que a noite sexa longa... na casa.',
+        ];
+        showToast('🚪 ' + saidaTexts[Math.floor(Math.random() * saidaTexts.length)]);
+        if (data.levelName) {
+          setTimeout(() => showToast(`🎉 ¡Parabéns! Novo pase: ${data.levelName}`), 2000);
+        }
+        // Refrescar visitas
+        const refreshed = await fetch(`/api/mint/history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => null);
+        if (refreshed) {
+          userVisitCount = refreshed.visitCount || userVisitCount;
+          userClaimedLevels = refreshed.levels || userClaimedLevels;
+          showProfileScreen(userVisitCount, userClaimedLevels);
+        }
+      } catch(e) {
+        if (btn) { btn.disabled = false; btn.querySelector('span:last-child').textContent = 'Marcho que teño que marchar'; }
+        showToast('😬 Algo foi mal ao rexistrar a saída. Téntao de novo.');
+      }
     }
 
     // Comprobar historial de reclamos
@@ -2102,6 +2162,11 @@
         const data = await res.json();
         userVisitCount = data.visitCount || 0;
         userClaimedLevels = data.levels || [];
+        // Mostrar/ocultar botón Marcho según sesión activa
+        if (data.hasActiveSession) {
+          document.getElementById('marcho-banner').style.display = 'block';
+          document.getElementById('session-active-badge').style.display = 'block';
+        }
 
         // Cliente recurrente — siempre va al perfil directamente
         if (walletPreexistente || userVisitCount > 0 || userClaimedLevels.length > 0) {
@@ -2165,6 +2230,38 @@
       toast.innerHTML = msg;
       const content = document.querySelector('#screen-profile .content');
       if (content) content.insertBefore(toast, content.firstChild);
+    }
+
+    let _pollingInterval = null;
+    function startPollingForLevel(targetLevel, targetLevelName) {
+      if (_pollingInterval) clearInterval(_pollingInterval);
+
+      // Mostrar banner de progreso en la pantalla de perfil
+      showProfileBanner(`⏳ <strong>Minteando pase en Polygon:</strong> Estamos generando tu pase de <strong>${targetLevelName}</strong> en segundo plano. Esto puede tardar entre 10 y 60 segundos...`, 'gold');
+
+      let attempts = 0;
+      _pollingInterval = setInterval(async () => {
+        attempts++;
+        try {
+          const refreshed = await fetch(`/api/mint/history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => null);
+          if (refreshed && refreshed.levels && refreshed.levels.includes(targetLevel)) {
+            // ¡Confirmado! Detener polling, actualizar historial y redibujar perfil
+            clearInterval(_pollingInterval);
+            _pollingInterval = null;
+            userVisitCount = refreshed.visitCount || 0;
+            userClaimedLevels = refreshed.levels || [];
+            showProfileScreen(userVisitCount, userClaimedLevels);
+            showProfileBanner(`🎉 ¡Subiste de nivel! El pase de <strong>${targetLevelName}</strong> ya está activo en tu cuenta.`, 'gold');
+          } else if (attempts >= 20) {
+            // Detener tras 1 minuto para no saturar el servidor.
+            clearInterval(_pollingInterval);
+            _pollingInterval = null;
+            showProfileBanner(`🍷 El pase de <strong>${targetLevelName}</strong> se está generando en segundo plano. Aparecerá en tu cuenta en unos minutos.`, 'gold');
+          }
+        } catch (e) {
+          console.error('Error durante el polling del pase:', e);
+        }
+      }, 3000);
     }
 
     function showProgressBanner(text) {
@@ -2346,7 +2443,7 @@
         });
         const data = await res.json();
 
-        if (data.action === 'mint') {
+        if (data.action === 'mint' || data.action === 'mint_queued') {
           // Subió de nivel → actualizar perfil con banner
           const refreshed = await fetch(`/api/mint/history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => null);
           if (refreshed) {
@@ -2354,7 +2451,11 @@
             userClaimedLevels = refreshed.levels || [];
             showProfileScreen(userVisitCount, userClaimedLevels);
           }
-          showProfileBanner(`🎉 ¡Subiste de nivel! Conseguiches o pase <strong>${data.levelName}</strong>`, 'gold');
+          if (data.action === 'mint_queued') {
+            startPollingForLevel(data.level, data.levelName);
+          } else {
+            showProfileBanner(`🎉 ¡Subiste de nivel! Conseguiches o pase <strong>${data.levelName}</strong>`, 'gold');
+          }
         } else if (data.action === 'visit') {
           showProfileBanner('✓ Saída rexistrada. ¡Grazas por vir, ata pronto!', 'green');
         }
@@ -2385,11 +2486,15 @@
           body: JSON.stringify({ walletAddress: userWalletAddress })
         });
         const data = await res.json();
-        if (data.action === 'mint') {
+        if (data.action === 'mint' || data.action === 'mint_queued') {
           const refreshed = await fetch(`/api/mint/history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => null);
           if (refreshed) { userVisitCount = refreshed.visitCount || 0; userClaimedLevels = refreshed.levels || []; }
           showProfileScreen(userVisitCount, userClaimedLevels);
-          showProfileBanner(`🎉 ¡Subiste de nivel! Conseguiches o pase <strong>${data.levelName}</strong>`, 'gold');
+          if (data.action === 'mint_queued') {
+            startPollingForLevel(data.level, data.levelName);
+          } else {
+            showProfileBanner(`🎉 ¡Subiste de nivel! Conseguiches o pase <strong>${data.levelName}</strong>`, 'gold');
+          }
         } else if (data.action === 'cooldown') {
           btn.disabled = false;
           btn.textContent = '🍷 Fichar Salida';
@@ -2828,7 +2933,7 @@
         stateEl.innerHTML = `
           <div style="background:rgba(42,21,9,0.04); border:1px dashed rgba(42,21,9,0.15); border-radius:16px; padding:16px; text-align:center;">
             <div style="font-size:28px; margin-bottom:8px;">🚪</div>
-            <p style="font-size:13px; font-weight:700; color:var(--text); margin:0 0 4px;">Ficha tu entrada para participar</p>
+            <p style="font-size:13px; font-weight:700; color:var(--text); margin:0 0 4px;">Escanea o QR de entrada para participar</p>
             <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0;">Escanea el QR de entrada al llegar y entrarás automáticamente en todos los sorteos de la noche.</p>
             ${todayEvent ? `<div style="margin-top:12px; padding:10px 12px; background:rgba(139,25,24,0.06); border-radius:12px;">
               <p style="font-size:11px; font-weight:700; color:var(--wine); margin:0 0 2px;">🎉 Esta noche: ${todayEvent.title}</p>
@@ -2837,7 +2942,7 @@
             ${scheduleHTML}
           </div>`;
         section.style.display = 'none';
-        if (statusEl) statusEl.textContent = 'Ficha tu entrada para participar';
+        if (statusEl) statusEl.textContent = 'Escanea o QR de entrada para participar';
         return;
       }
 
@@ -2897,7 +3002,7 @@
       if (wins.length) {
         if (statusEl) statusEl.textContent = `🏆 ¡Has ganado ${wins.length === 1 ? 'un premio' : wins.length + ' premios'} esta noche!`;
       } else {
-        if (statusEl) statusEl.textContent = doneTonight > 0 ? `${doneTonight} sorteo${doneTonight!==1?'s':''} esta noche` : 'Esperando próximo sorteo...';
+        if (statusEl) statusEl.textContent = doneTonight > 0 ? `${doneTonight} sorteo${doneTonight!==1?'s':''} esta noche` : 'O bombo xa quere soar...';
       }
 
       section.style.display = 'block';
@@ -3086,8 +3191,12 @@
         showProfileScreen(userVisitCount, userClaimedLevels);
 
         // Banner según el resultado
-        if (data.action === 'mint') {
-          showProfileBanner(`🎉 ¡Felicidades! Conseguiches o pase <strong>${data.levelName}</strong>`, 'gold');
+        if (data.action === 'mint' || data.action === 'mint_queued') {
+          if (data.action === 'mint_queued') {
+            startPollingForLevel(data.level, data.levelName);
+          } else {
+            showProfileBanner(`🎉 ¡Felicidades! Conseguiches o pase <strong>${data.levelName}</strong>`, 'gold');
+          }
         } else if (data.action === 'visit') {
           showProfileBanner('✓ Saída rexistrada. ¡Grazas por vir, ata pronto!', 'green');
         }
@@ -3192,7 +3301,7 @@
           document.getElementById('raffle-loser-prize').textContent = data.prize;
           if (navigator.vibrate) navigator.vibrate([200]);
           if (dot) dot.classList.remove('live');
-          if (statusText) statusText.textContent = 'Esperando próximo sorteo...';
+          if (statusText) statusText.textContent = 'O bombo xa quere soar...';
           renderPrizes();
         }
       });
@@ -3201,7 +3310,7 @@
         hideAcceptBanner();
         const statusText = document.getElementById('raffle-status-text');
         const dot = document.getElementById('raffle-live-dot');
-        if (statusText) statusText.textContent = 'Esperando próximo sorteo...';
+        if (statusText) statusText.textContent = 'O bombo xa quere soar...';
         if (dot) dot.classList.remove('live');
         renderPrizes();
       });
@@ -3210,7 +3319,7 @@
         hideAcceptBanner();
         const statusText = document.getElementById('raffle-status-text');
         const dot = document.getElementById('raffle-live-dot');
-        if (statusText) statusText.textContent = 'Esperando próximo sorteo...';
+        if (statusText) statusText.textContent = 'O bombo xa quere soar...';
         if (dot) dot.classList.remove('live');
         renderPrizes();
       });

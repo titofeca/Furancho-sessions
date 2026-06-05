@@ -218,12 +218,12 @@ function checkRecentVisit(walletAddress, hours = 12) {
     LIMIT 1
   `).get(walletAddress);
   const row2 = db.prepare(`
-    SELECT exit_time
+    SELECT entry_time
     FROM sessions
-    WHERE wallet_address = ? 
-      AND exit_time >= datetime('now', '-${hours} hours')
+    WHERE wallet_address = ?
+      AND entry_time >= datetime('now', '-${hours} hours')
       AND counted_as_visit = 1
-    ORDER BY exit_time DESC 
+    ORDER BY entry_time DESC
     LIMIT 1
   `).get(walletAddress);
   return !!row || !!row2;
@@ -388,25 +388,21 @@ function checkDuplicate(walletAddress, email, level) {
 
 
 function openSession(walletAddress) {
-  const openSession = db.prepare(`SELECT id FROM sessions WHERE wallet_address = ? AND exit_time IS NULL ORDER BY entry_time DESC LIMIT 1`).get(walletAddress);
-  if (!openSession) {
-    db.prepare(`INSERT INTO sessions (wallet_address) VALUES (?)`).run(walletAddress);
+  const existing = db.prepare(`SELECT id FROM sessions WHERE wallet_address = ? AND exit_time IS NULL ORDER BY entry_time DESC LIMIT 1`).get(walletAddress);
+  if (!existing) {
+    const today = new Date().toISOString().slice(0, 10);
+    const hasEvent = !!db.prepare(`SELECT 1 FROM events WHERE event_date = ?`).get(today);
+    db.prepare(`INSERT INTO sessions (wallet_address, counted_as_visit) VALUES (?, ?)`).run(walletAddress, hasEvent ? 1 : 0);
   }
 }
 
 function closeSession(walletAddress) {
+  // Solo registra la salida y duración — counted_as_visit ya fue fijado en openSession (en la entrada)
   const session = db.prepare(`
     SELECT id, entry_time FROM sessions
     WHERE wallet_address = ? AND exit_time IS NULL
     ORDER BY entry_time DESC LIMIT 1
   `).get(walletAddress);
-
-  // Solo cuenta como visita si ese día tiene un evento en la agenda
-  const entryDay = session
-    ? session.entry_time.slice(0, 10)
-    : new Date().toISOString().slice(0, 10);
-  const hasEvent = !!db.prepare(`SELECT 1 FROM events WHERE event_date = ?`).get(entryDay);
-  const countVisit = hasEvent ? 1 : 0;
 
   if (session) {
     const entryDate = new Date(session.entry_time + 'Z');
@@ -414,15 +410,9 @@ function closeSession(walletAddress) {
     let diffMinutes = Math.floor((now - entryDate) / 60000);
     if (diffMinutes > 12 * 60 || diffMinutes < 0) diffMinutes = 60;
     db.prepare(`
-      UPDATE sessions
-      SET exit_time = datetime('now'), duration_minutes = ?, counted_as_visit = ?
+      UPDATE sessions SET exit_time = datetime('now'), duration_minutes = ?
       WHERE id = ?
-    `).run(diffMinutes, countVisit, session.id);
-  } else {
-    db.prepare(`
-      INSERT INTO sessions (wallet_address, entry_time, exit_time, duration_minutes, counted_as_visit)
-      VALUES (?, datetime('now', '-60 minutes'), datetime('now'), 60, ?)
-    `).run(walletAddress, countVisit);
+    `).run(diffMinutes, session.id);
   }
 }
 
@@ -608,14 +598,13 @@ function getEligibleRaffleParticipants() {
 }
 
 function autoCloseSessionsAt23() {
-  const open = db.prepare(`SELECT id, wallet_address, entry_time FROM sessions WHERE exit_time IS NULL AND date(entry_time) = date('now')`).all();
+  const open = db.prepare(`SELECT id FROM sessions WHERE exit_time IS NULL AND date(entry_time) = date('now')`).all();
   const stmt = db.prepare(`
     UPDATE sessions
     SET exit_time = datetime('now'),
         duration_minutes = CASE WHEN (CAST((julianday('now') - julianday(entry_time)) * 1440 AS INTEGER)) > 720
           THEN 240
-          ELSE CAST((julianday('now') - julianday(entry_time)) * 1440 AS INTEGER) END,
-        counted_as_visit = CASE WHEN (SELECT 1 FROM events WHERE event_date = date(entry_time)) THEN 1 ELSE 0 END
+          ELSE CAST((julianday('now') - julianday(entry_time)) * 1440 AS INTEGER) END
     WHERE id = ?
   `);
   open.forEach(s => stmt.run(s.id));
