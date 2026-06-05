@@ -73,9 +73,19 @@ db.exec(`
     entry_time TEXT DEFAULT (datetime('now')),
     exit_time TEXT,
     duration_minutes INTEGER,
-    counted_as_visit INTEGER DEFAULT 0
+    counted_as_visit INTEGER DEFAULT 0,
+    exit_points INTEGER DEFAULT 0
   );
   CREATE INDEX IF NOT EXISTS idx_sessions_wallet ON sessions(wallet_address);
+
+  CREATE TABLE IF NOT EXISTS points (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_address TEXT NOT NULL,
+    points INTEGER NOT NULL,
+    reason TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_points_wallet ON points(wallet_address);
 
   CREATE TABLE IF NOT EXISTS events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -124,6 +134,11 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 `);
+
+// Migraciones seguras
+try { db.exec(`ALTER TABLE sessions ADD COLUMN exit_points INTEGER DEFAULT 0`); } catch (_) {}
+try { db.exec(`CREATE TABLE IF NOT EXISTS points (id INTEGER PRIMARY KEY AUTOINCREMENT, wallet_address TEXT NOT NULL, points INTEGER NOT NULL, reason TEXT, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
+try { db.exec(`CREATE INDEX IF NOT EXISTS idx_points_wallet ON points(wallet_address)`); } catch (_) {}
 
 // Sesiones de prueba del 4 jun antes de las 19:30 no cuentan como visita real
 try {
@@ -321,10 +336,14 @@ function openSession(walletAddress) {
   }
 }
 
-function closeSession(walletAddress) {
+// manual=true → escaneó QR salida (80pts), manual=false → cierre automático (5pts)
+function closeSession(walletAddress, manual = true) {
+  const pts = manual ? 80 : 5;
+  const reason = manual ? 'Salida fichada' : 'Salida automática';
+
   const session = db.prepare(`
-    SELECT id, entry_time FROM sessions 
-    WHERE wallet_address = ? AND exit_time IS NULL 
+    SELECT id, entry_time FROM sessions
+    WHERE wallet_address = ? AND exit_time IS NULL
     ORDER BY entry_time DESC LIMIT 1
   `).get(walletAddress);
 
@@ -332,22 +351,30 @@ function closeSession(walletAddress) {
     const entryDate = new Date(session.entry_time + 'Z');
     const now = new Date();
     let diffMinutes = Math.floor((now - entryDate) / 60000);
-    // Asignar 60 min si pasaron mas de 12 horas o es negativo
-    if (diffMinutes > 12 * 60 || diffMinutes < 0) {
-      diffMinutes = 60;
-    }
+    if (diffMinutes > 12 * 60 || diffMinutes < 0) diffMinutes = 60;
     db.prepare(`
-      UPDATE sessions 
-      SET exit_time = datetime('now'), duration_minutes = ?, counted_as_visit = 1 
+      UPDATE sessions
+      SET exit_time = datetime('now'), duration_minutes = ?, counted_as_visit = 1, exit_points = ?
       WHERE id = ?
-    `).run(diffMinutes, session.id);
+    `).run(diffMinutes, pts, session.id);
   } else {
-    // Sesion huerfana: no escaneo a la entrada. Damos 60 min
     db.prepare(`
-      INSERT INTO sessions (wallet_address, entry_time, exit_time, duration_minutes, counted_as_visit) 
-      VALUES (?, datetime('now', '-60 minutes'), datetime('now'), 60, 1)
-    `).run(walletAddress);
+      INSERT INTO sessions (wallet_address, entry_time, exit_time, duration_minutes, counted_as_visit, exit_points)
+      VALUES (?, datetime('now', '-60 minutes'), datetime('now'), 60, 1, ?)
+    `).run(walletAddress, pts);
   }
+
+  // Registrar puntos
+  db.prepare(`INSERT INTO points (wallet_address, points, reason) VALUES (?, ?, ?)`).run(walletAddress, pts, reason);
+}
+
+function getPoints(walletAddress) {
+  const row = db.prepare(`SELECT COALESCE(SUM(points),0) as total FROM points WHERE wallet_address = ?`).get(walletAddress);
+  return row ? row.total : 0;
+}
+
+function getPointsHistory(walletAddress) {
+  return db.prepare(`SELECT points, reason, created_at FROM points WHERE wallet_address = ? ORDER BY created_at DESC LIMIT 20`).all(walletAddress);
 }
 
 function savePushSubscription(walletAddress, subscription) {
