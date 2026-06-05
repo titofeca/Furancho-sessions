@@ -2864,9 +2864,18 @@
         rejected:           (r, won) => won
           ? `<span style="color:var(--wine); font-weight:700;">🍷 ¡Outra vez será, non fuches nada áxil!</span><br><span style="font-size:11px; color:var(--text-muted); padding-top:4px;">Eso pásache por estar de leria e durmir na palla... ¡Para a próxima espabila, ho! 😜</span>`
           : `<span style="color:var(--text-muted);">Sorteo finalizado · ${r.prize} (No premiado)</span>`,
-        pending_acceptance: (r, won) => won
-          ? `<span style="color:var(--gold); font-weight:700;">⏳ ¡Ganaste! Acepta el premio</span>`
-          : `<span style="color:var(--text-muted);">🎲 Sorteo en curso... (esperando confirmación)</span>`,
+        pending_acceptance: (r, won) => {
+          if (won) {
+            const deadlineDate = new Date(r.acceptance_deadline.replace(' ', 'T') + 'Z');
+            const diffSecs = Math.max(0, Math.floor((deadlineDate - new Date()) / 1000));
+            if (diffSecs > 0) {
+              return `<span style="color:var(--gold); font-weight:700;">⏳ ¡Ganaste! Acepta el premio (${diffSecs}s)</span>`;
+            } else {
+              return `<span style="color:var(--wine); font-weight:700;">🍷 ¡Outra vez será, non fuches nada áxil!</span><br><span style="font-size:11px; color:var(--text-muted); padding-top:4px;">Eso pásache por estar de leria e durmir na palla... ¡Para a próxima espabila, ho! 😜</span>`;
+            }
+          }
+          return `<span style="color:var(--text-muted);">🎲 Sorteo en curso... (esperando confirmación)</span>`;
+        },
         pending:            (r, won) => won
           ? `<span style="color:var(--gold); font-weight:700;">🏆 ¡Ganaste!</span>`
           : `<span style="color:var(--text-muted);">🎲 Sorteo activo</span>`,
