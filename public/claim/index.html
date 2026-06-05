@@ -1270,8 +1270,44 @@
 </head>
 <body>
 
+  <!-- ==================== PANTALLA: ONBOARDING ==================== -->
+  <div class="screen active" id="screen-onboarding" style="justify-content:center; padding:40px 24px;">
+    <div style="width:100%; max-width:380px; text-align:center;">
+      <img src="/assets/logo.png" alt="Furancho Sessions" style="height:52px; border-radius:10px; margin-bottom:32px; opacity:0.9;" />
+      <h1 style="font-family:'Playfair Display',serif; font-size:30px; font-weight:900; color:var(--text); margin-bottom:6px; letter-spacing:-0.3px;">Furancho Sessions</h1>
+      <p style="font-size:14px; color:var(--text-muted); margin-bottom:36px; line-height:1.6; font-weight:300;">Afterwork · Viño e Tapas</p>
+
+      <div style="background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:20px; padding:22px; margin-bottom:14px;">
+        <p style="font-size:16px; font-weight:700; color:var(--text); margin-bottom:6px;">¿Ya tienes cuenta?</p>
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:20px; line-height:1.5; font-weight:300;">Si es tu primera vez, crea una cuenta nueva. Si ya viniste antes, recupera tu cuenta existente.</p>
+
+        <button onclick="startNewAccount()" class="btn-primary btn-accent" style="margin-bottom:10px;">
+          🍷 Es mi primera vez
+        </button>
+
+        <button onclick="showOnboardingRecovery()" style="width:100%; padding:16px 24px; background:transparent; border:1.5px solid rgba(139,25,24,0.3); border-radius:50px; color:var(--wine); font-family:'Outfit',sans-serif; font-size:15px; font-weight:600; cursor:pointer; letter-spacing:0.3px; transition:all 0.2s;" onmouseover="this.style.background='rgba(139,25,24,0.06)'" onmouseout="this.style.background='transparent'">
+          🔑 Ya tengo cuenta
+        </button>
+      </div>
+
+      <!-- Opciones de recuperación (ocultas por defecto) -->
+      <div id="onboarding-recovery" style="display:none; background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:20px; padding:20px; text-align:left;">
+        <p style="font-size:14px; font-weight:700; color:var(--text); margin-bottom:14px;">¿Cómo recuperas tu cuenta?</p>
+
+        <div style="margin-bottom:12px; padding:14px 16px; background:rgba(196,151,58,0.07); border:1px solid rgba(196,151,58,0.22); border-radius:14px;">
+          <p style="font-size:13px; font-weight:700; color:var(--gold); margin-bottom:5px;">📱 Con el QR de recuperación</p>
+          <p style="font-size:12px; color:var(--text-muted); line-height:1.55; margin:0;">Abre la cámara de tu móvil y escanea el QR de tu cuenta (<em>furancho-mi-pase.png</em>). Se abrirá la app con tu cuenta restaurada automáticamente.</p>
+        </div>
+
+        <button onclick="openRestoreFlow()" style="width:100%; padding:15px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(139,25,24,0.3); letter-spacing:0.3px;">
+          📝 Usar mis 12 palabras
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- ==================== PANTALLA 1: CLAIM ==================== -->
-  <div class="screen active" id="screen-claim">
+  <div class="screen" id="screen-claim">
     <div class="header">
       <div class="header-logo-row">
         <img src="/assets/logo.png" alt="Furancho Sessions Logo" />
@@ -1992,9 +2028,12 @@
 
     // Restaurar cuenta desde QR de recuperación (?restore=0x...)
     const _restoreParam = new URLSearchParams(window.location.search).get('restore');
+    const _isQrRestore = !!(
+      _restoreParam && /^0x[a-fA-F0-9]{40}$/.test(_restoreParam) &&
+      !localStorage.getItem('furancho_wallet_address')
+    );
     if (_restoreParam && /^0x[a-fA-F0-9]{40}$/.test(_restoreParam)) {
       localStorage.setItem('furancho_wallet_address', _restoreParam);
-      // Limpiar la URL sin recargar
       history.replaceState(null, '', '/claim');
     }
 
@@ -2007,28 +2046,9 @@
     // Inicializar billetera anónima
     async function initWallet() {
       if (!userWalletAddress) {
-        // Generar una billetera nueva en el servidor de forma segura
-        try {
-          const res = await fetch('/api/mint/create-wallet', { method: 'POST' });
-          const data = await res.json();
-          if (data.address && data.privateKey) {
-            userWalletAddress = data.address;
-            userWalletPrivateKey = data.privateKey;
-            localStorage.setItem('furancho_wallet_address', userWalletAddress);
-            localStorage.setItem('furancho_wallet_private_key', userWalletPrivateKey);
-            if (data.mnemonic) {
-              localStorage.setItem('furancho_wallet_mnemonic', data.mnemonic);
-              // Mostrar las 12 palabras en primer uso — bloqueante
-              setTimeout(() => showMnemonicModal(data.mnemonic), 800);
-            }
-          } else {
-            throw new Error('No se pudo generar billetera');
-          }
-        } catch (e) {
-          console.error(e);
-          document.getElementById('wallet-address-display').textContent = 'Error al crear billetera. Recarga la página.';
-          return;
-        }
+        // Mostrar onboarding — el usuario elige si es nuevo o tiene cuenta
+        showScreen('screen-onboarding');
+        return;
       }
 
       // Mostrar la dirección en el claim
@@ -2040,6 +2060,40 @@
 
       // Cargar mensajes publicados por el admin para el nivel correspondiente
       loadAdminMessages();
+    }
+
+    // Crear cuenta nueva desde onboarding
+    async function startNewAccount() {
+      const btn = document.querySelector('#screen-onboarding .btn-primary');
+      if (btn) { btn.disabled = true; btn.textContent = 'Creando cuenta...'; }
+      try {
+        const res = await fetch('/api/mint/create-wallet', { method: 'POST' });
+        const data = await res.json();
+        if (data.address && data.privateKey) {
+          userWalletAddress = data.address;
+          userWalletPrivateKey = data.privateKey;
+          localStorage.setItem('furancho_wallet_address', userWalletAddress);
+          localStorage.setItem('furancho_wallet_private_key', userWalletPrivateKey);
+          if (data.mnemonic) {
+            localStorage.setItem('furancho_wallet_mnemonic', data.mnemonic);
+          }
+          await initWallet();
+          if (data.mnemonic) {
+            setTimeout(() => showMnemonicModal(data.mnemonic), 800);
+          }
+        } else {
+          throw new Error('No se pudo generar billetera');
+        }
+      } catch (e) {
+        console.error(e);
+        if (btn) { btn.disabled = false; btn.textContent = '🍷 Es mi primera vez'; }
+        alert('Error al crear cuenta. Comprueba tu conexión e inténtalo de nuevo.');
+      }
+    }
+
+    function showOnboardingRecovery() {
+      const el = document.getElementById('onboarding-recovery');
+      if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
     }
 
     // Comprobar historial de reclamos
@@ -2071,6 +2125,7 @@
         }
 
         // Primera vez — mostrar formulario con el nivel correcto si hay ?level
+        showScreen('screen-claim');
         if (hasLevel) {
           currentLevel = levelParam;
           applyLevelTheme(levelParam);
@@ -2085,9 +2140,12 @@
         if (walletPreexistente) {
           if (hasLevel) await applyManualLevel(levelParam);
           showProfileScreen(userVisitCount, userClaimedLevels);
-        } else if (hasLevel) {
-          currentLevel = levelParam;
-          applyLevelTheme(levelParam);
+        } else {
+          showScreen('screen-claim');
+          if (hasLevel) {
+            currentLevel = levelParam;
+            applyLevelTheme(levelParam);
+          }
         }
       }
     }
@@ -2259,6 +2317,11 @@
       loadAgenda();
       loadPoints();
       checkPendingMnemonic();
+
+      // Mostrar toast si viene de restauración por QR
+      if (_isQrRestore) {
+        setTimeout(() => showToast('✅ ¡Cuenta recuperada con QR! Benvido de volta.'), 600);
+      }
 
       // Pedir permiso de notificaciones push (con delay para no interrumpir)
       setTimeout(requestPushPermission, 3000);

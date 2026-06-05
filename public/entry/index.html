@@ -380,6 +380,57 @@
 </head>
 <body>
 
+  <!-- ==================== PANTALLA: ONBOARDING ==================== -->
+  <div class="screen" id="screen-onboarding" style="display: none; justify-content: center; padding: 40px 24px;">
+    <div style="width: 100%; max-width: 380px; text-align: center;">
+      <div class="logo-mark"><img src="/assets/logo.png" alt="Furancho Sessions" /></div>
+
+      <h2 class="loading-title" style="margin-bottom: 6px;">Furancho Sessions</h2>
+      <p class="loading-sub" style="margin-bottom: 32px;">Afterwork · Viño e Tapas</p>
+
+      <div style="background: rgba(42,21,9,0.05); border: 1px solid rgba(42,21,9,0.1); border-radius: 20px; padding: 22px; margin-bottom: 14px;">
+        <p style="font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 6px; font-family: 'Playfair Display', serif;">¿Ya tienes cuenta?</p>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5; font-weight: 300;">Si es tu primera vez, crea una cuenta nueva. Si ya viniste antes, recupera tu cuenta existente.</p>
+
+        <button id="onboarding-new-btn" onclick="onboardingNew()"
+          style="display: block; width: 100%; padding: 18px 24px; background: linear-gradient(135deg, var(--wine) 0%, var(--wine-dark) 100%); color: #fff; font-family: 'Outfit', sans-serif; font-size: 17px; font-weight: 700; text-align: center; border: none; border-radius: 50px; box-shadow: 0 6px 24px rgba(139,25,24,0.35); margin-bottom: 10px; cursor: pointer; letter-spacing: 0.3px;">
+          🍷 Es mi primera vez
+        </button>
+
+        <button onclick="onboardingShowRecovery()"
+          style="width: 100%; padding: 16px 24px; background: transparent; border: 1.5px solid rgba(139,25,24,0.3); border-radius: 50px; color: var(--wine); font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; letter-spacing: 0.3px;">
+          🔑 Ya tengo cuenta
+        </button>
+      </div>
+
+      <!-- Opciones de recuperación -->
+      <div id="onboarding-recovery-entry" style="display: none; background: rgba(42,21,9,0.04); border: 1px solid rgba(42,21,9,0.08); border-radius: 20px; padding: 20px; text-align: left;">
+        <p style="font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 14px;">¿Cómo recuperas tu cuenta?</p>
+
+        <div style="margin-bottom: 12px; padding: 14px; background: rgba(196,151,58,0.07); border: 1px solid rgba(196,151,58,0.2); border-radius: 14px;">
+          <p style="font-size: 13px; font-weight: 700; color: var(--gold); margin-bottom: 4px;">📱 Con el QR de recuperación</p>
+          <p style="font-size: 12px; color: var(--text-muted); line-height: 1.55; margin: 0;">Abre la cámara de tu móvil y escanea el QR (<em>furancho-mi-pase.png</em>). Te llevará a la app con tu cuenta restaurada y podrás volver a escanear la entrada.</p>
+        </div>
+
+        <button onclick="onboardingOpenRestore()"
+          style="width: 100%; padding: 15px; background: linear-gradient(135deg, var(--wine), var(--wine-dark)); color: #fff; border: none; border-radius: 50px; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(139,25,24,0.3);">
+          📝 Usar mis 12 palabras
+        </button>
+
+        <!-- Formulario de recuperación por palabras -->
+        <div id="entry-restore-panel" style="display: none; margin-top: 16px;">
+          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">Introduce tus <strong>12 palabras de recuperación</strong> en orden.</p>
+          <div id="entry-restore-inputs" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;"></div>
+          <p id="entry-restore-error" style="display: none; color: var(--wine); font-size: 13px; font-weight: 600; text-align: center; margin-bottom: 10px;"></p>
+          <button id="entry-restore-btn" onclick="submitEntryRestore()"
+            style="width: 100%; padding: 15px; background: linear-gradient(135deg, var(--wine), var(--wine-dark)); color: #fff; border: none; border-radius: 50px; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 10px rgba(139,25,24,0.3);">
+            Recuperar y fichar entrada
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="screen" id="screen-loading" style="display: flex;">
     <div class="loading-container">
       <div class="logo-mark">
