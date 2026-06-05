@@ -564,6 +564,38 @@ function getReactionsForMessages(messageIds) {
   return result;
 }
 
+function getEventSessions(dateFilter) {
+  // dateFilter: 'YYYY-MM-DD' o null para hoy
+  const day = dateFilter || new Date().toISOString().slice(0, 10);
+  return db.prepare(`
+    SELECT
+      s.id,
+      s.wallet_address,
+      substr(s.wallet_address,1,6)||'...'||substr(s.wallet_address,-4) as wallet_masked,
+      s.entry_time,
+      s.exit_time,
+      s.duration_minutes,
+      s.counted_as_visit,
+      COALESCE(m.level, 0) as level,
+      COALESCE(m.level_name, 'Sin NFT') as level_name
+    FROM sessions s
+    LEFT JOIN (
+      SELECT wallet_address, MAX(level) as level, MAX(level_name) as level_name
+      FROM mints WHERE status='success' GROUP BY wallet_address
+    ) m ON s.wallet_address = m.wallet_address
+    WHERE date(s.entry_time) = ?
+    ORDER BY s.entry_time DESC
+  `).all(day);
+}
+
+function getSessionDates() {
+  return db.prepare(`
+    SELECT DISTINCT date(entry_time) as day, COUNT(*) as count
+    FROM sessions WHERE entry_time IS NOT NULL
+    GROUP BY day ORDER BY day DESC LIMIT 30
+  `).all();
+}
+
 module.exports = {
   openSession,
   closeSession,
@@ -588,6 +620,8 @@ module.exports = {
   getRaffleHistory,
   getMyWins,
   getSessionAnalytics,
+  getEventSessions,
+  getSessionDates,
   getEvents,
   toggleRsvp,
   getRsvpStatus,

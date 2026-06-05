@@ -1204,6 +1204,45 @@
 
     </div>
 
+    <!-- ==================== PÁGINA: VISITAS ==================== -->
+    <div class="page" id="page-visits">
+      <div class="page-header">
+        <h1 class="page-title">Visitas del Evento</h1>
+        <p class="page-subtitle">Entradas y salidas por sesión</p>
+      </div>
+
+      <div class="glass-card" style="margin-bottom:16px;">
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <label style="font-size:12px; color:var(--text-muted); white-space:nowrap;">Fecha:</label>
+          <select id="visits-date-select" onchange="loadVisits(this.value)" style="flex:1; min-width:140px; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:8px 12px; font-size:13px;">
+            <option value="">Hoy</option>
+          </select>
+          <button class="filter-btn active" onclick="loadVisits(document.getElementById('visits-date-select').value)">↻</button>
+        </div>
+      </div>
+
+      <div class="glass-card" style="margin-bottom:16px;" id="visits-summary" style="display:none;"></div>
+
+      <div class="glass-card">
+        <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-size:12px;">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border);">
+                <th style="text-align:left; padding:8px 4px; color:var(--text-muted); font-weight:600;">Wallet</th>
+                <th style="text-align:left; padding:8px 4px; color:var(--text-muted); font-weight:600;">Nivel</th>
+                <th style="text-align:left; padding:8px 4px; color:var(--text-muted); font-weight:600;">Entrada</th>
+                <th style="text-align:left; padding:8px 4px; color:var(--text-muted); font-weight:600;">Salida</th>
+                <th style="text-align:right; padding:8px 4px; color:var(--text-muted); font-weight:600;">Min</th>
+              </tr>
+            </thead>
+            <tbody id="visits-tbody">
+              <tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:24px; font-size:13px;">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- ==================== PÁGINA: EVENTOS ==================== -->
     <div class="page" id="page-events">
 
@@ -1250,6 +1289,10 @@
     <button class="nav-item" onclick="showPage('raffles')" id="nav-raffles">
       <span class="nav-icon">🎰</span>
       <span>Rifa</span>
+    </button>
+    <button class="nav-item" onclick="showPage('visits')" id="nav-visits">
+      <span class="nav-icon">🚪</span>
+      <span>Visitas</span>
     </button>
     <button class="nav-item" onclick="showPage('events')" id="nav-events" style="position:relative;">
       <span class="nav-icon">📅</span>
@@ -1329,6 +1372,64 @@
     loadVipBadge();
     if (pageId === 'holders') loadPeakHours();
     if (pageId === 'raffles') { loadEligibleParticipants(); loadRaffleHistory(); }
+    if (pageId === 'visits') loadVisits();
+  }
+
+  // ==================== VISITAS ====================
+  async function loadVisits(dateVal) {
+    const url = '/api/admin/event-sessions' + (dateVal ? `?date=${dateVal}` : '');
+    try {
+      const data = await fetch(url, { headers: authHeaders() }).then(r => r.json());
+
+      // Rellenar selector de fechas
+      const sel = document.getElementById('visits-date-select');
+      const currentVal = sel.value;
+      sel.innerHTML = '<option value="">Hoy</option>' +
+        (data.dates || []).map(d => `<option value="${d.day}" ${d.day === (dateVal||'') ? 'selected' : ''}>${d.day} (${d.count})</option>`).join('');
+      if (!dateVal) sel.value = '';
+
+      const sessions = data.sessions || [];
+      const tbody = document.getElementById('visits-tbody');
+
+      // Resumen
+      const open = sessions.filter(s => !s.exit_time).length;
+      const closed = sessions.filter(s => s.exit_time).length;
+      const avgMin = sessions.filter(s => s.duration_minutes > 0).length
+        ? Math.round(sessions.filter(s => s.duration_minutes > 0).reduce((a,s) => a + s.duration_minutes, 0) / sessions.filter(s => s.duration_minutes > 0).length)
+        : 0;
+      document.getElementById('visits-summary').innerHTML =
+        `<div style="display:flex; gap:16px; flex-wrap:wrap;">
+          <div><div style="font-size:22px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text);">${sessions.length}</div><div style="font-size:11px; color:var(--text-muted);">total entradas</div></div>
+          <div><div style="font-size:22px; font-weight:900; font-family:'Playfair Display',serif; color:#4ade80;">${closed}</div><div style="font-size:11px; color:var(--text-muted);">con salida</div></div>
+          <div><div style="font-size:22px; font-weight:900; font-family:'Playfair Display',serif; color:var(--gold);">${open}</div><div style="font-size:11px; color:var(--text-muted);">aún dentro</div></div>
+          <div><div style="font-size:22px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text);">${avgMin}m</div><div style="font-size:11px; color:var(--text-muted);">media estancia</div></div>
+        </div>`;
+      document.getElementById('visits-summary').style.display = 'block';
+
+      if (!sessions.length) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:24px; font-size:13px;">Sin visitas para esta fecha</td></tr>`;
+        return;
+      }
+
+      const levelColors = { 0:'#888', 1:'#cd7f32', 2:'#aaa', 3:'#ffd700', 4:'#e5007e' };
+      const fmtTime = t => t ? new Date(t).toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' }) : '—';
+
+      tbody.innerHTML = sessions.map(s => `
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 4px; font-family:monospace; font-size:11px;">${s.wallet_masked}</td>
+          <td style="padding:8px 4px;">
+            <span style="background:${levelColors[s.level]}22; color:${levelColors[s.level]}; border:1px solid ${levelColors[s.level]}44; border-radius:100px; padding:2px 8px; font-size:10px; font-weight:700; white-space:nowrap;">
+              ${s.level > 0 ? `Nv${s.level}` : '—'} ${s.level > 0 ? s.level_name : ''}
+            </span>
+          </td>
+          <td style="padding:8px 4px; color:var(--text); font-size:12px;">${fmtTime(s.entry_time)}</td>
+          <td style="padding:8px 4px; color:${s.exit_time ? 'var(--text)' : 'var(--gold)'}; font-size:12px;">${s.exit_time ? fmtTime(s.exit_time) : '⏳ dentro'}</td>
+          <td style="padding:8px 4px; text-align:right; color:var(--text-muted); font-size:12px;">${s.duration_minutes > 0 ? s.duration_minutes + 'm' : '—'}</td>
+        </tr>
+      `).join('');
+    } catch(e) {
+      document.getElementById('visits-tbody').innerHTML = `<tr><td colspan="5" style="color:red; padding:16px; text-align:center;">Error: ${e.message}</td></tr>`;
+    }
   }
 
   // ==================== STATS ====================

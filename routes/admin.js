@@ -11,7 +11,9 @@ const {
   getMessages,
   addReaction,
   getReactionsForMessages,
-  ALLOWED_REACTIONS
+  ALLOWED_REACTIONS,
+  getEventSessions,
+  getSessionDates
 } = require('../db/database');
 const { DEMO_MODE } = require('../services/polygon');
 const { sendPushToAll } = require('../services/push');
@@ -180,6 +182,17 @@ router.get('/reactions-summary', requireAuth, (req, res) => {
   if (!raw.length) return res.json({});
   try {
     res.json(getReactionsForMessages(raw));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/event-sessions?date=YYYY-MM-DD — visitas de un día (admin)
+router.get('/event-sessions', requireAuth, (req, res) => {
+  try {
+    const sessions = getEventSessions(req.query.date || null);
+    const dates = getSessionDates();
+    res.json({ sessions, dates });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
