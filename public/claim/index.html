@@ -1805,12 +1805,44 @@
 
   <!-- ==================== RAFFLE MODAL ==================== -->
   <div class="raffle-modal screen" id="raffle-modal" style="position: fixed; inset: 0; z-index: 1000;">
-    <!-- Roulette Animation -->
-    <div id="raffle-roulette" style="display: none;">
-      <h2 class="raffle-title">Sorteo Especial</h2>
-      <p class="raffle-prize-text" id="raffle-prize-text">Sorteando: ...</p>
-      <div class="raffle-slot">🎰</div>
-      <p class="raffle-searching">Buscando ganador entre los presentes...</p>
+    <!-- Roulette Animation — logo girando -->
+    <div id="raffle-roulette" style="display: none; text-align:center;">
+      <h2 class="raffle-title" style="font-size:26px; margin-bottom:8px;">Sorteo Especial</h2>
+      <p class="raffle-prize-text" id="raffle-prize-text" style="margin-bottom:36px;">Sorteando: ...</p>
+
+      <!-- Logo spinner -->
+      <div style="position:relative; width:120px; height:120px; margin:0 auto 32px;">
+        <!-- Anillo de color girando -->
+        <div id="spin-ring" style="
+          position:absolute; inset:-8px;
+          border-radius:50%;
+          background:conic-gradient(var(--wine),var(--gold),#fff,var(--wine));
+          animation:spinRing 1s linear infinite;
+        "></div>
+        <!-- Fondo blanco interior -->
+        <div style="position:absolute; inset:3px; border-radius:50%; background:var(--cream);"></div>
+        <!-- Logo -->
+        <img src="/assets/logo.jpg" onerror="this.style.display='none'; document.getElementById('spin-fallback').style.display='flex';"
+          style="position:absolute; inset:8px; border-radius:50%; object-fit:cover; animation:logoPulse 0.8s ease-in-out infinite alternate;" />
+        <div id="spin-fallback" style="display:none; position:absolute; inset:8px; border-radius:50%; background:var(--wine); align-items:center; justify-content:center; font-size:44px; animation:logoPulse 0.8s ease-in-out infinite alternate;">🍷</div>
+      </div>
+
+      <p class="raffle-searching" style="font-size:14px; letter-spacing:0.5px; animation:searchPulse 1.2s ease-in-out infinite;">Eligiendo al afortunado...</p>
+
+      <style>
+        @keyframes spinRing {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+        @keyframes logoPulse {
+          from { transform: scale(0.96); }
+          to   { transform: scale(1.04); }
+        }
+        @keyframes searchPulse {
+          0%,100% { opacity: 0.5; }
+          50% { opacity: 1; }
+        }
+      </style>
     </div>
 
     <!-- Partículas decorativas -->
@@ -1820,12 +1852,17 @@
     <div id="raffle-winner" style="display: none; width: 100%; max-width: 360px;">
       <span class="raffle-winner-emoji">🏆</span>
       <h2 class="raffle-winner-title">¡ERES EL GANADOR!</h2>
-      <p style="font-size: 15px; color: var(--text); margin-bottom: 26px; font-weight: 300;">Has ganado: <strong id="raffle-winner-prize" style="font-weight: 700; color: var(--gold);"></strong></p>
+      <p style="font-size: 15px; color: var(--text); margin-bottom: 20px; font-weight: 300;">Has ganado: <strong id="raffle-winner-prize" style="font-weight: 700; color: var(--gold);"></strong></p>
       <div class="raffle-winner-box">
         <p class="raffle-code-label">Código de Verificación</p>
         <p class="raffle-code" id="raffle-code">----</p>
       </div>
-      <p class="raffle-note">🍷 Ve a la barra y muestra esta pantalla al personal para reclamar tu premio.</p>
+      <!-- Botón de aceptar dentro del modal -->
+      <button id="modal-accept-btn" onclick="acceptPrize(); document.getElementById('raffle-modal').style.display='none'; document.body.style.overflow='auto';"
+        style="width:100%; padding:15px; margin-top:20px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:16px; font-weight:700; cursor:pointer; box-shadow:0 6px 20px rgba(139,25,24,0.35);">
+        ¡Acepto el premio! <span id="modal-accept-countdown" style="opacity:0.75; font-size:13px;"></span>
+      </button>
+      <p class="raffle-note" style="margin-top:14px;">🍷 Pulsa el botón y muestra la pantalla al personal del Furancho.</p>
     </div>
 
     <!-- Loser View -->
@@ -2656,15 +2693,18 @@
       document.getElementById('accept-prize-code').textContent = code;
       banner.style.display = 'block';
 
-      const countEl = document.getElementById('accept-countdown');
       let remaining = windowSecs;
+      const countEl = document.getElementById('accept-countdown');
+      const modalCount = document.getElementById('modal-accept-countdown');
       if (_acceptCountdownInterval) clearInterval(_acceptCountdownInterval);
       _acceptCountdownInterval = setInterval(() => {
         remaining--;
         if (countEl) countEl.textContent = remaining;
+        if (modalCount) modalCount.textContent = `(${remaining}s)`;
         if (remaining <= 0) {
           clearInterval(_acceptCountdownInterval);
           hideAcceptBanner();
+          if (modalCount) modalCount.textContent = '';
         }
       }, 1000);
     }
@@ -2878,21 +2918,8 @@
       }
     }
 
-    // Emojis que ruedan durante el sorteo
-    const SLOT_EMOJIS = ['🍷','🎰','🍾','🎲','🥂','🍷','🎯','🎪'];
-    let slotInterval = null;
-
-    function startSlotAnimation() {
-      let i = 0;
-      slotInterval = setInterval(() => {
-        document.querySelector('.raffle-slot').textContent = SLOT_EMOJIS[i % SLOT_EMOJIS.length];
-        i++;
-      }, 180);
-    }
-
-    function stopSlotAnimation() {
-      if (slotInterval) { clearInterval(slotInterval); slotInterval = null; }
-    }
+    function startSlotAnimation() {}
+    function stopSlotAnimation() {}
 
     function connectRaffle() {
       const wallet = localStorage.getItem('furancho_wallet_address') || '';
