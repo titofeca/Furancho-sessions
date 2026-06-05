@@ -131,6 +131,22 @@ router.post('/:id/reject', requireAuth, (req, res) => {
   }
 });
 
+// GET /api/raffle/eligible-check?wallet=0x... — público, sesión hoy + sorteos de esta noche
+router.get('/eligible-check', (req, res) => {
+  const { wallet } = req.query;
+  if (!wallet) return res.status(400).json({ error: 'Falta wallet' });
+  try {
+    const { db } = require('../db/database');
+    const session = db.prepare(
+      `SELECT id FROM sessions WHERE wallet_address = ? AND date(entry_time) = date('now') LIMIT 1`
+    ).get(wallet);
+    const rafflesDone = db.prepare(
+      `SELECT COUNT(*) as count FROM raffles WHERE date(created_at) = date('now')`
+    ).get()?.count || 0;
+    res.json({ hasSessionToday: !!session, rafflesDoneTonight: rafflesDone });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // GET /api/raffle/my-wins?wallet=0x...
 router.get('/my-wins', (req, res) => {
   const { wallet } = req.query;

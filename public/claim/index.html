@@ -1646,7 +1646,9 @@
           </div>
           <div class="raffle-live-dot" id="raffle-live-dot"></div>
         </div>
-        <p class="raffle-section-hint">Participa en los sorteos de la noche fichando tu entrada. Si te toca, recibirás una notificación en este móvil.</p>
+        <!-- Estado dinámico: sin entrada / en lista / sorteos pasados -->
+        <div id="prizes-state-content" style="margin-top:12px;"></div>
+
         <div id="accept-prize-banner" style="display:none; margin-top:14px; background:linear-gradient(135deg,rgba(196,151,58,0.15),rgba(139,25,24,0.08)); border:2px solid var(--gold); border-radius:16px; padding:18px; text-align:center; position:relative; overflow:hidden;">
           <div style="position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--wine),var(--gold),var(--wine));"></div>
           <div style="font-size:32px; margin-bottom:8px;">🏆</div>
@@ -2665,48 +2667,131 @@
     }
 
     async function renderPrizes() {
-      const list = document.getElementById('prizes-list');
-      const section = document.getElementById('my-prizes-section');
-      if (!list || !userWalletAddress) return;
+      const stateEl  = document.getElementById('prizes-state-content');
+      const list     = document.getElementById('prizes-list');
+      const section  = document.getElementById('my-prizes-section');
+      const statusEl = document.getElementById('raffle-status-text');
+      if (!stateEl || !userWalletAddress) return;
 
-      let history = [];
-      try {
-        history = await fetch(`/api/raffle/my-history?wallet=${userWalletAddress}`).then(r => r.json());
-      } catch(e) { return; }
-
-      // Filtrar solo sorteos de hoy
+      // Llamadas en paralelo
       const today = new Date().toISOString().slice(0, 10);
+      let history = [], eligibility = { hasSessionToday: false, rafflesDoneTonight: 0 }, events = [];
+      try {
+        [history, eligibility, events] = await Promise.all([
+          fetch(`/api/raffle/my-history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => []),
+          fetch(`/api/raffle/eligible-check?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => ({})),
+          fetch('/api/events').then(r => r.json()).catch(() => [])
+        ]);
+      } catch(e) {}
+
       const todayRaffles = history.filter(r => r.created_at && r.created_at.startsWith(today));
+      const hasEntry     = eligibility.hasSessionToday;
+      const doneTonight  = eligibility.rafflesDoneTonight || 0;
+      const remaining    = Math.max(0, 2 - doneTonight);
 
-      if (!todayRaffles.length) { section.style.display = 'none'; return; }
+      // Evento de esta noche
+      const todayEvent = events.find(ev => ev.event_date === today);
+      const nextEvent  = !todayEvent ? events.find(ev => ev.event_date > today) : null;
+
+      // ── ESTADO: sin entrada fichada ──────────────────────────────
+      if (!hasEntry && !todayRaffles.length) {
+        stateEl.innerHTML = `
+          <div style="background:rgba(42,21,9,0.04); border:1px dashed rgba(42,21,9,0.15); border-radius:16px; padding:16px; text-align:center;">
+            <div style="font-size:28px; margin-bottom:8px;">🚪</div>
+            <p style="font-size:13px; font-weight:700; color:var(--text); margin:0 0 4px;">Ficha tu entrada para participar</p>
+            <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0;">Escanea el QR de entrada al llegar y entrarás automáticamente en todos los sorteos de la noche.</p>
+            ${todayEvent ? `<div style="margin-top:12px; padding:10px 12px; background:rgba(139,25,24,0.06); border-radius:12px;">
+              <p style="font-size:11px; font-weight:700; color:var(--wine); margin:0 0 2px;">🎉 Esta noche: ${todayEvent.title}</p>
+              <p style="font-size:11px; color:var(--text-muted); margin:0;">Previstos ${remaining > 0 ? remaining : 2} sorteo${remaining !== 1 ? 's' : ''} con premios</p>
+            </div>` : ''}
+            ${nextEvent ? `<div style="margin-top:10px;"><p style="font-size:11px; color:var(--text-muted); margin:0;">Próxima sesión: <strong style="color:var(--text);">${new Date(nextEvent.event_date+'T12:00:00').toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'})}</strong></p></div>` : ''}
+          </div>`;
+        section.style.display = 'none';
+        if (statusEl) statusEl.textContent = 'Ficha tu entrada para participar';
+        return;
+      }
+
+      // ── ESTADO: tiene entrada, aún no hay sorteos esta noche ─────
+      if (hasEntry && !todayRaffles.length) {
+        stateEl.innerHTML = `
+          <div style="background:rgba(74,222,128,0.05); border:1px solid rgba(74,222,128,0.2); border-radius:16px; padding:16px;">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+              <div style="width:32px; height:32px; border-radius:50%; background:rgba(74,222,128,0.15); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">✅</div>
+              <div>
+                <p style="font-size:13px; font-weight:700; color:#4ade80; margin:0 0 2px;">Estás en la lista</p>
+                <p style="font-size:11px; color:var(--text-muted); margin:0;">Participarás en todos los sorteos de esta noche automáticamente.</p>
+              </div>
+            </div>
+            ${remaining > 0 ? `
+            <div style="border-top:1px solid rgba(42,21,9,0.06); padding-top:10px; display:flex; align-items:center; gap:10px;">
+              <span style="font-size:20px;">🎰</span>
+              <div>
+                <p style="font-size:12px; font-weight:700; color:var(--text); margin:0 0 1px;">${remaining} sorteo${remaining !== 1 ? 's' : ''} pendiente${remaining !== 1 ? 's' : ''} esta noche</p>
+                <p style="font-size:11px; color:var(--text-muted); margin:0;">Mantén la app accesible — cuando empiece, tu pantalla se activará.</p>
+              </div>
+            </div>` : `
+            <div style="border-top:1px solid rgba(42,21,9,0.06); padding-top:10px;">
+              <p style="font-size:11px; color:var(--text-muted); text-align:center; margin:0;">Los sorteos de esta noche ya han terminado. ¡Hasta la próxima!</p>
+            </div>`}
+          </div>`;
+        section.style.display = 'none';
+        if (statusEl) statusEl.textContent = remaining > 0 ? `En lista · ${remaining} sorteo${remaining!==1?'s':''} pendiente${remaining!==1?'s':''}` : 'Sorteos terminados por esta noche';
+        return;
+      }
+
+      // ── ESTADO: ya participó en algún sorteo ────────────────────
+      stateEl.innerHTML = '';
+      // Mostrar si sigue siendo elegible para más sorteos
+      if (hasEntry && remaining > 0 && todayRaffles.every(r => r.status !== 'pending_acceptance')) {
+        stateEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; padding:10px 12px; background:rgba(74,222,128,0.05); border:1px solid rgba(74,222,128,0.15); border-radius:12px; margin-bottom:10px;">
+            <span style="font-size:14px;">✅</span>
+            <p style="font-size:12px; color:var(--text-muted); margin:0;">Sigues en la lista — queda${remaining!==1?'n':''} <strong style="color:var(--text);">${remaining} sorteo${remaining!==1?'s':''}</strong> esta noche</p>
+          </div>`;
+      }
+
+      // Lista de sorteos de hoy
       section.style.display = 'block';
+      const wins = todayRaffles.filter(r => r.is_winner === 1 && r.status !== 'rejected');
+      if (wins.length) {
+        if (statusEl) statusEl.textContent = `🏆 ¡Has ganado ${wins.length === 1 ? 'un premio' : wins.length + ' premios'} esta noche!`;
+      } else {
+        if (statusEl) statusEl.textContent = doneTonight > 0 ? `${doneTonight} sorteo${doneTonight!==1?'s':''} esta noche` : 'Esperando próximo sorteo...';
+      }
 
-      const statusMessages = {
-        collected:   (r) => `<span style="color:#4ade80;">✅ ¡Premio recogido!</span> — ${r.prize}`,
-        accepted:    (r) => `<span style="color:var(--gold);">🏆 Has ganado</span> — ${r.prize}`,
-        rejected:    (r, won) => won
-          ? `<span style="color:var(--wine);">🍷 ¡Estabas muy ocupado pasándolo bien!</span><br><span style="font-size:11px; color:var(--text-muted);">No viste el aviso a tiempo... eso pasa por disfrutar tanto 😄</span>`
-          : `<span style="color:var(--text-muted);">😬 Esta vez no — pero el próximo puede ser tuyo</span>`,
+      const statusMsg = {
+        collected:          (r) => `<span style="color:#4ade80; font-weight:700;">✅ ¡Premio recogido!</span><span style="color:var(--text-muted);"> · ${r.prize}</span>`,
+        accepted:           (r) => `<span style="color:var(--gold); font-weight:700;">🏆 ¡Ganaste!</span><span style="color:var(--text-muted);"> · ${r.prize}</span>`,
+        rejected:           (r, won) => won
+          ? `<span style="color:var(--wine); font-weight:700;">🍷 ¡Estabas muy ocupado pasándolo bien!</span><br><span style="font-size:11px; color:var(--text-muted);">No viste el aviso a tiempo... eso pasa por disfrutar tanto 😄</span>`
+          : `<span style="color:var(--text-muted);">Esta vez no era tu momento — el próximo puede ser tuyo 🎲</span>`,
         pending_acceptance: (r, won) => won
-          ? `<span style="color:var(--gold);">⏳ Esperando que aceptes el premio</span>`
-          : `<span style="color:var(--text-muted);">🎲 Participaste — esperando resultado...</span>`,
-        pending:     (r, won) => won ? `<span style="color:var(--gold);">🏆 ¡Ganaste!</span>` : `<span style="color:var(--text-muted);">🎲 Participaste</span>`,
+          ? `<span style="color:var(--gold); font-weight:700;">⏳ ¡Ganaste! Acepta el premio</span>`
+          : `<span style="color:var(--text-muted);">🎲 Sorteo en curso...</span>`,
+        pending:            (r, won) => won
+          ? `<span style="color:var(--gold); font-weight:700;">🏆 ¡Ganaste!</span>`
+          : `<span style="color:var(--text-muted);">🎲 Sorteo activo</span>`,
       };
 
-      list.innerHTML = todayRaffles.map(r => {
-        const won = r.is_winner === 1;
-        const msgFn = statusMessages[r.status] || (() => '');
-        const msg = msgFn(r, won);
-        const bg = (r.status === 'collected' || (won && r.status === 'accepted'))
-          ? 'rgba(74,222,128,0.06)' : won ? 'rgba(196,151,58,0.06)' : 'rgba(42,21,9,0.03)';
-        const border = (r.status === 'collected' || (won && r.status === 'accepted'))
-          ? 'rgba(74,222,128,0.25)' : won ? 'rgba(196,151,58,0.3)' : 'rgba(42,21,9,0.08)';
-        return `<div style="background:${bg}; border:1px solid ${border}; border-radius:14px; padding:12px 14px;">
-          <p style="font-size:13px; font-weight:600; color:var(--text); margin:0 0 4px; line-height:1.5;">${msg || r.prize}</p>
-          ${won && r.verification_code && r.status !== 'rejected' ? `
-            <div style="font-family:monospace; font-size:22px; font-weight:700; letter-spacing:5px; color:var(--wine);">${r.verification_code}</div>
-          ` : ''}
-          <p style="font-size:10px; color:var(--text-muted); margin:4px 0 0;">${new Date(r.created_at).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</p>
+      list.innerHTML = todayRaffles.map((r, i) => {
+        const won    = r.is_winner === 1;
+        const msg    = (statusMsg[r.status] || (() => r.prize))(r, won);
+        const isWin  = won && r.status !== 'rejected';
+        const bg     = r.status === 'collected' ? 'rgba(74,222,128,0.06)'
+                     : isWin                    ? 'rgba(196,151,58,0.07)'
+                                                : 'rgba(42,21,9,0.03)';
+        const border = r.status === 'collected' ? 'rgba(74,222,128,0.25)'
+                     : isWin                    ? 'rgba(196,151,58,0.3)'
+                                                : 'rgba(42,21,9,0.08)';
+        return `<div style="background:${bg}; border:1px solid ${border}; border-radius:14px; padding:13px 15px;">
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px;">
+            <div style="flex:1;">
+              <p style="font-size:12px; color:var(--text-muted); margin:0 0 3px;">Sorteo ${i + 1}</p>
+              <p style="font-size:13px; font-weight:600; color:var(--text); margin:0 0 3px; line-height:1.5;">${msg}</p>
+              ${isWin && r.verification_code ? `<div style="font-family:monospace; font-size:22px; font-weight:700; letter-spacing:5px; color:var(--wine); margin-top:4px;">${r.verification_code}</div>` : ''}
+            </div>
+            <span style="font-size:10px; color:var(--text-muted); flex-shrink:0; margin-top:2px;">${new Date(r.created_at).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</span>
+          </div>
         </div>`;
       }).join('');
     }
