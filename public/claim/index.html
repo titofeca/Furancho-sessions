@@ -1586,9 +1586,11 @@
         </div>
       </div>
 
-      <!-- ② TU CAMINO — visitas + journey -->
+      <!-- ① TU CAMINO — visitas + puntos + journey -->
       <div class="profile-progress-card" style="padding:22px; margin-bottom:20px;">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:22px;">
+
+        <!-- Visitas + puntos -->
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:22px; gap:12px;">
           <div>
             <p style="font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">Tu camino en O Furancho</p>
             <div style="display:flex; align-items:baseline; gap:6px;">
@@ -1596,10 +1598,26 @@
               <span id="visit-total-display" style="font-size:14px; color:var(--text-muted);">visitas</span>
             </div>
           </div>
-          <div style="text-align:right;">
-            <p id="profile-progress-hint" style="font-size:13px; color:var(--text-muted); line-height:1.5; max-width:150px;"></p>
+          <!-- Puntos -->
+          <div style="text-align:right; flex-shrink:0;">
+            <div id="points-block" style="background:rgba(196,151,58,0.08); border:1px solid rgba(196,151,58,0.2); border-radius:14px; padding:10px 14px; min-width:90px;">
+              <p style="font-size:9px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--gold); margin:0 0 3px;">Puntos</p>
+              <div style="display:flex; align-items:baseline; gap:3px;">
+                <span id="points-display" style="font-family:'Playfair Display',serif; font-size:26px; font-weight:900; color:var(--gold); line-height:1;">—</span>
+                <span style="font-size:11px; color:var(--text-muted);">/ 300</span>
+              </div>
+              <div style="height:4px; background:rgba(196,151,58,0.15); border-radius:100px; margin-top:6px; overflow:hidden;">
+                <div id="points-bar" style="height:100%; background:var(--gold); border-radius:100px; width:0%; transition:width 1s ease;"></div>
+              </div>
+              <p style="font-size:9px; color:var(--text-muted); margin:4px 0 0;">🍽️ tapa gratis</p>
+            </div>
           </div>
         </div>
+
+        <!-- Hint siguiente nivel -->
+        <p id="profile-progress-hint" style="font-size:12px; color:var(--text-muted); margin:0 0 16px; line-height:1.5;"></p>
+
+        <!-- Journey: línea con 4 nodos -->
         <div style="position:relative; display:flex; align-items:flex-start; justify-content:space-between;">
           <div style="position:absolute; top:18px; left:18px; right:18px; height:3px; background:rgba(42,21,9,0.08); border-radius:100px; z-index:0;"></div>
           <div id="journey-progress-line" style="position:absolute; top:18px; left:18px; height:3px; background:linear-gradient(90deg,var(--wine),var(--gold)); border-radius:100px; z-index:1; width:0%; transition:width 1.2s cubic-bezier(0.22,1,0.36,1);"></div>
@@ -1620,23 +1638,17 @@
             <div style="text-align:center;"><div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-4">NV4</div><div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;">Presidente</div><div style="font-size:10px; color:var(--text-muted); margin-top:1px;">12 vis. 👑</div></div>
           </div>
         </div>
-        <div id="journey-next-hint" style="display:none; margin-top:16px; padding:10px 14px; background:rgba(196,151,58,0.06); border:1px solid rgba(196,151,58,0.2); border-radius:12px; text-align:center;">
+
+        <!-- Siguiente hito + cómo ganar puntos -->
+        <div id="journey-next-hint" style="display:none; margin-top:14px; padding:10px 14px; background:rgba(196,151,58,0.06); border:1px solid rgba(196,151,58,0.2); border-radius:12px; text-align:center;">
           <p style="font-size:12px; color:var(--gold); font-weight:600; margin:0;" id="journey-next-text"></p>
         </div>
+        <p style="font-size:11px; color:var(--text-muted); margin-top:12px; text-align:center; line-height:1.5;">
+          Ficha salida para ganar <strong style="color:var(--gold);">80 pts</strong> · Sin fichar: <strong>5 pts</strong> · 300 pts = 🍽️ tapa gratis
+        </p>
       </div>
 
-      <!-- ③ PRÓXIMAS SESSIONS -->
-      <div id="agenda-section" style="margin-bottom:18px; display:none;">
-        <div style="background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:20px; padding:18px;">
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
-            <span style="font-size:20px;">📅</span>
-            <p style="font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted);">Próximas Sessions</p>
-          </div>
-          <div id="agenda-list" style="display:flex; flex-direction:column; gap:10px;"></div>
-        </div>
-      </div>
-
-      <!-- ④ PREMIOS -->
+      <!-- ② PREMIOS -->
       <div class="raffle-section" id="raffle-section" style="margin-bottom:20px;">
         <div class="raffle-section-header">
           <span class="raffle-section-icon">🎁</span>
@@ -1667,6 +1679,17 @@
         <div id="my-prizes-section" style="display:none; margin-top:14px;">
           <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;">Esta noche</p>
           <div id="prizes-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
+      </div>
+
+      <!-- ③ PRÓXIMAS SESSIONS -->
+      <div id="agenda-section" style="margin-bottom:18px; display:none;">
+        <div style="background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:20px; padding:18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+            <span style="font-size:20px;">📅</span>
+            <p style="font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted);">Próximas Sessions</p>
+          </div>
+          <div id="agenda-list" style="display:flex; flex-direction:column; gap:10px;"></div>
         </div>
       </div>
 
@@ -2230,6 +2253,7 @@
       showScreen('screen-profile');
       renderPrizes();
       loadAgenda();
+      loadPoints();
       checkPendingMnemonic();
 
       // Pedir permiso de notificaciones push (con delay para no interrumpir)
@@ -2664,6 +2688,27 @@
         btn.disabled = false;
         btn.textContent = '¡Soy yo! Reclamar premio 🎉';
       }
+    }
+
+    async function loadPoints() {
+      if (!userWalletAddress) return;
+      try {
+        const data = await fetch(`/api/mint/points?wallet=${userWalletAddress}`).then(r => r.json());
+        const pts = data.total || 0;
+        const el = document.getElementById('points-display');
+        const bar = document.getElementById('points-bar');
+        if (el) el.textContent = pts;
+        if (bar) bar.style.width = Math.min(100, Math.round(pts / 300 * 100)) + '%';
+        if (pts >= 300) {
+          const block = document.getElementById('points-block');
+          if (block) {
+            block.style.background = 'rgba(74,222,128,0.1)';
+            block.style.borderColor = 'rgba(74,222,128,0.4)';
+            block.querySelector('p').style.color = '#4ade80';
+            bar.style.background = '#4ade80';
+          }
+        }
+      } catch(e) {}
     }
 
     async function renderPrizes() {
