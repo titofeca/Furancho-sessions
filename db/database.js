@@ -22,6 +22,7 @@ try { db.exec(`ALTER TABLE raffles ADD COLUMN rejected_at TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN rejection_note TEXT`); } catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS prize_presets (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, active INTEGER DEFAULT 1, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS raffle_participants (raffle_id INTEGER NOT NULL, wallet_address TEXT NOT NULL, PRIMARY KEY (raffle_id, wallet_address))`); } catch (_) {}
+try { db.exec(`CREATE TABLE IF NOT EXISTS scheduled_raffles (id INTEGER PRIMARY KEY AUTOINCREMENT, event_date TEXT NOT NULL, scheduled_time TEXT NOT NULL, prize TEXT NOT NULL, status TEXT DEFAULT 'pending', raffle_id INTEGER, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
 // Limpiar reservas VIP huérfanas (apuntan a eventos que ya no existen)
 try {
   db.exec(`DELETE FROM vip_reservations WHERE event_id NOT IN (SELECT id FROM events)`);
@@ -692,6 +693,37 @@ function getRaffleCountTonight() {
   return db.prepare(`SELECT COUNT(*) as count FROM raffles WHERE date(created_at) = date('now')`).get()?.count || 0;
 }
 
+function getScheduledRaffles(eventDate) {
+  const q = eventDate
+    ? `SELECT * FROM scheduled_raffles WHERE event_date = ? ORDER BY scheduled_time ASC`
+    : `SELECT * FROM scheduled_raffles WHERE event_date >= date('now') ORDER BY event_date ASC, scheduled_time ASC LIMIT 30`;
+  return eventDate ? db.prepare(q).all(eventDate) : db.prepare(q).all();
+}
+
+function createScheduledRaffle({ eventDate, scheduledTime, prize }) {
+  return db.prepare(`INSERT INTO scheduled_raffles (event_date, scheduled_time, prize) VALUES (?, ?, ?)`)
+    .run(eventDate, scheduledTime, prize).lastInsertRowid;
+}
+
+function updateScheduledRaffle(id, { eventDate, scheduledTime, prize, status }) {
+  const fields = [], vals = [];
+  if (eventDate !== undefined)    { fields.push('event_date = ?');      vals.push(eventDate); }
+  if (scheduledTime !== undefined){ fields.push('scheduled_time = ?');  vals.push(scheduledTime); }
+  if (prize !== undefined)        { fields.push('prize = ?');           vals.push(prize); }
+  if (status !== undefined)       { fields.push('status = ?');          vals.push(status); }
+  if (!fields.length) return;
+  vals.push(id);
+  db.prepare(`UPDATE scheduled_raffles SET ${fields.join(', ')} WHERE id = ?`).run(...vals);
+}
+
+function deleteScheduledRaffle(id) {
+  db.prepare(`DELETE FROM scheduled_raffles WHERE id = ?`).run(id);
+}
+
+function linkScheduledRaffle(scheduledId, raffleId) {
+  db.prepare(`UPDATE scheduled_raffles SET status = 'launched', raffle_id = ? WHERE id = ?`).run(raffleId, scheduledId);
+}
+
 const ALLOWED_REACTIONS = ['🍷', '🙌', '😂', '🔥'];
 
 function addReaction(messageId, emoji, walletAddress) {
@@ -847,5 +879,10 @@ module.exports = {
   getPrizePresets,
   addPrizePreset,
   deletePrizePreset,
-  getRaffleCountTonight
+  getRaffleCountTonight,
+  getScheduledRaffles,
+  createScheduledRaffle,
+  updateScheduledRaffle,
+  deleteScheduledRaffle,
+  linkScheduledRaffle
 };

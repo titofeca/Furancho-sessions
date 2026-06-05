@@ -1183,10 +1183,33 @@
         <p class="page-subtitle">Hasta 2 sorteos por noche. Solo participan clientes con entrada fichada.</p>
       </div>
 
-      <!-- Premios configurados -->
+      <!-- Agenda de sorteos programados -->
+      <div class="glass-card" style="margin-bottom:16px;">
+        <div class="card-header" style="margin-bottom:14px;">
+          <span class="card-title">🗓️ Agenda de sorteos</span>
+          <button class="btn-download" onclick="loadScheduled()" style="font-size:11px; padding:6px 12px;">↻</button>
+        </div>
+
+        <!-- Formulario nuevo sorteo programado -->
+        <div style="display:grid; grid-template-columns:1fr 90px; gap:8px; margin-bottom:10px;">
+          <input type="date" class="input-field" id="sched-date" style="margin:0; font-size:14px;" />
+          <input type="time" class="input-field" id="sched-time" style="margin:0; font-size:14px;" />
+        </div>
+        <div style="display:flex; gap:8px; margin-bottom:12px;">
+          <input type="text" class="input-field" id="sched-prize" placeholder="Premio (ej: Botella Mencía)" style="flex:1; margin:0; font-size:14px;" />
+          <button onclick="addScheduled()" style="background:var(--wine); color:#fff; border:none; border-radius:12px; padding:0 16px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0;">+ Añadir</button>
+        </div>
+
+        <!-- Lista de sorteos programados -->
+        <div id="scheduled-list" style="display:flex; flex-direction:column; gap:8px;">
+          <p style="font-size:12px; color:var(--text-muted); text-align:center; padding:8px 0;">Cargando...</p>
+        </div>
+      </div>
+
+      <!-- Premios configurados (presets) -->
       <div class="glass-card" style="margin-bottom:16px;">
         <div class="card-header" style="margin-bottom:12px;">
-          <span class="card-title">🎁 Premios configurados</span>
+          <span class="card-title">🎁 Premios rápidos</span>
           <button class="btn-download" onclick="loadPrizePresets()" style="font-size:11px; padding:6px 12px;">↻</button>
         </div>
         <div id="prize-presets-list" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;"></div>
@@ -1448,7 +1471,7 @@
     if (pageId === 'events') loadEventsPage();
     loadVipBadge();
     if (pageId === 'holders') { loadPeakHours(null); loadVisits('__totales__'); }
-    if (pageId === 'raffles') { loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); }
+    if (pageId === 'raffles') { loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); loadScheduled(); }
     if (pageId === 'holders') loadVisits();
   }
 
@@ -1928,6 +1951,85 @@
   // ==================== RAFFLES ====================
   let _acceptanceInterval = null;
 
+  // ── AGENDA DE SORTEOS ──────────────────────────────────────────────────────
+  async function loadScheduled() {
+    const container = document.getElementById('scheduled-list');
+    if (!container) return;
+    try {
+      const rows = await fetch('/api/raffle/scheduled/all', { headers: authHeaders() }).then(r => r.json());
+      if (!rows.length) {
+        container.innerHTML = '<p style="font-size:12px; color:var(--text-muted); text-align:center; padding:8px 0;">Sin sorteos programados.</p>';
+        return;
+      }
+      const days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+      const statusLabel = { pending:'⏳ Pendiente', launched:'✅ Lanzado', cancelled:'✕ Cancelado' };
+      const statusColor = { pending:'var(--text-muted)', launched:'#4ade80', cancelled:'rgba(42,21,9,0.3)' };
+      container.innerHTML = rows.map(r => {
+        const d = new Date(r.event_date + 'T12:00:00');
+        const dateStr = `${days[d.getDay()]} ${d.getDate()} ${d.toLocaleString('es-ES',{month:'short'})}`;
+        const isPending = r.status === 'pending';
+        return `<div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 14px; display:flex; align-items:center; gap:10px;">
+          <div style="flex:1; min-width:0;">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <span style="font-size:12px; font-weight:700; color:var(--wine);">${r.scheduled_time}</span>
+              <span style="font-size:11px; color:var(--text-muted);">${dateStr}</span>
+              <span style="font-size:10px; color:${statusColor[r.status] || 'var(--text-muted)'};">${statusLabel[r.status] || r.status}</span>
+            </div>
+            <p style="font-size:13px; font-weight:600; color:var(--text); margin:3px 0 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${r.prize}</p>
+          </div>
+          <div style="display:flex; gap:6px; flex-shrink:0;">
+            ${isPending ? `<button onclick="launchScheduled(${r.id}, '${r.prize.replace(/'/g,"\\'")}', this)"
+              style="padding:5px 10px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">
+              ▶ Lanzar
+            </button>` : ''}
+            <button onclick="deleteScheduled(${r.id}, this)"
+              style="padding:5px 10px; background:rgba(139,25,24,0.08); color:var(--wine); border:1px solid rgba(139,25,24,0.2); border-radius:8px; font-size:11px; cursor:pointer; font-family:'Outfit',sans-serif;">
+              ✕
+            </button>
+          </div>
+        </div>`;
+      }).join('');
+    } catch(e) {
+      container.innerHTML = '<p style="font-size:12px; color:var(--text-muted);">Error cargando agenda.</p>';
+    }
+  }
+
+  async function addScheduled() {
+    const date  = document.getElementById('sched-date').value;
+    const time  = document.getElementById('sched-time').value;
+    const prize = document.getElementById('sched-prize').value.trim();
+    if (!date || !time || !prize) return showToast('Completa fecha, hora y premio', true);
+    try {
+      const res = await fetch('/api/raffle/scheduled', {
+        method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventDate: date, scheduledTime: time, prize })
+      });
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('sched-prize').value = '';
+        showToast('Sorteo programado');
+        loadScheduled();
+      } else showToast(data.error || 'Error', true);
+    } catch(e) { showToast('Error', true); }
+  }
+
+  async function deleteScheduled(id, btn) {
+    btn.disabled = true;
+    try {
+      await fetch(`/api/raffle/scheduled/${id}`, { method: 'DELETE', headers: authHeaders() });
+      loadScheduled();
+    } catch(e) { btn.disabled = false; }
+  }
+
+  async function launchScheduled(scheduledId, prize, btn) {
+    btn.disabled = true;
+    // Pre-rellena el campo de premio y lanza el sorteo
+    document.getElementById('raffle-prize').value = prize;
+    window._pendingScheduledId = scheduledId;
+    showToast(`Lanzando: ${prize}`);
+    await startRaffle(scheduledId);
+  }
+
   async function loadPrizePresets() {
     try {
       const presets = await fetch('/api/raffle/prizes', { headers: authHeaders() }).then(r => r.json());
@@ -1992,7 +2094,7 @@
     }
   }
 
-  async function startRaffle() {
+  async function startRaffle(scheduledId) {
     const prize = document.getElementById('raffle-prize').value.trim();
     if (!prize) return showToast('Selecciona o escribe un premio primero', true);
     if (!confirm(`¿Lanzar sorteo ahora?\nPremio: ${prize}`)) return;
@@ -2017,7 +2119,7 @@
       const res = await fetch('/api/raffle/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-token': AUTH_TOKEN },
-        body: JSON.stringify({ prize })
+        body: JSON.stringify({ prize, scheduledId: scheduledId || window._pendingScheduledId || null })
       });
       const data = await res.json();
 

@@ -2720,23 +2720,36 @@
 
       // Llamadas en paralelo
       const today = new Date().toISOString().slice(0, 10);
-      let history = [], eligibility = { hasSessionToday: false, rafflesDoneTonight: 0 }, events = [];
+      let history = [], eligibility = { hasSessionToday: false, rafflesDoneTonight: 0 }, events = [], scheduled = [];
       try {
-        [history, eligibility, events] = await Promise.all([
+        [history, eligibility, events, scheduled] = await Promise.all([
           fetch(`/api/raffle/my-history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => []),
           fetch(`/api/raffle/eligible-check?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => ({})),
-          fetch('/api/events').then(r => r.json()).catch(() => [])
+          fetch('/api/events').then(r => r.json()).catch(() => []),
+          fetch(`/api/raffle/scheduled?date=${today}`).then(r => r.json()).catch(() => [])
         ]);
       } catch(e) {}
 
       const todayRaffles = history.filter(r => r.created_at && r.created_at.startsWith(today));
       const hasEntry     = eligibility.hasSessionToday;
       const doneTonight  = eligibility.rafflesDoneTonight || 0;
-      const remaining    = Math.max(0, 2 - doneTonight);
+      const pendingScheduled = scheduled.filter(s => s.status === 'pending');
+      const remaining    = pendingScheduled.length || Math.max(0, 2 - doneTonight);
 
       // Evento de esta noche
       const todayEvent = events.find(ev => ev.event_date === today);
       const nextEvent  = !todayEvent ? events.find(ev => ev.event_date > today) : null;
+
+      // Bloque de sorteos programados para mostrar en cualquier estado
+      const scheduleHTML = pendingScheduled.length ? `
+        <div style="margin-top:12px; border-top:1px solid rgba(42,21,9,0.07); padding-top:12px;">
+          <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 8px;">Sorteos de esta noche</p>
+          ${pendingScheduled.map(s => `
+            <div style="display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid rgba(42,21,9,0.05);">
+              <span style="font-size:12px; font-weight:700; color:var(--wine); width:42px; flex-shrink:0;">${s.scheduled_time}</span>
+              <span style="font-size:13px; color:var(--text); flex:1;">🎁 ${s.prize}</span>
+            </div>`).join('')}
+        </div>` : '';
 
       // ── ESTADO: sin entrada fichada ──────────────────────────────
       if (!hasEntry && !todayRaffles.length) {
@@ -2747,9 +2760,9 @@
             <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0;">Escanea el QR de entrada al llegar y entrarás automáticamente en todos los sorteos de la noche.</p>
             ${todayEvent ? `<div style="margin-top:12px; padding:10px 12px; background:rgba(139,25,24,0.06); border-radius:12px;">
               <p style="font-size:11px; font-weight:700; color:var(--wine); margin:0 0 2px;">🎉 Esta noche: ${todayEvent.title}</p>
-              <p style="font-size:11px; color:var(--text-muted); margin:0;">Previstos ${remaining > 0 ? remaining : 2} sorteo${remaining !== 1 ? 's' : ''} con premios</p>
             </div>` : ''}
             ${nextEvent ? `<div style="margin-top:10px;"><p style="font-size:11px; color:var(--text-muted); margin:0;">Próxima sesión: <strong style="color:var(--text);">${new Date(nextEvent.event_date+'T12:00:00').toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'})}</strong></p></div>` : ''}
+            ${scheduleHTML}
           </div>`;
         section.style.display = 'none';
         if (statusEl) statusEl.textContent = 'Ficha tu entrada para participar';
@@ -2778,6 +2791,7 @@
             <div style="border-top:1px solid rgba(42,21,9,0.06); padding-top:10px;">
               <p style="font-size:11px; color:var(--text-muted); text-align:center; margin:0;">Los sorteos de esta noche ya han terminado. ¡Hasta la próxima!</p>
             </div>`}
+            ${scheduleHTML}
           </div>`;
         section.style.display = 'none';
         if (statusEl) statusEl.textContent = remaining > 0 ? `En lista · ${remaining} sorteo${remaining!==1?'s':''} pendiente${remaining!==1?'s':''}` : 'Sorteos terminados por esta noche';

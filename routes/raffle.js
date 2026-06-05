@@ -3,7 +3,9 @@ const router = express.Router();
 const {
   getEligibleRaffleParticipants, insertRaffle, acceptRaffle, rejectRaffle,
   collectRaffle, getRaffleHistory, getMyWins, getRaffleParticipation,
-  getPrizePresets, addPrizePreset, deletePrizePreset, getRaffleCountTonight
+  getPrizePresets, addPrizePreset, deletePrizePreset, getRaffleCountTonight,
+  getScheduledRaffles, createScheduledRaffle, updateScheduledRaffle,
+  deleteScheduledRaffle, linkScheduledRaffle
 } = require('../db/database');
 const { requireAuth } = require('./admin');
 const { sendPushToAll } = require('../services/push');
@@ -58,7 +60,7 @@ router.get('/stream', (req, res) => {
 
 // POST /api/raffle/start — admin lanza sorteo
 router.post('/start', requireAuth, (req, res) => {
-  const { prize } = req.body;
+  const { prize, scheduledId } = req.body;
   if (!prize) return res.status(400).json({ error: 'Falta el nombre del premio' });
 
   const connectedWallets = [...new Set(clients.filter(c => c.walletAddress).map(c => c.walletAddress))];
@@ -79,6 +81,7 @@ router.post('/start', requireAuth, (req, res) => {
   for (let i = 0; i < 4; i++) verificationCode += characters.charAt(Math.floor(Math.random() * characters.length));
 
   const raffleId = insertRaffle(prize, winnerWallet, verificationCode, eligibleWallets);
+  if (scheduledId) { try { linkScheduledRaffle(parseInt(scheduledId), raffleId); } catch(_) {} }
 
   console.log(`[Raffle] #${raffleId} iniciado. Participantes: ${eligibleWallets.length}, SSE: ${connectedWallets.length}`);
   broadcast('raffle_start', { duration: 15, prize, raffleId });
@@ -216,6 +219,49 @@ router.delete('/prizes/:id', requireAuth, (req, res) => {
     deletePrizePreset(parseInt(req.params.id));
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── AGENDA DE SORTEOS ────────────────────────────────────────────────────────
+
+// GET /api/raffle/scheduled?date=YYYY-MM-DD — público, sorteos programados para una fecha
+router.get('/scheduled', (req, res) => {
+  try {
+    const date = req.query.date || new Date().toISOString().slice(0, 10);
+    res.json(getScheduledRaffles(date));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/raffle/scheduled/all — admin, todos los programados (futuros)
+router.get('/scheduled/all', requireAuth, (req, res) => {
+  try { res.json(getScheduledRaffles(null)); } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/raffle/scheduled — admin, crear sorteo programado
+router.post('/scheduled', requireAuth, (req, res) => {
+  const { eventDate, scheduledTime, prize } = req.body;
+  if (!eventDate || !scheduledTime || !prize)
+    return res.status(400).json({ error: 'Faltan campos: eventDate, scheduledTime, prize' });
+  try {
+    const id = createScheduledRaffle({ eventDate, scheduledTime, prize });
+    res.json({ success: true, id });
+  } catch(e) { res.status(400).json({ error: e.message }); }
+});
+
+// PATCH /api/raffle/scheduled/:id — admin, editar
+router.patch('/scheduled/:id', requireAuth, (req, res) => {
+  const { eventDate, scheduledTime, prize, status } = req.body;
+  try {
+    updateScheduledRaffle(parseInt(req.params.id), { eventDate, scheduledTime, prize, status });
+    res.json({ success: true });
+  } catch(e) { res.status(400).json({ error: e.message }); }
+});
+
+// DELETE /api/raffle/scheduled/:id — admin, eliminar
+router.delete('/scheduled/:id', requireAuth, (req, res) => {
+  try {
+    deleteScheduledRaffle(parseInt(req.params.id));
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;
