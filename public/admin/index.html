@@ -990,18 +990,21 @@
 
       <!-- Holders con filtro por nivel -->
       <div class="glass-card" style="margin-bottom:16px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+        <div onclick="toggleSection('holders-list-wrap', 'holders-chevron')" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none; margin-bottom:0;">
           <span class="card-title">👥 Wallets por nivel</span>
-          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <span id="holders-chevron" style="font-size:16px; color:var(--text-muted); transition:transform 0.2s;">▼</span>
+        </div>
+        <div id="holders-list-wrap" style="display:none; margin-top:14px;">
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;">
             <button class="filter-btn active" id="fbtn-all" onclick="filterHolders('all', this)">Todos</button>
             <button class="filter-btn" id="fbtn-1" onclick="filterHolders('1', this)">Nv1</button>
             <button class="filter-btn" id="fbtn-2" onclick="filterHolders('2', this)">Nv2</button>
             <button class="filter-btn" id="fbtn-3" onclick="filterHolders('3', this)">Nv3</button>
             <button class="filter-btn" id="fbtn-4" onclick="filterHolders('4', this)">Nv4</button>
           </div>
-        </div>
-        <div id="holders-cards" style="display:flex; flex-direction:column; gap:8px;">
-          <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:16px;">Cargando...</div>
+          <div id="holders-cards" style="display:flex; flex-direction:column; gap:8px;">
+            <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:16px;">Cargando...</div>
+          </div>
         </div>
       </div>
 
@@ -1432,7 +1435,6 @@
         document.getElementById('main-app').style.display = 'flex';
         errorDiv.style.display = 'none';
         loadStats();
-        loadHolders('all');
         loadMessages();
         loadPeakHours();
         loadVipBadge();
@@ -1496,13 +1498,28 @@
         }).join('');
       if (!dateVal || dateVal === '__totales__') sel.value = '__totales__';
 
-      // Si se pidieron totales, no mostramos lista de sesiones individuales
-      if (dateVal === '__totales__') {
+      // Si se pidieron totales: mostrar resumen global de todas las fechas de eventos
+      if (!dateVal || dateVal === '__totales__') {
+        const allDates = data.dates || [];
+        const totalEntradas = allDates.reduce((s, d) => s + (d.count || 0), 0);
         const pill = document.getElementById('visits-summary-pill');
-        if (pill) pill.textContent = 'Vista global';
-        document.getElementById('visits-summary').style.display = 'none';
+        if (pill) pill.textContent = `${totalEntradas} visitas · ${allDates.length} eventos`;
+        document.getElementById('visits-summary').innerHTML =
+          `<div style="display:flex; gap:16px; flex-wrap:wrap;">
+            <div><div style="font-size:22px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text);">${totalEntradas}</div><div style="font-size:11px; color:var(--text-muted);">visitas totales</div></div>
+            <div><div style="font-size:22px; font-weight:900; font-family:'Playfair Display',serif; color:var(--gold);">${allDates.length}</div><div style="font-size:11px; color:var(--text-muted);">eventos</div></div>
+          </div>`;
+        document.getElementById('visits-summary').style.display = 'block';
         document.getElementById('visits-tbody').innerHTML =
-          `<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:16px;background:var(--surface);border-radius:14px;">Selecciona una fecha para ver el detalle de entradas y salidas</div>`;
+          allDates.length
+            ? allDates.map(d => {
+                const label = new Date(d.day + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long' });
+                return `<div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="document.getElementById('visits-date-select').value='${d.day}'; loadVisits('${d.day}');">
+                  <span style="font-size:13px; color:var(--text);">${label}</span>
+                  <span style="font-family:'Playfair Display',serif; font-size:18px; font-weight:900; color:var(--wine);">${d.count}</span>
+                </div>`;
+              }).join('')
+            : `<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:16px;background:var(--surface);border-radius:14px;">Sin eventos registrados aún</div>`;
         return;
       }
 
@@ -1683,13 +1700,23 @@
     const open = sec.style.display !== 'none';
     sec.style.display = open ? 'none' : 'block';
     if (chev) chev.style.transform = open ? '' : 'rotate(180deg)';
+    // Cargar holders la primera vez que se despliega
+    if (!open && sectionId === 'holders-list-wrap') {
+      loadHolders(currentHolderFilter || 'all');
+    }
   }
 
   function filterHolders(level, btn) {
-    // Solo afecta los botones del bloque de holders, no otros filter-btn de la página
     document.querySelectorAll('#fbtn-all, #fbtn-1, #fbtn-2, #fbtn-3, #fbtn-4')
       .forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
+    // Abrir sección si estaba cerrada
+    const wrap = document.getElementById('holders-list-wrap');
+    const chev = document.getElementById('holders-chevron');
+    if (wrap && wrap.style.display === 'none') {
+      wrap.style.display = 'block';
+      if (chev) chev.style.transform = 'rotate(180deg)';
+    }
     loadHolders(level);
   }
 
