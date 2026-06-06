@@ -584,5 +584,68 @@ router.get('/report-data', requireAuth, (req, res) => {
   }
 });
 
+// GET /api/admin/inspect-wallet/:address — Inspeccionar un furancheiro específico (admin)
+router.get('/inspect-wallet/:address', requireAuth, (req, res) => {
+  const { address } = req.params;
+  if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+    return res.status(400).json({ error: 'Dirección no válida' });
+  }
+  try {
+    const { db, getVisitCount } = require('../db/database');
+    
+    // Nivel del holder
+    const holder = db.prepare(`
+      SELECT level, level_name, minted_at FROM mints
+      WHERE wallet_address = ? AND status = 'success'
+      ORDER BY level DESC LIMIT 1
+    `).get(address);
+    
+    // Última sesión/visita
+    const lastSession = db.prepare(`
+      SELECT entry_time, exit_time FROM sessions
+      WHERE wallet_address = ?
+      ORDER BY entry_time DESC LIMIT 1
+    `).get(address);
+    
+    const level = holder ? holder.level : 1;
+    const levelName = holder ? holder.level_name : 'Cautivo';
+    const visitCount = getVisitCount(address);
+
+    // Tapas por día de evento (solo días con evento registrado, counted_as_visit=1)
+    const tapasByDay = db.prepare(`
+      SELECT
+        date(s.entry_time, '+2 hours') as day,
+        e.title as event_title,
+        COUNT(*) as tapas
+      FROM sessions s
+      LEFT JOIN events e ON date(s.entry_time) = e.event_date
+      WHERE s.wallet_address = ? AND s.counted_as_visit = 1
+      GROUP BY day
+      ORDER BY day DESC
+      LIMIT 20
+    `).all(address);
+
+    // Sesión actual (si está dentro ahora)
+    const activeSession = db.prepare(`
+      SELECT entry_time FROM sessions
+      WHERE wallet_address = ? AND exit_time IS NULL
+      ORDER BY entry_time DESC LIMIT 1
+    `).get(address);
+
+    res.json({
+      walletAddress: address,
+      level,
+      levelName,
+      visitCount,
+      lastVisit: lastSession ? lastSession.entry_time : (holder ? holder.minted_at : null),
+      activeNow: !!activeSession,
+      activeSessionStart: activeSession ? activeSession.entry_time : null,
+      tapasByDay
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;
 module.exports.requireAuth = requireAuth;

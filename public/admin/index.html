@@ -1619,6 +1619,46 @@
 
     </div>
 
+    <!-- ==================== ESCÁNER DE BARRA ==================== -->
+    <div class="page" id="page-scanner">
+      <div class="page-header">
+        <h1 class="page-title">📷 Escáner de Barra</h1>
+        <p class="page-subtitle">Escanea el QR del furancheiro para ver su ficha al instante</p>
+      </div>
+
+      <!-- Cámara -->
+      <div class="card" style="margin-bottom:16px; text-align:center;">
+        <div id="scanner-reader" style="width:100%; max-width:360px; margin:0 auto; border-radius:16px; overflow:hidden; background:#1C0E06;"></div>
+        <div style="display:flex; gap:10px; justify-content:center; margin-top:14px; flex-wrap:wrap;">
+          <button id="scanner-start-btn" onclick="startScanner()" style="background:var(--wine); color:#fff; border:none; border-radius:12px; padding:12px 26px; font-size:15px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; display:flex; align-items:center; gap:8px;">
+            📷 Activar Cámara
+          </button>
+          <button id="scanner-stop-btn" onclick="stopScanner()" style="display:none; background:rgba(42,21,9,0.08); color:var(--text); border:none; border-radius:12px; padding:12px 26px; font-size:15px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">
+            ⛔ Detener
+          </button>
+        </div>
+        <div id="scanner-status" style="margin-top:10px; font-size:13px; color:var(--text-muted); min-height:18px;"></div>
+      </div>
+
+      <!-- También buscar por wallet manual -->
+      <div class="card" style="margin-bottom:16px;">
+        <p style="font-size:12px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">🔍 O buscar wallet</p>
+        <div style="display:flex; gap:8px;">
+          <input id="scanner-manual-input" type="text" placeholder="0x..."
+            style="flex:1; background:rgba(42,21,9,0.05); border:1.5px solid rgba(42,21,9,0.1); border-radius:12px; padding:12px 14px; font-size:14px; color:var(--text); font-family:'Outfit',sans-serif; outline:none;"
+            onkeydown="if(event.key==='Enter') inspectWallet(this.value.trim())"
+          />
+          <button onclick="inspectWallet(document.getElementById('scanner-manual-input').value.trim())"
+            style="background:var(--wine); color:#fff; border:none; border-radius:12px; padding:12px 18px; font-size:20px; cursor:pointer;">
+            →
+          </button>
+        </div>
+      </div>
+
+      <!-- Resultado de inspección -->
+      <div id="scanner-result" style="display:none;"></div>
+    </div>
+
   </main>
 
   <!-- ==================== BOTTOM NAV ==================== -->
@@ -1642,6 +1682,10 @@
     <button class="nav-item" onclick="showPage('raffles')" id="nav-raffles">
       <span class="nav-icon">🎰</span>
       <span>Rifa</span>
+    </button>
+    <button class="nav-item" onclick="showPage('scanner')" id="nav-scanner">
+      <span class="nav-icon">📷</span>
+      <span>Escáner</span>
     </button>
     <button class="nav-item" onclick="showPage('analytics')" id="nav-analytics">
       <span class="nav-icon">📊</span>
@@ -1763,6 +1807,7 @@
     loadVipBadge();
     if (pageId === 'holders') { loadVisits('__totales__'); }
     if (pageId === 'raffles') { loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); loadScheduled(); }
+    if (pageId === 'scanner') { stopScanner(); document.getElementById('scanner-result').style.display='none'; document.getElementById('scanner-status').textContent=''; }
   }
 
   // ==================== VISITAS ====================
@@ -3387,6 +3432,186 @@
       </table>`;
   }
 
+</script>
+
+<!-- html5-qrcode desde CDN (solo se carga si se usa el escáner) -->
+<script>
+  // ==================== ESCÁNER DE BARRA ====================
+  let html5QrScanner = null;
+  let scannerLoaded = false;
+  let lastScannedWallet = null;
+
+  function loadHtml5QrcodeLib(cb) {
+    if (window.Html5Qrcode) { cb(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+    s.onload = cb;
+    s.onerror = () => {
+      document.getElementById('scanner-status').textContent = 'Error al cargar la librería QR. Comprueba la conexión.';
+    };
+    document.head.appendChild(s);
+  }
+
+  function startScanner() {
+    const statusEl = document.getElementById('scanner-status');
+    statusEl.textContent = 'Cargando escáner...';
+    loadHtml5QrcodeLib(() => {
+      try {
+        if (html5QrScanner) { try { html5QrScanner.stop(); } catch(e){} }
+        html5QrScanner = new Html5Qrcode('scanner-reader');
+        const config = { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 };
+        html5QrScanner.start(
+          { facingMode: 'environment' },
+          config,
+          (decodedText) => {
+            // Extrae wallet del QR (puede ser URL con ?inspect=0x... o dirección directa)
+            let wallet = decodedText.trim();
+            const match = wallet.match(/[?&]inspect=(0x[a-fA-F0-9]{40})/);
+            if (match) wallet = match[1];
+            if (!/^0x[a-fA-F0-9]{40}$/.test(wallet)) {
+              statusEl.textContent = '⚠️ QR no reconocido como wallet Furancheiro';
+              return;
+            }
+            if (wallet === lastScannedWallet) return; // evitar re-scan inmediato
+            lastScannedWallet = wallet;
+            stopScanner();
+            inspectWallet(wallet);
+          },
+          () => {} // frame sin QR, silencioso
+        ).then(() => {
+          statusEl.textContent = '📷 Apunta al QR del furancheiro';
+          document.getElementById('scanner-start-btn').style.display = 'none';
+          document.getElementById('scanner-stop-btn').style.display = 'inline-flex';
+        }).catch(err => {
+          statusEl.textContent = '⚠️ No se pudo acceder a la cámara: ' + err;
+        });
+      } catch (e) {
+        statusEl.textContent = 'Error iniciando escáner: ' + e.message;
+      }
+    });
+  }
+
+  function stopScanner() {
+    if (html5QrScanner) {
+      try { html5QrScanner.stop().catch(() => {}); } catch(e){}
+      html5QrScanner = null;
+    }
+    lastScannedWallet = null;
+    document.getElementById('scanner-start-btn').style.display = 'inline-flex';
+    document.getElementById('scanner-stop-btn').style.display = 'none';
+    document.getElementById('scanner-reader').innerHTML = '';
+  }
+
+  async function inspectWallet(wallet) {
+    if (!wallet) return;
+    const resultDiv = document.getElementById('scanner-result');
+    const statusEl = document.getElementById('scanner-status');
+    if (!/^0x[a-fA-F0-9]{40}$/.test(wallet)) {
+      statusEl.textContent = '⚠️ Dirección no válida';
+      return;
+    }
+    resultDiv.style.display = 'none';
+    resultDiv.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">Consultando...</div>';
+    resultDiv.style.display = 'block';
+    document.getElementById('scanner-manual-input').value = wallet;
+
+    try {
+      const data = await fetch(`/api/admin/inspect-wallet/${wallet}`, { headers: authHeaders() }).then(r => r.json());
+      if (data.error) { resultDiv.innerHTML = `<div class="card" style="color:var(--wine)">⚠️ ${data.error}</div>`; return; }
+      renderScanResult(data);
+    } catch(e) {
+      resultDiv.innerHTML = `<div class="card" style="color:var(--wine)">⚠️ Error de conexión</div>`;
+    }
+  }
+
+  function renderScanResult(d) {
+    const resultDiv = document.getElementById('scanner-result');
+    const levelColors = { 1: '#8B6914', 2: '#5C8B19', 3: '#195C8B', 4: '#8B1918' };
+    const levelEmojis = { 1: '🍷', 2: '🥂', 3: '🍾', 4: '👑' };
+    const lColor = levelColors[d.level] || '#8B1918';
+    const lEmoji = levelEmojis[d.level] || '🍷';
+    const walletShort = `${d.walletAddress.slice(0,6)}...${d.walletAddress.slice(-4)}`;
+    const lastVisitStr = d.lastVisit
+      ? new Date(d.lastVisit).toLocaleDateString('es-ES', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
+      : 'Sin registro';
+
+    // Tapas por día
+    const tapasDayRows = (d.tapasByDay || []).map(t => {
+      const dayLabel = new Date(t.day + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short' });
+      const eventLabel = t.event_title ? `<span style="font-size:11px;color:var(--text-muted);margin-left:4px;">${t.event_title}</span>` : '';
+      return `
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-bottom:1px solid rgba(42,21,9,0.07);">
+          <div>
+            <span style="font-weight:600;font-size:13px;">${dayLabel}</span>${eventLabel}
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-size:18px;">🍷</span>
+            <span style="font-size:20px; font-weight:900; color:var(--wine);">${t.tapas}</span>
+            <span style="font-size:11px; color:var(--text-muted);">tapa${t.tapas !== 1 ? 's' : ''}</span>
+          </div>
+        </div>`;
+    }).join('');
+
+    const activeBadge = d.activeNow
+      ? `<div style="display:inline-flex; align-items:center; gap:6px; background:rgba(74,222,128,0.15); color:#16a34a; border:1px solid rgba(74,222,128,0.4); border-radius:100px; padding:4px 12px; font-size:12px; font-weight:700; margin-top:6px;">
+           <span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;animation:pulse 1.5s infinite;"></span>
+           Dentro ahora
+         </div>`
+      : '';
+
+    resultDiv.innerHTML = `
+      <div class="card" style="margin-bottom:16px;">
+        <!-- Cabecera nivel -->
+        <div style="display:flex; align-items:center; gap:14px; margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid rgba(42,21,9,0.1);">
+          <div style="width:54px;height:54px;border-radius:50%;background:${lColor}22;border:2px solid ${lColor}55;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;">
+            ${lEmoji}
+          </div>
+          <div>
+            <div style="font-size:13px;color:var(--text-muted);font-weight:600;font-family:'Outfit',sans-serif;">NIVEL ${d.level}</div>
+            <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:${lColor};">${d.levelName || 'Furancheiro'}</div>
+            <div style="font-family:monospace;font-size:12px;color:var(--text-muted);margin-top:2px;">${walletShort}</div>
+            ${activeBadge}
+          </div>
+        </div>
+
+        <!-- Stats rápidas -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;">
+          <div style="background:rgba(42,21,9,0.05);border-radius:12px;padding:12px;text-align:center;">
+            <div style="font-size:28px;font-weight:900;color:var(--wine);">${d.visitCount || 0}</div>
+            <div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Visitas totales</div>
+          </div>
+          <div style="background:rgba(42,21,9,0.05);border-radius:12px;padding:12px;text-align:center;">
+            <div style="font-size:28px;font-weight:900;color:var(--gold);">${(d.tapasByDay || []).reduce((s,t)=>s+t.tapas,0)}</div>
+            <div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Tapas históricas</div>
+          </div>
+        </div>
+
+        <!-- Última visita -->
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">
+          🕐 Última actividad: <strong style="color:var(--text);">${lastVisitStr}</strong>
+        </div>
+
+        <!-- Tapas por día -->
+        ${d.tapasByDay && d.tapasByDay.length ? `
+        <div style="background:rgba(42,21,9,0.04);border-radius:12px;overflow:hidden;">
+          <div style="padding:10px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--wine);background:rgba(139,25,24,0.07);border-bottom:1px solid rgba(42,21,9,0.08);">
+            🍷 Tapas por día de evento
+          </div>
+          ${tapasDayRows}
+        </div>` : `<div style="font-size:13px;color:var(--text-muted);text-align:center;padding:10px;">Sin historial de tapas registrado</div>`}
+
+        <!-- Botón ver perfil completo en holders -->
+        <button onclick="showPage('holders'); setTimeout(()=>{ document.getElementById('scanner-manual-input') && (document.getElementById('scanner-manual-input').value=''); filterHolders('all', document.getElementById('fbtn-all')); },100);"
+          style="margin-top:14px;width:100%;background:rgba(42,21,9,0.06);color:var(--text);border:1.5px solid rgba(42,21,9,0.1);border-radius:12px;padding:11px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;">
+          👥 Ver en panel de holders
+        </button>
+        <button onclick="document.getElementById('scanner-result').style.display='none'; document.getElementById('scanner-manual-input').value=''; lastScannedWallet=null; startScanner();"
+          style="margin-top:8px;width:100%;background:var(--wine);color:#fff;border:none;border-radius:12px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">
+          📷 Escanear otro
+        </button>
+      </div>
+    `;
+  }
 </script>
 </body>
 </html>

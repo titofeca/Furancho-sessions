@@ -41,7 +41,7 @@ app.get('/entry', (req, res) => res.set(NO_CACHE).sendFile(path.join(__dirname, 
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Health check
+// Health check — Railway lo llama periódicamente para verificar que el servidor vive
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
@@ -70,8 +70,9 @@ function scheduleAutoCheckout() {
 scheduleAutoCheckout();
 
 // Iniciar servidor
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   const { DEMO_MODE } = require('./services/crossmint');
+  const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'furancho.db');
   console.log(`
 ╔══════════════════════════════════════════╗
 ║   🍷 FURANCHO SESSIONS NFT — SERVIDOR    ║
@@ -80,8 +81,38 @@ app.listen(PORT, () => {
 ║  Admin: http://localhost:${PORT}/admin      ║
 ║  Claim: http://localhost:${PORT}/claim?level=1  ║
 ║  Modo: ${DEMO_MODE ? '🟡 DEMO (sin Crossmint real)' : '🟢 PRODUCCIÓN'}     ║
+║  DB: ${DB_PATH.length > 30 ? '...'+DB_PATH.slice(-27) : DB_PATH.padEnd(30)} ║
 ╚══════════════════════════════════════════╝
   `);
 });
 
+// ─── Cierre limpio (SIGTERM = Railway para el contenedor; SIGINT = Ctrl+C local) ───
+// Sin esto, npm reporta "signal SIGTERM → command failed" aunque sea un cierre normal.
+function gracefulShutdown(signal) {
+  console.log(`[Server] Señal ${signal} recibida — cerrando limpiamente...`);
+  server.close(() => {
+    console.log('[Server] Conexiones HTTP cerradas.');
+    // Cerrar SQLite correctamente para que el WAL se flush antes de salir
+    try {
+      const { db } = require('./db/database');
+      db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
+      db.close();
+      console.log('[Server] DB SQLite cerrada correctamente.');
+    } catch (e) {
+      console.error('[Server] Error cerrando DB:', e.message);
+    }
+    process.exit(0);
+  });
+
+  // Forzar salida si tarda más de 10 segundos (Railway espera máximo ~30s)
+  setTimeout(() => {
+    console.error('[Server] Forzando salida tras timeout de cierre.');
+    process.exit(1);
+  }, 10000);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT',  () => gracefulShutdown('SIGINT'));
+
 module.exports = app;
+
