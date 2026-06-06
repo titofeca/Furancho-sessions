@@ -166,12 +166,12 @@ try { db.exec(`ALTER TABLE sessions ADD COLUMN exit_points INTEGER DEFAULT 0`); 
 try { db.exec(`CREATE TABLE IF NOT EXISTS points (id INTEGER PRIMARY KEY AUTOINCREMENT, wallet_address TEXT NOT NULL, points INTEGER NOT NULL, reason TEXT, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
 try { db.exec(`CREATE INDEX IF NOT EXISTS idx_points_wallet ON points(wallet_address)`); } catch (_) {}
 
-// Sesiones de prueba del 4 jun antes de las 19:30 no cuentan como visita real
+// Sesiones de prueba del 4 jun antes de las 19:30 no cuentan como visita real (19:30 CEST = 17:30 UTC)
 try {
   db.exec(`
     UPDATE sessions SET counted_as_visit = 0
     WHERE date(entry_time) = '2026-06-04'
-      AND time(entry_time) < '19:30:00'
+      AND time(entry_time) < '17:30:00'
       AND counted_as_visit = 1
   `);
 } catch (_) {}
@@ -253,11 +253,11 @@ function getStats() {
   const byLevel = db.prepare(`
     SELECT level, level_name, COUNT(*) as count FROM (
       SELECT wallet_address, MAX(level) as level, MAX(level_name) as level_name
-      FROM mints WHERE status = 'success' GROUP BY wallet_address
+      FROM mints WHERE status != 'failed' GROUP BY wallet_address
       UNION ALL
       SELECT wallet_address, 1 as level, 'Cautivo' as level_name
       FROM sessions
-      WHERE wallet_address NOT IN (SELECT wallet_address FROM mints WHERE status = 'success')
+      WHERE wallet_address NOT IN (SELECT wallet_address FROM mints WHERE status != 'failed')
       GROUP BY wallet_address
     ) GROUP BY level ORDER BY level
   `).all();
@@ -302,7 +302,7 @@ function getHolders(levelFilter) {
              wallet_address, 1 as level, 'Cautivo' as level_name,
              MAX(entry_time) as event_date, 'session' as status
       FROM sessions
-      WHERE wallet_address NOT IN (SELECT wallet_address FROM mints WHERE status='success')
+      WHERE wallet_address NOT IN (SELECT wallet_address FROM mints WHERE status != 'failed')
       GROUP BY wallet_address
       UNION ALL
       SELECT substr(wallet_address,1,6)||'...'||substr(wallet_address,-6) as wallet_masked,
@@ -318,7 +318,7 @@ function getHolders(levelFilter) {
            wallet_address, 1 as level, 'Cautivo' as level_name,
            MAX(entry_time) as event_date, 'session' as status
     FROM sessions
-    WHERE wallet_address NOT IN (SELECT wallet_address FROM mints WHERE status='success')
+    WHERE wallet_address NOT IN (SELECT wallet_address FROM mints WHERE status != 'failed')
     GROUP BY wallet_address
     UNION ALL
     SELECT substr(wallet_address,1,6)||'...'||substr(wallet_address,-6) as wallet_masked,
@@ -498,6 +498,7 @@ function getAllEvents() {
 
 function seedEvents() {
   const dates = [
+    { date: '2026-06-04', title: 'Furancho Sessions — 4 Junio', description: 'Inauguración de Furancho Sessions. La gran apertura: vinos locales seleccionados, picoteo y cunca de bienvenida.' },
     { date: '2026-06-11', title: 'Furancho Sessions — 11 Junio', description: 'La primera. La que marca el ritmo. Vinos locales gallegos, tapas de autor y el ambiente que solo el Furancho sabe crear. Nos vemos el jueves.' },
     { date: '2026-06-18', title: 'Furancho Sessions — 18 Junio', description: 'Una cata selecta acompañada de las mejores tapas de temporada. Descubre nuevos sabores en un ambiente único y relajado entre amigos.' },
     { date: '2026-06-25', title: 'Furancho Sessions — 25 Junio', description: 'Especial Noche de San Juan. Fogata simbólica, música tradicional gallega y nuestro menú especial de tapas y vinos galardonados.' },

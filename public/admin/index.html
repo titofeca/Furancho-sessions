@@ -859,6 +859,32 @@
     }
     .seg-panel { display: none; }
     .seg-panel.active { display: block; animation: pageEnter 0.25s ease both; }
+
+    .subpage-tabs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .subpage-tab {
+      padding: 8px 16px;
+      border-radius: 50px;
+      border: 1.5px solid var(--border);
+      background: transparent;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-family: 'Outfit', sans-serif;
+      transition: all 0.18s;
+    }
+    .subpage-tab.active {
+      background: var(--wine);
+      border-color: var(--wine);
+      color: #fff;
+    }
+    .subpage-panel { display: none; }
+    .subpage-panel.active { display: block; animation: pageEnter 0.25s ease both; }
     .seg-row {
       display: flex;
       justify-content: space-between;
@@ -1058,211 +1084,211 @@
       </div>
     </div>
 
-    <!-- ==================== CLIENTES (holders + visitas unificado) ==================== -->
+    <!-- ==================== CLIENTES Y MÉTRICAS (unificado) ==================== -->
     <div class="page" id="page-holders">
-      <div class="page-header">
-        <h1 class="page-title">Clientes</h1>
-        <p class="page-subtitle">Niveles, visitas y actividad</p>
-        <button onclick="window.print()" style="margin-top:12px; display:inline-flex; align-items:center; gap:8px; padding:10px 18px; background:rgba(42,21,9,0.06); border:1px solid var(--border); color:var(--text-muted); border-radius:50px; font-family:'Outfit',sans-serif; font-size:13px; font-weight:600; cursor:pointer;">
-          🖨 Imprimir / PDF
-        </button>
-      </div>
-
-      <!-- KPIs de niveles -->
-      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:16px;">
-        <div style="background:var(--surface); border-radius:14px; padding:12px 8px; text-align:center; border:1px solid var(--border);">
-          <div style="font-size:9px; text-transform:uppercase; letter-spacing:1px; color:#cd7f32; font-weight:700; margin-bottom:4px;">Nv1</div>
-          <div id="kpi-nv1" style="font-size:22px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text);">—</div>
-          <div style="font-size:9px; color:var(--text-muted);">Cautivo</div>
+      <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+        <div>
+          <h1 class="page-title">Holders y Métricas</h1>
+          <p class="page-subtitle">Métricas, afluencia y control de clientes</p>
         </div>
-        <div style="background:var(--surface); border-radius:14px; padding:12px 8px; text-align:center; border:1px solid var(--border);">
-          <div style="font-size:9px; text-transform:uppercase; letter-spacing:1px; color:#aaa; font-weight:700; margin-bottom:4px;">Nv2</div>
-          <div id="kpi-nv2" style="font-size:22px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text);">—</div>
-          <div style="font-size:9px; color:var(--text-muted);">Cunqueiro</div>
-        </div>
-        <div style="background:var(--surface); border-radius:14px; padding:12px 8px; text-align:center; border:1px solid var(--border);">
-          <div style="font-size:9px; text-transform:uppercase; letter-spacing:1px; color:#ffd700; font-weight:700; margin-bottom:4px;">Nv3</div>
-          <div id="kpi-nv3" style="font-size:22px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text);">—</div>
-          <div style="font-size:9px; color:var(--text-muted);">Larpeiro</div>
-        </div>
-        <div style="background:var(--surface); border-radius:14px; padding:12px 8px; text-align:center; border:1px solid var(--border);">
-          <div style="font-size:9px; text-transform:uppercase; letter-spacing:1px; color:#e5007e; font-weight:700; margin-bottom:4px;">Nv4</div>
-          <div id="kpi-nv4" style="font-size:22px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text);">—</div>
-          <div style="font-size:9px; color:var(--text-muted);">Presidente</div>
-        </div>
-      </div>
-
-      <!-- Bloque: Visitas por sesión (colapsable) -->
-      <div class="glass-card" style="margin-bottom:16px;">
-        <!-- Cabecera colapsable -->
-        <div onclick="toggleSection('visits-section', 'visits-chevron')" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none;">
-          <div style="display:flex; align-items:center; gap:10px;">
-            <span class="card-title">🚪 Visitas por sesión</span>
-            <span id="visits-summary-pill" style="font-size:11px; color:var(--text-muted);"></span>
-          </div>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <select id="visits-date-select" onchange="loadVisits(this.value); event.stopPropagation();" onclick="event.stopPropagation()" style="background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:5px 8px; font-size:11px; max-width:130px;">
-              <option value="">Hoy</option>
-            </select>
-            <span id="visits-chevron" style="font-size:16px; color:var(--text-muted); transition:transform 0.2s;">▼</span>
-          </div>
-        </div>
-        <!-- Cuerpo colapsable -->
-        <div id="visits-section" style="display:none; margin-top:14px;">
-          <div id="visits-summary" style="display:none; margin-bottom:12px;"></div>
-          <div id="visits-tbody" style="display:flex; flex-direction:column; gap:6px;">
-            <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:16px;">Cargando...</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Bloque: Estadísticas globales (colapsable) -->
-      <div class="glass-card" style="margin-bottom:16px;" id="peak-hours-card">
-        <div onclick="toggleSection('stats-section', 'stats-chevron')" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none;">
-          <span class="card-title">📊 Estadísticas globales</span>
-          <span id="stats-chevron" style="font-size:16px; color:var(--text-muted); transition:transform 0.2s;">▼</span>
-        </div>
-        <div id="stats-section" style="display:none; margin-top:14px;">
-          <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:18px;">
-            <div style="background:rgba(42,21,9,0.04); border-radius:12px; padding:12px; text-align:center;">
-              <p style="font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 4px;">En local ahora</p>
-              <p id="kpi-open" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:var(--wine); margin:0;">—</p>
-            </div>
-            <div style="background:rgba(42,21,9,0.04); border-radius:12px; padding:12px; text-align:center;">
-              <p style="font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 4px;">Estancia media</p>
-              <p id="kpi-avg" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:var(--gold); margin:0;">—</p>
-            </div>
-            <div style="background:rgba(42,21,9,0.04); border-radius:12px; padding:12px; text-align:center;">
-              <p style="font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 4px;">Total sesiones</p>
-              <p id="kpi-sessions" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text); margin:0;">—</p>
-            </div>
-            <div style="background:rgba(42,21,9,0.04); border-radius:12px; padding:12px; text-align:center;">
-              <p style="font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 4px;">Clientes únicos</p>
-              <p id="kpi-users" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text); margin:0;">—</p>
-            </div>
-          </div>
-          <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;">Afluencia por hora</p>
-          <div id="hour-chart" style="display:flex; align-items:flex-end; gap:3px; height:80px; margin-bottom:6px; padding:0 2px;"></div>
-          <div id="hour-labels" style="display:flex; gap:3px; padding:0 2px; margin-bottom:16px;"></div>
-          <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;">Días más activos</p>
-          <div id="weekday-chart" style="display:flex; gap:6px; margin-bottom:16px;"></div>
-          <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;">Últimas sesiones</p>
-          <div id="week-chart" style="display:flex; align-items:flex-end; gap:6px; height:60px; margin-bottom:6px;"></div>
-          <div id="week-labels" style="display:flex; gap:6px; margin-bottom:4px;"></div>
-          <span id="peak-label" style="font-size:11px; color:var(--gold); font-weight:700; display:block; margin-top:6px;"></span>
-
-        </div>
-      </div>
-
-      <!-- Holders con filtro por nivel -->
-      <div class="glass-card" style="margin-bottom:16px;">
-        <div onclick="toggleSection('holders-list-wrap', 'holders-chevron')" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none; margin-bottom:0;">
-          <span class="card-title">👥 Wallets por nivel</span>
-          <span id="holders-chevron" style="font-size:16px; color:var(--text-muted); transition:transform 0.2s;">▼</span>
-        </div>
-        <div id="holders-list-wrap" style="display:none; margin-top:14px;">
-          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;">
-            <button class="filter-btn active" id="fbtn-all" onclick="filterHolders('all', this)">Todos</button>
-            <button class="filter-btn" id="fbtn-1" onclick="filterHolders('1', this)">Nv1</button>
-            <button class="filter-btn" id="fbtn-2" onclick="filterHolders('2', this)">Nv2</button>
-            <button class="filter-btn" id="fbtn-3" onclick="filterHolders('3', this)">Nv3</button>
-            <button class="filter-btn" id="fbtn-4" onclick="filterHolders('4', this)">Nv4</button>
-          </div>
-          <div id="holders-cards" style="display:flex; flex-direction:column; gap:8px;">
-            <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:16px;">Cargando...</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Clientes habituales multi-nivel -->
-      <div class="glass-card">
-        <div class="card-header">
-          <span class="card-title">⭐ Clientes habituales</span>
-        </div>
-        <div id="multilevel-cards" style="display:flex; flex-direction:column; gap:8px;">
-          <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:16px;">Cargando...</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ==================== ANALYTICS ==================== -->
-    <div class="page" id="page-analytics">
-      <div class="page-header">
-        <h1 class="page-title">Analíticas</h1>
-        <p class="page-subtitle">Métricas de fidelización y comportamiento de clientes</p>
-        <button onclick="window.print()" style="margin-top:12px; display:inline-flex; align-items:center; gap:8px; padding:10px 18px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:13px; font-weight:700; cursor:pointer; box-shadow:0 4px 14px rgba(139,25,24,0.3);">
+        <button onclick="window.print()" style="display:inline-flex; align-items:center; gap:8px; padding:10px 18px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:13px; font-weight:700; cursor:pointer; box-shadow:0 4px 14px rgba(139,25,24,0.3);">
           🖨 Descargar / Imprimir PDF
         </button>
       </div>
 
-      <!-- SECCIÓN 1: RESUMEN EJECUTIVO -->
-      <div class="glass-card" style="margin-bottom:20px;">
-        <div class="card-title" style="margin-bottom:16px;">📈 Resumen Ejecutivo</div>
-        <div class="analytics-kpi-grid" id="kpi-grid">
-          <div class="analytics-kpi"><div class="kpi-value" style="color:var(--wine);">—</div><div class="kpi-label">Retorno 30d</div></div>
-          <div class="analytics-kpi"><div class="kpi-value" style="color:var(--gold);">—</div><div class="kpi-label">Días entre visitas</div></div>
-          <div class="analytics-kpi"><div class="kpi-value" style="color:#ef4444;">—</div><div class="kpi-label">No-show rate</div></div>
-          <div class="analytics-kpi"><div class="kpi-value" style="color:#4ade80;">—</div><div class="kpi-label">Activos &lt;45d</div></div>
-          <div class="analytics-kpi"><div class="kpi-value" style="color:var(--gold);">—</div><div class="kpi-label">Cerca de premio</div></div>
+      <!-- Selector de Subpestañas -->
+      <div class="subpage-tabs" style="margin-bottom: 20px;">
+        <button class="subpage-tab active" id="subtab-metrics" onclick="switchSubPage('metrics', this)">📊 Métricas y Afluencia</button>
+        <button class="subpage-tab" id="subtab-clients" onclick="switchSubPage('clients', this)">👥 Listado y Segmentos</button>
+      </div>
+
+      <!-- SUBPÁGINA 1: MÉTRICAS Y AFLUENCIA -->
+      <div id="subpage-metrics" class="subpage-panel active">
+        <!-- SECCIÓN 1: RESUMEN EJECUTIVO -->
+        <div class="glass-card" style="margin-bottom:20px;">
+          <div class="card-title" style="margin-bottom:16px;">📈 Resumen Ejecutivo</div>
+          <div class="analytics-kpi-grid" id="kpi-grid">
+            <div class="analytics-kpi"><div class="kpi-value" style="color:var(--wine);">—</div><div class="kpi-label">Retorno 30d</div></div>
+            <div class="analytics-kpi"><div class="kpi-value" style="color:var(--gold);">—</div><div class="kpi-label">Días entre visitas</div></div>
+            <div class="analytics-kpi"><div class="kpi-value" style="color:#ef4444;">—</div><div class="kpi-label">No-show rate</div></div>
+            <div class="analytics-kpi"><div class="kpi-value" style="color:#4ade80;">—</div><div class="kpi-label">Activos &lt;45d</div></div>
+            <div class="analytics-kpi"><div class="kpi-value" style="color:var(--gold);">—</div><div class="kpi-label">Inactivos &gt;45d</div></div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 2: FUNNEL DE CONVERSIÓN -->
+        <div class="glass-card" style="margin-bottom:20px;">
+          <div class="card-title" style="margin-bottom:16px;">🔽 Funnel de Conversión</div>
+          <div id="funnel-bars" style="margin-bottom:20px;">
+            <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Cargando funnel...</div>
+          </div>
+          <div class="card-title" style="font-size:13px; margin-bottom:10px; color:var(--text-muted);">Nuevos clientes por evento</div>
+          <div id="new-by-event-table">
+            <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:12px;">Cargando...</div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 4: AFORO POR HORA -->
+        <div class="glass-card" style="margin-bottom:20px;">
+          <div class="card-title" style="margin-bottom:12px;">⏱ Aforo por Hora</div>
+          <div style="display:flex; gap:10px; align-items:center; margin-bottom:16px; flex-wrap:wrap;">
+            <select id="hourly-date-select" onchange="loadHourlyChart(this.value)" style="background:rgba(42,21,9,0.05); border:1.5px solid var(--border); border-radius:12px; padding:9px 14px; font-size:13px; color:var(--text); font-family:'Outfit',sans-serif; flex:1; min-width:180px;">
+              <option value="">Selecciona un evento...</option>
+            </select>
+          </div>
+          <div id="hourly-metrics" style="display:none; display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:10px; margin-bottom:16px;"></div>
+          <div id="hourly-chart-area">
+            <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Selecciona un evento para ver el aforo por hora</div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 5: ASISTENCIA vs RSVP (No-Show) -->
+        <div class="glass-card" style="margin-bottom:20px;">
+          <div class="card-title" style="margin-bottom:16px;">📋 Asistencia vs RSVP (No-Show)</div>
+          <div id="noshow-table-wrap">
+            <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Cargando...</div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 6: ENGAGEMENT MENSAJES -->
+        <div class="glass-card" style="margin-bottom:20px;">
+          <div class="card-title" style="margin-bottom:16px;">💬 Engagement de Mensajes</div>
+          <div id="msg-stats-table">
+            <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Cargando...</div>
+          </div>
+        </div>
+
+        <!-- Bloque: Visitas por sesión -->
+        <div class="glass-card" style="margin-bottom:16px;">
+          <div onclick="toggleSection('visits-section', 'visits-chevron')" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span class="card-title">🚪 Visitas por sesión</span>
+              <span id="visits-summary-pill" style="font-size:11px; color:var(--text-muted);"></span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <select id="visits-date-select" onchange="loadVisits(this.value); event.stopPropagation();" onclick="event.stopPropagation()" style="background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:5px 8px; font-size:11px; max-width:130px;">
+                <option value="">Hoy</option>
+              </select>
+              <span id="visits-chevron" style="font-size:16px; color:var(--text-muted); transition:transform 0.2s;">▼</span>
+            </div>
+          </div>
+          <div id="visits-section" style="display:none; margin-top:14px;">
+            <div id="visits-summary" style="display:none; margin-bottom:12px;"></div>
+            <div id="visits-tbody" style="display:flex; flex-direction:column; gap:6px;">
+              <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:16px;">Cargando...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bloque: Estadísticas globales -->
+        <div class="glass-card" style="margin-bottom:16px;" id="peak-hours-card">
+          <div onclick="toggleSection('stats-section', 'stats-chevron')" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none;">
+            <span class="card-title">📊 Estadísticas globales</span>
+            <span id="stats-chevron" style="font-size:16px; color:var(--text-muted); transition:transform 0.2s;">▼</span>
+          </div>
+          <div id="stats-section" style="display:none; margin-top:14px;">
+            <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:18px;">
+              <div style="background:rgba(42,21,9,0.04); border-radius:12px; padding:12px; text-align:center;">
+                <p style="font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 4px;">En local ahora</p>
+                <p id="kpi-open" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:var(--wine); margin:0;">—</p>
+              </div>
+              <div style="background:rgba(42,21,9,0.04); border-radius:12px; padding:12px; text-align:center;">
+                <p style="font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 4px;">Estancia media</p>
+                <p id="kpi-avg" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:var(--gold); margin:0;">—</p>
+              </div>
+              <div style="background:rgba(42,21,9,0.04); border-radius:12px; padding:12px; text-align:center;">
+                <p style="font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 4px;">Total sesiones</p>
+                <p id="kpi-sessions" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text); margin:0;">—</p>
+              </div>
+              <div style="background:rgba(42,21,9,0.04); border-radius:12px; padding:12px; text-align:center;">
+                <p style="font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 4px;">Clientes únicos</p>
+                <p id="kpi-users" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text); margin:0;">—</p>
+              </div>
+            </div>
+            <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;">Afluencia por hora</p>
+            <div id="hour-chart" style="display:flex; align-items:flex-end; gap:3px; height:80px; margin-bottom:6px; padding:0 2px;"></div>
+            <div id="hour-labels" style="display:flex; gap:3px; padding:0 2px; margin-bottom:16px;"></div>
+            <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;">Días más activos</p>
+            <div id="weekday-chart" style="display:flex; gap:6px; margin-bottom:16px;"></div>
+            <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;">Últimas sesiones</p>
+            <div id="week-chart" style="display:flex; align-items:flex-end; gap:6px; height:60px; margin-bottom:6px;"></div>
+            <div id="week-labels" style="display:flex; gap:6px; margin-bottom:4px;"></div>
+            <span id="peak-label" style="font-size:11px; color:var(--gold); font-weight:700; display:block; margin-top:6px;"></span>
+          </div>
         </div>
       </div>
 
-      <!-- SECCIÓN 2: FUNNEL DE CONVERSIÓN -->
-      <div class="glass-card" style="margin-bottom:20px;">
-        <div class="card-title" style="margin-bottom:16px;">🔽 Funnel de Conversión</div>
-        <div id="funnel-bars" style="margin-bottom:20px;">
-          <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Cargando funnel...</div>
+      <!-- SUBPÁGINA 2: LISTADO Y SEGMENTOS -->
+      <div id="subpage-clients" class="subpage-panel">
+        <!-- KPIs de niveles -->
+        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:16px;">
+          <div style="background:var(--surface); border-radius:14px; padding:12px 8px; text-align:center; border:1px solid var(--border);">
+            <div style="font-size:9px; text-transform:uppercase; letter-spacing:1px; color:#cd7f32; font-weight:700; margin-bottom:4px;">Nv1</div>
+            <div id="kpi-nv1" style="font-size:22px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text);">—</div>
+            <div style="font-size:9px; color:var(--text-muted);">Cautivo</div>
+          </div>
+          <div style="background:var(--surface); border-radius:14px; padding:12px 8px; text-align:center; border:1px solid var(--border);">
+            <div style="font-size:9px; text-transform:uppercase; letter-spacing:1px; color:#aaa; font-weight:700; margin-bottom:4px;">Nv2</div>
+            <div id="kpi-nv2" style="font-size:22px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text);">—</div>
+            <div style="font-size:9px; color:var(--text-muted);">Cunqueiro</div>
+          </div>
+          <div style="background:var(--surface); border-radius:14px; padding:12px 8px; text-align:center; border:1px solid var(--border);">
+            <div style="font-size:9px; text-transform:uppercase; letter-spacing:1px; color:#ffd700; font-weight:700; margin-bottom:4px;">Nv3</div>
+            <div id="kpi-nv3" style="font-size:22px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text);">—</div>
+            <div style="font-size:9px; color:var(--text-muted);">Larpeiro</div>
+          </div>
+          <div style="background:var(--surface); border-radius:14px; padding:12px 8px; text-align:center; border:1px solid var(--border);">
+            <div style="font-size:9px; text-transform:uppercase; letter-spacing:1px; color:#e5007e; font-weight:700; margin-bottom:4px;">Nv4</div>
+            <div id="kpi-nv4" style="font-size:22px; font-weight:900; font-family:'Playfair Display',serif; color:var(--text);">—</div>
+            <div style="font-size:9px; color:var(--text-muted);">Presidente</div>
+          </div>
         </div>
-        <div class="card-title" style="font-size:13px; margin-bottom:10px; color:var(--text-muted);">Nuevos clientes por evento</div>
-        <div id="new-by-event-table">
-          <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:12px;">Cargando...</div>
-        </div>
-      </div>
 
-      <!-- SECCIÓN 3: SEGMENTOS -->
-      <div class="glass-card" style="margin-bottom:20px;">
-        <div class="card-title" style="margin-bottom:16px;">👥 Segmentos de Clientes</div>
-        <div class="seg-tabs" id="seg-tabs">
-          <button class="seg-tab active" onclick="switchSegTab('nuevos', this)">🌱 Nuevos <span id="seg-count-nuevos"></span></button>
-          <button class="seg-tab" onclick="switchSegTab('habituales', this)">⭐ Habituales <span id="seg-count-habituales"></span></button>
-          <button class="seg-tab" onclick="switchSegTab('vip', this)">💎 VIP <span id="seg-count-vip"></span></button>
-          <button class="seg-tab" onclick="switchSegTab('inactivos', this)">💤 Inactivos <span id="seg-count-inactivos"></span></button>
+        <!-- SECCIÓN: SEGMENTOS DE CLIENTES -->
+        <div class="glass-card" style="margin-bottom:20px;">
+          <div class="card-title" style="margin-bottom:16px;">👥 Segmentos de Clientes</div>
+          <div class="seg-tabs" id="seg-tabs">
+            <button class="seg-tab active" onclick="switchSegTab('nuevos', this)">🌱 Nuevos <span id="seg-count-nuevos"></span></button>
+            <button class="seg-tab" onclick="switchSegTab('habituales', this)">⭐ Habituales <span id="seg-count-habituales"></span></button>
+            <button class="seg-tab" onclick="switchSegTab('vip', this)">💎 VIP <span id="seg-count-vip"></span></button>
+            <button class="seg-tab" onclick="switchSegTab('inactivos', this)">💤 Inactivos <span id="seg-count-inactivos"></span></button>
+          </div>
+          <div id="seg-panel-nuevos" class="seg-panel active">
+            <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Cargando...</div>
+          </div>
+          <div id="seg-panel-habituales" class="seg-panel"></div>
+          <div id="seg-panel-vip" class="seg-panel"></div>
+          <div id="seg-panel-inactivos" class="seg-panel"></div>
         </div>
-        <div id="seg-panel-nuevos" class="seg-panel active">
-          <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Cargando...</div>
-        </div>
-        <div id="seg-panel-habituales" class="seg-panel"></div>
-        <div id="seg-panel-vip" class="seg-panel"></div>
-        <div id="seg-panel-inactivos" class="seg-panel"></div>
-      </div>
 
-      <!-- SECCIÓN 4: AFORO POR HORA -->
-      <div class="glass-card" style="margin-bottom:20px;">
-        <div class="card-title" style="margin-bottom:12px;">⏱ Aforo por Hora</div>
-        <div style="display:flex; gap:10px; align-items:center; margin-bottom:16px; flex-wrap:wrap;">
-          <select id="hourly-date-select" onchange="loadHourlyChart(this.value)" style="background:rgba(42,21,9,0.05); border:1.5px solid var(--border); border-radius:12px; padding:9px 14px; font-size:13px; color:var(--text); font-family:'Outfit',sans-serif; flex:1; min-width:180px;">
-            <option value="">Selecciona un evento...</option>
-          </select>
+        <!-- Holders con filtro por nivel -->
+        <div class="glass-card" style="margin-bottom:16px;">
+          <div onclick="toggleSection('holders-list-wrap', 'holders-chevron')" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none; margin-bottom:0;">
+            <span class="card-title">👥 Wallets por nivel</span>
+            <span id="holders-chevron" style="font-size:16px; color:var(--text-muted); transition:transform 0.2s;">▼</span>
+          </div>
+          <div id="holders-list-wrap" style="display:none; margin-top:14px;">
+            <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;">
+              <button class="filter-btn active" id="fbtn-all" onclick="filterHolders('all', this)">Todos</button>
+              <button class="filter-btn" id="fbtn-1" onclick="filterHolders('1', this)">Nv1</button>
+              <button class="filter-btn" id="fbtn-2" onclick="filterHolders('2', this)">Nv2</button>
+              <button class="filter-btn" id="fbtn-3" onclick="filterHolders('3', this)">Nv3</button>
+              <button class="filter-btn" id="fbtn-4" onclick="filterHolders('4', this)">Nv4</button>
+            </div>
+            <div id="holders-cards" style="display:flex; flex-direction:column; gap:8px;">
+              <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:16px;">Cargando...</div>
+            </div>
+          </div>
         </div>
-        <div id="hourly-metrics" style="display:none; display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:10px; margin-bottom:16px;"></div>
-        <div id="hourly-chart-area">
-          <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Selecciona un evento para ver el aforo por hora</div>
-        </div>
-      </div>
 
-      <!-- SECCIÓN 5: ASISTENCIA vs RSVP -->
-      <div class="glass-card" style="margin-bottom:20px;">
-        <div class="card-title" style="margin-bottom:16px;">📋 Asistencia vs RSVP (No-Show)</div>
-        <div id="noshow-table-wrap">
-          <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Cargando...</div>
-        </div>
-      </div>
-
-      <!-- SECCIÓN 6: ENGAGEMENT MENSAJES -->
-      <div class="glass-card" style="margin-bottom:20px;">
-        <div class="card-title" style="margin-bottom:16px;">💬 Engagement de Mensajes</div>
-        <div id="msg-stats-table">
-          <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Cargando...</div>
+        <!-- Clientes habituales multi-nivel -->
+        <div class="glass-card">
+          <div class="card-header">
+            <span class="card-title">⭐ Clientes habituales</span>
+          </div>
+          <div id="multilevel-cards" style="display:flex; flex-direction:column; gap:8px;">
+            <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:16px;">Cargando...</div>
+          </div>
         </div>
       </div>
     </div>
@@ -1669,7 +1695,7 @@
     </button>
     <button class="nav-item" onclick="showPage('holders')" id="nav-holders">
       <span class="nav-icon">👥</span>
-      <span>Holders</span>
+      <span>Holders y Métricas</span>
     </button>
     <button class="nav-item" onclick="showPage('messages')" id="nav-messages">
       <span class="nav-icon">💬</span>
@@ -1687,11 +1713,7 @@
       <span class="nav-icon">📷</span>
       <span>Escáner</span>
     </button>
-    <button class="nav-item" onclick="showPage('analytics')" id="nav-analytics">
-      <span class="nav-icon">📊</span>
-      <span>Analíticas</span>
-    </button>
-<button class="nav-item" onclick="showPage('events')" id="nav-events" style="position:relative;">
+    <button class="nav-item" onclick="showPage('events')" id="nav-events" style="position:relative;">
       <span class="nav-icon">📅</span>
       <span>Eventos</span>
       <span id="vip-pending-badge" style="display:none; position:absolute; top:6px; right:10px; background:var(--wine); color:#fff; font-size:9px; font-weight:900; border-radius:100px; padding:1px 5px; min-width:14px; text-align:center;">0</span>
@@ -1803,9 +1825,11 @@
     document.getElementById(`page-${pageId}`).classList.add('active');
     document.getElementById(`nav-${pageId}`).classList.add('active');
     if (pageId === 'events') loadEventsPage();
-    if (pageId === 'analytics') loadAnalyticsPage();
     loadVipBadge();
-    if (pageId === 'holders') { loadVisits('__totales__'); }
+    if (pageId === 'holders') {
+      loadVisits('__totales__');
+      loadAnalyticsPage();
+    }
     if (pageId === 'raffles') { loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); loadScheduled(); }
     if (pageId === 'scanner') { stopScanner(); document.getElementById('scanner-result').style.display='none'; document.getElementById('scanner-status').textContent=''; }
   }
@@ -3258,9 +3282,16 @@
       </div>`).join('') + (inact.length > 10 ? `<div style="text-align:center;font-size:11px;color:var(--text-muted);padding:6px;">+${inact.length-10} más</div>` : '') : emptyMsg;
   }
 
+  function switchSubPage(subpage, btn) {
+    document.querySelectorAll('.subpage-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.subpage-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(`subpage-${subpage}`).classList.add('active');
+  }
+
   function switchSegTab(name, btn) {
-    document.querySelectorAll('.seg-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.seg-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('#seg-tabs .seg-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('[id^="seg-panel-"]').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(`seg-panel-${name}`).classList.add('active');
   }

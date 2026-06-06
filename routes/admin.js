@@ -289,14 +289,27 @@ router.get('/funnel', requireAuth, (req, res) => {
     const { db } = require('../db/database');
 
     const levelRows = db.prepare(`
-      SELECT level, COUNT(DISTINCT wallet_address) as count FROM mints WHERE status='success' GROUP BY level
+      SELECT level, COUNT(*) as count FROM (
+        SELECT wallet_address, MAX(level) as level
+        FROM mints WHERE status != 'failed' GROUP BY wallet_address
+        UNION ALL
+        SELECT wallet_address, 1 as level
+        FROM sessions
+        WHERE wallet_address NOT IN (SELECT wallet_address FROM mints WHERE status != 'failed')
+        GROUP BY wallet_address
+      ) GROUP BY level
     `).all();
     const levelMap = {};
     levelRows.forEach(r => { levelMap[r.level] = r.count; });
-    const nv1 = levelMap[1] || 0;
-    const nv2 = levelMap[2] || 0;
-    const nv3 = levelMap[3] || 0;
-    const nv4 = levelMap[4] || 0;
+    const c1 = levelMap[1] || 0;
+    const c2 = levelMap[2] || 0;
+    const c3 = levelMap[3] || 0;
+    const c4 = levelMap[4] || 0;
+
+    const nv4 = c4;
+    const nv3 = c3 + nv4;
+    const nv2 = c2 + nv3;
+    const nv1 = c1 + nv2;
 
     const funnel = [
       { level: 1, name: 'Nv1 — Cautivo', count: nv1, pct_prev: 100 },
@@ -313,10 +326,18 @@ router.get('/funnel', requireAuth, (req, res) => {
     `).all();
 
     const newByEvent = db.prepare(`
-      SELECT date(MIN(m.minted_at)) as event_date, COUNT(DISTINCT m.wallet_address) as new_clients
-      FROM mints m WHERE m.status='success'
-      GROUP BY date(m.minted_at) HAVING event_date IN (SELECT event_date FROM events)
-      ORDER BY event_date DESC LIMIT 6
+      SELECT join_date as event_date, COUNT(*) as new_clients
+      FROM (
+        SELECT wallet_address, date(MIN(first_time)) as join_date
+        FROM (
+          SELECT wallet_address, MIN(entry_time) as first_time FROM sessions GROUP BY wallet_address
+          UNION ALL
+          SELECT wallet_address, MIN(minted_at) as first_time FROM mints WHERE status != 'failed' GROUP BY wallet_address
+        ) GROUP BY wallet_address
+      )
+      GROUP BY join_date
+      HAVING join_date IN (SELECT event_date FROM events)
+      ORDER BY join_date DESC LIMIT 6
     `).all();
 
     const gapRow = db.prepare(`
@@ -324,11 +345,20 @@ router.get('/funnel', requireAuth, (req, res) => {
         SELECT wallet_address,
           CAST(julianday(nth_visit) - julianday(first_visit) AS INTEGER) as gap
         FROM (
-          SELECT wallet_address,
-            MIN(entry_time) as first_visit,
-            (SELECT entry_time FROM sessions s2 WHERE s2.wallet_address=s.wallet_address AND s2.counted_as_visit=1 AND s2.entry_time > MIN(s.entry_time) ORDER BY s2.entry_time ASC LIMIT 1) as nth_visit
-          FROM sessions s WHERE counted_as_visit=1
-          GROUP BY wallet_address HAVING COUNT(*) >= 2
+          SELECT s.wallet_address,
+            first_visit,
+            (SELECT entry_time FROM sessions s2 
+             WHERE s2.wallet_address = s.wallet_address 
+               AND s2.counted_as_visit = 1 
+               AND s2.entry_time > first_visit 
+             ORDER BY s2.entry_time ASC LIMIT 1) as nth_visit
+          FROM (
+            SELECT wallet_address, MIN(entry_time) as first_visit
+            FROM sessions
+            WHERE counted_as_visit = 1
+            GROUP BY wallet_address
+            HAVING COUNT(*) >= 2
+          ) s
         ) WHERE nth_visit IS NOT NULL
       )
     `).get();
@@ -341,11 +371,20 @@ router.get('/funnel', requireAuth, (req, res) => {
         SELECT wallet_address,
           CAST(julianday(nth_visit) - julianday(first_visit) AS INTEGER) as gap
         FROM (
-          SELECT wallet_address,
-            MIN(entry_time) as first_visit,
-            (SELECT entry_time FROM sessions s2 WHERE s2.wallet_address=s.wallet_address AND s2.counted_as_visit=1 AND s2.entry_time > MIN(s.entry_time) ORDER BY s2.entry_time ASC LIMIT 1) as nth_visit
-          FROM sessions s WHERE counted_as_visit=1
-          GROUP BY wallet_address HAVING COUNT(*) >= 2
+          SELECT s.wallet_address,
+            first_visit,
+            (SELECT entry_time FROM sessions s2 
+             WHERE s2.wallet_address = s.wallet_address 
+               AND s2.counted_as_visit = 1 
+               AND s2.entry_time > first_visit 
+             ORDER BY s2.entry_time ASC LIMIT 1) as nth_visit
+          FROM (
+            SELECT wallet_address, MIN(entry_time) as first_visit
+            FROM sessions
+            WHERE counted_as_visit = 1
+            GROUP BY wallet_address
+            HAVING COUNT(*) >= 2
+          ) s
         ) WHERE nth_visit IS NOT NULL
       )
     `).get();
