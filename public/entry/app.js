@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 const NEW_WELCOME_MESSAGES = [
   {
     icon: '🍷',
-    title: '¡Hola ho! ¡Benvido al Furancho, rapaz!',
+    title: '¡Hola ho! ¡Bienvenido al Furancho, rapaz!',
     msg: 'Veo que es tu primera vez por aquí. Pasa para dentro, búscate un hueco y pídete una cunca de viño. Eso sí, no te me vayas sin fichar la salida al marchar... ¡que no cobramos por salir, pero al menos queremos saber que quedaste vivo y no te perdiste en el monte! 😜'
   },
   {
@@ -25,8 +25,8 @@ const NEW_WELCOME_MESSAGES = [
   },
   {
     icon: '🥖',
-    title: '¡Benvido al templo de la leria, rapaz!',
-    msg: 'Pasa para adentro, que el vino está frío, la leria caliente y el jamón bien cortado. No te olvides de fichar la salida al marchar... ¡a no ser que te quieras quedar a varrer el furancho con nosotros a las tantas! 🧹'
+    title: '¡Bienvenido al templo de la leria, rapaz!',
+    msg: 'Pasa para adentro, que el vino está frío, la leria caliente y el jamón bien cortado. No te olvides de fichar la salida al marchar... ¡a no ser que te quieras quedar a barrer el furancho con nosotros a las tantas! 🧹'
   }
 ];
 
@@ -34,7 +34,7 @@ const RETURNING_WELCOME_MESSAGES = [
   {
     icon: '🙌',
     title: '¡Otra vez tú por aquí, carallo!',
-    msg: 'Ya me parecía a mí que te gustaba mucho la esmorga. ¡Leva cuidado no vayas a herdar el furancho! Pasa y coge sitio, que hoy hay sorteo a ver si tienes más suerte que el otro día... ¡o vas a seguir durmiendo na palla por estar de leria! 😜'
+    msg: 'Ya me parecía a mí que te gustaba mucho la esmorga. ¡Lleva cuidado no vayas a heredar el furancho! Pasa y coge sitio, que hoy hay sorteo a ver si tienes más suerte que el otro día... ¡o vas a seguir durmiendo en la paja por estar de leria! 😜'
   },
   {
     icon: '🍇',
@@ -80,12 +80,12 @@ async function doEntry(walletAddress) {
       selected = NEW_WELCOME_MESSAGES[Math.floor(Math.random() * NEW_WELCOME_MESSAGES.length)];
       document.getElementById('icon-container').innerText = selected.icon;
       document.getElementById('title-container').innerText = selected.title;
-      document.getElementById('msg-container').innerHTML = `${selected.msg}<br><br><small style="color:var(--gold); font-weight:700;">¡Esta xa conta coma a túa 1ª visita!</small>`;
+      document.getElementById('msg-container').innerHTML = `${selected.msg}<br><br><small style="color:var(--gold); font-weight:700;">¡Esta ya cuenta como tu 1ª visita!</small>`;
     } else {
       selected = RETURNING_WELCOME_MESSAGES[Math.floor(Math.random() * RETURNING_WELCOME_MESSAGES.length)];
       document.getElementById('icon-container').innerText = selected.icon;
       document.getElementById('title-container').innerText = selected.title;
-      document.getElementById('msg-container').innerHTML = `${selected.msg}<br><br><small style="color:var(--wine); font-weight:700;">¡Xa levas ${data.visitCount} visita${data.visitCount !== 1 ? 's' : ''} rexistradas!</small>`;
+      document.getElementById('msg-container').innerHTML = `${selected.msg}<br><br><small style="color:var(--wine); font-weight:700;">¡Ya llevas ${data.visitCount} visita${data.visitCount !== 1 ? 's' : ''} registrada${data.visitCount !== 1 ? 's' : ''}!</small>`;
     }
 
   } catch (e) {
@@ -214,19 +214,19 @@ function showError(msg) {
   document.getElementById('screen-onboarding').style.display = 'none';
   document.getElementById('screen-success').style.display = 'flex';
   document.getElementById('icon-container').innerText = '😬';
-  document.getElementById('title-container').innerText = 'Caíuse o viño...';
+  document.getElementById('title-container').innerText = 'Se cayó el vino...';
   document.getElementById('msg-container').innerText = msg;
 }
 
 // ==================== SSE LIVE RAFFLES ====================
-const _entryWinnerTitles = ['¡CAÍUCHE O PREMIO, HO!','¡TOCOUCHE, CAMPIÓN!','¡A SORTE ESTABA DO TEU LADO!'];
+const _entryWinnerTitles = ['¡TE CAYÓ EL PREMIO, HO!','¡TE TOCÓ, CAMPEÓN!','¡LA SUERTE ESTABA DE TU LADO!'];
 const _entryLoserEmojis = ['😤','🙃','😅','🫠','😬'];
-const _entryLoserTitles = ['Esta vez non...','Que mala pata, ho','Nin desta vez'];
+const _entryLoserTitles = ['Esta vez no...','Qué mala pata, ho','Ni esta vez'];
 const _entryLoserMsgs = [
-  'O viño segue na mesa, que non é pouco.',
-  'Haberá máis sorteos. A noite é longa.',
-  'Non todo o monte é ourego, home.',
-  'A bonoloto tampouco, pero aquí estamos.',
+  'El vino sigue en la mesa, que no es poco.',
+  'Habrá más sorteos. La noche es larga.',
+  'No todo el monte es orégano, hombre.',
+  'La bonoloto tampoco, pero aquí estamos.',
 ];
 
 function connectRaffle() {
@@ -264,7 +264,7 @@ function connectRaffle() {
       if (tEl) tEl.textContent = title;
       document.getElementById('raffle-loser').style.display = 'block';
       document.getElementById('raffle-loser-prize').textContent = data.prize;
-      if (mEl) mEl.innerHTML = `O premio de <strong>${data.prize}</strong> foi para outro. ${msg}`;
+      if (mEl) mEl.innerHTML = `El premio de <strong>${data.prize}</strong> fue para otro. ${msg}`;
       if (navigator.vibrate) navigator.vibrate([150]);
     }
   });

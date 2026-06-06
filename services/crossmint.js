@@ -27,10 +27,10 @@ const NFT_IMAGES = {
 };
 
 const LEVEL_DESCRIPTIONS = {
-  1: 'Benvido ao Furancho. Este NFT acredita a túa primeira experiencia Furancho Sessions.',
-  2: 'Xa coñeces o sabor. Este NFT certifica o teu nivel O Cunqueiro en Furancho Sessions.',
-  3: 'Eres un auténtico larpeiro. Este NFT certifica o teu nivel O Larpeiro en Furancho Sessions.',
-  4: 'A máxima distinción. Este NFT certifica que es O Presidente do Furancho Sessions.'
+  1: 'Bienvenido al Furancho. Este pase acredita tu primera experiencia en Furancho Sessions, ho.',
+  2: 'Ya conoces el sabor de la casa. Este pase certifica tu nivel O Cunqueiro en Furancho Sessions, rapaz.',
+  3: 'Eres un auténtico larpeiro, no te pierdes una. Este pase certifica tu nivel O Larpeiro en Furancho Sessions.',
+  4: 'La máxima distinción de la parroquia. Este pase certifica que eres el mismísimo Presidente de Furancho Sessions, casi nada.'
 };
 
 /**

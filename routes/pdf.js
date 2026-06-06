@@ -135,10 +135,10 @@ router.get('/entrada', async (req, res) => {
       filename: 'Furancho_QR_Entrada.pdf',
       qrUrl: url,
       qrColor: '#116530',
-      headline: '¡Cheguei!',
-      subheadline: 'Escanea ao entrar ao Furancho',
-      tagline: 'FICHA TU ENTRADA · FICHAJE OBLIGATORIO',
-      footerNote: 'Escanea este QR nada máis chegar. Sen fichaxe non hai sorteo nin estadísticas de asistencia.\n¡Que non te pille o garda!'
+      headline: '¡Ya estoy aquí, ho!',
+      subheadline: 'Escanea al entrar al Furancho',
+      tagline: 'FICHA TU ENTRADA · FICHAJE OBLIGATORIO, RAPAZ',
+      footerNote: 'Escanea este QR nada más llegar, ho. Sin fichar no hay sorteo ni estadísticas de asistencia.\n¡Que no te pille el guardia despistado!'
     });
   } catch (e) { res.status(500).send('Error: ' + e.message); }
 });
@@ -152,10 +152,10 @@ router.get('/salida', async (req, res) => {
       filename: 'Furancho_QR_Salida.pdf',
       qrUrl: url,
       qrColor: WINE,
-      headline: 'Marcho que teño\nque marchar',
-      subheadline: 'Escanea ao saír do Furancho',
-      tagline: 'FICHA TU SALIDA · HASTA LA PRÓXIMA',
-      footerNote: 'Non te vaias de rondón sen fichar a saída.\nO sistema necesita saber que te foches para calcular o tempo de estadía.\n¡Ata a próxima, que che vaia ben!'
+      headline: 'Marcho que me tengo\nque marchar',
+      subheadline: 'Escanea al salir del Furancho',
+      tagline: 'FICHA TU SALIDA · HASTA LA PRÓXIMA, RAPAZ',
+      footerNote: 'No te vayas de tapadillo sin fichar la salida, ho.\nEl sistema necesita saber que te has ido para calcular tu tiempo de estancia.\n¡Hasta la próxima, que te vaya bien y no tardes mucho!'
     });
   } catch (e) { res.status(500).send('Error: ' + e.message); }
 });
@@ -169,10 +169,10 @@ router.get('/app', async (req, res) => {
       filename: 'Furancho_QR_App.pdf',
       qrUrl: url,
       qrColor: '#1E3A5F',
-      headline: '¿Perdiches\na app?',
-      subheadline: 'Non pasa nada, aquí tes o enlace de volta',
+      headline: '¿Perdiste\nla app, ho?',
+      subheadline: 'No pasa nada, aquí tienes el enlace de vuelta',
       tagline: 'ACCESO A FURANCHO SESSIONS · ESCANEA Y LISTO',
-      footerNote: '¿Borraches a app? ¿Cambiaches de móbil? ¿Ou simplemente non lembras onde a deixaches?\nEscanea este QR e volves á túa conta en segundos. Promesa de Furancho.'
+      footerNote: '¿Borraste la app? ¿Cambiaste de móvil? ¿O simplemente no recuerdas dónde la dejaste?\nEscanea este QR y vuelves a tu cuenta en segundos, ho. Promesa de furancheiro.'
     });
   } catch (e) { res.status(500).send('Error: ' + e.message); }
 });
