@@ -3187,6 +3187,8 @@
         }
       }
 
+      // Agrupar por fecha
+      let lastDate = null;
       list.innerHTML = itemsToRender.map((r) => {
         const won = r.is_winner === 1;
         const msg = (statusMsg[r.status] || (() => r.prize))(r, won);
@@ -3197,16 +3199,23 @@
         const border = r.status === 'collected' ? 'rgba(74,222,128,0.25)'
                      : isWin                    ? 'rgba(196,151,58,0.3)'
                                                 : 'rgba(42,21,9,0.08)';
-        const dateObj = new Date(r.created_at);
-        const timeStr = dateObj.toLocaleDateString('es-ES', {day:'2-digit',month:'short'}) + ' ' + dateObj.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
-        return `<div style="background:${bg}; border:1px solid ${border}; border-radius:14px; padding:13px 15px;">
+        const rDate = r.created_at ? r.created_at.slice(0, 10) : '';
+        const dateObj = new Date(r.created_at.replace(' ','T')+'Z');
+        const timeStr = dateObj.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
+        let dateSep = '';
+        if (rDate !== lastDate) {
+          lastDate = rDate;
+          const isToday = rDate === today;
+          const label = isToday ? 'Esta noche' : dateObj.toLocaleDateString('es-ES', {weekday:'long', day:'numeric', month:'long'});
+          dateSep = `<p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:${dateSep ? '12px' : '0'} 0 6px;">${label}</p>`;
+        }
+        return dateSep + `<div style="background:${bg}; border:1px solid ${border}; border-radius:14px; padding:13px 15px; margin-bottom:2px;">
           <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px;">
             <div style="flex:1;">
-              <p style="font-size:10px; color:var(--text-muted); margin:0 0 3px;">Sorteo Especial</p>
               <p style="font-size:13px; font-weight:600; color:var(--text); margin:0 0 3px; line-height:1.5;">${msg}</p>
-              ${isWin && r.verification_code ? `<div style="font-family:monospace; font-size:22px; font-weight:700; letter-spacing:5px; color:var(--wine); margin-top:4px;">${r.verification_code}</div>` : ''}
+              ${isWin && r.verification_code ? `<div style="font-family:monospace; font-size:22px; font-weight:700; letter-spacing:5px; color:var(--wine); margin-top:6px;">${r.verification_code}</div>` : ''}
             </div>
-            <span style="font-size:10px; color:var(--text-muted); flex-shrink:0; margin-top:2px;">${timeStr}</span>
+            <span style="font-size:10px; color:var(--text-muted); flex-shrink:0; margin-top:2px; white-space:nowrap;">${timeStr}</span>
           </div>
         </div>`;
       }).join('');
