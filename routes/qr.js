@@ -127,6 +127,25 @@ router.get('/wallet/:address', async (req, res) => {
   }
 });
 
+// GET /api/qr/inspect/:address — QR para que el admin escanee y vea el perfil
+router.get('/inspect/:address', async (req, res) => {
+  const { address } = req.params;
+  if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+    return res.status(400).send('Dirección no válida');
+  }
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+  const inspectUrl = `${protocol}://${req.get('host')}/admin?inspect=${address}`;
+  const options = { ...QR_OPTIONS, color: { dark: '#8B1918', light: '#FFFFFF' } };
+  try {
+    const qrBuffer = await QRCode.toBuffer(inspectUrl, options);
+    res.set('Content-Type', 'image/png');
+    res.set('Content-Disposition', `inline; filename="furancho-inspect-${address}.png"`);
+    res.send(qrBuffer);
+  } catch (e) {
+    res.status(500).send('Error generando QR: ' + e.message);
+  }
+});
+
 // GET /api/qr/:level — genera QR como imagen PNG (legacy)
 router.get('/:level', async (req, res) => {
   const level = parseInt(req.params.level);
