@@ -1265,7 +1265,56 @@
     body.nivel-2 .form-card { background: rgba(255,255,255,0.35); border-color: rgba(0,0,0,0.08); }
     body.nivel-2 .wallet-display-row { background: rgba(0,0,0,0.07); color: rgba(28,43,53,0.45); }
     body.nivel-2 .gdpr-label { color: rgba(28,43,53,0.5); }
-    body.nivel-2 .success-title { color: #1C2B35; }
+    /* ========== ESTILOS DE LA GUÍA VIP ========== */
+    .guide-card {
+      transition: all 0.25s ease-in-out;
+    }
+    .guide-details {
+      background: #ffffff;
+      border: 1.5px solid rgba(42, 21, 9, 0.08);
+      border-radius: 12px;
+      padding: 14px 16px;
+      outline: none;
+      transition: all 0.2s ease-in-out;
+    }
+    .guide-details[open] {
+      border-color: rgba(196, 151, 58, 0.35);
+      box-shadow: 0 4px 16px rgba(196, 151, 58, 0.08);
+      background: #faf9f6;
+    }
+    .guide-summary {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text);
+      cursor: pointer;
+      list-style: none;
+      outline: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .guide-summary::-webkit-details-marker {
+      display: none;
+    }
+    .guide-arrow {
+      font-size: 10px;
+      color: var(--gold);
+      transition: transform 0.25s ease;
+    }
+    .guide-details[open] .guide-arrow {
+      transform: rotate(180deg);
+    }
+    .guide-text {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      margin-top: 8px;
+      line-height: 1.6;
+      animation: guideFadeIn 0.3s ease both;
+    }
+    @keyframes guideFadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
   </style>
 </head>
 <body>
@@ -1743,6 +1792,74 @@
       <div id="profile-exit-confirm" style="display: none; background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.25); border-radius: 16px; padding: 14px 18px; margin-bottom: 16px; text-align: center;">
         <p style="font-size: 13px; color: #4ade80; font-weight: 600;">✓ Salida registrada</p>
         <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Visita acumulada. ¡Hasta la próxima!</p>
+      </div>
+
+      <!-- Guía del Furancheiro VIP (Preguntas Frecuentes) -->
+      <div class="guide-card" style="background:linear-gradient(135deg,rgba(139,25,24,0.05),rgba(196,151,58,0.04)); border:1.5px solid rgba(139,25,24,0.18); border-radius:20px; padding:20px; margin-bottom:20px;">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+          <span style="font-size:22px;">📖</span>
+          <p style="font-size:13px; font-weight:700; color:var(--wine); text-transform:uppercase; letter-spacing:1px;">Guía del Furancheiro VIP</p>
+        </div>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px; line-height:1.6;">
+          Echa un ojo aquí abajo si andas perdido, rapaz. Así no tienes que preguntarle al staff del local, que andan apurados sirviendo vino.
+        </p>
+
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <!-- Pregunta 1 -->
+          <details class="guide-details">
+            <summary class="guide-summary">
+              <span>¿Para qué sirve esta app, ho?</span>
+              <span class="guide-arrow">▼</span>
+            </summary>
+            <p class="guide-text">
+              ¡Pues para no andar perdidos y ganar premios de los buenos! Aquí puedes ver tus visitas acumuladas, enterarte de los próximos eventos del local y participar en los sorteos automáticos de cada noche si tienes tu entrada fichada.
+            </p>
+          </details>
+
+          <!-- Pregunta 2 -->
+          <details class="guide-details">
+            <summary class="guide-summary">
+              <span>¿Qué premios me pueden tocar?</span>
+              <span class="guide-arrow">▼</span>
+            </summary>
+            <p class="guide-text">
+              ¡De todo lo bueno! Sorteamos jarras de vino fresco, raciones de tapas de la barra, botellas para llevar a casa, ascensos directos de nivel furancheiro, desayunos especiales en el hotel... ¡y otras sorpresas que se invente el patrón según el día! 🎁
+            </p>
+          </details>
+
+          <!-- Pregunta 3 -->
+          <details class="guide-details">
+            <summary class="guide-summary">
+              <span>¿Por qué tengo que fichar al entrar y salir?</span>
+              <span class="guide-arrow">▼</span>
+            </summary>
+            <p class="guide-text">
+              Porque al fichar la entrada con el código QR del local registras tu asistencia y entras automáticamente en el bombo de los sorteos en directo de esa noche. And al fichar la salida acumulamos tu visita en tu pase digital para ir subiendo de nivel. ¡Si no fichas, no existes, ho!
+            </p>
+          </details>
+
+          <!-- Pregunta 4 -->
+          <details class="guide-details">
+            <summary class="guide-summary">
+              <span>¿Para qué sirven los Niveles?</span>
+              <span class="guide-arrow">▼</span>
+            </summary>
+            <p class="guide-text">
+              Cada nivel te hace más VIP. Pero ojo a los <strong>Niveles 3 y 4</strong>, que dan ventajas de las gordas: obtienes participación doble en todos los sorteos, invitaciones a catas exclusivas de vino y acceso a <strong>tapas secretas fuera de carta</strong> que solo puedes pedir mostrando tu pase en la barra.
+            </p>
+          </details>
+
+          <!-- Pregunta 5 -->
+          <details class="guide-details">
+            <summary class="guide-summary">
+              <span>¿Cómo recupero mi cuenta si cambio de móvil?</span>
+              <span class="guide-arrow">▼</span>
+            </summary>
+            <p class="guide-text">
+              Aquí no usamos correos pesados ni contraseñas. Abajo tienes tu <strong>Clave de recuperación</strong>: descárgate el código QR o apunta las 12 palabras. Si cambias de móvil, escaneas tu QR o escribes las palabras en el onboarding y recuperas tu cuenta y tus niveles al instante. ¡Fácil y rápido, carallo!
+            </p>
+          </details>
+        </div>
       </div>
 
       <!-- Recuperación de cuenta — sección principal -->
@@ -2228,12 +2345,22 @@
       if (content) content.insertBefore(toast, content.firstChild);
     }
 
+    function getRandomExitMessage() {
+      const exitMessages = [
+        "✓ <strong>¡Hala, a la casita!</strong> Salida registrada. No te me vayas a caer por el camino, ho. ¡Gracias por venir!",
+        "✓ <strong>¡Menuda leria!</strong> Salida registrada. Vete a dormir la siesta o a enfriar la cabeza, que ya bebiste lo tuyo, rapaz. ¡Nos vemos en la próxima!",
+        "✓ <strong>¡Salida fichada!</strong> Gracias por la visita, ho. El Furancho queda más tranquilo sin ti, pero se te va a extrañar. ¡Ata logo!",
+        "✓ <strong>¡Fichaje completado, rapaz!</strong> Buen camino de vuelta. Recuerda dónde aparcaste el coche, no me andes despistado. ¡Hasta pronto!"
+      ];
+      return exitMessages[Math.floor(Math.random() * exitMessages.length)];
+    }
+
     let _pollingInterval = null;
     function startPollingForLevel(targetLevel, targetLevelName) {
       if (_pollingInterval) clearInterval(_pollingInterval);
 
       // Mostrar banner de progreso en la pantalla de perfil
-      showProfileBanner(`⏳ <strong>Minteando pase en Polygon:</strong> Estamos generando tu pase de <strong>${targetLevelName}</strong> en segundo plano. Esto puede tardar entre 10 y 60 segundos...`, 'gold');
+      showProfileBanner(`⏳ <strong>Preparando pase en Polygon:</strong> Estamos generando tu pase de <strong>${targetLevelName}</strong> en segundo plano, ho. Esto puede tardar un ratito...`, 'gold');
 
       let attempts = 0;
       _pollingInterval = setInterval(async () => {
@@ -2247,12 +2374,12 @@
             userVisitCount = refreshed.visitCount || 0;
             userClaimedLevels = refreshed.levels || [];
             showProfileScreen(userVisitCount, userClaimedLevels);
-            showProfileBanner(`🎉 ¡Subiste de nivel! El pase de <strong>${targetLevelName}</strong> ya está activo en tu cuenta.`, 'gold');
+            showProfileBanner(`🎉 <strong>¡Carallo, qué nivelazo!</strong> El pase de <strong>${targetLevelName}</strong> ya está activo en tu cuenta. ¡A disfrutarlo, rapaz!`, 'gold');
           } else if (attempts >= 20) {
             // Detener tras 1 minuto para no saturar el servidor.
             clearInterval(_pollingInterval);
             _pollingInterval = null;
-            showProfileBanner(`🍷 El pase de <strong>${targetLevelName}</strong> se está generando en segundo plano. Aparecerá en tu cuenta en unos minutos.`, 'gold');
+            showProfileBanner(`🍷 El pase de <strong>${targetLevelName}</strong> se está generando lentamente. Te aparecerá en la cuenta en unos minutos, no te me apures, ho.`, 'gold');
           }
         } catch (e) {
           console.error('Error durante el polling del pase:', e);
@@ -2450,10 +2577,10 @@
           if (data.action === 'mint_queued') {
             startPollingForLevel(data.level, data.levelName);
           } else {
-            showProfileBanner(`🎉 ¡Subiste de nivel! Conseguiches o pase <strong>${data.levelName}</strong>`, 'gold');
+            showProfileBanner(`🎉 <strong>¡Carallo, qué nivelazo!</strong> Conseguiste el pase <strong>${data.levelName}</strong>`, 'gold');
           }
         } else if (data.action === 'visit') {
-          showProfileBanner('✓ Saída rexistrada. ¡Grazas por vir, ata pronto!', 'green');
+          showProfileBanner(getRandomExitMessage(), 'green');
         }
         // Si cooldown o error → nada visible, no interrumpir
       } catch (e) {
@@ -2489,7 +2616,7 @@
           if (data.action === 'mint_queued') {
             startPollingForLevel(data.level, data.levelName);
           } else {
-            showProfileBanner(`🎉 ¡Subiste de nivel! Conseguiches o pase <strong>${data.levelName}</strong>`, 'gold');
+            showProfileBanner(`🎉 <strong>¡Carallo, qué nivelazo!</strong> Conseguiste el pase <strong>${data.levelName}</strong>`, 'gold');
           }
         } else if (data.action === 'cooldown') {
           btn.disabled = false;
@@ -2498,6 +2625,7 @@
         } else {
           btn.disabled = false;
           btn.textContent = '✅ ¡Ata logo, ho!';
+          showProfileBanner(getRandomExitMessage(), 'green');
           setTimeout(() => { btn.textContent = '🚪 Marcho que teño que marchar'; btn.disabled = false; }, 2500);
         }
       } catch (e) {
@@ -2852,11 +2980,17 @@
           body: JSON.stringify({ wallet: userWalletAddress })
         });
         if (res.ok) {
+          const data = await res.json();
           btn.textContent = '✅ ¡Premio reclamado! Amosa o código ao staff';
           btn.style.background = 'linear-gradient(135deg,#4ade80,#16a34a)';
           document.getElementById('accept-countdown-wrap').style.display = 'none';
           if (_acceptCountdownInterval) clearInterval(_acceptCountdownInterval);
           renderPrizes();
+
+          // Si es subida de nivel, iniciar el polling de Polygon
+          if (data && data.targetLevel) {
+            startPollingForLevel(data.targetLevel, data.levelName);
+          }
         } else {
           btn.disabled = false;
           btn.textContent = '¡É PARA MIN! Reclamar premio 🎉';
@@ -3202,10 +3336,10 @@
           if (data.action === 'mint_queued') {
             startPollingForLevel(data.level, data.levelName);
           } else {
-            showProfileBanner(`🎉 ¡Felicidades! Conseguiches o pase <strong>${data.levelName}</strong>`, 'gold');
+            showProfileBanner(`🎉 <strong>¡Carallo, qué nivelazo!</strong> Conseguiste el pase <strong>${data.levelName}</strong>`, 'gold');
           }
         } else if (data.action === 'visit') {
-          showProfileBanner('✓ Saída rexistrada. ¡Grazas por vir, ata pronto!', 'green');
+          showProfileBanner(getRandomExitMessage(), 'green');
         }
 
       } catch (err) {

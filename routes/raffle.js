@@ -5,10 +5,11 @@ const {
   collectRaffle, getRaffleHistory, getMyWins, getRaffleParticipation,
   getPrizePresets, addPrizePreset, deletePrizePreset, getRaffleCountTonight,
   getScheduledRaffles, createScheduledRaffle, updateScheduledRaffle,
-  deleteScheduledRaffle, linkScheduledRaffle
+  deleteScheduledRaffle, linkScheduledRaffle, insertMint
 } = require('../db/database');
 const { requireAuth } = require('./admin');
 const { sendPushToAll } = require('../services/push');
+const { notifyQueue } = require('../services/polygon');
 
 let clients = [];
 
@@ -60,8 +61,14 @@ router.get('/stream', (req, res) => {
 
 // POST /api/raffle/start — admin lanza sorteo
 router.post('/start', requireAuth, (req, res) => {
-  const { prize, scheduledId } = req.body;
+  const { prize, scheduledId, targetLevel } = req.body;
   if (!prize) return res.status(400).json({ error: 'Falta el nombre del premio' });
+
+  // Si se pasa targetLevel, verificar que sea válido
+  const sanitizedTargetLevel = targetLevel ? parseInt(targetLevel) : null;
+  if (sanitizedTargetLevel && ![2, 3, 4].includes(sanitizedTargetLevel)) {
+    return res.status(400).json({ error: 'Nivel de destino no válido. Debe ser 2, 3 o 4.' });
+  }
 
   const connectedWallets = [...new Set(clients.filter(c => c.walletAddress).map(c => c.walletAddress))];
   const sessionWallets = getEligibleRaffleParticipants();
@@ -80,7 +87,7 @@ router.post('/start', requireAuth, (req, res) => {
   let verificationCode = '';
   for (let i = 0; i < 4; i++) verificationCode += characters.charAt(Math.floor(Math.random() * characters.length));
 
-  const raffleId = insertRaffle(prize, winnerWallet, verificationCode, eligibleWallets);
+  const raffleId = insertRaffle(prize, winnerWallet, verificationCode, eligibleWallets, sanitizedTargetLevel);
   if (scheduledId) { try { linkScheduledRaffle(parseInt(scheduledId), raffleId); } catch(_) {} }
 
   console.log(`[Raffle] #${raffleId} iniciado. Participantes: ${eligibleWallets.length}, SSE: ${connectedWallets.length}`);
@@ -113,9 +120,38 @@ router.post('/:id/accept', (req, res) => {
   const { wallet } = req.body;
   if (!wallet) return res.status(400).json({ error: 'Falta wallet' });
   try {
-    acceptRaffle(parseInt(req.params.id), wallet);
+    const raffle = acceptRaffle(parseInt(req.params.id), wallet);
     // Notificar al admin via SSE broadcast
     broadcast('raffle_accepted', { raffleId: parseInt(req.params.id) });
+
+    // Si el sorteo tiene configurado un nivel de destino, encolar el minting Polygon
+    if (raffle && raffle.target_level) {
+      const LEVEL_NAMES = {
+        1: 'Cautivo',
+        2: 'O Cunqueiro',
+        3: 'O Larpeiro',
+        4: 'O Presidente do Furancho'
+      };
+      const levelName = LEVEL_NAMES[raffle.target_level];
+
+      insertMint({
+        email: null,
+        level: raffle.target_level,
+        levelName,
+        walletAddress: wallet,
+        status: 'pending',
+        ipAddress: req.ip
+      });
+
+      notifyQueue();
+
+      return res.json({
+        success: true,
+        targetLevel: raffle.target_level,
+        levelName
+      });
+    }
+
     res.json({ success: true });
   } catch (e) {
     res.status(400).json({ error: e.message });
@@ -253,20 +289,26 @@ router.get('/scheduled/all', requireAuth, (req, res) => {
 
 // POST /api/raffle/scheduled — admin, crear sorteo programado
 router.post('/scheduled', requireAuth, (req, res) => {
-  const { eventDate, scheduledTime, prize } = req.body;
+  const { eventDate, scheduledTime, prize, targetLevel } = req.body;
   if (!eventDate || !scheduledTime || !prize)
     return res.status(400).json({ error: 'Faltan campos: eventDate, scheduledTime, prize' });
   try {
-    const id = createScheduledRaffle({ eventDate, scheduledTime, prize });
+    const id = createScheduledRaffle({ eventDate, scheduledTime, prize, targetLevel: targetLevel ? parseInt(targetLevel) : null });
     res.json({ success: true, id });
   } catch(e) { res.status(400).json({ error: e.message }); }
 });
 
 // PATCH /api/raffle/scheduled/:id — admin, editar
 router.patch('/scheduled/:id', requireAuth, (req, res) => {
-  const { eventDate, scheduledTime, prize, status } = req.body;
+  const { eventDate, scheduledTime, prize, status, targetLevel } = req.body;
   try {
-    updateScheduledRaffle(parseInt(req.params.id), { eventDate, scheduledTime, prize, status });
+    updateScheduledRaffle(parseInt(req.params.id), {
+      eventDate,
+      scheduledTime,
+      prize,
+      status,
+      targetLevel: targetLevel !== undefined ? (targetLevel ? parseInt(targetLevel) : null) : undefined
+    });
     res.json({ success: true });
   } catch(e) { res.status(400).json({ error: e.message }); }
 });

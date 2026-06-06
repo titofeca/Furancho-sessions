@@ -1444,8 +1444,20 @@
           <input type="date" class="input-field" id="sched-date" style="margin:0; font-size:14px;" />
           <input type="time" class="input-field" id="sched-time" style="margin:0; font-size:14px;" />
         </div>
-        <div style="display:flex; gap:8px; margin-bottom:12px;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:10px;">
+          <button id="sched-type-std" type="button" onclick="setSchedRaffleType('std')" style="padding:6px; border-radius:8px; border:1px solid var(--wine); background:rgba(139,25,24,0.07); color:var(--wine); font-family:'Outfit',sans-serif; font-size:11px; font-weight:600; cursor:pointer; text-align:center; transition:all 0.2s;">🎁 Estándar</button>
+          <button id="sched-type-level" type="button" onclick="setSchedRaffleType('level')" style="padding:6px; border-radius:8px; border:1px solid rgba(42,21,9,0.15); background:transparent; color:var(--text-muted); font-family:'Outfit',sans-serif; font-size:11px; font-weight:600; cursor:pointer; text-align:center; transition:all 0.2s;">⚡ Nivel</button>
+        </div>
+        <div id="sched-std-wrap" style="display:flex; gap:8px; margin-bottom:12px;">
           <input type="text" class="input-field" id="sched-prize" placeholder="Premio (ej: Botella Mencía)" style="flex:1; margin:0; font-size:14px;" />
+          <button onclick="addScheduled()" style="background:var(--wine); color:#fff; border:none; border-radius:12px; padding:0 16px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0;">+ Añadir</button>
+        </div>
+        <div id="sched-level-wrap" style="display:none; gap:8px; margin-bottom:12px;">
+          <select id="sched-level-select" class="input-field" style="flex:1; margin:0; font-size:14px; background:var(--surface); color:var(--text); border:1px solid var(--border); padding:10px; border-radius:12px; outline:none; cursor:pointer; height:42px; font-family:'Outfit',sans-serif;">
+            <option value="2">Subir a Nivel 2: O Cunqueiro</option>
+            <option value="3">Subir a Nivel 3: O Larpeiro</option>
+            <option value="4">Subir a Nivel 4: O Presidente</option>
+          </select>
           <button onclick="addScheduled()" style="background:var(--wine); color:#fff; border:none; border-radius:12px; padding:0 16px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0;">+ Añadir</button>
         </div>
 
@@ -1479,10 +1491,27 @@
           <p style="font-size:11px; color:var(--text-muted); margin-top:4px; font-weight:300;">Sorteos esta noche: <strong id="raffle-count-tonight">—</strong> / 2</p>
         </div>
 
-        <div class="form-group">
+        <div class="form-group" style="margin-bottom:14px;">
+          <label class="form-label">Tipo de Premio</label>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <button id="raffle-type-std" type="button" onclick="setRaffleType('std')" style="padding:10px; border-radius:12px; border:1.5px solid var(--wine); background:rgba(139,25,24,0.07); color:var(--wine); font-family:'Outfit',sans-serif; font-size:13px; font-weight:700; cursor:pointer; text-align:center; transition:all 0.2s;">🎁 Físico / Consumición</button>
+            <button id="raffle-type-level" type="button" onclick="setRaffleType('level')" style="padding:10px; border-radius:12px; border:1.5px solid rgba(42,21,9,0.15); background:transparent; color:var(--text-muted); font-family:'Outfit',sans-serif; font-size:13px; font-weight:700; cursor:pointer; text-align:center; transition:all 0.2s;">⚡ Subida de Nivel</button>
+          </div>
+        </div>
+
+        <div class="form-group" id="raffle-std-inputs">
           <label class="form-label">Premio a sortear</label>
           <div id="preset-buttons" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;"></div>
           <input type="text" class="input-field" id="raffle-prize" placeholder="O escribe un premio personalizado..." style="font-size:14px;" />
+        </div>
+
+        <div class="form-group" id="raffle-level-inputs" style="display:none;">
+          <label class="form-label">Nivel a Sortear</label>
+          <select id="raffle-level-select" class="input-field" style="font-size:14px; background:var(--surface); color:var(--text); border:1px solid var(--border); padding:10px 14px; border-radius:12px; width:100%; margin-bottom:0; outline:none; cursor:pointer; height:42px; font-family:'Outfit',sans-serif;" onchange="updateLevelRafflePrizeName()">
+            <option value="2">Nivel 2: O Cunqueiro (Pase bronce)</option>
+            <option value="3">Nivel 3: O Larpeiro (Pase plata)</option>
+            <option value="4">Nivel 4: O Presidente do Furancho (Pase oro)</option>
+          </select>
         </div>
 
         <button class="btn-primary" id="start-raffle-btn" onclick="startRaffle()" style="width:100%; background:linear-gradient(135deg,var(--wine) 0%,var(--wine-dark) 100%);">
@@ -2202,6 +2231,80 @@
 
   // ==================== RAFFLES ====================
   let _acceptanceInterval = null;
+  let currentRaffleType = 'std';
+  let currentSchedRaffleType = 'std';
+
+  function setRaffleType(type) {
+    currentRaffleType = type;
+    const stdBtn = document.getElementById('raffle-type-std');
+    const lvlBtn = document.getElementById('raffle-type-level');
+    const stdInputs = document.getElementById('raffle-std-inputs');
+    const lvlInputs = document.getElementById('raffle-level-inputs');
+    if (!stdBtn || !lvlBtn || !stdInputs || !lvlInputs) return;
+
+    if (type === 'std') {
+      stdBtn.style.background = 'rgba(139,25,24,0.07)';
+      stdBtn.style.borderColor = 'var(--wine)';
+      stdBtn.style.color = 'var(--wine)';
+      lvlBtn.style.background = 'transparent';
+      lvlBtn.style.borderColor = 'rgba(42,21,9,0.15)';
+      lvlBtn.style.color = 'var(--text-muted)';
+      stdInputs.style.display = 'block';
+      lvlInputs.style.display = 'none';
+      document.getElementById('raffle-prize').value = '';
+    } else {
+      lvlBtn.style.background = 'rgba(139,25,24,0.07)';
+      lvlBtn.style.borderColor = 'var(--wine)';
+      lvlBtn.style.color = 'var(--wine)';
+      stdBtn.style.background = 'transparent';
+      stdBtn.style.borderColor = 'rgba(42,21,9,0.15)';
+      stdBtn.style.color = 'var(--text-muted)';
+      stdInputs.style.display = 'none';
+      lvlInputs.style.display = 'block';
+      updateLevelRafflePrizeName();
+    }
+  }
+
+  function updateLevelRafflePrizeName() {
+    const select = document.getElementById('raffle-level-select');
+    if (!select) return;
+    const level = select.value;
+    const levelNames = {
+      2: 'Subida a Nivel 2: O Cunqueiro',
+      3: 'Subida a Nivel 3: O Larpeiro',
+      4: 'Subida a Nivel 4: O Presidente'
+    };
+    document.getElementById('raffle-prize').value = levelNames[level] || `Subida a Nivel ${level}`;
+  }
+
+  function setSchedRaffleType(type) {
+    currentSchedRaffleType = type;
+    const stdBtn = document.getElementById('sched-type-std');
+    const lvlBtn = document.getElementById('sched-type-level');
+    const stdWrap = document.getElementById('sched-std-wrap');
+    const lvlWrap = document.getElementById('sched-level-wrap');
+    if (!stdBtn || !lvlBtn || !stdWrap || !lvlWrap) return;
+
+    if (type === 'std') {
+      stdBtn.style.background = 'rgba(139,25,24,0.07)';
+      stdBtn.style.borderColor = 'var(--wine)';
+      stdBtn.style.color = 'var(--wine)';
+      lvlBtn.style.background = 'transparent';
+      lvlBtn.style.borderColor = 'rgba(42,21,9,0.15)';
+      lvlBtn.style.color = 'var(--text-muted)';
+      stdWrap.style.display = 'flex';
+      lvlWrap.style.display = 'none';
+    } else {
+      lvlBtn.style.background = 'rgba(139,25,24,0.07)';
+      lvlBtn.style.borderColor = 'var(--wine)';
+      lvlBtn.style.color = 'var(--wine)';
+      stdBtn.style.background = 'transparent';
+      stdBtn.style.borderColor = 'rgba(42,21,9,0.15)';
+      stdBtn.style.color = 'var(--text-muted)';
+      stdWrap.style.display = 'none';
+      lvlWrap.style.display = 'flex';
+    }
+  }
 
   // ── AGENDA DE SORTEOS ──────────────────────────────────────────────────────
   async function loadScheduled() {
@@ -2230,7 +2333,7 @@
             <p style="font-size:13px; font-weight:600; color:var(--text); margin:3px 0 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${r.prize}</p>
           </div>
           <div style="display:flex; gap:6px; flex-shrink:0;">
-            ${isPending ? `<button onclick="launchScheduled(${r.id}, '${r.prize.replace(/'/g,"\\'")}', this)"
+            ${isPending ? `<button onclick="launchScheduled(${r.id}, '${r.prize.replace(/'/g,"\\'")}', ${r.target_level || 'null'}, this)"
               style="padding:5px 10px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">
               ▶ Lanzar
             </button>` : ''}
@@ -2249,12 +2352,27 @@
   async function addScheduled() {
     const date  = document.getElementById('sched-date').value;
     const time  = document.getElementById('sched-time').value;
-    const prize = document.getElementById('sched-prize').value.trim();
+    let prize = '';
+    let targetLevel = null;
+
+    if (currentSchedRaffleType === 'std') {
+      prize = document.getElementById('sched-prize').value.trim();
+    } else {
+      const select = document.getElementById('sched-level-select');
+      targetLevel = parseInt(select.value);
+      const levelNames = {
+        2: 'Subida a Nivel 2: O Cunqueiro',
+        3: 'Subida a Nivel 3: O Larpeiro',
+        4: 'Subida a Nivel 4: O Presidente'
+      };
+      prize = levelNames[targetLevel] || `Subida a Nivel ${targetLevel}`;
+    }
+
     if (!date || !time || !prize) return showToast('Completa fecha, hora y premio', true);
     try {
       const res = await fetch('/api/raffle/scheduled', {
         method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventDate: date, scheduledTime: time, prize })
+        body: JSON.stringify({ eventDate: date, scheduledTime: time, prize, targetLevel })
       });
       const data = await res.json();
       if (data.success) {
@@ -2273,11 +2391,17 @@
     } catch(e) { btn.disabled = false; }
   }
 
-  async function launchScheduled(scheduledId, prize, btn) {
+  async function launchScheduled(scheduledId, prize, targetLevel, btn) {
     btn.disabled = true;
-    // Pre-rellena el campo de premio y lanza el sorteo
     document.getElementById('raffle-prize').value = prize;
     window._pendingScheduledId = scheduledId;
+    window._pendingScheduledLevel = targetLevel || null;
+    if (targetLevel) {
+      setRaffleType('level');
+      document.getElementById('raffle-level-select').value = targetLevel;
+    } else {
+      setRaffleType('std');
+    }
     showToast(`Lanzando: ${prize}`);
     await startRaffle(scheduledId);
   }
@@ -2368,12 +2492,20 @@
     }, 1000);
 
     try {
+      const targetLevel = currentRaffleType === 'level' ? parseInt(document.getElementById('raffle-level-select').value) : (window._pendingScheduledLevel || null);
       const res = await fetch('/api/raffle/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-token': AUTH_TOKEN },
-        body: JSON.stringify({ prize, scheduledId: scheduledId || window._pendingScheduledId || null })
+        body: JSON.stringify({ 
+          prize, 
+          scheduledId: scheduledId || window._pendingScheduledId || null,
+          targetLevel
+        })
       });
       const data = await res.json();
+
+      window._pendingScheduledLevel = null;
+      window._pendingScheduledId = null;
 
       if (data.error) {
         clearInterval(interval);

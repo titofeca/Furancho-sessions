@@ -12,6 +12,52 @@ document.addEventListener('DOMContentLoaded', async () => {
   await doEntry(walletAddress);
 });
 
+const NEW_WELCOME_MESSAGES = [
+  {
+    icon: '🍷',
+    title: '¡Hola ho! ¡Benvido al Furancho, rapaz!',
+    msg: 'Veo que es tu primera vez por aquí. Pasa para dentro, búscate un hueco y pídete una cunca de viño. Eso sí, no te me vayas sin fichar la salida al marchar... ¡que no cobramos por salir, pero al menos queremos saber que quedaste vivo y no te perdiste en el monte! 😜'
+  },
+  {
+    icon: '🍇',
+    title: '¡Home! Una cara nueva por la parroquia.',
+    msg: '¿Tú eres nuevo por aquí, no? Apúntate a nuestra cofradía de la buena esmorga. Pasa y disfruta, pero cuidado con el vino de la casa, que entra como el agua y luego ves doble... ¡y aquí los premios se dan de uno en uno, carallo! 🍷'
+  },
+  {
+    icon: '🥖',
+    title: '¡Benvido al templo de la leria, rapaz!',
+    msg: 'Pasa para adentro, que el vino está frío, la leria caliente y el jamón bien cortado. No te olvides de fichar la salida al marchar... ¡a no ser que te quieras quedar a varrer el furancho con nosotros a las tantas! 🧹'
+  }
+];
+
+const RETURNING_WELCOME_MESSAGES = [
+  {
+    icon: '🙌',
+    title: '¡Otra vez tú por aquí, carallo!',
+    msg: 'Ya me parecía a mí que te gustaba mucho la esmorga. ¡Leva cuidado no vayas a herdar el furancho! Pasa y coge sitio, que hoy hay sorteo a ver si tienes más suerte que el otro día... ¡o vas a seguir durmiendo na palla por estar de leria! 😜'
+  },
+  {
+    icon: '🍇',
+    title: '¡El hijo pródigo vuelve a la casa!',
+    msg: 'Le dije al patrón: "Ese vuelve seguro, ho". ¡Y no fallé! Pasa a mojar la garganta y a ver si hoy haces gasto del de verdad. ¡Recuerda fichar al marchar, rapaz, que las visitas no se acumulan solas!'
+  },
+  {
+    icon: '🍷',
+    title: '¡Ya te tardaba venir, ho!',
+    msg: 'Ya pensábamos que te habías perdido por el monte con las cabras o que te habían metido en el calabozo. Pasa y pídete una cunca de tinto, que bien te hace falta. ¡Enséñale al cuerpo que sigues con ganas de esmorga!'
+  },
+  {
+    icon: '🧀',
+    title: '¡Ahí viene el peligro de la parroquia!',
+    msg: '¡Apartad todos, que llega el profesional de las cuncas! Pasa para dentro, pero déjanos algo de viño a los demás, ho. ¡Que luego dicen que nos quedamos sin existencias por tu culpa!'
+  },
+  {
+    icon: '👑',
+    title: '¡Sacad la alfombra roja, rapaz!',
+    msg: '¡Que llega un veterano del Furancho! Pasa para dentro y pide una taza sin miedo. Cada visita te acerca más a pases de leyenda... ¡y que el viño no pare, carallo!'
+  }
+];
+
 async function doEntry(walletAddress) {
   document.getElementById('screen-onboarding').style.display = 'none';
   document.getElementById('screen-loading').style.display = 'flex';
@@ -27,29 +73,47 @@ async function doEntry(walletAddress) {
     document.getElementById('screen-loading').style.display = 'none';
     const screen = document.getElementById('screen-success');
     screen.style.display = 'flex';
+    launchConfetti();
 
-    const msgs = [
-      'Xa podías tardar máis, ho.',
-      'O teu sitio xa te estaba botando de menos.',
-      'Que goces como sempre. Que é moito.',
-      'Esta noite promete. Como todas no Furancho.',
-      'Vaia, xa volveu o mellor cliente.',
-    ];
-    const randomMsg = msgs[Math.floor(Math.random() * msgs.length)];
+    let selected;
     if (data.isNew) {
-      document.getElementById('icon-container').innerText = '🍷';
-      document.getElementById('title-container').innerText = '¡Benvido ao Furancho!';
-      document.getElementById('msg-container').innerText = 'Primeira vez por aquí. Que non sexa a última. Esta noite xa conta como visita.';
+      selected = NEW_WELCOME_MESSAGES[Math.floor(Math.random() * NEW_WELCOME_MESSAGES.length)];
+      document.getElementById('icon-container').innerText = selected.icon;
+      document.getElementById('title-container').innerText = selected.title;
+      document.getElementById('msg-container').innerHTML = `${selected.msg}<br><br><small style="color:var(--gold); font-weight:700;">¡Esta xa conta coma a túa 1ª visita!</small>`;
     } else {
-      document.getElementById('icon-container').innerText = '🙌';
-      document.getElementById('title-container').innerText = `¡Ola, de volta pola casa!`;
-      document.getElementById('msg-container').innerText = `${randomMsg} Levas ${data.visitCount} visita${data.visitCount !== 1 ? 's' : ''} no Furancho.`;
+      selected = RETURNING_WELCOME_MESSAGES[Math.floor(Math.random() * RETURNING_WELCOME_MESSAGES.length)];
+      document.getElementById('icon-container').innerText = selected.icon;
+      document.getElementById('title-container').innerText = selected.title;
+      document.getElementById('msg-container').innerHTML = `${selected.msg}<br><br><small style="color:var(--wine); font-weight:700;">¡Xa levas ${data.visitCount} visita${data.visitCount !== 1 ? 's' : ''} rexistradas!</small>`;
     }
 
   } catch (e) {
     showError('Error al registrar entrada. Inténtalo de nuevo.');
   }
 }
+
+function launchConfetti() {
+  const container = document.getElementById('entry-particles');
+  if (!container) return;
+  container.innerHTML = '';
+  const colors = ['#C4973A','#8B1918','#4ade80','#fff','#F2EDE3','#B52A2A'];
+  for (let i = 0; i < 45; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.cssText = `
+      left: ${Math.random()*100}%;
+      background: ${colors[Math.floor(Math.random()*colors.length)]};
+      width: ${5 + Math.random()*8}px;
+      height: ${5 + Math.random()*8}px;
+      border-radius: ${Math.random() > 0.5 ? '50%' : '3px'};
+      animation-delay: ${Math.random()*2}s;
+      animation-duration: ${2 + Math.random()*2}s;
+    `;
+    container.appendChild(p);
+  }
+}
+
 
 async function onboardingNew() {
   const btn = document.getElementById('onboarding-new-btn');
