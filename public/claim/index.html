@@ -2035,7 +2035,23 @@
     // Registro Service Worker para PWA
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js').catch(err => console.log('SW Error:', err));
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(reg => {
+            reg.onupdatefound = () => {
+              const installingWorker = reg.installing;
+              if (installingWorker) {
+                installingWorker.onstatechange = () => {
+                  if (installingWorker.state === 'installed') {
+                    if (navigator.serviceWorker.controller) {
+                      console.log('Nuevo contenido disponible; recargando...');
+                      window.location.reload();
+                    }
+                  }
+                };
+              }
+            };
+          })
+          .catch(err => console.log('SW Error:', err));
       });
     }
 
