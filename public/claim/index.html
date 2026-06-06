@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>Furancho Sessions — Reclama tu NFT</title>
-  <meta name="description" content="Reclama tu NFT exclusivo de Furancho Sessions. Afterwork Viño e Tapas." />
+  <title>Furancho Sessions — O teu pase está aquí</title>
+  <meta name="description" content="O teu pase dixital do Furancho Sessions. Afterwork de viño, tapas e boa xente. Entra, ficha e a disfrutar." />
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#8B1918" />
   <link rel="apple-touch-icon" sizes="192x192" href="/assets/icon-192.png">
@@ -1324,24 +1324,24 @@
     <div style="width:100%; max-width:380px; text-align:center;">
       <img src="/assets/logo.png" alt="Furancho Sessions" style="height:52px; border-radius:10px; margin-bottom:32px; opacity:0.9;" />
       <h1 style="font-family:'Playfair Display',serif; font-size:30px; font-weight:900; color:var(--text); margin-bottom:6px; letter-spacing:-0.3px;">Furancho Sessions</h1>
-      <p style="font-size:14px; color:var(--text-muted); margin-bottom:36px; line-height:1.6; font-weight:300;">Afterwork · Viño e Tapas</p>
+      <p style="font-size:14px; color:var(--text-muted); margin-bottom:36px; line-height:1.6; font-weight:300;">Afterwork · Viño, Tapas e Boa Xente</p>
 
       <div style="background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:20px; padding:22px; margin-bottom:14px;">
-        <p style="font-size:16px; font-weight:700; color:var(--text); margin-bottom:6px;">¿Xa estivestes por aquí?</p>
-        <p style="font-size:13px; color:var(--text-muted); margin-bottom:20px; line-height:1.5; font-weight:300;">Se é a túa primeira vez, crea o pase. Se xa viñeches antes, recupera a túa conta.</p>
+        <p style="font-size:16px; font-weight:700; color:var(--text); margin-bottom:6px;">¿Xa viñeches algunha vez?</p>
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:20px; line-height:1.5; font-weight:300;">Se é a túa primeira vez por aquí, bienvenido rapaz. Se xa viñeches antes, recupera o teu pase e a seguir.</p>
 
         <button onclick="startNewAccount()" class="btn-primary btn-accent" style="margin-bottom:10px;">
-          🍷 Primeira vez no Furancho
+          🍷 Primeira vez, quero o meu pase
         </button>
 
         <button onclick="showOnboardingRecovery()" style="width:100%; padding:16px 24px; background:transparent; border:1.5px solid rgba(139,25,24,0.3); border-radius:50px; color:var(--wine); font-family:'Outfit',sans-serif; font-size:15px; font-weight:600; cursor:pointer; letter-spacing:0.3px; transition:all 0.2s;" onmouseover="this.style.background='rgba(139,25,24,0.06)'" onmouseout="this.style.background='transparent'">
-          🔑 Xa veño de antes
+          🔑 Xa veño de antes, teño o meu pase
         </button>
       </div>
 
       <!-- Opciones de recuperación (ocultas por defecto) — QR primero -->
       <div id="onboarding-recovery" style="display:none; background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:20px; padding:20px; text-align:left;">
-        <p style="font-size:14px; font-weight:700; color:var(--text); margin-bottom:14px;">¿Como recuperas a túa conta?</p>
+        <p style="font-size:14px; font-weight:700; color:var(--text); margin-bottom:14px;">¿Como volves ao Furancho?</p>
 
         <!-- QR — opción principal -->
         <div style="margin-bottom:14px; padding:16px; background:rgba(196,151,58,0.07); border:1.5px solid rgba(196,151,58,0.3); border-radius:14px;">
@@ -1421,13 +1421,13 @@
 
       <form id="claim-form" onsubmit="handleSubmit(event)">
         <div class="form-card">
-          <p class="form-card-header">🔒 Tu Perfil Anónimo</p>
-          <p class="form-card-sub">Se ha creado un usuario único en tu navegador móvil.</p>
-          <div class="wallet-display-row" id="wallet-address-display">Generando usuario...</div>
+          <p class="form-card-header">🔒 O teu pase anónimo</p>
+          <p class="form-card-sub">Creamos o teu ID único neste móbil. Sen nome, sen datos, sen historias.</p>
+          <div class="wallet-display-row" id="wallet-address-display">Xerando pase...</div>
 
           <hr class="form-divider" />
 
-          <label class="form-label" for="email-input">Tu email (Opcional)</label>
+          <label class="form-label" for="email-input">Email (Opcional, eh)</label>
           <input
             type="email"
             id="email-input"
@@ -1437,19 +1437,19 @@
             autocomplete="email"
           />
           <p class="form-hint">
-            Solo para avisarte de próximos eventos. Puedes darte de baja cuando quieras.
+            Solo pa avisarte dos próximos eventos. Sen spam nin historias raras.
           </p>
 
           <div class="gdpr-row" id="gdpr-container">
             <input type="checkbox" id="gdpr-check" />
             <label for="gdpr-check" class="gdpr-label">
-              Acepto recibir avisos de eventos de Furancho Sessions por email (opcional).
+              Quero que me avisen dos próximos eventos do Furancho por email. (Opcional, tranquilo.)
             </label>
           </div>
         </div>
 
         <button type="submit" id="submit-btn" class="btn-primary btn-accent">
-          Entrar al Furancho →
+          🍷 Entrar ao Furancho →
         </button>
 
         <div id="error-msg" class="error-msg"></div>
@@ -1463,8 +1463,8 @@
       </div>
 
       <p class="footer-note">
-        Sen contrasinais nin rexistros. O teu pase gárdase<br>
-        só no teu móbil, como un segredo ben gardado.
+        Sen contrasinais nin datos raros. O teu pase queda aquí,<br>
+        no teu móbil. Como os segredos do Furancho. 🤫
       </p>
     </div>
   </div>
@@ -1478,8 +1478,8 @@
       </div>
       <h2 class="loading-title">Preparando o teu pase...</h2>
       <p class="loading-sub">
-        Tarda dous segundos. Como o viño que non chegou aínda.<br>
-        Non peches a páxina, ho.
+        Un momento, ho. Menos que tarda o camarero en encherte o vaso.<br>
+        Non peches a páxina, que xa vai.
       </p>
     </div>
   </div>
@@ -1488,10 +1488,10 @@
   <div class="screen" id="screen-success">
     <div class="success-container">
       <div class="success-icon">🎉</div>
-      <h2 class="success-title">¡Pase Recibido!</h2>
+      <h2 class="success-title">¡Benvido ao Furancho!</h2>
       <p class="success-sub">
-        Tu pase exclusivo de Furancho Sessions ya está activo.<br>
-        Lo hemos vinculado directamente a tu navegador.
+        O teu pase xa está listo e gardado neste móbil.<br>
+        Agora a disfrutar, que para eso estamos aquí. 🍷
       </p>
 
       <!-- Tarjeta Digital Estilo Apple Wallet -->
@@ -1508,7 +1508,7 @@
         <p class="wallet-card-date">Afterwork · <span id="success-date"></span></p>
 
         <hr class="wallet-card-divider" />
-        <p class="wallet-card-id-label">Pase Digital de Cliente (ID Único)</p>
+        <p class="wallet-card-id-label">ID Furancheiro (Único e intransferible, ho)</p>
         <div class="wallet-card-id" id="success-wallet">Cargando...</div>
       </div>
 
@@ -1520,12 +1520,12 @@
 
       <!-- Botón ir al perfil -->
       <button onclick="initWallet()" class="btn-vip" style="margin-bottom:12px;">
-        Ver mi Perfil →
+        Ver o meu perfil →
       </button>
 
       <!-- Botón Tarjeta Virtual Antifraude -->
       <button onclick="openVirtualCard()" class="btn-vip" style="margin-bottom:12px;">
-        👁️ Mostrar mi Tarjeta VIP
+        👁️ Ver o meu carné do Furancho
       </button>
 
       <!-- Recuperar cuenta -->
@@ -1555,8 +1555,8 @@
         ">
           <span style="font-size:22px;">📲</span>
           <div style="text-align:left;">
-            <div>Guardar en mi móvil</div>
-            <div style="font-size:12px; font-weight:400; color:var(--text-muted);">Acceso directo desde tu pantalla de inicio</div>
+            <div>Gardar no móbil</div>
+            <div style="font-size:12px; font-weight:400; color:var(--text-muted);">Así o tes a man en dous segundos cada vez</div>
           </div>
         </button>
       </div>
@@ -1573,11 +1573,11 @@
         ">
           <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
             <span style="font-size:22px;">📲</span>
-            <div style="font-size:15px; font-weight:600; color:var(--text);">Guardar en mi móvil</div>
+            <div style="font-size:15px; font-weight:600; color:var(--text);">Gardar no móbil (iOS)</div>
           </div>
           <div style="font-size:13px; color:var(--text-muted); line-height:1.7;">
-            1. Pulsa el botón <strong style="color:var(--text);">Compartir</strong> <span style="font-size:15px;">⬆️</span> de tu navegador<br>
-            2. Selecciona <strong style="color:var(--text);">"Añadir a la pantalla de inicio"</strong>
+            1. Pulsa <strong style="color:var(--text);">Compartir</strong> <span>⬆️</span> abaixo no navegador<br>
+            2. Selecciona <strong style="color:var(--text);">"Añadir a la pantalla de inicio"</strong> e listo, ho
           </div>
         </div>
       </div>
@@ -1625,6 +1625,17 @@
       <h1 class="nft-title" id="profile-nft-name">CAUTIVO</h1>
       <p class="nft-event">Furancho Sessions · Afterwork Viño e Tapas</p>
 
+      <div style="text-align: center; margin: 12px 0 20px;">
+        <button onclick="openIdModal()" style="
+          display: inline-flex; align-items: center; gap: 8px;
+          padding: 8px 18px; border-radius: 100px; border: 1.5px solid rgba(139,25,24,0.22);
+          background: rgba(139,25,24,0.05); color: var(--wine);
+          font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer;
+          transition: all 0.2s; box-shadow: 0 2px 8px rgba(139,25,24,0.06);">
+          🪪 ID Furancheiro (Pase QR)
+        </button>
+      </div>
+
       <!-- Mensaje del Furancho — aparece si el admin envió uno -->
       <!-- Banner mensaje nuevo (solo no leídos) -->
       <div id="profile-admin-msg" style="display:none; margin-bottom: 18px;">
@@ -1658,8 +1669,8 @@
           color: var(--text); font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer;">
           <span style="font-size:22px;">📲</span>
           <div style="text-align:left;">
-            <div>Guardar en mi móvil</div>
-            <div style="font-size:12px; font-weight:400; color:var(--text-muted);">Acceso directo desde tu pantalla de inicio</div>
+            <div>Gardar no móbil</div>
+            <div style="font-size:12px; font-weight:400; color:var(--text-muted);">Así o tes a man en dous toques</div>
           </div>
         </button>
       </div>
@@ -1669,11 +1680,11 @@
         <div style="border-radius:16px; border:1.5px solid rgba(139,25,24,0.2); background:linear-gradient(135deg,rgba(139,25,24,0.05),rgba(196,151,58,0.05)); padding:16px 18px;">
           <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
             <span style="font-size:22px;">📲</span>
-            <div style="font-size:15px; font-weight:600; color:var(--text);">Guardar en mi móvil</div>
+            <div style="font-size:15px; font-weight:600; color:var(--text);">Gardar no móbil (iOS)</div>
           </div>
           <div style="font-size:13px; color:var(--text-muted); line-height:1.7;">
-            1. Pulsa el botón <strong style="color:var(--text);">Compartir</strong> <span>⬆️</span> de tu navegador<br>
-            2. Selecciona <strong style="color:var(--text);">"Añadir a la pantalla de inicio"</strong>
+            1. Pulsa <strong style="color:var(--text);">Compartir</strong> <span>⬆️</span> na barra do navegador<br>
+            2. Selecciona <strong style="color:var(--text);">"Añadir a la pantalla de inicio"</strong> e xa está
           </div>
         </div>
       </div>
@@ -1692,7 +1703,7 @@
           onmouseover="this.style.borderColor='rgba(42,21,9,0.3)'; this.style.background='rgba(42,21,9,0.08)'"
           onmouseout="this.style.borderColor='rgba(42,21,9,0.15)'; this.style.background='rgba(42,21,9,0.05)'">
           <span style="font-size:18px;">🚪</span>
-          <span>Marcho que teño que marchar</span>
+          <span>🚪 Marcho que teño que marchar</span>
         </button>
       </div>
 
@@ -1701,7 +1712,7 @@
 
         <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:22px; gap:12px;">
           <div>
-            <p style="font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">O teu camiño no Furancho</p>
+            <p style="font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">O teu historial furancheiro</p>
             <div style="display:flex; align-items:baseline; gap:6px;">
               <span id="visit-count-display" style="font-family:'Playfair Display',serif; font-size:48px; font-weight:900; color:var(--wine); line-height:1;">0</span>
               <span id="visit-total-display" style="font-size:14px; color:var(--text-muted);">visitas</span>
@@ -1709,7 +1720,7 @@
           </div>
           <!-- Indicador sesión activa -->
           <div id="session-active-badge" style="display:none; flex-shrink:0; background:rgba(74,222,128,0.12); border:1px solid rgba(74,222,128,0.3); border-radius:100px; padding:6px 12px; font-size:11px; font-weight:700; color:#16a34a; white-space:nowrap; margin-top:4px;">
-            ● Estás aquí
+            🟢 Estás aquí, ho
           </div>
         </div>
 
@@ -1772,7 +1783,7 @@
           <p style="font-size:11px; color:var(--text-muted); margin-top:8px;">Amósalle o código ao staff do Furancho.</p>
         </div>
         <div id="my-prizes-section" style="display:none; margin-top:14px;">
-          <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;" id="prizes-header-title">Mis Premios y Sorteos</p>
+          <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;" id="prizes-header-title">Os meus premios e sorteos</p>
           <div id="prizes-list" style="display:flex; flex-direction:column; gap:8px;"></div>
         </div>
       </div>
@@ -1790,18 +1801,18 @@
 
       <!-- Confirmación de salida -->
       <div id="profile-exit-confirm" style="display: none; background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.25); border-radius: 16px; padding: 14px 18px; margin-bottom: 16px; text-align: center;">
-        <p style="font-size: 13px; color: #4ade80; font-weight: 600;">✓ Salida registrada</p>
-        <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Visita acumulada. ¡Hasta la próxima!</p>
+        <p style="font-size: 13px; color: #4ade80; font-weight: 600;">✓ Saída rexistrada, rapaz</p>
+        <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Visita acumulada. ¡Ata a próxima, e non tardes moito! 🍷</p>
       </div>
 
       <!-- Guía del Furancheiro VIP (Preguntas Frecuentes) -->
       <div class="guide-card" style="background:linear-gradient(135deg,rgba(139,25,24,0.05),rgba(196,151,58,0.04)); border:1.5px solid rgba(139,25,24,0.18); border-radius:20px; padding:20px; margin-bottom:20px;">
         <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
           <span style="font-size:22px;">📖</span>
-          <p style="font-size:13px; font-weight:700; color:var(--wine); text-transform:uppercase; letter-spacing:1px;">Guía del Furancheiro VIP</p>
+          <p style="font-size:13px; font-weight:700; color:var(--wine); text-transform:uppercase; letter-spacing:1px;">Guía do Furancheiro VIP</p>
         </div>
         <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px; line-height:1.6;">
-          Echa un ojo aquí abajo si andas perdido, rapaz. Así no tienes que preguntarle al staff del local, que andan apurados sirviendo vino.
+          Mira aquí si andas perdido, rapaz. Así non tes que preguntarlle ao staff que andan coas mans cheas servindo viño e tapas.
         </p>
 
         <div style="display:flex; flex-direction:column; gap:8px;">
@@ -1859,6 +1870,17 @@
               Aquí no usamos correos pesados ni contraseñas. Abajo tienes tu <strong>Clave de recuperación</strong>: descárgate el código QR o apunta las 12 palabras. Si cambias de móvil, escaneas tu QR o escribes las palabras en el onboarding y recuperas tu cuenta y tus niveles al instante. ¡Fácil y rápido, carallo!
             </p>
           </details>
+
+          <!-- Pregunta 6 -->
+          <details class="guide-details">
+            <summary class="guide-summary">
+              <span>¿Y qué pasa con mis datos? ¿Me estáis fichando la vida, neno?</span>
+              <span class="guide-arrow">▼</span>
+            </summary>
+            <p class="guide-text">
+              ¡Qué datos ni qué caralladas, ho! Aquí no guardamos nombres, ni correos, ni tu DNI, ni hostias. Es una app privada de verdad: el sistema sabe que hay un pase digital rondando por el local para poder regalarte jarras de vino y tapas, y contar cuántas veces vienes, pero no tenemos ni la más remota idea de quién eres tú en el mundo real. Privacidad sagrada y cero rastreos. ¡Tú a disfrutar de la session y déjate de tonterías, rapaz!
+            </p>
+          </details>
         </div>
       </div>
 
@@ -1869,16 +1891,16 @@
           <p style="font-size:13px; font-weight:700; color:var(--wine); text-transform:uppercase; letter-spacing:1px;">Clave de recuperación</p>
         </div>
         <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px; line-height:1.6;">
-          Si cambias de móvil o borras la app, necesitas esto para recuperar tu cuenta y todos tus niveles.<br>
-          <strong style="color:var(--wine);">Sin esta clave, tu progreso desaparece para siempre.</strong>
+          Se cambias de móbil ou borras a app, necesitas isto para recuperar o teu pase e todos os teus niveis.<br>
+          <strong style="color:var(--wine);">Sen esta clave, o teu progreso desaparece. En serio, ho.</strong>
         </p>
         <div style="display:flex; flex-direction:column; gap:10px;">
           <button onclick="openRecoverySheet('words')"
             style="width:100%; padding:13px 16px; background:#fff; border:1.5px solid rgba(196,151,58,0.35); border-radius:14px; display:flex; align-items:center; gap:12px; cursor:pointer; font-family:'Outfit',sans-serif; text-align:left;">
             <span style="font-size:22px; flex-shrink:0;">📝</span>
             <div>
-              <p style="font-size:13px; font-weight:700; color:var(--text); margin:0 0 2px 0;">Ver mis 12 palabras</p>
-              <p style="font-size:11px; color:var(--text-muted); margin:0;">Guárdalas en papel. Sin ellas, pierdes la cuenta.</p>
+              <p style="font-size:13px; font-weight:700; color:var(--text); margin:0 0 2px 0;">Ver as miñas 12 palabras</p>
+              <p style="font-size:11px; color:var(--text-muted); margin:0;">Apúntalas nun papel. Son o teu seguro de vida furancheiro.</p>
             </div>
           </button>
           <button onclick="openRecoverySheet('qr')"
@@ -1886,14 +1908,14 @@
             <span style="font-size:22px; flex-shrink:0;">📱</span>
             <div>
               <p style="font-size:13px; font-weight:700; color:var(--text); margin:0 0 2px 0;">QR de recuperación</p>
-              <p style="font-size:11px; color:var(--text-muted); margin:0;">Guarda la imagen. Escanéala en el móvil nuevo.</p>
+              <p style="font-size:11px; color:var(--text-muted); margin:0;">Garda a imaxe. Escanéala no móbil novo e xa está.</p>
             </div>
           </button>
 
           <!-- Separador -->
           <div style="display:flex; align-items:center; gap:8px; margin:2px 0;">
             <div style="flex:1; height:1px; background:rgba(42,21,9,0.08);"></div>
-            <span style="font-size:11px; color:var(--text-muted);">¿Tienes otra cuenta?</span>
+            <span style="font-size:11px; color:var(--text-muted);">¿Tes outra conta?</span>
             <div style="flex:1; height:1px; background:rgba(42,21,9,0.08);"></div>
           </div>
 
@@ -1901,8 +1923,8 @@
             style="width:100%; padding:13px 16px; background:transparent; border:1.5px solid rgba(42,21,9,0.1); border-radius:14px; display:flex; align-items:center; gap:12px; cursor:pointer; font-family:'Outfit',sans-serif; text-align:left;">
             <span style="font-size:22px; flex-shrink:0;">🔑</span>
             <div>
-              <p style="font-size:13px; font-weight:700; color:var(--text-muted); margin:0 0 2px 0;">Recuperar cuenta con 12 palabras</p>
-              <p style="font-size:11px; color:var(--text-muted); margin:0;">Cambia de móvil o recupera una cuenta anterior.</p>
+              <p style="font-size:13px; font-weight:700; color:var(--text-muted); margin:0 0 2px 0;">Recuperar conta coas 12 palabras</p>
+              <p style="font-size:11px; color:var(--text-muted); margin:0;">Cambiaches de móbil ou tes unha conta anterior.</p>
             </div>
           </button>
         </div>
@@ -1918,11 +1940,11 @@
       <span id="profile-wallet-id" style="display:none;">—</span>
 
       <button onclick="openVirtualCard()" class="btn-vip">
-        👁️ Ver mi Tarjeta VIP
+        👁️ Ver o meu carné VIP
       </button>
 
       <p class="footer-note" style="margin-top: 20px;">
-        Escanea el QR de la puerta al entrar para acumular visitas y subir de nivel.
+        Escanea o QR da porta ao entrar pa acumular visitas e subir de nivel. ¡A meta é ser Presidente! 👑
       </p>
     </div>
   </div>
@@ -3967,6 +3989,24 @@
     setTimeout(() => { panel.style.display = 'none'; }, 280);
   }
 
+  function openIdModal() {
+    const modal = document.getElementById('id-modal');
+    const sheet = modal.firstElementChild || modal.querySelector('div');
+    document.getElementById('id-wallet-text').textContent = userWalletAddress;
+    const qrContainer = document.getElementById('id-qr-container');
+    qrContainer.innerHTML = `<img src="/api/qr/inspect/${userWalletAddress}" style="width:200px; height:200px; display:block; border-radius:10px;" alt="QR ID" />`;
+    modal.style.display = 'flex';
+    modal.offsetHeight;
+    if (sheet) sheet.style.transform = 'translateY(0)';
+  }
+
+  function closeIdModal() {
+    const modal = document.getElementById('id-modal');
+    const sheet = modal.firstElementChild || modal.querySelector('div');
+    if (sheet) sheet.style.transform = 'translateY(100%)';
+    setTimeout(() => { modal.style.display = 'none'; }, 280);
+  }
+
   </script>
 
   <!-- ===================== MODAL RESERVA VIP ===================== -->
@@ -4169,6 +4209,37 @@
         <button onclick="closeMsgPanel()" style="background:rgba(42,21,9,0.06); border:none; border-radius:50%; width:32px; height:32px; font-size:16px; cursor:pointer; color:var(--text-muted); display:flex; align-items:center; justify-content:center;">✕</button>
       </div>
       <div id="msg-panel-list" style="padding:16px 20px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;"></div>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL ID FURANCHEIRO QR ===================== -->
+  <div id="id-modal" style="display:none; position:fixed; inset:0; z-index:2000; background:rgba(24,12,5,0.65); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); align-items:flex-end; justify-content:center;" onclick="if(event.target===this)closeIdModal()">
+    <div style="width:100%; max-width:480px; background:#F2EDE3; border-radius:24px 24px 0 0; padding:0 20px 40px; box-shadow:0 -8px 40px rgba(0,0,0,0.25); text-align:center; box-sizing:border-box; max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch; transform:translateY(100%); transition:transform 0.3s cubic-bezier(.32,.72,0,1);">
+      
+      <!-- Handle -->
+      <div style="padding:14px 0 8px; position:sticky; top:0; background:#F2EDE3; z-index:1;">
+        <div style="width:36px; height:4px; background:rgba(42,21,9,0.15); border-radius:100px; margin:0 auto;"></div>
+      </div>
+
+      <span style="font-size:44px; display:block; margin-bottom:10px;">🪪</span>
+      <span style="background:rgba(139,25,24,0.1); color:var(--wine); font-size:11px; font-weight:700; padding:4px 12px; border-radius:100px; text-transform:uppercase; letter-spacing:1.5px; display:inline-block; margin-bottom:10px;">Mi Pase Furancheiro</span>
+      <h2 style="font-family:'Playfair Display',serif; font-size:24px; font-weight:900; color:var(--wine); margin:0 0 8px 0;">Pase de Identificación</h2>
+      <p style="font-size:13px; color:var(--text-muted); margin:0 0 20px 0; line-height:1.5;">Presenta este código QR al staff en la barra para que identifiquen tu billetera al instante.</p>
+
+      <!-- Contenedor del QR -->
+      <div style="background:#fff; border-radius:20px; padding:20px; display:inline-block; border:1px solid rgba(42,21,9,0.08); box-shadow:0 8px 24px rgba(42,21,9,0.04); margin-bottom:24px;">
+        <div id="id-qr-container"></div>
+      </div>
+
+      <div style="text-align:left; background:rgba(42,21,9,0.03); border:1px solid rgba(42,21,9,0.06); border-radius:14px; padding:12px 14px; margin-bottom:24px;">
+        <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 4px 0;">Billetera Asociada</p>
+        <p id="id-wallet-text" style="font-family:monospace; font-size:12px; color:var(--text); margin:0; word-break:break-all;"></p>
+      </div>
+
+      <button onclick="closeIdModal()"
+        style="width:100%; padding:16px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; box-shadow:0 4px 10px rgba(139,25,24,0.3);">
+        Cerrar pase
+      </button>
     </div>
   </div>
 
