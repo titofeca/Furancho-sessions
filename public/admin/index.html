@@ -766,6 +766,8 @@
       .print-show { display: block !important; }
       .print-hide { display: none !important; }
       .main-content { margin: 0 !important; padding: 16px !important; }
+      #visits-section, #stats-section, #holders-list-wrap { display: block !important; }
+      #visits-chevron, #stats-chevron, #holders-chevron { display: none !important; }
     }
     /* ========== ANALYTICS PAGE ========== */
     .analytics-kpi-grid {
@@ -1275,13 +1277,18 @@
       <div class="message-form">
         <div class="form-group">
           <label class="form-label">Destinatarios</label>
-          <select class="input-field" id="msg-level">
+          <select class="input-field" id="msg-level" onchange="toggleMsgWalletInput()">
             <option value="all">Todos los holders</option>
             <option value="1">Nivel 1 — Cautivo</option>
             <option value="2">Nivel 2 — O Cunqueiro</option>
             <option value="3">Nivel 3 — O Larpeiro</option>
             <option value="4">Nivel 4 — O Presidente do Furancho</option>
+            <option value="wallet">Billetera específica (0x...)</option>
           </select>
+        </div>
+        <div class="form-group" id="msg-wallet-container" style="display: none;">
+          <label class="form-label">Dirección de Billetera (0x...)</label>
+          <input type="text" class="input-field" id="msg-wallet-address" placeholder="Ej: 0x1234..." />
         </div>
         <div class="form-group">
           <label class="form-label">Título del anuncio</label>
@@ -1838,7 +1845,10 @@
         const col = levelColors[s.level] || '#888';
         const hasLevel = s.level > 0;
         return `<div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 14px; display:grid; grid-template-columns:1fr auto; gap:4px 12px; align-items:center;">
-          <div style="font-family:monospace; font-size:11px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${s.wallet_masked}</div>
+          <div style="font-family:monospace; font-size:11px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:6px;">
+            ${s.wallet_masked}
+            <button class="print-hide" onclick="writeToWallet('${s.wallet_address}'); event.stopPropagation();" style="background:none; border:none; cursor:pointer; font-size:12px; padding:0; line-height:1; vertical-align:middle; display:inline-block;">✉️</button>
+          </div>
           <div style="text-align:right; grid-row:1/3;">
             <span style="background:${col}22; color:${col}; border:1px solid ${col}44; border-radius:100px; padding:3px 10px; font-size:10px; font-weight:700; white-space:nowrap;">
               ${hasLevel ? `Nv${s.level} · ${s.level_name}` : 'Sin NFT'}
@@ -1946,7 +1956,10 @@
           const col = levelColors[h.level] || '#888';
           return `<div style="background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:10px 14px; display:flex; align-items:center; gap:10px;">
             <span style="background:${col}22; color:${col}; border:1px solid ${col}44; border-radius:100px; padding:3px 10px; font-size:10px; font-weight:700; white-space:nowrap; flex-shrink:0;">Nv${h.level}</span>
-            <span style="font-family:monospace; font-size:11px; color:var(--text-muted); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${h.wallet_address}</span>
+            <span style="font-family:monospace; font-size:11px; color:var(--text-muted); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:6px;">
+              ${h.wallet_address}
+              <button class="print-hide" onclick="writeToWallet('${h.wallet_address}'); event.stopPropagation();" style="background:none; border:none; cursor:pointer; font-size:12px; padding:0; line-height:1; vertical-align:middle; display:inline-block;">✉️</button>
+            </span>
             <span style="font-size:10px; color:var(--text-muted); flex-shrink:0;">${h.event_date || '—'}</span>
           </div>`;
         }).join('');
@@ -1960,7 +1973,10 @@
         mlContainer.innerHTML = multilevel.map(m => `
           <div style="background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:10px 14px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-              <span style="font-family:monospace; font-size:11px; color:var(--text-muted);">${m.wallet_address.substring(0,6)}...${m.wallet_address.slice(-4)}</span>
+              <span style="font-family:monospace; font-size:11px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+                ${m.wallet_address.substring(0,6)}...${m.wallet_address.slice(-4)}
+                <button class="print-hide" onclick="writeToWallet('${m.wallet_address}'); event.stopPropagation();" style="background:none; border:none; cursor:pointer; font-size:12px; padding:0; line-height:1; vertical-align:middle; display:inline-block;">✉️</button>
+              </span>
               <span style="font-family:'Playfair Display',serif; font-size:18px; font-weight:900; color:var(--gold);">${m.total_visits} visitas</span>
             </div>
             <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
@@ -2106,9 +2122,18 @@
   async function sendMessage() {
     const subject = document.getElementById('msg-subject').value.trim();
     const body = document.getElementById('msg-body').value.trim();
-    const levelFilter = document.getElementById('msg-level').value;
+    let levelFilter = document.getElementById('msg-level').value;
     const resultDiv = document.getElementById('send-result');
     const btn = document.getElementById('send-btn');
+
+    if (levelFilter === 'wallet') {
+      levelFilter = document.getElementById('msg-wallet-address').value.trim();
+      if (!levelFilter || !levelFilter.startsWith('0x')) {
+        resultDiv.className = 'send-result error';
+        resultDiv.textContent = 'La dirección de billetera es obligatoria y debe comenzar por 0x.';
+        return;
+      }
+    }
 
     if (!subject || !body) {
       resultDiv.className = 'send-result error';
@@ -2147,6 +2172,48 @@
     btn.disabled = false;
     btn.textContent = '📢 Publicar anuncio';
   }
+
+  function toggleMsgWalletInput() {
+    const selectVal = document.getElementById('msg-level').value;
+    const container = document.getElementById('msg-wallet-container');
+    if (selectVal === 'wallet') {
+      container.style.display = 'block';
+    } else {
+      container.style.display = 'none';
+    }
+  }
+
+  function writeToWallet(walletAddress) {
+    showPage('messages');
+    const select = document.getElementById('msg-level');
+    select.value = 'wallet';
+    toggleMsgWalletInput();
+    const input = document.getElementById('msg-wallet-address');
+    input.value = walletAddress;
+    document.getElementById('msg-subject').focus();
+  }
+
+  window.addEventListener('beforeprint', () => {
+    const holdersWrap = document.getElementById('holders-list-wrap');
+    if (holdersWrap && holdersWrap.style.display === 'none') {
+      holdersWrap.style.display = 'block';
+      const chev = document.getElementById('holders-chevron');
+      if (chev) chev.style.transform = 'rotate(180deg)';
+      loadHolders(currentHolderFilter || 'all');
+    }
+    const visitsSec = document.getElementById('visits-section');
+    if (visitsSec && visitsSec.style.display === 'none') {
+      visitsSec.style.display = 'block';
+      const chev = document.getElementById('visits-chevron');
+      if (chev) chev.style.transform = 'rotate(180deg)';
+    }
+    const statsSec = document.getElementById('stats-section');
+    if (statsSec && statsSec.style.display === 'none') {
+      statsSec.style.display = 'block';
+      const chev = document.getElementById('stats-chevron');
+      if (chev) chev.style.transform = 'rotate(180deg)';
+    }
+  });
 
   async function loadMessages() {
     try {

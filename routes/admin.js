@@ -16,7 +16,7 @@ const {
   getSessionDates
 } = require('../db/database');
 const { DEMO_MODE } = require('../services/polygon');
-const { sendPushToAll } = require('../services/push');
+const { sendPushToAll, sendPushToWallet } = require('../services/push');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'furancho2024';
 const TOKEN_SECRET = process.env.TOKEN_SECRET || crypto.randomBytes(32).toString('hex');
@@ -78,13 +78,14 @@ router.get('/current-message', (req, res) => {
 router.get('/inbox', (req, res) => {
   const level = req.query.level || '1';
   const since = req.query.since || null; // ISO string, eg. "2026-06-05T18:00:00.000Z"
+  const wallet = req.query.wallet || '';
   try {
     const { db } = require('../db/database');
     const messages = db.prepare(`
       SELECT id, subject, body, sent_at FROM messages
-      WHERE level_filter = 'all' OR level_filter = ?
+      WHERE level_filter = 'all' OR level_filter = ? OR (LOWER(level_filter) = LOWER(?) AND ? != '')
       ORDER BY sent_at DESC LIMIT 30
-    `).all(level.toString());
+    `).all(level.toString(), wallet, wallet);
     const ids = messages.map(m => m.id);
     const reactions = ids.length ? getReactionsForMessages(ids) : {};
     res.json(messages.map(m => ({
@@ -163,7 +164,11 @@ router.post('/send-message', requireAuth, async (req, res) => {
   console.log(`[MESSAGE] Mensaje publicado. Destinatarios estimados: ${wallets.length}`);
 
   // Push a móviles con pantalla apagada
-  sendPushToAll(`📢 ${subject}`, body, { url: '/claim' });
+  if (levelFilter && levelFilter.startsWith('0x')) {
+    sendPushToWallet(levelFilter, `✉️ Mensaje privado: ${subject}`, body, { url: '/claim' });
+  } else {
+    sendPushToAll(`📢 ${subject}`, body, { url: '/claim' });
+  }
 
   return res.json({
     success: true,

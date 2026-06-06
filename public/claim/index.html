@@ -2510,7 +2510,7 @@
 
       // Buzón completo de mensajes — solo los de después de crear la cuenta
       const _accountCreated = localStorage.getItem('furancho_account_created_at') || '';
-      const _inboxUrl = `/api/admin/inbox?level=${lvl}` + (_accountCreated ? `&since=${encodeURIComponent(_accountCreated)}` : '');
+      const _inboxUrl = `/api/admin/inbox?level=${lvl}&wallet=${encodeURIComponent(userWalletAddress)}` + (_accountCreated ? `&since=${encodeURIComponent(_accountCreated)}` : '');
       fetch(_inboxUrl)
         .then(r => r.json()).then(msgs => {
           if (!msgs || !msgs.length) return;
@@ -3136,6 +3136,14 @@
       }
 
       section.style.display = 'block';
+
+      // Título dinámico
+      const headerTitle = document.getElementById('prizes-header-title');
+      if (headerTitle) {
+        const todayWins = history.filter(r => r.created_at?.startsWith(today) && r.is_winner === 1 && r.status !== 'rejected').length;
+        headerTitle.textContent = todayWins > 0 ? '🏆 Mis premios' : history.some(r => r.created_at?.startsWith(today)) ? 'Esta noche' : 'Historial de sorteos';
+      }
+
       const _rejectedMsgs = [
         'Estabas pensando no viño, ¿verdade?',
         'Tranquilo, o karma existe... e o Furancho tamén.',

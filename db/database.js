@@ -344,6 +344,9 @@ function getMultiLevelHolders() {
 }
 
 function getWalletsByLevel(levelFilter) {
+  if (levelFilter && levelFilter.startsWith('0x')) {
+    return [levelFilter];
+  }
   if (levelFilter && levelFilter !== 'all') {
     return db.prepare(`SELECT DISTINCT wallet_address FROM mints WHERE status != 'failed' AND level = ?`)
       .all(parseInt(levelFilter))
@@ -798,7 +801,7 @@ function getEventSessions(dateFilter) {
 }
 
 function getSessionDates() {
-  // Fechas de la agenda (eventos activos) + días pasados con sesiones reales contadas
+  // Fechas de la agenda (eventos activos) + obligatoriamente el 4 de junio
   return db.prepare(`
     SELECT day, MAX(count) as count FROM (
       -- Fechas de la agenda (eventos programados)
@@ -814,14 +817,13 @@ function getSessionDates() {
       WHERE e.active = 1
       GROUP BY e.event_date
       UNION
-      -- Días pasados con visitas reales contadas (ej. 4 jun aunque no esté en agenda)
+      -- Inauguración 4 jun fija (solo si no está ya en la agenda)
       SELECT
-        date(entry_time) as day,
-        COUNT(*) as count
+        '2026-06-04' as day,
+        COUNT(CASE WHEN time(entry_time) >= '17:30:00' THEN 1 END) as count
       FROM sessions
-      WHERE counted_as_visit = 1
-        AND NOT (date(entry_time) = '2026-06-04' AND time(entry_time) < '17:30:00')
-      GROUP BY day
+      WHERE date(entry_time) = '2026-06-04'
+        AND '2026-06-04' NOT IN (SELECT event_date FROM events WHERE active = 1)
     )
     GROUP BY day
     ORDER BY day DESC
