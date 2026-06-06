@@ -620,7 +620,7 @@ function autoCloseSessionsAt23() {
 }
 
 function insertRaffle(prize, winnerWallet, verificationCode, participantWallets = [], targetLevel = null) {
-  const deadline = new Date(Date.now() + 90000).toISOString().replace('T', ' ').slice(0, 19);
+  const deadline = new Date(Date.now() + 195000).toISOString().replace('T', ' ').slice(0, 19);
   const id = db.prepare(`
     INSERT INTO raffles (prize, winner_wallet, verification_code, status, acceptance_deadline, target_level)
     VALUES (?, ?, ?, 'pending_acceptance', ?, ?)

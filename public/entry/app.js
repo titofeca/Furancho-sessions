@@ -15,46 +15,46 @@ document.addEventListener('DOMContentLoaded', async () => {
 const NEW_WELCOME_MESSAGES = [
   {
     icon: '🍷',
-    title: '¡Hola ho! ¡Bienvenido al Furancho, rapaz!',
-    msg: 'Veo que es tu primera vez por aquí. Pasa para dentro, búscate un hueco y pídete una cunca de viño. Eso sí, no te me vayas sin fichar la salida al marchar... ¡que no cobramos por salir, pero al menos queremos saber que quedaste vivo y no te perdiste en el monte! 😜'
+    title: '¡Hola ho! ¡Bienvenido a la esmorga, rapaz!',
+    msg: 'Veo que eres nuevo por la parroquia, tronco. Pasa para dentro, búscate un hueco y pídete una cunca de tinto. Eso sí, al loro: no te vayas sin fichar la salida al marchar... ¡que no cobramos por salir, ho, pero al menos queremos saber que saliste entero y no te perdiste por el monte! 😜'
   },
   {
     icon: '🍇',
-    title: '¡Home! Una cara nueva por la parroquia.',
-    msg: '¿Tú eres nuevo por aquí, no? Apúntate a nuestra cofradía de la buena esmorga. Pasa y disfruta, pero cuidado con el vino de la casa, que entra como el agua y luego ves doble... ¡y aquí los premios se dan de uno en uno, carallo! 🍷'
+    title: '¡Home! Una cara nueva en el Furancho, neno.',
+    msg: '¿Es tu estreno, rapaz? Apúntate a nuestra cofradía de la buena leria. Pasa y disfruta, pero al loro con el vino de la casa, que entra como el agua y luego te marcas unos bailes ochenteros tú solo... ¡y aquí los premios se dan de uno en uno, carallo! 🍷'
   },
   {
     icon: '🥖',
-    title: '¡Bienvenido al templo de la leria, rapaz!',
-    msg: 'Pasa para adentro, que el vino está frío, la leria caliente y el jamón bien cortado. No te olvides de fichar la salida al marchar... ¡a no ser que te quieras quedar a barrer el furancho con nosotros a las tantas! 🧹'
+    title: '¡Bienvenido al templo de la leria, tronco!',
+    msg: 'Pasa para adentro, rapaz, que el vino está fresco y el jamón bien cortado, nena. No te olvides de fichar la salida al marchar... ¡a no ser que te quieras quedar a barrer el furancho con nosotros a las tantas! 🧹'
   }
 ];
 
 const RETURNING_WELCOME_MESSAGES = [
   {
     icon: '🙌',
-    title: '¡Otra vez tú por aquí, carallo!',
-    msg: 'Ya me parecía a mí que te gustaba mucho la esmorga. ¡Lleva cuidado no vayas a heredar el furancho! Pasa y coge sitio, que hoy hay sorteo a ver si tienes más suerte que el otro día... ¡o vas a seguir durmiendo en la paja por estar de leria! 😜'
+    title: '¡Hombre, al loro! ¡Otra vez por aquí, carallo!',
+    msg: 'Ya me parecía a mí que te gustaba la juerga ochentera. ¡Lleva cuidado, no vayas a heredar el furancho, neno! Pasa y coge sitio, que hoy hay sorteo a ver si tienes potra... ¡o vas a seguir durmiendo en la paja por estar de leria! 😜'
   },
   {
     icon: '🍇',
-    title: '¡El hijo pródigo vuelve a la casa!',
-    msg: 'Le dije al patrón: "Ese vuelve seguro, ho". ¡Y no fallé! Pasa a mojar la garganta y a ver si hoy haces gasto del de verdad. ¡Recuerda fichar al marchar, rapaz, que las visitas no se acumulan solas!'
+    title: '¡El hijo pródigo vuelve a la barra, ho!',
+    msg: 'Le dije al patrón: "Ese neno vuelve seguro". ¡Y no fallé, tronco! Pasa a mojar la garganta y a ver si hoy haces gasto del de verdad. ¡Recuerda fichar al marchar, rapaz, que las visitas no se acumulan solas!'
   },
   {
     icon: '🍷',
-    title: '¡Ya te tardaba venir, ho!',
-    msg: 'Ya pensábamos que te habías perdido por el monte con las cabras o que te habían metido en el calabozo. Pasa y pídete una cunca de tinto, que bien te hace falta. ¡Enséñale al cuerpo que sigues con ganas de esmorga!'
+    title: '¡Ya te tardaba venir a la esmorga, ho!',
+    msg: 'Ya pensábamos que te habías perdido con el vespino o que te habían metido en el calabozo, rapaz. Pasa y pídete una taza sin miedo, que bien te hace falta. ¡Enséñale al cuerpo lo que es molar de verdad!'
   },
   {
     icon: '🧀',
-    title: '¡Ahí viene el peligro de la parroquia!',
-    msg: '¡Apartad todos, que llega el profesional de las cuncas! Pasa para dentro, pero déjanos algo de viño a los demás, ho. ¡Que luego dicen que nos quedamos sin existencias por tu culpa!'
+    title: '¡Ahí llega el peligro del barrio, tronco!',
+    msg: '¡Apartad todos, que llega el rey de las cuncas! Pasa para dentro, pero déjanos algo de tinto a los demás, ho. ¡Que luego el patrón dice que nos quedamos sin existencias por tu culpa, carallo!'
   },
   {
     icon: '👑',
-    title: '¡Sacad la alfombra roja, rapaz!',
-    msg: '¡Que llega un veterano del Furancho! Pasa para dentro y pide una taza sin miedo. Cada visita te acerca más a pases de leyenda... ¡y que el viño no pare, carallo!'
+    title: '¡Sacad la alfombra roja, neno!',
+    msg: '¡Que llega un veterano de las Furancho Sessions! Pasa y pide una taza sin miedo. Cada visita te acerca más a pases de leyenda... ¡y que el tinto no pare, carallo!'
   }
 ];
 
@@ -219,14 +219,14 @@ function showError(msg) {
 }
 
 // ==================== SSE LIVE RAFFLES ====================
-const _entryWinnerTitles = ['¡TE CAYÓ EL PREMIO, HO!','¡TE TOCÓ, CAMPEÓN!','¡LA SUERTE ESTABA DE TU LADO!'];
+const _entryWinnerTitles = ['¡TE CAYÓ EL PREMIO, NENO!','¡TE TOCÓ, CAMPEÓN!','¡ESTÁS DE SUERTE, HO!','¡VAYA POTRA, TRONCO!'];
 const _entryLoserEmojis = ['😤','🙃','😅','🫠','😬'];
-const _entryLoserTitles = ['Esta vez no...','Qué mala pata, ho','Ni esta vez'];
+const _entryLoserTitles = ['Esta vez no hubo suerte, ho...','Qué mala pata, neno','Ni esta vez, rapaz','La próxima mola más'];
 const _entryLoserMsgs = [
-  'El vino sigue en la mesa, que no es poco.',
-  'Habrá más sorteos. La noche es larga.',
-  'No todo el monte es orégano, hombre.',
-  'La bonoloto tampoco, pero aquí estamos.',
+  'Pero el tinto sigue fresco en la mesa, que no es poco.',
+  'Habrá más esmorga y más sorteos, ho. La noche es larga.',
+  'El mejor premio es estar aquí con la basca, rapaz.',
+  'La bonoloto tampoco te toca, tronco, pero aquí no te cobramos brasa.',
 ];
 
 function connectRaffle() {

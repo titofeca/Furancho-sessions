@@ -406,47 +406,48 @@
       <div class="logo-mark"><img src="/assets/logo.png" alt="Furancho Sessions" /></div>
 
       <h2 class="loading-title" style="margin-bottom: 6px;">Furancho Sessions</h2>
-      <p class="loading-sub" style="margin-bottom: 32px;">Afterwork · Viño e Tapas</p>
+      <p class="loading-sub" style="margin-bottom: 32px;">Afterwork · Viño, Tapas y Leria ochentera</p>
 
       <div style="background: rgba(42,21,9,0.05); border: 1px solid rgba(42,21,9,0.1); border-radius: 20px; padding: 22px; margin-bottom: 14px;">
-        <p style="font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 6px; font-family: 'Playfair Display', serif;">¿Ya tienes cuenta?</p>
-        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5; font-weight: 300;">Si es tu primera vez, crea una cuenta nueva. Si ya viniste antes, recupera tu cuenta existente.</p>
+        <p style="font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 6px; font-family: 'Playfair Display', serif;">¿Ya eres de la basca, ho?</p>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5; font-weight: 300;">Si es tu estreno por el local, píllate una cuenta nueva, rapaz. Si ya viniste de antes, recupera tu pase para no perder tus galones de furancheiro.</p>
 
         <button id="onboarding-new-btn" onclick="onboardingNew()"
           style="display: block; width: 100%; padding: 18px 24px; background: linear-gradient(135deg, var(--wine) 0%, var(--wine-dark) 100%); color: #fff; font-family: 'Outfit', sans-serif; font-size: 17px; font-weight: 700; text-align: center; border: none; border-radius: 50px; box-shadow: 0 6px 24px rgba(139,25,24,0.35); margin-bottom: 10px; cursor: pointer; letter-spacing: 0.3px;">
-          🍷 Es mi primera vez
+          🍷 Es mi estreno (Crear cuenta)
         </button>
 
         <button onclick="onboardingShowRecovery()"
           style="width: 100%; padding: 16px 24px; background: transparent; border: 1.5px solid rgba(139,25,24,0.3); border-radius: 50px; color: var(--wine); font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; letter-spacing: 0.3px;">
-          🔑 Ya tengo cuenta
+          🔑 Ya vengo de antes (Restaurar)
         </button>
       </div>
 
       <!-- Opciones de recuperación -->
       <div id="onboarding-recovery-entry" style="display: none; background: rgba(42,21,9,0.04); border: 1px solid rgba(42,21,9,0.08); border-radius: 20px; padding: 20px; text-align: left;">
-        <p style="font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 14px;">¿Cómo recuperas tu cuenta?</p>
+        <p style="font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 14px;">¿Cómo recuperas tu pase, tronco?</p>
 
         <div style="margin-bottom: 12px; padding: 14px; background: rgba(196,151,58,0.07); border: 1px solid rgba(196,151,58,0.2); border-radius: 14px;">
           <p style="font-size: 13px; font-weight: 700; color: var(--gold); margin-bottom: 4px;">📱 Con el QR de recuperación</p>
-          <p style="font-size: 12px; color: var(--text-muted); line-height: 1.55; margin: 0;">Abre la cámara de tu móvil y escanea el QR (<em>furancho-mi-pase.png</em>). Te llevará a la app con tu cuenta restaurada y podrás volver a escanear la entrada.</p>
+          <p style="font-size: 12px; color: var(--text-muted); line-height: 1.55; margin: 0;">Abre la cámara y escanea tu QR furancheiro (<em>furancho-mi-pase.png</em>). La app se abre restaurada y al loro. Sin más, ho.</p>
         </div>
 
         <button onclick="onboardingOpenRestore()"
-          style="width: 100%; padding: 15px; background: linear-gradient(135deg, var(--wine), var(--wine-dark)); color: #fff; border: none; border-radius: 50px; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(139,25,24,0.3);">
-          📝 Usar mis 12 palabras
+          style="width: 100%; padding: 15px; background: linear-gradient(135deg, var(--wine), var(--wine-dark)); color: #fff; border: none; border-radius: 50px; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(139,25,24,0.35);">
+          📝 Usar mis 12 palabras de recuperación
         </button>
 
         <!-- Formulario de recuperación por palabras -->
         <div id="entry-restore-panel" style="display: none; margin-top: 16px;">
-          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">Introduce tus <strong>12 palabras de recuperación</strong> en orden.</p>
+          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">Introduce tus 12 palabras en orden, neno. ¡Al loro con la ortografía!</p>
           <div id="entry-restore-inputs" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;"></div>
           <p id="entry-restore-error" style="display: none; color: var(--wine); font-size: 13px; font-weight: 600; text-align: center; margin-bottom: 10px;"></p>
           <button id="entry-restore-btn" onclick="submitEntryRestore()"
             style="width: 100%; padding: 15px; background: linear-gradient(135deg, var(--wine), var(--wine-dark)); color: #fff; border: none; border-radius: 50px; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 10px rgba(139,25,24,0.3);">
-            Recuperar y fichar entrada
+            🍷 Recuperar cuenta y fichar
           </button>
         </div>
+      </div>
       </div>
     </div>
   </div>
@@ -460,8 +461,8 @@
         <div class="spinner"></div>
         <div class="spinner-inner"></div>
       </div>
-      <h2 class="loading-title">Abriendo las puertas...</h2>
-      <p class="loading-sub">Espera un momento, que ya te preparamos la mesa, ho.</p>
+      <h2 class="loading-title">Abriendo los barriles...</h2>
+      <p class="loading-sub">Al loro, rapaz. Menos de lo que tarda el camarero en llenarte la cunca. No me toques el peluco que ya casi estamos.</p>
     </div>
   </div>
 
@@ -469,12 +470,12 @@
     <div class="raffle-particles" id="entry-particles"></div>
     <div class="success-container">
       <div class="success-icon" id="icon-container">🍷</div>
-      <h2 class="success-title" id="title-container">¡Bienvenido a Furancho Sessions!</h2>
+      <h2 class="success-title" id="title-container">¡Bienvenido a la esmorga, ho!</h2>
       <p class="success-sub" id="msg-container">
-        ¡Disfruta de la noche y del vino, ho!
+        ¡Pasa para dentro, rapaz! El tinto está fresco y la leria caliente.
       </p>
 
-      <a href="/claim" class="btn-enter">Entrar al Furancho →</a>
+      <a href="/claim" class="btn-enter">🍇 Ver mi pase digital →</a>
 
       <div id="nft-container" style="display: none; width: 100%;" class="nft-card">
         <div class="nft-card-top">
@@ -496,25 +497,25 @@
       <h2 class="raffle-title-el">Sorteo Especial</h2>
       <p class="raffle-prize-sub" id="raffle-prize-text">Sorteando: ...</p>
       <div class="raffle-slot">🎰</div>
-      <p class="raffle-searching-text">Removiendo el bombo... que este premio no se va solo, ho...</p>
+      <p class="raffle-searching-text">¡Al loro! Removiendo el bombo... que esto está más emocionante que el final de un partido, ho...</p>
     </div>
 
     <div id="raffle-winner" style="display: none;" class="raffle-winner-inner">
       <div style="font-size: 64px; margin-bottom: 18px;">🏆</div>
-      <h2 id="entry-winner-title" style="font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 900; color: #4ade80; margin-bottom: 10px;">¡TE CAYÓ EL PREMIO, HO!</h2>
+      <h2 id="entry-winner-title" style="font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 900; color: #4ade80; margin-bottom: 10px;">¡TE CAYÓ EL PREMIO, NENO! 🏆</h2>
       <p style="font-size: 15px; color: var(--text); margin-bottom: 26px; font-weight: 300;">Te llevas a casa: <strong id="raffle-winner-prize" style="font-weight: 700;"></strong></p>
       <div class="raffle-winner-box">
         <p class="raffle-code-label">Tu código de la suerte</p>
         <p class="raffle-code" id="raffle-code">----</p>
       </div>
-      <p class="raffle-note">🍷 Muéstrale esta pantalla al staff del Furancho para reclamar tu premio.</p>
+      <p class="raffle-note">🍷 Muéstrale esta pantalla al staff para trincar tu premio antes de que se entere el patrón.</p>
     </div>
 
     <div id="raffle-loser" style="display: none; text-align: center; width: 100%; max-width: 340px;">
       <div id="entry-loser-emoji" style="font-size: 64px; margin-bottom: 18px;">😤</div>
-      <h2 id="entry-loser-title" style="font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; color: var(--text); margin-bottom: 10px;">Esta vez no...</h2>
-      <p id="entry-loser-msg" style="font-size: 15px; color: var(--text-muted); margin-bottom: 28px; font-weight: 300;">El premio de <span id="raffle-loser-prize"></span> fue para otro. Pero el vino sigue en la mesa.</p>
-      <button onclick="document.getElementById('raffle-modal').style.display='none'; document.body.style.overflow='auto';" class="btn-close-raffle">Qué le vamos a hacer...</button>
+      <h2 id="entry-loser-title" style="font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; color: var(--text); margin-bottom: 10px;">Esta vez no hubo suerte, ho...</h2>
+      <p id="entry-loser-msg" style="font-size: 15px; color: var(--text-muted); margin-bottom: 28px; font-weight: 300;">El premio de <strong id="raffle-loser-prize"></strong> se lo lleva otro, rapaz. Pero no llores, que el tinto sigue fresco en la mesa, que no es poco.</p>
+      <button onclick="document.getElementById('raffle-modal').style.display='none'; document.body.style.overflow='auto';" class="btn-close-raffle">Bueno, qué le vamos a hacer, ho...</button>
     </div>
   </div>
 
