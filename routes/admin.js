@@ -216,25 +216,38 @@ router.get('/peak-hours', requireAuth, (req, res) => {
     const date = req.query.date || null;
 
     // Filtro SQL: si hay fecha filtra ese día; para totales solo sesiones de días con evento
-    const safeDate = date ? date.replace(/'/g, '') : null;
+    // Validar formato YYYY-MM-DD para evitar inyeccion SQL
+    const safeDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null;
     const dateWhere = safeDate
-      ? `date(entry_time) = '${safeDate}'`
+      ? `date(entry_time) = ?`
       : `date(entry_time) IN (SELECT event_date FROM events)
          AND NOT (date(entry_time) = '2026-06-04' AND time(entry_time) < '17:30:00')`;
+    const dateParam = safeDate ? [safeDate] : [];
 
     // SQLite guarda UTC; España = CEST (UTC+2 en verano). Ajustamos +2h para mostrar hora local.
     const TZ_OFFSET = `'+2 hours'`;
 
-    const hourCounts = db.prepare(`
-      SELECT hour, COUNT(*) as sessions, COUNT(DISTINCT wallet_address) as unique_users
-      FROM (
-        SELECT wallet_address, CAST(strftime('%H', entry_time, ${TZ_OFFSET}) AS INTEGER) as hour
-        FROM sessions WHERE entry_time IS NOT NULL AND ${dateWhere}
-        UNION ALL
-        SELECT wallet_address, CAST(strftime('%H', exit_time, ${TZ_OFFSET}) AS INTEGER) as hour
-        FROM sessions WHERE exit_time IS NOT NULL AND ${dateWhere}
-      ) GROUP BY hour ORDER BY hour
-    `).all();
+    const hourCounts = safeDate
+      ? db.prepare(`
+          SELECT hour, COUNT(*) as sessions, COUNT(DISTINCT wallet_address) as unique_users
+          FROM (
+            SELECT wallet_address, CAST(strftime('%H', entry_time, ${TZ_OFFSET}) AS INTEGER) as hour
+            FROM sessions WHERE entry_time IS NOT NULL AND date(entry_time) = ?
+            UNION ALL
+            SELECT wallet_address, CAST(strftime('%H', exit_time, ${TZ_OFFSET}) AS INTEGER) as hour
+            FROM sessions WHERE exit_time IS NOT NULL AND date(exit_time) = ?
+          ) GROUP BY hour ORDER BY hour
+        `).all(safeDate, safeDate)
+      : db.prepare(`
+          SELECT hour, COUNT(*) as sessions, COUNT(DISTINCT wallet_address) as unique_users
+          FROM (
+            SELECT wallet_address, CAST(strftime('%H', entry_time, ${TZ_OFFSET}) AS INTEGER) as hour
+            FROM sessions WHERE entry_time IS NOT NULL AND ${dateWhere}
+            UNION ALL
+            SELECT wallet_address, CAST(strftime('%H', exit_time, ${TZ_OFFSET}) AS INTEGER) as hour
+            FROM sessions WHERE exit_time IS NOT NULL AND ${dateWhere}
+          ) GROUP BY hour ORDER BY hour
+        `).all();
 
     const avgByHour = db.prepare(`
       SELECT CAST(strftime('%H', entry_time, ${TZ_OFFSET}) AS INTEGER) as hour,
@@ -475,31 +488,34 @@ router.get('/segments', requireAuth, (req, res) => {
 router.get('/hourly', requireAuth, (req, res) => {
   try {
     const { db } = require('../db/database');
-    const date = (req.query.date || '').replace(/'/g, '');
+    const date = req.query.date || '';
     if (!date) return res.status(400).json({ error: 'Falta date' });
+    // Validar formato estricto YYYY-MM-DD (previene SQL injection)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Formato de fecha no válido' });
+    const safeDate = date;
 
     const TZ = `'+2 hours'`;
 
     const entries_by_hour = db.prepare(`
       SELECT CAST(strftime('%H', entry_time, ${TZ}) AS INTEGER) as hour, COUNT(*) as count
-      FROM sessions WHERE date(entry_time, ${TZ}) = '${date}'
+      FROM sessions WHERE date(entry_time, ${TZ}) = ?
       GROUP BY hour ORDER BY hour
-    `).all();
+    `).all(safeDate);
 
     const exits_by_hour = db.prepare(`
       SELECT CAST(strftime('%H', exit_time, ${TZ}) AS INTEGER) as hour, COUNT(*) as count
-      FROM sessions WHERE exit_time IS NOT NULL AND date(exit_time, ${TZ}) = '${date}'
+      FROM sessions WHERE exit_time IS NOT NULL AND date(exit_time, ${TZ}) = ?
       GROUP BY hour ORDER BY hour
-    `).all();
+    `).all(safeDate);
 
     const inside_by_hour = [];
     for (let h = 16; h <= 23; h++) {
       const row = db.prepare(`
         SELECT COUNT(*) as count FROM sessions
-        WHERE date(entry_time, ${TZ}) = '${date}'
+        WHERE date(entry_time, ${TZ}) = ?
           AND CAST(strftime('%H', entry_time, ${TZ}) AS INTEGER) <= ${h}
           AND (exit_time IS NULL OR CAST(strftime('%H', exit_time, ${TZ}) AS INTEGER) > ${h})
-      `).get();
+      `).get(safeDate);
       inside_by_hour.push({ hour: h, count: row?.count || 0 });
     }
 
@@ -509,17 +525,17 @@ router.get('/hourly', requireAuth, (req, res) => {
       SELECT ROUND(AVG(duration_minutes), 0) as avg_duration
       FROM sessions
       WHERE exit_time IS NOT NULL AND duration_minutes > 0 AND duration_minutes < 300
-        AND date(entry_time, ${TZ}) = '${date}'
-    `).get();
+        AND date(entry_time, ${TZ}) = ?
+    `).get(safeDate);
 
     const peakEntry = entries_by_hour.reduce((a, b) => b.count > (a?.count || 0) ? b : a, null);
     const total_entries = entries_by_hour.reduce((s, r) => s + r.count, 0);
 
     const raffle_hours = db.prepare(`
       SELECT DISTINCT CAST(strftime('%H', created_at, ${TZ}) AS INTEGER) as hour
-      FROM raffles WHERE date(created_at, ${TZ}) = '${date}'
+      FROM raffles WHERE date(created_at, ${TZ}) = ?
       ORDER BY hour
-    `).all();
+    `).all(safeDate);
 
     res.json({
       date,

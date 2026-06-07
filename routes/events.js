@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const { getEvents, toggleRsvp, getRsvpStatus,
         createVipReservation, getVipReservations, getVipReservation,
         getVipCapacity, updateVipStatus, setVipMax,
@@ -7,6 +8,10 @@ const { getEvents, toggleRsvp, getRsvpStatus,
         createEvent, updateEvent, deleteEvent, getAllEvents } = require('../db/database');
 const { requireAuth } = require('./admin');
 const { sendVipRequestEmail } = require('../services/notifications');
+
+// Rate limiters
+const rsvpLimiter = rateLimit({ windowMs: 5 * 60 * 1000, max: 20, message: { error: 'Demasiadas peticiones. Espéra un momento, ho.' }, standardHeaders: true, legacyHeaders: false });
+const reactLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, message: { error: 'Demasiadas reacciones. Calmía, ho.' }, standardHeaders: true, legacyHeaders: false });
 
 // GET /api/events — lista de eventos con conteo de asistentes (público)
 router.get('/', (req, res) => {
@@ -18,9 +23,10 @@ router.get('/', (req, res) => {
 });
 
 // POST /api/events/rsvp — apuntarse o desapuntarse a un evento
-router.post('/rsvp', (req, res) => {
+router.post('/rsvp', rsvpLimiter, (req, res) => {
   const { eventId, walletAddress } = req.body;
   if (!eventId || !walletAddress) return res.status(400).json({ error: 'Faltan datos' });
+  if (!/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) return res.status(400).json({ error: 'Wallet no válida' });
   try {
     const attending = toggleRsvp(parseInt(eventId), walletAddress);
     res.json({ success: true, attending });

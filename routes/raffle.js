@@ -43,6 +43,13 @@ router.get('/stream', (req, res) => {
   const clientId = Date.now() + Math.random();
   const walletAddress = req.query.wallet || null;
   const newClient = { id: clientId, res, walletAddress };
+
+  // Cap: máximo 500 conexiones SSE activas para evitar memory leaks
+  if (clients.length >= 500) {
+    // Eliminar la conexión más antigua
+    const oldest = clients.shift();
+    try { oldest.res.end(); } catch (_) {}
+  }
   clients.push(newClient);
 
   const keepalive = setInterval(() => {
@@ -376,9 +383,14 @@ const claimLimiter = rateLimit({
 
 // POST /api/raffle/weekly/claim
 router.post('/weekly/claim', claimLimiter, (req, res) => {
-  const { walletAddress, week } = req.body;
+  const { walletAddress } = req.body;
   if (!walletAddress) return res.status(400).json({ error: 'Falta walletAddress' });
-  const weekStr = week || getYearWeek();
+
+  // Validar formato wallet — no se acepta week del cliente, siempre usamos la semana actual del servidor
+  if (!/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
+    return res.status(400).json({ error: 'Dirección de wallet no válida, ho.' });
+  }
+  const weekStr = getYearWeek(); // <-- siempre server-side, ignoramos req.body.week
   try {
     const { db } = require('../db/database');
     const furancheiroRow = db.prepare(`
