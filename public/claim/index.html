@@ -3657,7 +3657,7 @@
 
         // Mostrar banner visible en perfil
         showProfileBanner(
-          `🔑 <strong>¡Carallo, ho! ¡Ganaste la Chave Semanal!</strong><br>Premio: <strong>${data.prize}</strong>. Pásate por el Furancho para reclamarlo. ¡A disfrutalo, rapaz!`,
+          `🔑 <strong>¡Carallo, ho! ¡Ganaste la Chave Semanal!</strong><br>Premio: <strong>${data.prize}</strong><br>Tu código: <strong style="font-family:monospace; font-size:16px; letter-spacing:2px;">${data.verificationCode}</strong>. Muéstraselo al staff para recoger tu premio. ¡A disfrutalo, rapaz!`,
           'gold'
         );
 
@@ -3673,9 +3673,10 @@
           if (titleEl) titleEl.textContent = '🔑 ¡GAÑACHES A CHAVE, HO!';
 
           document.getElementById('raffle-winner-prize').textContent = data.prize;
-          // No hay código de verificación para la chave semanal (se presenta en persona)
+
+          // Mostrar el código real — el cliente lo enseña al staff
           const codeEl = document.getElementById('raffle-code');
-          if (codeEl) codeEl.textContent = '— Presénzate ao Furancho —';
+          if (codeEl) codeEl.textContent = data.verificationCode || '—';
 
           document.getElementById('raffle-particles').innerHTML = '';
           modal.style.display = 'flex';
@@ -3694,6 +3695,13 @@
         if (statusText) statusText.textContent = `🔑 Chave Semanal sorteada — ${data.prize}`;
         // Recargar tarjeta semanal para que todos vean "Finalizado"
         setTimeout(loadWeeklyRaffle, 1500);
+      });
+
+      // Premio Chave entregado: notificar al ganador
+      evtSource.addEventListener('weekly_prize_collected', (e) => {
+        const data = JSON.parse(e.data);
+        showProfileBanner(`✅ <strong>¡Premio entregado!</strong> El staff ha confirmado la entrega de <strong>${data.prize}</strong>. ¡Que lo disfrutes, ho!`, 'green');
+        setTimeout(loadWeeklyRaffle, 800);
       });
 
       // Admin confirma/cancela reserva VIP → actualizar estado en la agenda
@@ -4171,9 +4179,19 @@
         
         if (data.winnerWallet) {
           const isMe = data.winnerWallet.toLowerCase() === userWalletAddress.toLowerCase();
-          prizeText.innerHTML = isMe 
-            ? `🏆 ¡Te ha tocado, ho! <strong>${data.prize}</strong>`
-            : `Sorteo cerrado. Ganador: <strong>${data.winnerWallet.slice(0,6)}...${data.winnerWallet.slice(-4)}</strong>`;
+          if (isMe) {
+            prizeText.innerHTML = `🏆 <strong>¡Te ha tocado, ho!</strong> ${data.prize}`;
+            // Mostrar el código de verificación para que el ganador lo enseñe al staff
+            if (rulesText) {
+              rulesText.innerHTML = `<div style="margin-top:10px; background:rgba(139,25,24,0.06); border:1.5px dashed rgba(139,25,24,0.25); border-radius:10px; padding:10px; text-align:center;">
+                <p style="font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); margin:0 0 4px;">🔑 Tu código — Premio Chave do Furancho</p>
+                <p style="font-family:monospace; font-size:22px; font-weight:900; color:var(--wine); margin:0; letter-spacing:3px;">${data.verificationCode || '—'}</p>
+                <p style="font-size:10px; color:var(--text-muted); margin:4px 0 0;">Muéstraselo al staff en el Furancho</p>
+              </div>`;
+            }
+          } else {
+            prizeText.innerHTML = `Sorteo cerrado. Ganador: <strong>${data.winnerWallet.slice(0,6)}...${data.winnerWallet.slice(-4)}</strong>`;
+          }
         }
       } else if (data.claimed) {
         btn.disabled = true;

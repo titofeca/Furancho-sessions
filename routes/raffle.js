@@ -7,7 +7,7 @@ const {
   getPrizePresets, addPrizePreset, deletePrizePreset, getRaffleCountTonight,
   getScheduledRaffles, createScheduledRaffle, updateScheduledRaffle,
   deleteScheduledRaffle, linkScheduledRaffle, insertMint,
-  claimWeeklyRaffle, getWeeklyRaffleStatus, updateWeeklyPrize, drawWeeklyRaffle
+  claimWeeklyRaffle, getWeeklyRaffleStatus, updateWeeklyPrize, drawWeeklyRaffle, collectWeeklyRaffle
 } = require('../db/database');
 const { requireAuth } = require('./admin');
 const { sendPushToAll } = require('../services/push');
@@ -415,11 +415,34 @@ router.get('/admin/weekly/status', requireAuth, (req, res) => {
       rules: raffle ? (raffle.rules || 'Trinca tu participación una vez por semana antes de que empiecen los eventos. ¡Se sorteará un regalo de la hostia!') : 'Trinca tu participación una vez por semana antes de que empiecen los eventos. ¡Se sorteará un regalo de la hostia!',
       status: raffle ? raffle.status : 'active',
       winnerWallet: raffle ? raffle.winner_wallet : null,
+      verificationCode: raffle ? raffle.verification_code : null,
+      collectedAt: raffle ? raffle.collected_at : null,
       drawnAt: raffle ? raffle.drawn_at : null,
       totalParticipants
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/weekly/collect (ADMIN) — marcar premio como entregado
+router.post('/admin/weekly/collect', requireAuth, (req, res) => {
+  const { week } = req.body;
+  const weekStr = week || getYearWeek();
+  try {
+    collectWeeklyRaffle(weekStr);
+    // Notificar al ganador que su premio fue marcado como entregado (si sigue conectado)
+    const { db } = require('../db/database');
+    const raffle = db.prepare(`SELECT winner_wallet, prize FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
+    if (raffle?.winner_wallet) {
+      broadcast('weekly_prize_collected', {
+        prize: raffle.prize,
+        week: weekStr
+      }, raffle.winner_wallet);
+    }
+    res.json({ success: true });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
   }
 });
 
@@ -455,6 +478,7 @@ router.post('/admin/weekly/draw', requireAuth, (req, res) => {
     broadcast('weekly_draw_result', {
       winnerWallet: result.winnerWallet,
       prize: result.prize,
+      verificationCode: result.verificationCode,
       week: weekStr
     }, result.winnerWallet);
 

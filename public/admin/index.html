@@ -1640,9 +1640,22 @@
           </div>
           
           <div id="weekly-winner-info" style="display:none; background:rgba(196,151,58,0.1); border:1.5px solid var(--gold); border-radius:12px; padding:12px; margin-bottom:14px;">
-            <p style="font-size:13px; color:var(--wine); font-weight:700; margin:0 0 4px; display:flex; align-items:center; gap:6px;">🏆 Ganador de esta semana:</p>
-            <p id="weekly-winner-address" style="font-family:'Outfit',monospace; font-size:12.5px; margin:6px 0 2px; word-break:break-all; color:var(--text); font-weight:700;"></p>
-            <p id="weekly-drawn-at" style="font-size:11px; color:var(--text-muted); margin:0;"></p>
+            <p style="font-size:13px; color:var(--wine); font-weight:700; margin:0 0 8px; display:flex; align-items:center; gap:6px;">🏆 Ganador de esta semana:</p>
+            <p id="weekly-winner-address" style="font-family:'Outfit',monospace; font-size:12.5px; margin:0 0 10px; word-break:break-all; color:var(--text); font-weight:700;"></p>
+
+            <!-- Código de verificación destacado -->
+            <div style="background:rgba(139,25,24,0.08); border:1.5px dashed rgba(139,25,24,0.3); border-radius:10px; padding:10px 14px; margin-bottom:10px; text-align:center;">
+              <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); margin:0 0 4px;">🔑 Código Premio Chave do Furancho</p>
+              <p id="weekly-verification-code" style="font-family:monospace; font-size:24px; font-weight:900; color:var(--wine); margin:0; letter-spacing:3px;">—</p>
+              <p style="font-size:10.5px; color:var(--text-muted); margin:4px 0 0;">El cliente muestra este código en el móvil · Tú lo verificas aquí</p>
+            </div>
+
+            <p id="weekly-drawn-at" style="font-size:11px; color:var(--text-muted); margin:0 0 8px;"></p>
+            <p id="weekly-collected-at" style="font-size:11px; color:#4ade80; font-weight:700; margin:0 0 10px; display:none;">✅ Premio entregado</p>
+
+            <button id="weekly-collect-btn" onclick="collectWeeklyPrize()" style="background:linear-gradient(135deg,#4ade80,#16a34a); color:#fff; border:none; border-radius:10px; padding:10px 16px; font-size:13px; font-weight:700; cursor:pointer; width:100%; font-family:'Outfit',sans-serif;">
+              ✅ Marcar Premio como Entregado
+            </button>
           </div>
           
           <button id="weekly-draw-btn" onclick="drawWeeklyRaffleAdmin()" style="background:var(--gold); color:#1c0e06; border:none; border-radius:12px; padding:12px; font-size:14px; font-weight:800; cursor:pointer; width:100%; display:flex; align-items:center; justify-content:center; gap:8px; font-family:'Outfit',sans-serif;">
@@ -2953,10 +2966,44 @@
       if (data.status === 'completed') {
         if (winnerInfo) winnerInfo.style.display = 'block';
         if (winnerAddress) winnerAddress.textContent = data.winnerWallet || '—';
+
+        // Mostrar código de verificación
+        const codeEl = document.getElementById('weekly-verification-code');
+        if (codeEl) codeEl.textContent = data.verificationCode || '—';
+
         if (drawnAtEl) {
           const when = data.drawnAt ? new Date(data.drawnAt).toLocaleString('es-ES') : '—';
           drawnAtEl.textContent = `Sorteado el: ${when}`;
         }
+
+        const collectedEl = document.getElementById('weekly-collected-at');
+        const collectBtn = document.getElementById('weekly-collect-btn');
+
+        if (data.collectedAt) {
+          // Ya entregado
+          if (collectedEl) {
+            const whenC = new Date(data.collectedAt).toLocaleString('es-ES');
+            collectedEl.textContent = `✅ Premio entregado el ${whenC}`;
+            collectedEl.style.display = 'block';
+          }
+          if (collectBtn) {
+            collectBtn.disabled = true;
+            collectBtn.textContent = '✅ Premio ya entregado';
+            collectBtn.style.background = 'rgba(42,21,9,0.06)';
+            collectBtn.style.color = 'var(--text-muted)';
+            collectBtn.style.cursor = 'not-allowed';
+          }
+        } else {
+          if (collectedEl) collectedEl.style.display = 'none';
+          if (collectBtn) {
+            collectBtn.disabled = false;
+            collectBtn.textContent = '✅ Marcar Premio como Entregado';
+            collectBtn.style.background = 'linear-gradient(135deg,#4ade80,#16a34a)';
+            collectBtn.style.color = '#fff';
+            collectBtn.style.cursor = 'pointer';
+          }
+        }
+
         if (drawBtn) {
           drawBtn.disabled = true;
           drawBtn.textContent = '🔒 Sorteo Semanal Realizado';
@@ -3050,6 +3097,33 @@
       console.error('Error en sorteo semanal:', e);
       showToast('Error al conectar con el servidor', true);
       if (drawBtn) drawBtn.disabled = false;
+    }
+  }
+
+  async function collectWeeklyPrize() {
+    const selectEl = document.getElementById('weekly-admin-week-select');
+    if (!selectEl) return;
+    const selectedWeek = selectEl.value;
+    const collectBtn = document.getElementById('weekly-collect-btn');
+    if (collectBtn) collectBtn.disabled = true;
+
+    try {
+      const res = await fetch('/api/raffle/admin/weekly/collect', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ week: selectedWeek })
+      });
+      const data = res.ok ? await res.json() : null;
+      if (data && data.success) {
+        showToast('✅ Premio Chave do Furancho marcado como entregado');
+        loadWeeklyRaffleAdmin();
+      } else {
+        showToast((data && data.error) || 'Error al marcar como entregado', true);
+        if (collectBtn) collectBtn.disabled = false;
+      }
+    } catch (e) {
+      showToast('Error al conectar con el servidor', true);
+      if (collectBtn) collectBtn.disabled = false;
     }
   }
 

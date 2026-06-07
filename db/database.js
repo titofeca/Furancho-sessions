@@ -69,6 +69,12 @@ try {
 try {
   db.exec(`ALTER TABLE weekly_raffles ADD COLUMN rules TEXT DEFAULT 'Trinca tu participación una vez por semana antes de que empiecen los eventos. ¡Se sorteará un regalo de la hostia!'`);
 } catch (_) {}
+try {
+  db.exec(`ALTER TABLE weekly_raffles ADD COLUMN verification_code TEXT`);
+} catch (_) {}
+try {
+  db.exec(`ALTER TABLE weekly_raffles ADD COLUMN collected_at TEXT`);
+} catch (_) {}
 // Limpiar reservas VIP huérfanas (apuntan a eventos que ya no existen)
 try {
   db.exec(`DELETE FROM vip_reservations WHERE event_id NOT IN (SELECT id FROM events)`);
@@ -960,7 +966,8 @@ module.exports = {
   claimWeeklyRaffle,
   getWeeklyRaffleStatus,
   updateWeeklyPrize,
-  drawWeeklyRaffle
+  drawWeeklyRaffle,
+  collectWeeklyRaffle
 };
 
 function claimWeeklyRaffle(walletAddress, weekStr) {
@@ -980,11 +987,16 @@ function getWeeklyRaffleStatus(walletAddress, weekStr) {
   const claim = db.prepare(`SELECT id FROM weekly_claims WHERE wallet_address = ? AND claimed_week = ?`).get(walletAddress, weekStr);
   const totalParticipants = db.prepare(`SELECT COUNT(*) as count FROM weekly_claims WHERE claimed_week = ?`).get(weekStr)?.count || 0;
 
+  const isWinner = raffle && raffle.winner_wallet && 
+    raffle.winner_wallet.toLowerCase() === walletAddress.toLowerCase();
+
   return {
     claimed: !!claim,
     prize: raffle ? raffle.prize : 'Botella de Viño de la Casa',
     rules: raffle ? (raffle.rules || 'Trinca tu participación una vez por semana antes de que empiecen los eventos. ¡Se sorteará un regalo de la hostia!') : 'Trinca tu participación una vez por semana antes de que empiecen los eventos. ¡Se sorteará un regalo de la hostia!',
     winnerWallet: raffle ? raffle.winner_wallet : null,
+    // Solo el ganador ve su propio código — los demás reciben null
+    verificationCode: isWinner ? (raffle.verification_code || null) : null,
     status: raffle ? raffle.status : 'active',
     drawnAt: raffle ? raffle.drawn_at : null,
     totalParticipants
@@ -1019,14 +1031,29 @@ function drawWeeklyRaffle(weekStr) {
   const randomIndex = Math.floor(Math.random() * participants.length);
   const winnerWallet = participants[randomIndex].wallet_address;
 
+  // Generar código de verificación tipo 'CHAVE-A3K9'
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = 'CHAVE-';
+  for (let i = 0; i < 4; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+
   db.prepare(`
     UPDATE weekly_raffles
-    SET winner_wallet = ?, drawn_at = datetime('now'), status = 'completed'
+    SET winner_wallet = ?, drawn_at = datetime('now'), status = 'completed', verification_code = ?
     WHERE claimed_week = ?
-  `).run(winnerWallet, weekStr);
+  `).run(winnerWallet, code, weekStr);
 
   return {
     winnerWallet,
-    prize: raffle.prize
+    prize: raffle.prize,
+    verificationCode: code
   };
+}
+
+function collectWeeklyRaffle(weekStr) {
+  const result = db.prepare(`
+    UPDATE weekly_raffles
+    SET collected_at = datetime('now')
+    WHERE claimed_week = ? AND status = 'completed'
+  `).run(weekStr);
+  if (!result.changes) throw new Error('Sorteo no encontrado o no completado.');
 }
