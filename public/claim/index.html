@@ -1624,14 +1624,30 @@
       <h1 class="nft-title" id="profile-nft-name">CAUTIVO</h1>
       <p class="nft-event">Furancho Sessions · Afterwork Viño, Tapas y Leria ochentera</p>
 
-      <div style="text-align: center; margin: 12px 0 20px;">
+      <div style="display: flex; gap: 12px; justify-content: center; align-items: center; margin: 16px 0 24px; padding: 0 4px;">
         <button onclick="openIdModal()" style="
-          display: inline-flex; align-items: center; gap: 8px;
-          padding: 8px 18px; border-radius: 100px; border: 1.5px solid rgba(139,25,24,0.22);
+          flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+          padding: 12px 16px; border-radius: 16px; border: 1.5px solid rgba(139,25,24,0.22);
           background: rgba(139,25,24,0.05); color: var(--wine);
           font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer;
-          transition: all 0.2s; box-shadow: 0 2px 8px rgba(139,25,24,0.06);">
-          🪪 ID Furancheiro (Carné de Socio)
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 12px rgba(139,25,24,0.06);
+          outline: none;"
+          onmouseover="this.style.background='rgba(139,25,24,0.1)'; this.style.transform='translateY(-1px)';"
+          onmouseout="this.style.background='rgba(139,25,24,0.05)'; this.style.transform='translateY(0)';"
+          onmousedown="this.style.transform='scale(0.97)';">
+          🪪 ID Socio (QR)
+        </button>
+        <button onclick="openVirtualCard()" style="
+          flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+          padding: 12px 16px; border-radius: 16px; border: 1.5px solid rgba(196,151,58,0.35);
+          background: rgba(196,151,58,0.08); color: var(--gold);
+          font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 12px rgba(196,151,58,0.08);
+          outline: none;"
+          onmouseover="this.style.background='rgba(196,151,58,0.15)'; this.style.transform='translateY(-1px)';"
+          onmouseout="this.style.background='rgba(196,151,58,0.08)'; this.style.transform='translateY(0)';"
+          onmousedown="this.style.transform='scale(0.97)';">
+          👑 Carné VIP
         </button>
       </div>
 
@@ -1938,9 +1954,7 @@
       <span id="profile-card-name" style="display:none;">CAUTIVO</span>
       <span id="profile-wallet-id" style="display:none;">—</span>
  
-      <button onclick="openVirtualCard()" class="btn-vip">
-        👁️ Ver mi carné furancheiro VIP
-      </button>
+
  
       <p class="footer-note" style="margin-top: 20px;">
         No te olvides de fichar en la puerta al entrar y salir para acumular visitas. ¡El objetivo final es coronarse Presidente, ho! 👑
