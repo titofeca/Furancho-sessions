@@ -1623,12 +1623,17 @@
         </div>
 
         <div style="border-top:1px solid rgba(42,21,9,0.08); padding-top:14px; margin-top:14px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; font-size:12.5px;">
-            <span style="color:var(--text-muted);">Semana a gestionar:</span>
-            <select id="weekly-admin-week-select" onchange="loadWeeklyRaffleAdmin()" style="background:var(--surface); color:var(--text); border:1.5px solid var(--border); border-radius:8px; padding:4px 8px; font-family:'Outfit',sans-serif; outline:none; cursor:pointer;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12.5px;">
+            <span style="color:var(--text-muted); font-weight:600;">Semana a gestionar:</span>
+            <select id="weekly-admin-week-select" onchange="loadWeeklyRaffleAdmin()" style="background:var(--surface); color:var(--text); border:1.5px solid var(--border); border-radius:8px; padding:4px 8px; font-family:'Outfit',sans-serif; outline:none; cursor:pointer; max-width:200px;">
               <option value="">Cargando...</option>
             </select>
           </div>
+
+          <!-- Badge con fechas reales de la semana seleccionada -->
+          <div id="weekly-date-range-badge" style="background:rgba(196,151,58,0.08); border:1px solid rgba(196,151,58,0.25); border-radius:10px; padding:8px 12px; margin-bottom:12px; font-size:12.5px; color:var(--text); line-height:1.4; text-align:center;"
+          >📅 Cargando fechas...</div>
+
           <div style="display:flex; justify-content:space-between; margin-bottom:12px; font-size:12.5px;">
             <span style="color:var(--text-muted);">Participantes apuntados:</span>
             <strong id="weekly-admin-count" style="color:var(--text);">—</strong>
@@ -2864,6 +2869,37 @@
     return `${date.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
   }
 
+  // Convierte 'YYYY-WXX' al lunes de esa semana ISO
+  function weekToMonday(weekStr) {
+    const [yearPart, weekPart] = weekStr.split('-W');
+    const year = parseInt(yearPart);
+    const week = parseInt(weekPart);
+    // 4 de enero siempre está en la semana 1
+    const jan4 = new Date(Date.UTC(year, 0, 4));
+    const dayOfWeek = jan4.getUTCDay() || 7; // 1=Mon..7=Sun
+    const monday = new Date(jan4);
+    monday.setUTCDate(jan4.getUTCDate() - dayOfWeek + 1 + (week - 1) * 7);
+    return monday;
+  }
+
+  // Devuelve 'Lun 9 jun → Dom 15 jun (2026)'
+  function weekRangeLabel(weekStr) {
+    const monday = weekToMonday(weekStr);
+    const sunday = new Date(monday);
+    sunday.setUTCDate(monday.getUTCDate() + 6);
+    const opts = { day: 'numeric', month: 'short', weekday: 'short', timeZone: 'UTC' };
+    const monLabel = monday.toLocaleDateString('es-ES', opts);
+    const sunLabel = sunday.toLocaleDateString('es-ES', opts);
+    const year = monday.getUTCFullYear();
+    return `${monLabel} → ${sunLabel} ${year}`;
+  }
+
+  // Devuelve solo el lunes como 'Lunes 9 de junio'
+  function weekMondayFull(weekStr) {
+    const monday = weekToMonday(weekStr);
+    return monday.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+  }
+
   async function loadWeeklyRaffleAdmin() {
     const selectEl = document.getElementById('weekly-admin-week-select');
     const countEl = document.getElementById('weekly-admin-count');
@@ -2879,10 +2915,23 @@
     if (selectEl.innerHTML.includes('Cargando...') || selectEl.options.length <= 1) {
       const curWeek = getClientYearWeek();
       const nextWeek = getClientYearWeek(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+      const prevWeek = getClientYearWeek(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
       selectEl.innerHTML = `
-        <option value="${curWeek}">Semana actual (${curWeek})</option>
-        <option value="${nextWeek}">Semana siguiente (${nextWeek})</option>
+        <option value="${prevWeek}">Semana pasada — ${weekRangeLabel(prevWeek)}</option>
+        <option value="${curWeek}" selected>Esta semana — ${weekRangeLabel(curWeek)}</option>
+        <option value="${nextWeek}">Semana siguiente — ${weekRangeLabel(nextWeek)}</option>
       `;
+    }
+
+    // Actualizar badge de fechas bajo el selector
+    const selectedWeekForBadge = selectEl.value;
+    const dateBadge = document.getElementById('weekly-date-range-badge');
+    if (dateBadge) {
+      const monday = weekToMonday(selectedWeekForBadge);
+      const sunday = new Date(monday); sunday.setUTCDate(monday.getUTCDate() + 6);
+      const monFull = monday.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+      const sunFull = sunday.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+      dateBadge.innerHTML = `📅 Del <strong>${monFull}</strong> al <strong>${sunFull}</strong>`;
     }
 
     const selectedWeek = selectEl.value;
@@ -2972,7 +3021,7 @@
     if (!selectEl) return;
     const selectedWeek = selectEl.value;
 
-    if (!confirm(`¿Seguro que quieres realizar el sorteo de La Chave Semanal para la semana ${selectedWeek} ahora? Se elegirá un ganador al azar de entre todos los apuntados.`)) {
+    if (!confirm(`¿Seguro que quieres realizar el sorteo de La Chave Semanal?\n\nSemana: ${weekRangeLabel(selectedWeek)}\n\nSe elegirá un ganador al azar de entre todos los apuntados.`)) {
       return;
     }
 
