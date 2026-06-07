@@ -61,7 +61,11 @@ app.use((err, req, res, next) => {
 function scheduleAutoCheckout() {
   setInterval(() => {
     const now = new Date();
-    if (now.getHours() === 23 && now.getMinutes() === 0) {
+    const madridTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+    const madridHour = madridTime.getHours();
+    const madridMinute = madridTime.getMinutes();
+    
+    if (madridHour === 23 && madridMinute === 0) {
       const { autoCloseSessionsAt23 } = require('./db/database');
       autoCloseSessionsAt23();
     }

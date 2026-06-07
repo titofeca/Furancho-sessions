@@ -432,9 +432,20 @@ function checkDuplicate(walletAddress, email, level) {
 function openSession(walletAddress) {
   const existing = db.prepare(`SELECT id FROM sessions WHERE wallet_address = ? AND exit_time IS NULL ORDER BY entry_time DESC LIMIT 1`).get(walletAddress);
   if (!existing) {
-    const today = new Date().toISOString().slice(0, 10);
-    const hasEvent = !!db.prepare(`SELECT 1 FROM events WHERE event_date = ?`).get(today);
-    db.prepare(`INSERT INTO sessions (wallet_address, counted_as_visit) VALUES (?, ?)`).run(walletAddress, hasEvent ? 1 : 0);
+    const now = new Date();
+    const madridTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+    const yyyy = madridTime.getFullYear();
+    const mm = String(madridTime.getMonth() + 1).padStart(2, '0');
+    const dd = String(madridTime.getDate()).padStart(2, '0');
+    const todayMadrid = `${yyyy}-${mm}-${dd}`;
+
+    const hasEvent = !!db.prepare(`SELECT 1 FROM events WHERE event_date = ?`).get(todayMadrid);
+    
+    // Evitar exploit de acumulación de visitas ilimitadas el mismo día/semana
+    const alreadyVisited = checkRecentVisit(walletAddress, 168);
+    const countedAsVisit = (hasEvent && !alreadyVisited) ? 1 : 0;
+
+    db.prepare(`INSERT INTO sessions (wallet_address, counted_as_visit) VALUES (?, ?)`).run(walletAddress, countedAsVisit);
   }
 }
 
@@ -629,19 +640,40 @@ function getSessionAnalytics() {
 }
 
 function getEligibleRaffleParticipants() {
-  // Elegibles: ficharon entrada HOY y aún no salieron (o salida fue automática a las 23:00)
-  // Si el sorteo es antes de las 23:00: sesión abierta HOY
-  // Si el sorteo es después de las 23:00: sesión abierta HOY (ya cerrada automáticamente)
+  // Elegibles: ficharon entrada hoy en Madrid y aún no salieron (o salida fue automática a las 23:00)
   const now = new Date();
-  const cutoff = now.getHours() < 23 ? `exit_time IS NULL` : `date(exit_time) = date('now')`;
-  return db.prepare(`
-    SELECT DISTINCT wallet_address FROM sessions
-    WHERE date(entry_time) = date('now') AND (${cutoff} OR exit_time IS NULL)
-  `).all().map(r => r.wallet_address);
+  const madridTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+  const madridHour = madridTime.getHours();
+  
+  const yyyy = madridTime.getFullYear();
+  const mm = String(madridTime.getMonth() + 1).padStart(2, '0');
+  const dd = String(madridTime.getDate()).padStart(2, '0');
+  const madridDateStr = `${yyyy}-${mm}-${dd}`;
+
+  if (madridHour < 23) {
+    // Si el sorteo es antes de las 23:00 (durante el evento): solo los que siguen dentro (exit_time IS NULL)
+    return db.prepare(`
+      SELECT DISTINCT wallet_address FROM sessions
+      WHERE date(entry_time) = ? AND exit_time IS NULL
+    `).all(madridDateStr).map(r => r.wallet_address);
+  } else {
+    // Si el sorteo es después de las 23:00: incluimos también las sesiones auto-cerradas de hoy
+    return db.prepare(`
+      SELECT DISTINCT wallet_address FROM sessions
+      WHERE date(entry_time) = ? AND (date(exit_time) = ? OR exit_time IS NULL)
+    `).all(madridDateStr, madridDateStr).map(r => r.wallet_address);
+  }
 }
 
 function autoCloseSessionsAt23() {
-  const open = db.prepare(`SELECT id FROM sessions WHERE exit_time IS NULL AND date(entry_time) = date('now')`).all();
+  const now = new Date();
+  const madridTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+  const yyyy = madridTime.getFullYear();
+  const mm = String(madridTime.getMonth() + 1).padStart(2, '0');
+  const dd = String(madridTime.getDate()).padStart(2, '0');
+  const madridDateStr = `${yyyy}-${mm}-${dd}`;
+
+  const open = db.prepare(`SELECT id FROM sessions WHERE exit_time IS NULL AND date(entry_time) = ?`).all(madridDateStr);
   const stmt = db.prepare(`
     UPDATE sessions
     SET exit_time = datetime('now'),
@@ -810,8 +842,16 @@ function getReactionsForMessages(messageIds) {
 }
 
 function getEventSessions(dateFilter) {
-  // dateFilter: 'YYYY-MM-DD' o null para hoy
-  const day = dateFilter || new Date().toISOString().slice(0, 10);
+  // dateFilter: 'YYYY-MM-DD' o null para hoy en zona España
+  let day = dateFilter;
+  if (!day) {
+    const now = new Date();
+    const madridTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+    const yyyy = madridTime.getFullYear();
+    const mm = String(madridTime.getMonth() + 1).padStart(2, '0');
+    const dd = String(madridTime.getDate()).padStart(2, '0');
+    day = `${yyyy}-${mm}-${dd}`;
+  }
   // Para el 4 jun excluir scans de prueba (antes de 19:30 CEST = 17:30 UTC)
   const timeFilter = day === '2026-06-04'
     ? `AND time(s.entry_time) >= '17:30:00'`
