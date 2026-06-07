@@ -1690,6 +1690,14 @@
           <button id="weekly-draw-btn" onclick="drawWeeklyRaffleAdmin()" style="background:var(--gold); color:#1c0e06; border:none; border-radius:12px; padding:12px; font-size:14px; font-weight:800; cursor:pointer; width:100%; display:flex; align-items:center; justify-content:center; gap:8px; font-family:'Outfit',sans-serif;">
             🎲 Realizar Sorteo Semanal
           </button>
+
+          <!-- Listado de Sorteos Semanales Activos/Configurados -->
+          <div id="weekly-active-list-container" style="border-top:1px solid rgba(42,21,9,0.08); padding-top:14px; margin-top:14px;">
+            <span class="card-title" style="font-size:11px; margin-bottom:8px; display:block; color:var(--gold); text-transform:uppercase; letter-spacing:1px; font-weight:700;">📋 Sorteos Semanales Activos</span>
+            <div id="weekly-active-list" style="display:flex; flex-direction:column; gap:8px;">
+              <p style="font-size:12px; color:var(--text-muted); text-align:center; padding:10px 0; margin:0;">Cargando sorteos activos...</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -2979,7 +2987,7 @@
     const selectedWeek = selectEl.value;
 
     try {
-      const res = await fetch(`/api/admin/weekly/status?week=${selectedWeek}`, { headers: authHeaders() });
+      const res = await fetch(`/api/raffle/admin/weekly/status?week=${selectedWeek}`, { headers: authHeaders() });
       if (!res.ok) throw new Error('Failed to fetch status');
       const data = await res.json();
 
@@ -3058,9 +3066,106 @@
           drawBtn.style.cursor = 'pointer';
         }
       }
+      loadWeeklyActiveList();
     } catch (e) {
       console.error('Error al cargar status sorteo semanal:', e);
       showToast('Error al cargar sorteo semanal', true);
+    }
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  async function loadWeeklyActiveList() {
+    const listEl = document.getElementById('weekly-active-list');
+    if (!listEl) return;
+    try {
+      const res = await fetch('/api/raffle/admin/weekly/list', { headers: authHeaders() });
+      if (!res.ok) throw new Error('Failed to fetch weekly active list');
+      const data = await res.json();
+      
+      // Filtrar únicamente los sorteos con status 'active' para mostrar los activos
+      const activeRaffles = (data || []).filter(r => r.status === 'active');
+      
+      if (activeRaffles.length === 0) {
+        listEl.innerHTML = `<p style="font-size:12px; color:var(--text-muted); text-align:center; padding:10px 0; margin:0;">No hay sorteos activos creados.</p>`;
+        return;
+      }
+
+      listEl.innerHTML = activeRaffles.map(r => {
+        // Calcular fechas legibles para la semana
+        let dateRangeLabel = r.week;
+        try {
+          const monday = weekToMonday(r.week);
+          const sunday = new Date(monday); sunday.setUTCDate(monday.getUTCDate() + 6);
+          const monLabel = monday.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+          const sunLabel = sunday.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+          dateRangeLabel = `${monLabel} → ${sunLabel}`;
+        } catch (_) {}
+
+        return `
+          <div class="weekly-item" style="background:rgba(196,151,58,0.04); border:1px solid rgba(196,151,58,0.15); border-radius:10px; padding:10px 12px; display:flex; flex-direction:column; gap:4px; margin-bottom:4px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+              <strong style="color:var(--text); font-size:12.5px; font-family:'Outfit',sans-serif;">Semana ${r.week} (${dateRangeLabel})</strong>
+              <span style="font-size:9.5px; font-weight:700; border-radius:4px; padding:2px 6px; text-transform:uppercase; background:rgba(74,222,128,0.12); color:#4ade80; font-family:'Outfit',sans-serif;">Activo</span>
+            </div>
+            <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+              🎁 Premio: <strong style="color:var(--text); font-weight:700;">${escapeHtml(r.prize)}</strong>
+            </div>
+            <div style="font-size:11px; color:var(--text-muted); font-style:italic; line-height:1.3; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">
+              ${escapeHtml(r.rules)}
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; border-top:1px dashed rgba(42,21,9,0.08); padding-top:6px;">
+              <span style="font-size:11px; color:var(--text-muted); font-weight:600;">👥 ${r.totalParticipants} apuntados</span>
+              <button onclick="deleteWeeklyRaffle('${r.week}')" style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); color:#ef4444; font-size:10px; font-weight:700; border-radius:6px; padding:4px 10px; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">
+                ✕ Eliminar
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (e) {
+      console.error('Error loading active weekly list:', e);
+      listEl.innerHTML = `<p style="font-size:12px; color:#ef4444; text-align:center; padding:10px 0; margin:0;">Error al cargar la lista.</p>`;
+    }
+  }
+
+  async function deleteWeeklyRaffle(week) {
+    if (!confirm(`¿Seguro que quieres eliminar el sorteo de la semana ${week}?\nSe borrarán también todas las participaciones registradas para esa semana.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/raffle/admin/weekly/${week}`, {
+        method: 'DELETE',
+        headers: authHeaders()
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast('✅ Sorteo semanal eliminado correctamente');
+        // Si la semana eliminada era la seleccionada en el select, recargar campos vacíos
+        const selectEl = document.getElementById('weekly-admin-week-select');
+        if (selectEl && selectEl.value === week) {
+          const prizeInput = document.getElementById('weekly-prize-input');
+          const rulesInput = document.getElementById('weekly-rules-input');
+          if (prizeInput) prizeInput.value = '';
+          if (rulesInput) rulesInput.value = '';
+          const panel = document.getElementById('weekly-saved-summary');
+          if (panel) panel.style.display = 'none';
+        }
+        loadWeeklyRaffleAdmin();
+      } else {
+        showToast(data.error || 'Error al eliminar el sorteo', true);
+      }
+    } catch (e) {
+      console.error('Error deleting weekly raffle:', e);
+      showToast('Error al conectar con el servidor', true);
     }
   }
 
@@ -3079,7 +3184,7 @@
     }
 
     try {
-      const res = await fetch('/api/admin/weekly/config', {
+      const res = await fetch('/api/raffle/admin/weekly/config', {
         method: 'POST',
         headers: {
           ...authHeaders(),
@@ -3114,7 +3219,7 @@
     if (drawBtn) drawBtn.disabled = true;
 
     try {
-      const res = await fetch('/api/admin/weekly/draw', {
+      const res = await fetch('/api/raffle/admin/weekly/draw', {
         method: 'POST',
         headers: {
           ...authHeaders(),

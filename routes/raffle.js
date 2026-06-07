@@ -505,3 +505,53 @@ router.post('/admin/weekly/draw', requireAuth, (req, res) => {
     res.status(400).json({ error: e.message });
   }
 });
+
+// GET /api/admin/weekly/list (ADMIN)
+router.get('/admin/weekly/list', requireAuth, (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const raffles = db.prepare(`SELECT * FROM weekly_raffles ORDER BY claimed_week DESC`).all();
+    const list = raffles.map(r => {
+      const count = db.prepare(`SELECT COUNT(*) as count FROM weekly_claims WHERE claimed_week = ?`).get(r.claimed_week)?.count || 0;
+      return {
+        id: r.id,
+        week: r.claimed_week,
+        prize: r.prize,
+        rules: r.rules,
+        winnerWallet: r.winner_wallet,
+        drawnAt: r.drawn_at,
+        status: r.status,
+        verificationCode: r.verification_code,
+        collectedAt: r.collected_at,
+        totalParticipants: count
+      };
+    });
+    res.json(list);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /api/admin/weekly/:week (ADMIN)
+router.delete('/admin/weekly/:week', requireAuth, (req, res) => {
+  const { week } = req.params;
+  if (!week) return res.status(400).json({ error: 'Falta la semana' });
+  try {
+    const { db } = require('../db/database');
+    const raffle = db.prepare(`SELECT status FROM weekly_raffles WHERE claimed_week = ?`).get(week);
+    if (!raffle) {
+      return res.status(404).json({ error: 'No existe ese sorteo semanal' });
+    }
+    if (raffle.status !== 'active') {
+      return res.status(400).json({ error: 'Solo se pueden eliminar sorteos activos (no realizados)' });
+    }
+    // Borrar claims de esa semana
+    db.prepare(`DELETE FROM weekly_claims WHERE claimed_week = ?`).run(week);
+    // Borrar el sorteo semanal
+    db.prepare(`DELETE FROM weekly_raffles WHERE claimed_week = ?`).run(week);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
