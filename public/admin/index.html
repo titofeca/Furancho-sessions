@@ -40,6 +40,10 @@
       overflow-x: hidden;
     }
 
+    #weekly-archived-list-container[open] .archived-arrow {
+      transform: rotate(180deg);
+    }
+
     /* ========== LOGIN ========== */
     #login-screen {
       display: flex;
@@ -1622,6 +1626,10 @@
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
               <button type="button" onclick="applyWeeklyTemplate('pesetas')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">🪙 200 Pesetas</button>
               <button type="button" onclick="applyWeeklyTemplate('double')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">🎰 Doble Oportunidad</button>
+              <button type="button" onclick="applyWeeklyTemplate('vino')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">🍷 Botella de Viño</button>
+              <button type="button" onclick="applyWeeklyTemplate('tapa')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">🍳 Ración Especial</button>
+              <button type="button" onclick="applyWeeklyTemplate('cesta')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">🧺 Lote Furancheiro</button>
+              <button type="button" onclick="applyWeeklyTemplate('merch')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">👕 Camiseta Oficial</button>
             </div>
           </div>
           
@@ -1698,6 +1706,17 @@
               <p style="font-size:12px; color:var(--text-muted); text-align:center; padding:10px 0; margin:0;">Cargando sorteos activos...</p>
             </div>
           </div>
+
+          <!-- Sorteos Archivados/Historial -->
+          <details id="weekly-archived-list-container" style="border-top:1px solid rgba(42,21,9,0.08); padding-top:14px; margin-top:14px; outline:none; -webkit-tap-highlight-color:transparent;">
+            <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; outline:none; user-select:none;">
+              <span class="card-title" style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; font-weight:700; display:flex; align-items:center; gap:6px;">📦 Ver Sorteos Archivados / Pasados</span>
+              <span class="archived-arrow" style="font-size:10px; color:var(--text-muted); transition: transform 0.2s; display:inline-block;">▼</span>
+            </summary>
+            <div id="weekly-archived-list" style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
+              <p style="font-size:12px; color:var(--text-muted); text-align:center; padding:10px 0; margin:0;">No hay sorteos archivados.</p>
+            </div>
+          </details>
         </div>
       </div>
 
@@ -3001,8 +3020,11 @@
       }
 
       // Actualizar el panel de confirmación con lo que está en la DB
-      if (data.prize) {
+      if (data.isConfigured && data.prize) {
         updateWeeklySavedSummary(data.prize, data.rules || '', selectedWeekForBadge || selectEl.value, data.drawnAt ? null : 'db');
+      } else {
+        const panel = document.getElementById('weekly-saved-summary');
+        if (panel) panel.style.display = 'none';
       }
 
       // Actualizar badge del scheduler automático
@@ -3083,54 +3105,78 @@
       .replace(/'/g, '&#039;');
   }
 
+  function renderRaffleItem(r, isActive) {
+    let dateRangeLabel = r.week;
+    try {
+      const monday = weekToMonday(r.week);
+      const sunday = new Date(monday); sunday.setUTCDate(monday.getUTCDate() + 6);
+      const monLabel = monday.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+      const sunLabel = sunday.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+      dateRangeLabel = `${monLabel} → ${sunLabel}`;
+    } catch (_) {}
+
+    const statusBadge = r.status === 'completed' 
+      ? `<span style="font-size:9.5px; font-weight:700; border-radius:4px; padding:2px 6px; text-transform:uppercase; background:rgba(196,151,58,0.12); color:var(--gold); font-family:'Outfit',sans-serif;">Finalizado</span>`
+      : `<span style="font-size:9.5px; font-weight:700; border-radius:4px; padding:2px 6px; text-transform:uppercase; background:rgba(74,222,128,0.12); color:#4ade80; font-family:'Outfit',sans-serif;">Activo</span>`;
+
+    const winnerHtml = r.winnerWallet 
+      ? `<div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">🏆 Ganador: <strong style="color:var(--gold); font-family:monospace; font-size:11px;">${r.winnerWallet.substring(0, 6)}...${r.winnerWallet.slice(-4)}</strong></div>`
+      : '';
+
+    const deleteBtn = (r.status === 'active')
+      ? `<button onclick="deleteWeeklyRaffle('${r.week}')" style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); color:#ef4444; font-size:10px; font-weight:700; border-radius:6px; padding:4px 10px; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">✕ Eliminar</button>`
+      : '';
+
+    return `
+      <div class="weekly-item" style="background:rgba(196,151,58,0.04); border:1px solid rgba(196,151,58,0.15); border-radius:10px; padding:10px 12px; display:flex; flex-direction:column; gap:4px; margin-bottom:4px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+          <strong style="color:var(--text); font-size:12.5px; font-family:'Outfit',sans-serif;">Semana ${r.week} (${dateRangeLabel})</strong>
+          ${statusBadge}
+        </div>
+        <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+          🎁 Premio: <strong style="color:var(--text); font-weight:700;">${escapeHtml(r.prize)}</strong>
+        </div>
+        ${winnerHtml}
+        <div style="font-size:11px; color:var(--text-muted); font-style:italic; line-height:1.3; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">
+          ${escapeHtml(r.rules)}
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; border-top:1px dashed rgba(42,21,9,0.08); padding-top:6px;">
+          <span style="font-size:11px; color:var(--text-muted); font-weight:600;">👥 ${r.totalParticipants} apuntados</span>
+          ${deleteBtn}
+        </div>
+      </div>
+    `;
+  }
+
   async function loadWeeklyActiveList() {
     const listEl = document.getElementById('weekly-active-list');
+    const archivedListEl = document.getElementById('weekly-archived-list');
     if (!listEl) return;
     try {
       const res = await fetch('/api/raffle/admin/weekly/list', { headers: authHeaders() });
       if (!res.ok) throw new Error('Failed to fetch weekly active list');
       const data = await res.json();
       
-      // Filtrar únicamente los sorteos con status 'active' para mostrar los activos
-      const activeRaffles = (data || []).filter(r => r.status === 'active');
+      const currentWeek = getClientYearWeek();
       
+      const activeRaffles = (data || []).filter(r => r.status === 'active' && r.week >= currentWeek);
+      const archivedRaffles = (data || []).filter(r => r.status === 'completed' || r.week < currentWeek);
+      
+      // Renderizar activos
       if (activeRaffles.length === 0) {
-        listEl.innerHTML = `<p style="font-size:12px; color:var(--text-muted); text-align:center; padding:10px 0; margin:0;">No hay sorteos activos creados.</p>`;
-        return;
+        listEl.innerHTML = `<p style="font-size:12px; color:var(--text-muted); text-align:center; padding:10px 0; margin:0;">No hay sorteos activos creados para esta semana o futuras.</p>`;
+      } else {
+        listEl.innerHTML = activeRaffles.map(r => renderRaffleItem(r, true)).join('');
       }
 
-      listEl.innerHTML = activeRaffles.map(r => {
-        // Calcular fechas legibles para la semana
-        let dateRangeLabel = r.week;
-        try {
-          const monday = weekToMonday(r.week);
-          const sunday = new Date(monday); sunday.setUTCDate(monday.getUTCDate() + 6);
-          const monLabel = monday.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
-          const sunLabel = sunday.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
-          dateRangeLabel = `${monLabel} → ${sunLabel}`;
-        } catch (_) {}
-
-        return `
-          <div class="weekly-item" style="background:rgba(196,151,58,0.04); border:1px solid rgba(196,151,58,0.15); border-radius:10px; padding:10px 12px; display:flex; flex-direction:column; gap:4px; margin-bottom:4px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-              <strong style="color:var(--text); font-size:12.5px; font-family:'Outfit',sans-serif;">Semana ${r.week} (${dateRangeLabel})</strong>
-              <span style="font-size:9.5px; font-weight:700; border-radius:4px; padding:2px 6px; text-transform:uppercase; background:rgba(74,222,128,0.12); color:#4ade80; font-family:'Outfit',sans-serif;">Activo</span>
-            </div>
-            <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
-              🎁 Premio: <strong style="color:var(--text); font-weight:700;">${escapeHtml(r.prize)}</strong>
-            </div>
-            <div style="font-size:11px; color:var(--text-muted); font-style:italic; line-height:1.3; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">
-              ${escapeHtml(r.rules)}
-            </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; border-top:1px dashed rgba(42,21,9,0.08); padding-top:6px;">
-              <span style="font-size:11px; color:var(--text-muted); font-weight:600;">👥 ${r.totalParticipants} apuntados</span>
-              <button onclick="deleteWeeklyRaffle('${r.week}')" style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); color:#ef4444; font-size:10px; font-weight:700; border-radius:6px; padding:4px 10px; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">
-                ✕ Eliminar
-              </button>
-            </div>
-          </div>
-        `;
-      }).join('');
+      // Renderizar archivados
+      if (archivedListEl) {
+        if (archivedRaffles.length === 0) {
+          archivedListEl.innerHTML = `<p style="font-size:12px; color:var(--text-muted); text-align:center; padding:10px 0; margin:0;">No hay sorteos archivados.</p>`;
+        } else {
+          archivedListEl.innerHTML = archivedRaffles.map(r => renderRaffleItem(r, false)).join('');
+        }
+      }
     } catch (e) {
       console.error('Error loading active weekly list:', e);
       listEl.innerHTML = `<p style="font-size:12px; color:#ef4444; text-align:center; padding:10px 0; margin:0;">Error al cargar la lista.</p>`;
@@ -3358,6 +3404,18 @@
     } else if (type === 'double') {
       prizeInput.value = 'Doble Oportunidad en Sorteos';
       rulesInput.value = '¡Doble o nada, ho! Independientemente de tu nivel de furancheiro, esta semana tendrás el doble de oportunidades (doble papeleta en el bombo) en todos los sorteos en vivo en el local.';
+    } else if (type === 'vino') {
+      prizeInput.value = 'Botella de Viño de la Casa';
+      rulesInput.value = '¡Un clásico para llevar a casa o descorchar en la barra! Llévate una botella del mejor viño cosechero do furancho para brindar con quien tú quieras.';
+    } else if (type === 'tapa') {
+      prizeInput.value = 'Ración Especial + Taza de Viño';
+      rulesInput.value = '¡Un manjar furancheiro, ho! Llévate una ración especial de la casa (oreja, tortilla o jamón asado) y una taza de viño del patrón para empujar. ¡Comida de la hostia!';
+    } else if (type === 'cesta') {
+      prizeInput.value = 'Cesta de Productos do Furancho';
+      rulesInput.value = '¡Lote completo, ho! Una cesta premium con productos típicos gallegos: viño casero, queso de tetilla, chorizo curado de aldea y pan de hogaza. ¡El paraíso del larpeiro!';
+    } else if (type === 'merch') {
+      prizeInput.value = 'Camiseta Oficial Furancho Sessions';
+      rulesInput.value = '¡Viste con estilo furancheiro! Llévate la camiseta oficial de Furancho Sessions de edición limitada con diseño retro de los 80. ¡Serás el más pintón del barrio!';
     }
   }
 

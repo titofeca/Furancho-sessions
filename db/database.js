@@ -978,11 +978,7 @@ function claimWeeklyRaffle(walletAddress, weekStr) {
 }
 
 function getWeeklyRaffleStatus(walletAddress, weekStr) {
-  let raffle = db.prepare(`SELECT * FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
-  if (!raffle) {
-    db.prepare(`INSERT OR IGNORE INTO weekly_raffles (claimed_week) VALUES (?)`).run(weekStr);
-    raffle = db.prepare(`SELECT * FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
-  }
+  const raffle = db.prepare(`SELECT * FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
   
   const claim = db.prepare(`SELECT id FROM weekly_claims WHERE wallet_address = ? AND claimed_week = ?`).get(walletAddress, weekStr);
   const totalParticipants = db.prepare(`SELECT COUNT(*) as count FROM weekly_claims WHERE claimed_week = ?`).get(weekStr)?.count || 0;
@@ -992,14 +988,15 @@ function getWeeklyRaffleStatus(walletAddress, weekStr) {
 
   return {
     claimed: !!claim,
-    prize: raffle ? raffle.prize : 'Botella de Viño de la Casa',
+    prize: raffle ? raffle.prize : null,
     rules: raffle ? (raffle.rules || 'Trinca tu participación una vez por semana antes de que empiecen los eventos. ¡Se sorteará un regalo de la hostia!') : 'Trinca tu participación una vez por semana antes de que empiecen los eventos. ¡Se sorteará un regalo de la hostia!',
     winnerWallet: raffle ? raffle.winner_wallet : null,
     // Solo el ganador ve su propio código — los demás reciben null
     verificationCode: isWinner ? (raffle.verification_code || null) : null,
     status: raffle ? raffle.status : 'active',
     drawnAt: raffle ? raffle.drawn_at : null,
-    totalParticipants
+    totalParticipants,
+    isConfigured: !!raffle
   };
 }
 

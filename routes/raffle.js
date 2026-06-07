@@ -423,14 +423,15 @@ router.get('/admin/weekly/status', requireAuth, (req, res) => {
     const totalParticipants = db.prepare(`SELECT COUNT(*) as count FROM weekly_claims WHERE claimed_week = ?`).get(weekStr)?.count || 0;
     res.json({
       week: weekStr,
-      prize: raffle ? raffle.prize : 'Botella de Viño de la Casa',
+      prize: raffle ? raffle.prize : null,
       rules: raffle ? (raffle.rules || 'Trinca tu participación una vez por semana antes de que empiecen los eventos. ¡Se sorteará un regalo de la hostia!') : 'Trinca tu participación una vez por semana antes de que empiecen los eventos. ¡Se sorteará un regalo de la hostia!',
       status: raffle ? raffle.status : 'active',
       winnerWallet: raffle ? raffle.winner_wallet : null,
       verificationCode: raffle ? raffle.verification_code : null,
       collectedAt: raffle ? raffle.collected_at : null,
       drawnAt: raffle ? raffle.drawn_at : null,
-      totalParticipants
+      totalParticipants,
+      isConfigured: !!raffle
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
