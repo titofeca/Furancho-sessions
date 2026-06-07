@@ -1599,11 +1599,17 @@
 
       <!-- Sorteo Semanal (La Chave Semanal) -->
       <div class="glass-card" style="margin-top:20px;">
-        <div class="card-header" style="margin-bottom:16px;">
+        <div class="card-header" style="margin-bottom:10px;">
           <span class="card-title">🔑 La Chave Semanal (Sorteo Semanal)</span>
           <button class="btn-download" onclick="loadWeeklyRaffleAdmin()" style="font-size:11px; padding:6px 12px;">↻ Actualizar</button>
         </div>
-        
+
+        <!-- Badge sorteo automático -->
+        <div id="weekly-auto-badge" style="margin-bottom:14px; padding:9px 12px; border-radius:10px; font-size:12px; display:flex; align-items:center; gap:8px; background:rgba(196,151,58,0.07); border:1px solid rgba(196,151,58,0.2);">
+          <span style="font-size:15px;">⚙️</span>
+          <span id="weekly-auto-badge-text" style="color:var(--text-muted); line-height:1.4;">Comprobando sorteo automático...</span>
+        </div>
+
         <div class="form-group" style="margin-bottom:12px;">
           <label class="form-label" style="font-size:11px; font-weight:700; color:var(--gold); text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:6px;">🎁 Premio de la Semana</label>
           <input type="text" class="input-field" id="weekly-prize-input" placeholder="Premio (ej: Botella de Viño de la Casa)" style="font-size:14px; margin-bottom:12px; width:100%; box-sizing:border-box;" />
@@ -2991,6 +2997,9 @@
         updateWeeklySavedSummary(data.prize, data.rules || '', selectedWeekForBadge || selectEl.value, data.drawnAt ? null : 'db');
       }
 
+      // Actualizar badge del scheduler automático
+      updateAutoSchedulerBadge();
+
       if (data.status === 'completed') {
         if (winnerInfo) winnerInfo.style.display = 'block';
         if (winnerAddress) winnerAddress.textContent = data.winnerWallet || '—';
@@ -3153,6 +3162,45 @@
     } catch (e) {
       showToast('Error al conectar con el servidor', true);
       if (collectBtn) collectBtn.disabled = false;
+    }
+  }
+
+  async function updateAutoSchedulerBadge() {
+    const badge = document.getElementById('weekly-auto-badge');
+    const badgeText = document.getElementById('weekly-auto-badge-text');
+    if (!badge || !badgeText) return;
+
+    try {
+      // Calcular el próximo jueves desde hoy
+      const today = new Date();
+      const dayOfWeek = today.getDay(); // 0=Dom, 3=Mié, 4=Jue
+      let daysUntilThursday = (4 - dayOfWeek + 7) % 7 || 7;
+      const nextThursday = new Date(today);
+      nextThursday.setDate(today.getDate() + daysUntilThursday);
+      const thursdayStr = nextThursday.toISOString().slice(0, 10);
+
+      // Miércoles anterior al próximo jueves (día del sorteo automático)
+      const drawWednesday = new Date(nextThursday);
+      drawWednesday.setDate(nextThursday.getDate() - 1);
+      const drawLabel = drawWednesday.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+
+      // Consultar eventos para ese jueves
+      const events = await fetch('/api/events').then(r => r.json()).catch(() => []);
+      const thursdayEvent = events.find(e => e.event_date === thursdayStr);
+
+      if (thursdayEvent) {
+        badge.style.background = 'rgba(74,222,128,0.08)';
+        badge.style.borderColor = 'rgba(74,222,128,0.3)';
+        badgeText.style.color = '#4ade80';
+        badgeText.innerHTML = `<strong>Sorteo automático activado</strong> — El <strong>${drawLabel} a las 20:00</strong> se sorteará automáticamente. Hay evento el jueves: <strong>${thursdayEvent.title}</strong>.`;
+      } else {
+        badge.style.background = 'rgba(42,21,9,0.04)';
+        badge.style.borderColor = 'rgba(42,21,9,0.1)';
+        badgeText.style.color = 'var(--text-muted)';
+        badgeText.innerHTML = `<strong>Sin sorteo automático esta semana</strong> — No hay evento grabado para el jueves <strong>${nextThursday.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</strong>. Graba el evento primero en la agenda.`;
+      }
+    } catch (e) {
+      badgeText.textContent = 'Error al comprobar el evento del jueves.';
     }
   }
 
