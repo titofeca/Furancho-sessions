@@ -81,6 +81,21 @@ router.post('/start', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'No hay clientes con entrada fichada.' });
   }
 
+  // Doble Oportunidad: si el ganador de "La Chave Semanal" de esta semana está en los elegibles, duplicarlo en el bombo.
+  try {
+    const { db } = require('../db/database');
+    const weekStr = getYearWeek();
+    const weeklyRaffle = db.prepare(`SELECT winner_wallet FROM weekly_raffles WHERE claimed_week = ? AND status = 'completed'`).get(weekStr);
+    const weeklyWinner = weeklyRaffle ? weeklyRaffle.winner_wallet : null;
+
+    if (weeklyWinner && eligibleWallets.includes(weeklyWinner)) {
+      eligibleWallets.push(weeklyWinner);
+      console.log(`[Raffle] Ganador de Chave Semanal (${weeklyWinner}) tiene DOBLE OPORTUNIDAD hoy. Duplicada en bombo.`);
+    }
+  } catch (e) {
+    console.error('Error al aplicar doble oportunidad:', e.message);
+  }
+
   const winnerIndex = Math.floor(Math.random() * eligibleWallets.length);
   const winnerWallet = eligibleWallets[winnerIndex];
 

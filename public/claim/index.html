@@ -4080,12 +4080,19 @@
     const btn = document.getElementById('weekly-claim-btn');
     if (!card || !prizeText || !btn) return;
 
-    // Ocultar de Jueves (4) a Sábado (6) para enfocarse en el checkin y la entrada en directo
+    // De Jueves (4) a Domingo (0): mostrar recordatorio temático y ocultar botón de reclamo
     const dayOfWeek = new Date().getDay();
-    if (dayOfWeek === 4 || dayOfWeek === 5 || dayOfWeek === 6) {
-      card.style.display = 'none';
+    if (dayOfWeek === 0 || dayOfWeek === 4 || dayOfWeek === 5 || dayOfWeek === 6) {
+      btn.style.display = 'none';
+      prizeText.innerHTML = `🔑 <strong style="color:var(--wine);">Chave Semanal (Recordatorio)</strong>`;
+      if (rulesText) {
+        rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:11.5px; line-height:1.5;">⏳ <strong>¡Al loro, ho!</strong> El reclamo de la Chave Semanal abre los domingos por la noche. Pásate por aquí a partir de entonces para trincar tu boleto de la siguiente semana y tener doble oportunidad en los sorteos en vivo. ¡No te quedes sin tu cacho de esmorga!</span>`;
+      }
+      card.style.display = 'block';
       return;
     }
+
+    btn.style.display = 'block';
 
     try {
       const res = await fetch(`/api/raffle/weekly/status?wallet=${userWalletAddress}`);

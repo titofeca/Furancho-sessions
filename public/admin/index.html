@@ -1611,6 +1611,14 @@
           <label class="form-label" style="font-size:11px; font-weight:700; color:var(--gold); text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:6px;">📝 Operativa y Reglas</label>
           <textarea class="input-field" id="weekly-rules-input" placeholder="Operativa del sorteo semanal..." style="font-size:13px; font-family:'Outfit',sans-serif; min-height:80px; resize:vertical; margin-bottom:14px; background:rgba(42,21,9,0.05); border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; color:var(--text); width:100%; box-sizing:border-box; padding:10px; outline:none;"></textarea>
           
+          <div style="margin-bottom:14px;">
+            <span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing:0.5px;">📋 Plantillas de Premios:</span>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button type="button" onclick="applyWeeklyTemplate('pesetas')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">🪙 200 Pesetas</button>
+              <button type="button" onclick="applyWeeklyTemplate('double')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">🎰 Doble Oportunidad</button>
+            </div>
+          </div>
+          
           <button onclick="saveWeeklyRaffleConfig()" style="background:var(--wine); color:#fff; border:none; border-radius:12px; padding:12px 18px; font-size:13px; font-weight:700; cursor:pointer; width:100%; font-family:'Outfit',sans-serif;">💾 Guardar Premio y Operativa</button>
         </div>
 
@@ -2993,6 +3001,20 @@
       console.error('Error en sorteo semanal:', e);
       showToast('Error al conectar con el servidor', true);
       if (drawBtn) drawBtn.disabled = false;
+    }
+  }
+
+  function applyWeeklyTemplate(type) {
+    const prizeInput = document.getElementById('weekly-prize-input');
+    const rulesInput = document.getElementById('weekly-rules-input');
+    if (!prizeInput || !rulesInput) return;
+    
+    if (type === 'pesetas') {
+      prizeInput.value = '200 Pesetas (Vales Furancho)';
+      rulesInput.value = '¡El clásico do furancho! Llévate 200 pesetas de las de antes para gastar en tazas de vino y raciones de la casa. ¡Auténtico sabor ochentero, ho!';
+    } else if (type === 'double') {
+      prizeInput.value = 'Doble Oportunidad en Sorteos';
+      rulesInput.value = '¡Doble o nada, ho! Independientemente de tu nivel de furancheiro, esta semana tendrás el doble de oportunidades (doble papeleta en el bombo) en todos los sorteos en vivo en el local.';
     }
   }
 
