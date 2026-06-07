@@ -7,7 +7,8 @@ const {
   getPrizePresets, addPrizePreset, deletePrizePreset, getRaffleCountTonight,
   getScheduledRaffles, createScheduledRaffle, updateScheduledRaffle,
   deleteScheduledRaffle, linkScheduledRaffle, insertMint,
-  claimWeeklyRaffle, getWeeklyRaffleStatus, updateWeeklyPrize, drawWeeklyRaffle, collectWeeklyRaffle
+  claimWeeklyRaffle, getWeeklyRaffleStatus, updateWeeklyPrize, drawWeeklyRaffle, collectWeeklyRaffle,
+  getWeeklyRaffleTargetWeek
 } = require('../db/database');
 const { requireAuth } = require('./admin');
 const { sendPushToAll } = require('../services/push');
@@ -92,7 +93,7 @@ router.post('/start', requireAuth, (req, res) => {
   // Doble Oportunidad: si el ganador de "La Chave Semanal" de esta semana está en los elegibles, duplicarlo en el bombo.
   try {
     const { db } = require('../db/database');
-    const weekStr = getYearWeek();
+    const weekStr = getWeeklyRaffleTargetWeek();
     const weeklyRaffle = db.prepare(`SELECT winner_wallet FROM weekly_raffles WHERE claimed_week = ? AND status = 'completed'`).get(weekStr);
     const weeklyWinner = weeklyRaffle ? weeklyRaffle.winner_wallet : null;
 
@@ -350,20 +351,11 @@ module.exports.broadcast = broadcast;
 
 // --- LÓGICA DE SORTEO SEMANAL ("LA CHAVE SEMANAL") ---
 
-// Función para obtener la semana actual en formato YYYY-WW (siguiendo estándar ISO)
-function getYearWeek(d = new Date()) {
-  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
-  const yearStart = new Date(Date.UTC(date.getUTCFullYear(),0,1));
-  const weekNo = Math.ceil(( ( (date - yearStart) / 86400000) + 1)/7);
-  return `${date.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
-}
-
 // GET /api/raffle/weekly/status?wallet=0x...&week=2026-W23
 router.get('/weekly/status', (req, res) => {
   const { wallet, week } = req.query;
   if (!wallet) return res.status(400).json({ error: 'Falta walletAddress' });
-  const weekStr = week || getYearWeek();
+  const weekStr = week || getWeeklyRaffleTargetWeek();
   try {
     const status = getWeeklyRaffleStatus(wallet, weekStr);
     res.json({ ...status, currentWeek: weekStr });
@@ -390,7 +382,7 @@ router.post('/weekly/claim', claimLimiter, (req, res) => {
   if (!/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
     return res.status(400).json({ error: 'Dirección de wallet no válida, ho.' });
   }
-  const weekStr = getYearWeek(); // <-- siempre server-side, ignoramos req.body.week
+  const weekStr = getWeeklyRaffleTargetWeek(); // <-- siempre server-side, ignoramos req.body.week
   try {
     const { db } = require('../db/database');
     const furancheiroRow = db.prepare(`
@@ -416,7 +408,7 @@ router.post('/weekly/claim', claimLimiter, (req, res) => {
 
 // GET /api/admin/weekly/status (ADMIN)
 router.get('/admin/weekly/status', requireAuth, (req, res) => {
-  const weekStr = req.query.week || getYearWeek();
+  const weekStr = req.query.week || getWeeklyRaffleTargetWeek();
   try {
     const { db } = require('../db/database');
     const raffle = db.prepare(`SELECT * FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
@@ -441,7 +433,7 @@ router.get('/admin/weekly/status', requireAuth, (req, res) => {
 // POST /api/admin/weekly/collect (ADMIN) — marcar premio como entregado
 router.post('/admin/weekly/collect', requireAuth, (req, res) => {
   const { week } = req.body;
-  const weekStr = week || getYearWeek();
+  const weekStr = week || getWeeklyRaffleTargetWeek();
   try {
     collectWeeklyRaffle(weekStr);
     // Notificar al ganador que su premio fue marcado como entregado (si sigue conectado)
@@ -463,7 +455,7 @@ router.post('/admin/weekly/collect', requireAuth, (req, res) => {
 router.post('/admin/weekly/config', requireAuth, (req, res) => {
   const { prize, rules, week } = req.body;
   if (!prize) return res.status(400).json({ error: 'Falta el nombre del premio' });
-  const weekStr = week || getYearWeek();
+  const weekStr = week || getWeeklyRaffleTargetWeek();
   try {
     updateWeeklyPrize(weekStr, prize, rules || 'Trinca tu participación una vez por semana antes de que empiecen los eventos. ¡Se sorteará un regalo de la hostia!');
     res.json({ success: true });
@@ -475,7 +467,7 @@ router.post('/admin/weekly/config', requireAuth, (req, res) => {
 // POST /api/admin/weekly/draw (ADMIN)
 router.post('/admin/weekly/draw', requireAuth, (req, res) => {
   const { week } = req.body;
-  const weekStr = week || getYearWeek();
+  const weekStr = week || getWeeklyRaffleTargetWeek();
   try {
     const result = drawWeeklyRaffle(weekStr);
 

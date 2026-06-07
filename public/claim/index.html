@@ -4262,66 +4262,83 @@
     const btn = document.getElementById('weekly-claim-btn');
     if (!card || !prizeText || !btn) return;
 
-    // De Jueves (4) a Domingo (0): mostrar recordatorio temático y ocultar botón de reclamo
-    const dayOfWeek = new Date().getDay();
-    if (dayOfWeek === 0 || dayOfWeek === 4 || dayOfWeek === 5 || dayOfWeek === 6) {
-      btn.style.display = 'none';
-      prizeText.innerHTML = `🔑 <strong style="color:var(--wine);">Chave Semanal (Recordatorio)</strong>`;
-      if (rulesText) {
-        rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:11.5px; line-height:1.5;">⏳ <strong>¡Al loro, ho!</strong> El reclamo de la Chave Semanal abre los domingos por la noche. Pásate por aquí a partir de entonces para trincar tu boleto de la siguiente semana y tener doble oportunidad en los sorteos en vivo. ¡No te quedes sin tu cacho de esmorga!</span>`;
-      }
-      card.style.display = 'block';
-      return;
-    }
-
-    btn.style.display = 'block';
-
     try {
       const res = await fetch(`/api/raffle/weekly/status?wallet=${userWalletAddress}`);
       const data = await res.json();
       
       card.style.display = 'block';
-      prizeText.innerHTML = `Premio: <strong style="color:var(--wine);">${data.prize}</strong>`;
-      if (rulesText) {
-        rulesText.textContent = data.rules || '';
-      }
+
+      // 1. Verificar si el usuario actual es el ganador del sorteo
+      const isWinner = data.winnerWallet && data.winnerWallet.toLowerCase() === userWalletAddress.toLowerCase();
       
-      if (data.status === 'completed') {
-        btn.disabled = true;
-        btn.textContent = 'Finalizado';
-        btn.style.background = 'rgba(42,21,9,0.06)';
-        btn.style.borderColor = 'rgba(42,21,9,0.12)';
-        btn.style.color = 'var(--text-muted)';
-        
-        if (data.winnerWallet) {
-          const isMe = data.winnerWallet.toLowerCase() === userWalletAddress.toLowerCase();
-          if (isMe) {
-            prizeText.innerHTML = `🏆 <strong>¡Te ha tocado, ho!</strong> ${data.prize}`;
-            // Mostrar el código de verificación para que el ganador lo enseñe al staff
-            if (rulesText) {
-              rulesText.innerHTML = `<div style="margin-top:10px; background:rgba(139,25,24,0.06); border:1.5px dashed rgba(139,25,24,0.25); border-radius:10px; padding:12px; text-align:center;">
-                <p style="font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); margin:0 0 4px;">🔑 Código — Premio Chave do Furancho</p>
-                <p style="font-family:monospace; font-size:22px; font-weight:900; color:var(--wine); margin:0 0 6px; letter-spacing:3px;">${data.verificationCode || '—'}</p>
-                <p style="font-size:12px; font-weight:700; color:var(--gold); margin:0 0 4px;">${data.prize}</p>
-                <p style="font-size:10px; color:var(--text-muted); margin:0;">Muéstraselo al staff en el Furancho</p>
-              </div>`;
-            }
-          } else {
-            prizeText.innerHTML = `Sorteo cerrado. Ganador: <strong>${data.winnerWallet.slice(0,6)}...${data.winnerWallet.slice(-4)}</strong>`;
-          }
+      if (isWinner && data.status === 'completed') {
+        // Mostrar código de verificación para el ganador (independientemente del día/hora)
+        btn.style.display = 'none';
+        prizeText.innerHTML = `🏆 <strong>¡Tenche tocado, ho!</strong> ${data.prize}`;
+        if (rulesText) {
+          rulesText.innerHTML = `<div style="margin-top:10px; background:rgba(139,25,24,0.06); border:1.5px dashed rgba(139,25,24,0.25); border-radius:10px; padding:12px; text-align:center;">
+            <p style="font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); margin:0 0 4px;">🔑 Código — Premio Chave do Furancho</p>
+            <p style="font-family:monospace; font-size:22px; font-weight:900; color:var(--wine); margin:0 0 6px; letter-spacing:3px;">${data.verificationCode || '—'}</p>
+            <p style="font-size:12px; font-weight:700; color:var(--gold); margin:0 0 4px;">${data.prize}</p>
+            <p style="font-size:10px; color:var(--text-muted); margin:0;">Muéstraselo al staff en el Furancho para trincar el premio</p>
+          </div>`;
         }
-      } else if (data.claimed) {
-        btn.disabled = true;
-        btn.textContent = '✓ Participando';
-        btn.style.background = 'transparent';
-        btn.style.borderColor = 'rgba(139,25,24,0.3)';
-        btn.style.color = 'var(--wine)';
+        return;
+      }
+
+      // 2. Si es un perdedor (participó pero no ganó en un sorteo completado)
+      if (data.status === 'completed' && data.claimed) {
+        btn.style.display = 'none';
+        prizeText.innerHTML = `🍀 <strong style="color:var(--wine);">Chave do Furancho</strong>`;
+        if (rulesText) {
+          rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:11.5px; line-height:1.5;">😢 <strong>¡Non tiveches sorte esta semana, ho!</strong><br>A seguir intentándoo na próxima esmorga. ¡El domingo a las 21:00 publicamos el siguiente sorteo!</span>`;
+        }
+        return;
+      }
+
+      // 3. Si no es el ganador ni participó de forma perdedora, validar si estamos dentro de la ventana de visibilidad activa (Domingo 21:00 a Miércoles 21:00)
+      const madridTimeStr = new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' });
+      const madridDate = new Date(madridTimeStr);
+      const day = madridDate.getDay(); // 0=Dom..6=Sab
+      const hours = madridDate.getHours();
+
+      let isActiveWindow = false;
+      if (day === 1 || day === 2) {
+        isActiveWindow = true;
+      } else if (day === 0) {
+        isActiveWindow = (hours >= 21);
+      } else if (day === 3) {
+        isActiveWindow = (hours < 21);
+      }
+
+      if (isActiveWindow) {
+        // Ventana activa: mostrar premio y permitir participación
+        btn.style.display = 'block';
+        prizeText.innerHTML = `Premio: <strong style="color:var(--wine);">${data.prize || 'Sorpresa do Furancho'}</strong>`;
+        if (rulesText) {
+          rulesText.textContent = data.rules || 'Trinca tu participación una vez por semana antes de que empiecen los eventos. ¡Se sorteará un regalo de la hostia!';
+        }
+
+        if (data.claimed) {
+          btn.disabled = true;
+          btn.textContent = '✓ Participando';
+          btn.style.background = 'transparent';
+          btn.style.borderColor = 'rgba(139,25,24,0.3)';
+          btn.style.color = 'var(--wine)';
+        } else {
+          btn.disabled = false;
+          btn.textContent = 'Trincar Boleto';
+          btn.style.background = 'var(--wine)';
+          btn.style.borderColor = 'var(--wine)';
+          btn.style.color = '#fff';
+        }
       } else {
-        btn.disabled = false;
-        btn.textContent = 'Trincar Boleto';
-        btn.style.background = 'var(--wine)';
-        btn.style.borderColor = 'var(--wine)';
-        btn.style.color = '#fff';
+        // Ventana inactiva (resto de la semana): mostrar narrativa fija y ocultar botón
+        btn.style.display = 'none';
+        prizeText.innerHTML = `🔑 <strong style="color:var(--wine);">Chave do Furancho</strong>`;
+        if (rulesText) {
+          rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:11.5px; line-height:1.5;">⏳ <strong>Se está creando o próximo sorteo de Chave do Furancho.</strong><br>O domingo ás 21:00 publícase. ¡Non te quedes sen trincar o teu boleto para ter doble oportunidad en los sorteos en vivo!</span>`;
+        }
       }
     } catch (e) {
       console.error('Error al cargar sorteo semanal:', e);

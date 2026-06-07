@@ -85,14 +85,14 @@ function scheduleWeeklyRaffle() {
     const madridHour = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
 
     const isWednesday = madridHour.getDay() === 3;      // 0=Dom..6=Sab → 3=Mié
-    const isDrawTime  = madridHour.getHours() === 20 && madridHour.getMinutes() === 0;
+    const isDrawTime  = madridHour.getHours() === 21 && madridHour.getMinutes() === 0;
 
     if (!isWednesday || !isDrawTime) return;
 
-    console.log('[WeeklyRaffle] Miércoles 20:00 — comprobando evento del jueves...');
+    console.log('[WeeklyRaffle] Miércoles 21:00 — comprobando evento del jueves...');
 
     try {
-      const { db, drawWeeklyRaffle } = require('./db/database');
+      const { db, drawWeeklyRaffle, getWeeklyRaffleTargetWeek } = require('./db/database');
 
       // Calcular la fecha del jueves siguiente (mañana si hoy es miércoles)
       const thursday = new Date(madridHour);
@@ -111,15 +111,7 @@ function scheduleWeeklyRaffle() {
 
       console.log(`[WeeklyRaffle] Evento encontrado el ${thursdayStr}: "${event.title}". Iniciando sorteo semanal...`);
 
-      // Calcular semana ISO actual
-      function getYearWeek(d = new Date()) {
-        const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-        date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
-        const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-        const weekNo = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
-        return `${date.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
-      }
-      const weekStr = getYearWeek(madridHour);
+      const weekStr = getWeeklyRaffleTargetWeek(madridHour);
 
       // Comprobar que no se haya sorteado ya esta semana
       const existing = db.prepare(`SELECT status FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);

@@ -1007,7 +1007,8 @@ module.exports = {
   getWeeklyRaffleStatus,
   updateWeeklyPrize,
   drawWeeklyRaffle,
-  collectWeeklyRaffle
+  collectWeeklyRaffle,
+  getWeeklyRaffleTargetWeek
 };
 
 function claimWeeklyRaffle(walletAddress, weekStr) {
@@ -1093,4 +1094,41 @@ function collectWeeklyRaffle(weekStr) {
     WHERE claimed_week = ? AND status = 'completed'
   `).run(weekStr);
   if (!result.changes) throw new Error('Sorteo no encontrado o no completado.');
+}
+
+function getWeeklyRaffleTargetWeek(d = new Date()) {
+  const madridTime = new Date(d.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+  const day = madridTime.getDay(); // 0=Dom..6=Sab
+  const hour = madridTime.getHours();
+  
+  const targetThursday = new Date(madridTime);
+  let daysToThursday = 0;
+  
+  if (day === 0) {
+    if (hour >= 21) {
+      daysToThursday = 4;
+    } else {
+      daysToThursday = -3;
+    }
+  } else if (day === 1) {
+    daysToThursday = 3;
+  } else if (day === 2) {
+    daysToThursday = 2;
+  } else if (day === 3) {
+    daysToThursday = 1;
+  } else if (day === 4) {
+    daysToThursday = 0;
+  } else if (day === 5) {
+    daysToThursday = -1;
+  } else if (day === 6) {
+    daysToThursday = -2;
+  }
+  
+  targetThursday.setDate(madridTime.getDate() + daysToThursday);
+  
+  const tempDate = new Date(Date.UTC(targetThursday.getFullYear(), targetThursday.getMonth(), targetThursday.getDate()));
+  tempDate.setUTCDate(tempDate.getUTCDate() + 4 - (tempDate.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(tempDate.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((tempDate - yearStart) / 86400000) + 1) / 7);
+  return `${tempDate.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
 }
