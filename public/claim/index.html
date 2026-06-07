@@ -2417,13 +2417,21 @@
       if (existing) existing.remove();
       const toast = document.createElement('div');
       toast.id = 'profile-toast';
-      const bg = color === 'green' ? 'rgba(74,222,128,0.1)' : 'rgba(196,151,58,0.1)';
-      const border = color === 'green' ? 'rgba(74,222,128,0.3)' : 'rgba(196,151,58,0.3)';
-      const textColor = color === 'green' ? '#4ade80' : 'var(--gold)';
+      const bg = color === 'green' ? 'rgba(74,222,128,0.1)' 
+                : color === 'red'   ? 'rgba(139,25,24,0.08)'
+                :                    'rgba(196,151,58,0.1)';
+      const border = color === 'green' ? 'rgba(74,222,128,0.3)'
+                   : color === 'red'   ? 'rgba(139,25,24,0.25)'
+                   :                    'rgba(196,151,58,0.3)';
+      const textColor = color === 'green' ? '#4ade80'
+                      : color === 'red'   ? 'var(--wine)'
+                      :                    'var(--gold)';
       toast.style.cssText = `background:${bg}; border:1.5px solid ${border}; border-radius:16px; padding:14px 18px; margin-bottom:16px; font-size:14px; color:${textColor}; font-weight:600; text-align:center; line-height:1.5;`;
       toast.innerHTML = msg;
       const content = document.querySelector('#screen-profile .content');
       if (content) content.insertBefore(toast, content.firstChild);
+      // Auto-ocultar después de 6 segundos
+      setTimeout(() => { if (toast.parentNode) toast.remove(); }, 6000);
     }
 
     function getRandomExitMessage() {
@@ -3638,6 +3646,56 @@
         renderPrizes();
       });
 
+      // ── CHAVE SEMANAL: sorteo realizado ──────────────────────────────────────
+
+      // Ganador de la Chave Semanal: notificación especial en pantalla
+      evtSource.addEventListener('weekly_draw_result', (e) => {
+        const data = JSON.parse(e.data);
+        // Este evento solo llega a quien es el ganador (el servidor lo filtra por wallet)
+        launchParticles();
+        if (navigator.vibrate) navigator.vibrate([100,50,100,50,200,100,500]);
+
+        // Mostrar banner visible en perfil
+        showProfileBanner(
+          `🔑 <strong>¡Carallo, ho! ¡Ganaste la Chave Semanal!</strong><br>Premio: <strong>${data.prize}</strong>. Pásate por el Furancho para reclamarlo. ¡A disfrutalo, rapaz!`,
+          'gold'
+        );
+
+        // Modal de ganador (reutilizamos el de sorteos)
+        const modal = document.getElementById('raffle-modal');
+        if (modal) {
+          document.getElementById('raffle-roulette').style.display = 'none';
+          document.getElementById('raffle-loser').style.display = 'none';
+          document.getElementById('raffle-winner').style.display = 'block';
+          document.getElementById('raffle-prize-text').textContent = `🔑 Chave Semanal — ${data.prize}`;
+
+          const titleEl = document.getElementById('raffle-winner-title');
+          if (titleEl) titleEl.textContent = '🔑 ¡GAÑACHES A CHAVE, HO!';
+
+          document.getElementById('raffle-winner-prize').textContent = data.prize;
+          // No hay código de verificación para la chave semanal (se presenta en persona)
+          const codeEl = document.getElementById('raffle-code');
+          if (codeEl) codeEl.textContent = '— Presénzate ao Furancho —';
+
+          document.getElementById('raffle-particles').innerHTML = '';
+          modal.style.display = 'flex';
+          document.body.style.overflow = 'hidden';
+          launchParticles();
+        }
+
+        // Recargar la tarjeta semanal para mostrar "¡Te tocó!"
+        setTimeout(loadWeeklyRaffle, 1500);
+      });
+
+      // Sorteo semanal cerrado: notificar a todos los demás
+      evtSource.addEventListener('weekly_draw_closed', (e) => {
+        const data = JSON.parse(e.data);
+        const statusText = document.getElementById('raffle-status-text');
+        if (statusText) statusText.textContent = `🔑 Chave Semanal sorteada — ${data.prize}`;
+        // Recargar tarjeta semanal para que todos vean "Finalizado"
+        setTimeout(loadWeeklyRaffle, 1500);
+      });
+
       // Admin confirma/cancela reserva VIP → actualizar estado en la agenda
       evtSource.addEventListener('vip_status', (e) => {
         const data = JSON.parse(e.data);
@@ -4148,31 +4206,48 @@
         body: JSON.stringify({ walletAddress: userWalletAddress })
       });
       
+      const data = await res.json();
+
       if (res.status === 409) {
-        alert('¡Al loro, ho! Ya estás apuntado para el sorteo de esta semana.');
+        showProfileBanner('🎫 <strong>¡Tranquilo, ho!</strong> Ya estás apuntado para el sorteo de esta semana. El boleto ya está en el bombo.', 'gold');
         loadWeeklyRaffle();
         return;
       }
 
-      const data = await res.json();
+      if (res.status === 403) {
+        showProfileBanner('🚫 <strong>¡Ei, ho!</strong> Solo los furancheiros verificados pueden participar en la Chave Semanal. Pásate por el local y ficha tu entrada primero.', 'red');
+        btn.disabled = false;
+        btn.textContent = 'Trincar Boleto';
+        return;
+      }
+
+      if (res.status === 429) {
+        showProfileBanner('⏳ <strong>¡Calma, rapaz!</strong> Demasiados intentos seguidos. Espera un momentito e inténtalo de nuevo.', 'gold');
+        btn.disabled = false;
+        btn.textContent = 'Trincar Boleto';
+        return;
+      }
+
       if (data.success) {
         btn.textContent = '✓ ¡Apuntado!';
         btn.style.background = 'transparent';
         btn.style.borderColor = 'rgba(139,25,24,0.3)';
         btn.style.color = 'var(--wine)';
         
+        showProfileBanner('🎫 <strong>¡Boleto trincado, ho!</strong> Estás en el bombo de la Chave Semanal. Cruza los dedos.', 'green');
+
         const card = document.getElementById('weekly-claim-card');
         card.style.transform = 'scale(1.03)';
         setTimeout(() => { card.style.transform = 'scale(1)'; }, 200);
         
         setTimeout(loadWeeklyRaffle, 1000);
       } else {
-        alert('Error al trincar participación: ' + (data.error || 'Inténtalo de nuevo.'));
+        showProfileBanner('❌ Error al trincar participación: ' + (data.error || 'Inténtalo de nuevo, ho.'), 'red');
         btn.disabled = false;
         btn.textContent = 'Trincar Boleto';
       }
     } catch (e) {
-      alert('Error de red al participar.');
+      showProfileBanner('📡 <strong>Error de red.</strong> Comprueba tu conexión e inténtalo de nuevo.', 'red');
       btn.disabled = false;
       btn.textContent = 'Trincar Boleto';
     }

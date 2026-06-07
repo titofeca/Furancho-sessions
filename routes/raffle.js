@@ -451,6 +451,19 @@ router.post('/admin/weekly/draw', requireAuth, (req, res) => {
       { url: '/claim' }
     );
 
+    // SSE: Notificar en tiempo real al ganador específico (si está conectado)
+    broadcast('weekly_draw_result', {
+      winnerWallet: result.winnerWallet,
+      prize: result.prize,
+      week: weekStr
+    }, result.winnerWallet);
+
+    // SSE: Notificar a todos los demás que el sorteo terminó (sin revelar wallet)
+    broadcast('weekly_draw_closed', {
+      prize: result.prize,
+      week: weekStr
+    });
+
     res.json({ success: true, winnerWallet: result.winnerWallet, prize: result.prize });
   } catch (e) {
     res.status(400).json({ error: e.message });
