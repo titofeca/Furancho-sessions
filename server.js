@@ -90,6 +90,14 @@ const server = app.listen(PORT, () => {
 // Sin esto, npm reporta "signal SIGTERM → command failed" aunque sea un cierre normal.
 function gracefulShutdown(signal) {
   console.log(`[Server] Señal ${signal} recibida — cerrando limpiamente...`);
+  
+  // Cerrar todas las conexiones activas inmediatamente (incluido Server-Sent Events)
+  // para que server.close() no se quede colgado esperando
+  if (typeof server.closeAllConnections === 'function') {
+    console.log('[Server] Cerrando todas las conexiones activas (incluyendo SSE)...');
+    server.closeAllConnections();
+  }
+
   server.close(() => {
     console.log('[Server] Conexiones HTTP cerradas.');
     // Cerrar SQLite correctamente para que el WAL se flush antes de salir
