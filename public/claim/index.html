@@ -1269,6 +1269,30 @@
     .guide-card {
       transition: all 0.25s ease-in-out;
     }
+    .guide-card-arrow {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--wine);
+      background: rgba(139, 25, 24, 0.08);
+      border: 1px solid rgba(139, 25, 24, 0.2);
+      border-radius: 20px;
+      padding: 4px 10px;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .guide-card[open] .guide-card-arrow {
+      background: rgba(196, 151, 58, 0.12);
+      border-color: rgba(196, 151, 58, 0.3);
+      color: var(--gold);
+    }
+    .guide-card[open] .guide-card-arrow .arrow-icon {
+      transform: rotate(180deg);
+    }
+    .guide-card summary::-webkit-details-marker {
+      display: none;
+    }
     .guide-details {
       background: #ffffff;
       border: 1.5px solid rgba(42, 21, 9, 0.08);
@@ -1850,84 +1874,91 @@
         <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Pase actualizado. ¡Hasta la próxima esmorga y no tardes en volver, tronco! 🍷</p>
       </div>
  
-      <!-- Guía del Furancheiro VIP (Preguntas Frecuentes) -->
-      <div class="guide-card" style="background:linear-gradient(135deg,rgba(139,25,24,0.05),rgba(196,151,58,0.04)); border:1.5px solid rgba(139,25,24,0.18); border-radius:20px; padding:20px; margin-bottom:20px;">
-        <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
-          <span style="font-size:22px;">📖</span>
-          <p style="font-size:13px; font-weight:700; color:var(--wine); text-transform:uppercase; letter-spacing:1px;">Guía del Furancheiro VIP</p>
+      <!-- Guía del Furancheiro VIP (Preguntas Frecuentes - Colapsable) -->
+      <details class="guide-card" style="background:linear-gradient(135deg,rgba(139,25,24,0.05),rgba(196,151,58,0.04)); border:1.5px solid rgba(139,25,24,0.18); border-radius:20px; padding:18px 20px; margin-bottom:20px; display: block; outline: none; -webkit-tap-highlight-color: transparent;">
+        <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; outline:none; user-select:none;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:22px;">📖</span>
+            <p style="font-size:13.5px; font-weight:700; color:var(--wine); text-transform:uppercase; letter-spacing:1px; margin:0; font-family:'Outfit',sans-serif;">Guía del Furancheiro VIP</p>
+          </div>
+          <span class="guide-card-arrow">
+            <span class="arrow-icon" style="transition: transform 0.2s; display: inline-block;">▼</span> <span style="font-family:'Outfit',sans-serif; font-size:11px; font-weight:700;">Preguntas</span>
+          </span>
+        </summary>
+        <div style="margin-top:14px; border-top: 1px dashed rgba(139,25,24,0.15); padding-top:14px;">
+          <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px; line-height:1.6; margin-top:0;">
+            Mírate esto si andas perdido, rapaz. Así no tienes que preguntarle al staff, que andan con las manos llenas sirviendo viño y tapas.
+          </p>
+  
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <!-- Pregunta 1 -->
+            <details class="guide-details">
+              <summary class="guide-summary">
+                <span>¿Pero qué invento es este y para qué sirve esta app, neno?</span>
+                <span class="guide-arrow">▼</span>
+              </summary>
+              <p class="guide-text">
+                ¡Pues para no andar perdido por la vida, neno! Con esto controlas tus visitas para subir de rango, te enteras de cuándo abrimos el grifo del viño y entras en el bombo de los sorteos en vivo. Si no fichas al entrar, es como si no existieras... ¡así que al loro, ho!
+              </p>
+            </details>
+  
+            <!-- Pregunta 2 -->
+            <details class="guide-details">
+              <summary class="guide-summary">
+                <span>¿Qué premios hay en el bombo? ¿Molan o no?</span>
+                <span class="guide-arrow">▼</span>
+              </summary>
+              <p class="guide-text">
+                ¡Y tanto que molan, ho! Sorteamos desde tazas de viño de la casa y raciones de empanada de las buenas hasta botellas para llevar y ascensos directos para fardar con los amigos. Y además, alguna que otra sorpresa de esas que no te podemos desvelar por aquí... ¡tendrás que venir al local a descubrirlo, neno! 🎁
+              </p>
+            </details>
+  
+            <!-- Pregunta 3 -->
+            <details class="guide-details">
+              <summary class="guide-summary">
+                <span>¿Por qué me hacéis fichar la entrada y la salida? ¿Esto qué es, el cuartel, ho?</span>
+                <span class="guide-arrow">▼</span>
+              </summary>
+              <p class="guide-text">
+                ¡No seas agonías, rapaz! Fichar al llegar te mete de cabeza en el bombo de los sorteos (si no fichas, la suerte pasa de ti, ho). Fichar al salir acumula la visita en tu pase digital. ¡Si te vas sin fichar el cierre, el patrón se piensa que te has quedado a dormir debajo de un barril o que te has llevado una botella sin pagar!
+              </p>
+            </details>
+  
+            <!-- Pregunta 4 -->
+            <details class="guide-details">
+              <summary class="guide-summary">
+                <span>¿Andar subiendo de nivel sirve para algo o es por hacer el canelo, ho?</span>
+                <span class="guide-arrow">▼</span>
+              </summary>
+              <p class="guide-text">
+                ¡Qué canelo ni qué caralladas, neno! Cada nivel te da más caché en la barra. En nivel 3 (Larpeiro) y nivel 4 (Presidente) ya eres el puto amo del furancho: entras por duplicado en los sorteos, te invitamos a catas exclusivas y puedes pedir raciones secretas fuera de carta que el staff solo te sacará si les enseñas tu carné digital VIP. ¡Casi nada, ho!
+              </p>
+            </details>
+  
+            <!-- Pregunta 5 -->
+            <details class="guide-details">
+              <summary class="guide-summary">
+                <span>¿Y si se me rompe el peluco tecnológico o cambio de móvil, qué hago, rapaz?</span>
+                <span class="guide-arrow">▼</span>
+              </summary>
+              <p class="guide-text">
+                Cero dramas ochenteros. Guarda bien tus 12 palabras de recuperación o tu código QR. Si estrenas móvil, los metes al arrancar la app y recuperas tus niveles en un pispás. ¡Más fácil que rebobinar una cinta de casete con un boli bic!
+              </p>
+            </details>
+  
+            <!-- Pregunta 6 -->
+            <details class="guide-details">
+              <summary class="guide-summary">
+                <span>¿Y mis datos? ¿Me vais a controlar la vida para venderme motos?</span>
+                <span class="guide-arrow">▼</span>
+              </summary>
+              <p class="guide-text">
+                ¡Qué motos ni qué hostias, ho! Aquí privacidad sagrada. No guardamos correos, ni nombres, ni apellidos, ni tu cuenta. El sistema solo sabe que existes por un pase digital anónimo para regalarte viño y contar tus visitas. Ni sabemos si te llamas Manuel o eres el rey del mambo en tu barrio. Cero espionajes y privacidad sagrada.
+              </p>
+            </details>
+          </div>
         </div>
-        <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px; line-height:1.6;">
-          Mírate esto si andas perdido, rapaz. Así no tienes que preguntarle al staff, que andan con las manos llenas sirviendo viño y tapas.
-        </p>
- 
-        <div style="display:flex; flex-direction:column; gap:8px;">
-          <!-- Pregunta 1 -->
-          <details class="guide-details">
-            <summary class="guide-summary">
-              <span>¿Pero qué invento es este y para qué sirve esta app, ho?</span>
-              <span class="guide-arrow">▼</span>
-            </summary>
-            <p class="guide-text">
-              ¡Pues para estar al loro de todo y que no te pierdas ni una, rapaz! Aquí controlas tus visitas para subir de rango, te enteras de cuándo el patrón vuelve a abrir el furancho y entras al bombo de los sorteos en directo si fichas la entrada. ¡Una pasada!
-            </p>
-          </details>
- 
-          <!-- Pregunta 2 -->
-          <details class="guide-details">
-            <summary class="guide-summary">
-              <span>¿Qué premios hay en el bombo? ¿Molan o no?</span>
-              <span class="guide-arrow">▼</span>
-            </summary>
-            <p class="guide-text">
-              ¡Molan un huevo! Sorteamos desde jarras de tinto fresco y raciones de empanada hasta botellas para llevarte a casa y ascensos directos en el escalafón furancheiro. ¡Chachi piruli! 🎁
-            </p>
-          </details>
- 
-          <!-- Pregunta 3 -->
-          <details class="guide-details">
-            <summary class="guide-summary">
-              <span>¿Por qué me hacéis fichar la entrada y la salida? ¿Esto qué es, el cuartel, ho?</span>
-              <span class="guide-arrow">▼</span>
-            </summary>
-            <p class="guide-text">
-              ¡Qué cuartel ni qué caralladas, neno! Fichar la entrada al llegar te mete en el bombo de los sorteos de esa noche (si no fichas, no existes para la suerte, ho). Y fichar la salida al marchar acumula tu visita en tu pase digital. ¡Si te vas sin fichar el cierre, el patrón se piensa que te has quedado a dormir debajo de un barril!
-            </p>
-          </details>
- 
-          <!-- Pregunta 4 -->
-          <details class="guide-details">
-            <summary class="guide-summary">
-              <span>¿Y para qué me sirve ir subiendo de nivel, ho?</span>
-              <span class="guide-arrow">▼</span>
-            </summary>
-            <p class="guide-text">
-              Cada nivel te da más caché en el local. Los Niveles 3 (Larpeiro) y 4 (Presidente) son la repanocha, tronco: entras por duplicado en los sorteos, te invitamos a catas de las buenas y puedes pedir tapas secretas fuera de carta que el staff solo saca si enseñas tu carné digital en la barra. ¡Dabuti!
-            </p>
-          </details>
- 
-          <!-- Pregunta 5 -->
-          <details class="guide-details">
-            <summary class="guide-summary">
-              <span>¿Y si se me rompe el peluco o cambio de móvil, qué hago, rapaz?</span>
-              <span class="guide-arrow">▼</span>
-            </summary>
-            <p class="guide-text">
-              Cero dramas ochenteros. Abajo tienes tus 12 palabras y un código QR de recuperación. Hazle una captura o apúntalas en una libreta. Si estrenas móvil nuevo, los metes al arrancar la app y recuperas todo tu historial y niveles al instante. ¡Más fácil que rebobinar una cinta con un boli bic!
-            </p>
-          </details>
- 
-          <!-- Pregunta 6 -->
-          <details class="guide-details">
-            <summary class="guide-summary">
-              <span>¿Y mis datos? ¿Me vais a controlar la vida para venderme motos?</span>
-              <span class="guide-arrow">▼</span>
-            </summary>
-            <p class="guide-text">
-              ¡Qué motos ni qué hostias, ho! Aquí no guardamos correos a la fuerza, ni nombres, ni apellidos, ni tu cuenta corriente. Esto es privado de verdad, neno. El sistema solo sabe que tu móvil tiene un código de pase furancheiro para regalarte vino y contar tus visitas, pero no sabemos si te llamas Manuel o eres el rey del mambo en tu barrio. Privacidad sagrada y cero espionajes.
-            </p>
-          </details>
-        </div>
-      </div>
+      </details>
  
       <!-- Recuperación de cuenta — sección principal -->
       <div style="background:linear-gradient(135deg,rgba(139,25,24,0.06),rgba(196,151,58,0.04)); border:1.5px solid rgba(139,25,24,0.18); border-radius:20px; padding:20px; margin-bottom:20px;">
@@ -2566,17 +2597,17 @@
 
       // Contador de visitas
       document.getElementById('visit-count-display').textContent = visitCount;
-      document.getElementById('visit-total-display').textContent = visitCount >= 12 ? '✓ Máximo' : 'visitas';
+      document.getElementById('visit-total-display').textContent = visitCount >= 12 ? '✓ ¡El puto amo, ho!' : 'visitas';
 
       // Hint
       const hint = document.getElementById('profile-progress-hint');
       if (hint) {
         if (visitCount >= 12 || claimedLevels.includes(4)) {
-          hint.textContent = '👑 Nivel máximo alcanzado';
+          hint.textContent = '👑 Nivel máximo O Presidente de la hostia';
         } else if (visitCount >= 4 || claimedLevels.includes(3)) {
-          hint.textContent = `${12 - visitCount} visitas para O Presidente`;
+          hint.textContent = `Te faltan ${12 - visitCount} visitas para coronarte como O Presidente, ho!`;
         } else {
-          hint.textContent = `${4 - visitCount} visitas para tu primer NFT`;
+          hint.textContent = `Te faltan ${4 - visitCount} visitas para trincar tu primer pase de coleccionista`;
         }
       }
 
