@@ -1615,9 +1615,11 @@
         </div>
 
         <div style="border-top:1px solid rgba(42,21,9,0.08); padding-top:14px; margin-top:14px;">
-          <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:12.5px;">
-            <span style="color:var(--text-muted);">Semana actual:</span>
-            <strong id="weekly-admin-week" style="color:var(--text);">—</strong>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; font-size:12.5px;">
+            <span style="color:var(--text-muted);">Semana a gestionar:</span>
+            <select id="weekly-admin-week-select" onchange="loadWeeklyRaffleAdmin()" style="background:var(--surface); color:var(--text); border:1.5px solid var(--border); border-radius:8px; padding:4px 8px; font-family:'Outfit',sans-serif; outline:none; cursor:pointer;">
+              <option value="">Cargando...</option>
+            </select>
           </div>
           <div style="display:flex; justify-content:space-between; margin-bottom:12px; font-size:12.5px;">
             <span style="color:var(--text-muted);">Participantes apuntados:</span>
@@ -2846,8 +2848,16 @@
     }
   }
 
+  function getClientYearWeek(d = new Date()) {
+    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(date.getUTCFullYear(),0,1));
+    const weekNo = Math.ceil(( ( (date - yearStart) / 86400000) + 1)/7);
+    return `${date.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
+  }
+
   async function loadWeeklyRaffleAdmin() {
-    const weekEl = document.getElementById('weekly-admin-week');
+    const selectEl = document.getElementById('weekly-admin-week-select');
     const countEl = document.getElementById('weekly-admin-count');
     const prizeInput = document.getElementById('weekly-prize-input');
     const rulesInput = document.getElementById('weekly-rules-input');
@@ -2856,14 +2866,24 @@
     const drawnAtEl = document.getElementById('weekly-drawn-at');
     const drawBtn = document.getElementById('weekly-draw-btn');
 
-    if (!weekEl || !countEl) return;
+    if (!selectEl || !countEl) return;
+
+    if (selectEl.innerHTML.includes('Cargando...') || selectEl.options.length <= 1) {
+      const curWeek = getClientYearWeek();
+      const nextWeek = getClientYearWeek(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+      selectEl.innerHTML = `
+        <option value="${curWeek}">Semana actual (${curWeek})</option>
+        <option value="${nextWeek}">Semana siguiente (${nextWeek})</option>
+      `;
+    }
+
+    const selectedWeek = selectEl.value;
 
     try {
-      const res = await fetch('/api/admin/weekly/status', { headers: authHeaders() });
+      const res = await fetch(`/api/admin/weekly/status?week=${selectedWeek}`, { headers: authHeaders() });
       if (!res.ok) throw new Error('Failed to fetch status');
       const data = await res.json();
 
-      weekEl.textContent = data.week || '—';
       countEl.textContent = data.totalParticipants || '0';
       
       if (prizeInput && document.activeElement !== prizeInput) {
@@ -2904,10 +2924,12 @@
   }
 
   async function saveWeeklyRaffleConfig() {
+    const selectEl = document.getElementById('weekly-admin-week-select');
     const prizeInput = document.getElementById('weekly-prize-input');
     const rulesInput = document.getElementById('weekly-rules-input');
-    if (!prizeInput) return;
+    if (!prizeInput || !selectEl) return;
 
+    const selectedWeek = selectEl.value;
     const prize = prizeInput.value.trim();
     const rules = rulesInput ? rulesInput.value.trim() : '';
     if (!prize) {
@@ -2922,7 +2944,7 @@
           ...authHeaders(),
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ prize, rules })
+        body: JSON.stringify({ prize, rules, week: selectedWeek })
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -2938,7 +2960,11 @@
   }
 
   async function drawWeeklyRaffleAdmin() {
-    if (!confirm('¿Seguro que quieres realizar el sorteo de La Chave Semanal ahora? Se elegirá un ganador al azar de entre todos los apuntados.')) {
+    const selectEl = document.getElementById('weekly-admin-week-select');
+    if (!selectEl) return;
+    const selectedWeek = selectEl.value;
+
+    if (!confirm(`¿Seguro que quieres realizar el sorteo de La Chave Semanal para la semana ${selectedWeek} ahora? Se elegirá un ganador al azar de entre todos los apuntados.`)) {
       return;
     }
 
@@ -2948,7 +2974,11 @@
     try {
       const res = await fetch('/api/admin/weekly/draw', {
         method: 'POST',
-        headers: authHeaders()
+        headers: {
+          ...authHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ week: selectedWeek })
       });
       const data = res.ok ? await res.json() : null;
       if (data && data.success) {

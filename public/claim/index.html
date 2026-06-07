@@ -4080,6 +4080,13 @@
     const btn = document.getElementById('weekly-claim-btn');
     if (!card || !prizeText || !btn) return;
 
+    // Ocultar de Jueves (4) a Sábado (6) para enfocarse en el checkin y la entrada en directo
+    const dayOfWeek = new Date().getDay();
+    if (dayOfWeek === 4 || dayOfWeek === 5 || dayOfWeek === 6) {
+      card.style.display = 'none';
+      return;
+    }
+
     try {
       const res = await fetch(`/api/raffle/weekly/status?wallet=${userWalletAddress}`);
       const data = await res.json();
