@@ -1769,6 +1769,27 @@
         </div>
       </div>
 
+      <!-- ② EL SORTEO SEMANAL ("LA CHAVE SEMANAL") -->
+      <div class="profile-progress-card" id="weekly-claim-card" style="padding:18px; margin-bottom:20px; border:1.5px solid rgba(196,151,58,0.22); background:linear-gradient(135deg,rgba(196,151,58,0.06),rgba(139,25,24,0.03)); display:none;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+          <div style="display:flex; align-items:center; gap:12px; flex:1; min-width:0;">
+            <span style="font-size:28px; flex-shrink:0;">🔑</span>
+            <div style="flex:1; min-width:0;">
+              <p style="font-size:10px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin:0 0 2px;">Chave Semanal (Sorteo)</p>
+              <p id="weekly-prize-text" style="font-size:13.5px; font-weight:700; color:var(--wine); margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Premio: Botella de Viño de la Casa</p>
+              <p id="weekly-rules-text" style="font-size:11px; color:var(--text-muted); margin:4px 0 0; line-height:1.4; display:block;"></p>
+            </div>
+          </div>
+          <button id="weekly-claim-btn" onclick="claimWeeklyTicket()" style="
+            padding:9px 15px; border-radius:50px; font-size:12.5px; font-weight:700; cursor:pointer;
+            border:1.5px solid var(--wine); background:var(--wine); color:#fff;
+            font-family:'Outfit',sans-serif; white-space:nowrap; transition:all 0.2s; outline:none; -webkit-tap-highlight-color:transparent;"
+            onmouseover="this.style.background='var(--wine-light)'; this.style.borderColor='var(--wine-light)';"
+            onmouseout="this.style.background='var(--wine)'; this.style.borderColor='var(--wine)';"
+            onmousedown="this.style.transform='scale(0.96)';">Trincar Boleto</button>
+        </div>
+      </div>
+
       <!-- ② PREMIOS (Unificado e Interactivo) -->
       <div id="raffle-section" style="margin-bottom:20px;">
         <!-- Banner de aceptación si ganas el sorteo (se muestra dinámicamente) -->
@@ -2592,6 +2613,7 @@
       showScreen('screen-profile');
       renderPrizes();
       loadAgenda();
+      loadWeeklyRaffle();
       checkPendingMnemonic();
 
       // Mostrar toast si viene de restauración por QR
@@ -2772,6 +2794,12 @@
                       background:${attending?'var(--wine)':'transparent'};
                       color:${attending?'#fff':'var(--text-muted)'};
                       font-family:'Outfit',sans-serif; white-space:nowrap;">${attending?'✓ Apuntado':'Me apunto'}</button>
+                    <button onclick="event.stopPropagation(); addToCalendar('${ev.title.replace(/'/g, "\\'")}', '${ev.event_date}', '${(ev.description || 'Furancho Sessions: Afterwork con vino y tapas.').replace(/'/g, "\\'").replace(/\n/g, " ")}')" style="
+                      padding:8px 14px; border-radius:50px; font-size:12px; font-weight:700; cursor:pointer;
+                      border:1.5px solid rgba(42,21,9,0.15); background:transparent;
+                      color:var(--text-muted); font-family:'Outfit',sans-serif; white-space:nowrap; display:inline-flex; align-items:center; gap:4px;">
+                      📅 Guardar
+                    </button>
                     ${myVip ? `
                       <span id="vip-status-${ev.id}" style="display:inline-flex; align-items:center; gap:5px; padding:7px 13px; border-radius:50px; font-size:12px; font-weight:700; font-family:'Outfit',sans-serif; white-space:nowrap;
                         background:${myVip.status==='confirmed'?'rgba(74,222,128,0.12)':myVip.status==='cancelled'?'rgba(248,113,113,0.1)':'rgba(196,151,58,0.1)'};
@@ -4042,6 +4070,135 @@
     const sheet = modal.firstElementChild || modal.querySelector('div');
     if (sheet) sheet.style.transform = 'translateY(100%)';
     setTimeout(() => { modal.style.display = 'none'; }, 280);
+  }
+
+  async function loadWeeklyRaffle() {
+    if (!userWalletAddress) return;
+    const card = document.getElementById('weekly-claim-card');
+    const prizeText = document.getElementById('weekly-prize-text');
+    const rulesText = document.getElementById('weekly-rules-text');
+    const btn = document.getElementById('weekly-claim-btn');
+    if (!card || !prizeText || !btn) return;
+
+    try {
+      const res = await fetch(`/api/raffle/weekly/status?wallet=${userWalletAddress}`);
+      const data = await res.json();
+      
+      card.style.display = 'block';
+      prizeText.innerHTML = `Premio: <strong style="color:var(--wine);">${data.prize}</strong>`;
+      if (rulesText) {
+        rulesText.textContent = data.rules || '';
+      }
+      
+      if (data.status === 'completed') {
+        btn.disabled = true;
+        btn.textContent = 'Finalizado';
+        btn.style.background = 'rgba(42,21,9,0.06)';
+        btn.style.borderColor = 'rgba(42,21,9,0.12)';
+        btn.style.color = 'var(--text-muted)';
+        
+        if (data.winnerWallet) {
+          const isMe = data.winnerWallet.toLowerCase() === userWalletAddress.toLowerCase();
+          prizeText.innerHTML = isMe 
+            ? `🏆 ¡Te ha tocado, ho! <strong>${data.prize}</strong>`
+            : `Sorteo cerrado. Ganador: <strong>${data.winnerWallet.slice(0,6)}...${data.winnerWallet.slice(-4)}</strong>`;
+        }
+      } else if (data.claimed) {
+        btn.disabled = true;
+        btn.textContent = '✓ Participando';
+        btn.style.background = 'transparent';
+        btn.style.borderColor = 'rgba(139,25,24,0.3)';
+        btn.style.color = 'var(--wine)';
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Trincar Boleto';
+        btn.style.background = 'var(--wine)';
+        btn.style.borderColor = 'var(--wine)';
+        btn.style.color = '#fff';
+      }
+    } catch (e) {
+      console.error('Error al cargar sorteo semanal:', e);
+    }
+  }
+
+  async function claimWeeklyTicket() {
+    const btn = document.getElementById('weekly-claim-btn');
+    if (!btn || btn.disabled || !userWalletAddress) return;
+    btn.disabled = true;
+    btn.textContent = 'Trincando...';
+
+    try {
+      const res = await fetch('/api/raffle/weekly/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: userWalletAddress })
+      });
+      
+      if (res.status === 409) {
+        alert('¡Al loro, ho! Ya estás apuntado para el sorteo de esta semana.');
+        loadWeeklyRaffle();
+        return;
+      }
+
+      const data = await res.json();
+      if (data.success) {
+        btn.textContent = '✓ ¡Apuntado!';
+        btn.style.background = 'transparent';
+        btn.style.borderColor = 'rgba(139,25,24,0.3)';
+        btn.style.color = 'var(--wine)';
+        
+        const card = document.getElementById('weekly-claim-card');
+        card.style.transform = 'scale(1.03)';
+        setTimeout(() => { card.style.transform = 'scale(1)'; }, 200);
+        
+        setTimeout(loadWeeklyRaffle, 1000);
+      } else {
+        alert('Error al trincar participación: ' + (data.error || 'Inténtalo de nuevo.'));
+        btn.disabled = false;
+        btn.textContent = 'Trincar Boleto';
+      }
+    } catch (e) {
+      alert('Error de red al participar.');
+      btn.disabled = false;
+      btn.textContent = 'Trincar Boleto';
+    }
+  }
+
+  function addToCalendar(title, eventDate, description) {
+    const cleanTitle = title.replace(/'/g, "\\'").replace(/"/g, '\\"');
+    const cleanDesc = description.replace(/\n/g, '\\n').replace(/'/g, "\\'").replace(/"/g, '\\"');
+    const [year, month, day] = eventDate.split('-');
+    
+    const start = `${year}${month}${day}T193000`;
+    const end = `${year}${month}${day}T233000`;
+    
+    const icsContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Furancho Sessions//Events//ES',
+      'CALSCALE:GREGORIAN',
+      'BEGIN:VEVENT',
+      `UID:furancho-${eventDate}@furancho.sessions`,
+      `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`,
+      `DTSTART;TZID=Europe/Madrid:${start}`,
+      `DTEND;TZID=Europe/Madrid:${end}`,
+      `SUMMARY:${cleanTitle}`,
+      `DESCRIPTION:${cleanDesc}\\n\\nAccede a tu pase en vivo: ${window.location.origin}/claim`,
+      'LOCATION:O Furancho (Afterwork)',
+      'SEQUENCE:0',
+      'STATUS:CONFIRMED',
+      'TRANSP:OPAQUE',
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n');
+
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `furancho-session-${eventDate}.ics`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   </script>

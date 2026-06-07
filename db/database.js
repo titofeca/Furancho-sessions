@@ -39,6 +39,36 @@ try {
   `);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_redemptions_wallet ON redemptions(wallet_address)`);
 } catch (_) {}
+
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS weekly_claims (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      wallet_address TEXT NOT NULL,
+      claimed_week TEXT NOT NULL,
+      claimed_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(wallet_address, claimed_week)
+    )
+  `);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_weekly_claims_week ON weekly_claims(claimed_week)`);
+} catch (_) {}
+
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS weekly_raffles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      claimed_week TEXT NOT NULL UNIQUE,
+      prize TEXT NOT NULL DEFAULT 'Botella de Viño de la Casa',
+      rules TEXT DEFAULT 'Trinca tu participación una vez por semana antes de que empiecen los eventos. ¡Se sorteará un regalo de la hostia!',
+      winner_wallet TEXT,
+      drawn_at TEXT,
+      status TEXT DEFAULT 'active'
+    )
+  `);
+} catch (_) {}
+try {
+  db.exec(`ALTER TABLE weekly_raffles ADD COLUMN rules TEXT DEFAULT 'Trinca tu participación una vez por semana antes de que empiecen los eventos. ¡Se sorteará un regalo de la hostia!'`);
+} catch (_) {}
 // Limpiar reservas VIP huérfanas (apuntan a eventos que ya no existen)
 try {
   db.exec(`DELETE FROM vip_reservations WHERE event_id NOT IN (SELECT id FROM events)`);
@@ -926,5 +956,77 @@ module.exports = {
   updateScheduledRaffle,
   deleteScheduledRaffle,
   linkScheduledRaffle,
-  getNextPendingMint
+  getNextPendingMint,
+  claimWeeklyRaffle,
+  getWeeklyRaffleStatus,
+  updateWeeklyPrize,
+  drawWeeklyRaffle
 };
+
+function claimWeeklyRaffle(walletAddress, weekStr) {
+  db.prepare(`
+    INSERT INTO weekly_claims (wallet_address, claimed_week)
+    VALUES (?, ?)
+  `).run(walletAddress, weekStr);
+}
+
+function getWeeklyRaffleStatus(walletAddress, weekStr) {
+  let raffle = db.prepare(`SELECT * FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
+  if (!raffle) {
+    db.prepare(`INSERT OR IGNORE INTO weekly_raffles (claimed_week) VALUES (?)`).run(weekStr);
+    raffle = db.prepare(`SELECT * FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
+  }
+  
+  const claim = db.prepare(`SELECT id FROM weekly_claims WHERE wallet_address = ? AND claimed_week = ?`).get(walletAddress, weekStr);
+  const totalParticipants = db.prepare(`SELECT COUNT(*) as count FROM weekly_claims WHERE claimed_week = ?`).get(weekStr)?.count || 0;
+
+  return {
+    claimed: !!claim,
+    prize: raffle ? raffle.prize : 'Botella de Viño de la Casa',
+    rules: raffle ? (raffle.rules || 'Trinca tu participación una vez por semana antes de que empiecen los eventos. ¡Se sorteará un regalo de la hostia!') : 'Trinca tu participación una vez por semana antes de que empiecen los eventos. ¡Se sorteará un regalo de la hostia!',
+    winnerWallet: raffle ? raffle.winner_wallet : null,
+    status: raffle ? raffle.status : 'active',
+    drawnAt: raffle ? raffle.drawn_at : null,
+    totalParticipants
+  };
+}
+
+function updateWeeklyPrize(weekStr, prize, rules) {
+  db.prepare(`INSERT OR IGNORE INTO weekly_raffles (claimed_week) VALUES (?)`).run(weekStr);
+  db.prepare(`
+    UPDATE weekly_raffles
+    SET prize = ?, rules = ?
+    WHERE claimed_week = ?
+  `).run(prize, rules, weekStr);
+}
+
+function drawWeeklyRaffle(weekStr) {
+  let raffle = db.prepare(`SELECT * FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
+  if (!raffle) {
+    db.prepare(`INSERT OR IGNORE INTO weekly_raffles (claimed_week) VALUES (?)`).run(weekStr);
+    raffle = db.prepare(`SELECT * FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
+  }
+
+  if (raffle && raffle.status === 'completed') {
+    throw new Error('El sorteo de esta semana ya ha sido realizado.');
+  }
+
+  const participants = db.prepare(`SELECT wallet_address FROM weekly_claims WHERE claimed_week = ?`).all(weekStr);
+  if (!participants.length) {
+    throw new Error('No hay participantes apuntados para esta semana.');
+  }
+
+  const randomIndex = Math.floor(Math.random() * participants.length);
+  const winnerWallet = participants[randomIndex].wallet_address;
+
+  db.prepare(`
+    UPDATE weekly_raffles
+    SET winner_wallet = ?, drawn_at = datetime('now'), status = 'completed'
+    WHERE claimed_week = ?
+  `).run(winnerWallet, weekStr);
+
+  return {
+    winnerWallet,
+    prize: raffle.prize
+  };
+}

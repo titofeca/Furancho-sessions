@@ -1597,6 +1597,45 @@
         </div>
       </div>
 
+      <!-- Sorteo Semanal (La Chave Semanal) -->
+      <div class="glass-card" style="margin-top:20px;">
+        <div class="card-header" style="margin-bottom:16px;">
+          <span class="card-title">🔑 La Chave Semanal (Sorteo Semanal)</span>
+          <button class="btn-download" onclick="loadWeeklyRaffleAdmin()" style="font-size:11px; padding:6px 12px;">↻ Actualizar</button>
+        </div>
+        
+        <div class="form-group" style="margin-bottom:12px;">
+          <label class="form-label" style="font-size:11px; font-weight:700; color:var(--gold); text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:6px;">🎁 Premio de la Semana</label>
+          <input type="text" class="input-field" id="weekly-prize-input" placeholder="Premio (ej: Botella de Viño de la Casa)" style="font-size:14px; margin-bottom:12px; width:100%; box-sizing:border-box;" />
+          
+          <label class="form-label" style="font-size:11px; font-weight:700; color:var(--gold); text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:6px;">📝 Operativa y Reglas</label>
+          <textarea class="input-field" id="weekly-rules-input" placeholder="Operativa del sorteo semanal..." style="font-size:13px; font-family:'Outfit',sans-serif; min-height:80px; resize:vertical; margin-bottom:14px; background:rgba(42,21,9,0.05); border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; color:var(--text); width:100%; box-sizing:border-box; padding:10px; outline:none;"></textarea>
+          
+          <button onclick="saveWeeklyRaffleConfig()" style="background:var(--wine); color:#fff; border:none; border-radius:12px; padding:12px 18px; font-size:13px; font-weight:700; cursor:pointer; width:100%; font-family:'Outfit',sans-serif;">💾 Guardar Premio y Operativa</button>
+        </div>
+
+        <div style="border-top:1px solid rgba(42,21,9,0.08); padding-top:14px; margin-top:14px;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:12.5px;">
+            <span style="color:var(--text-muted);">Semana actual:</span>
+            <strong id="weekly-admin-week" style="color:var(--text);">—</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-bottom:12px; font-size:12.5px;">
+            <span style="color:var(--text-muted);">Participantes apuntados:</span>
+            <strong id="weekly-admin-count" style="color:var(--text);">—</strong>
+          </div>
+          
+          <div id="weekly-winner-info" style="display:none; background:rgba(196,151,58,0.1); border:1.5px solid var(--gold); border-radius:12px; padding:12px; margin-bottom:14px;">
+            <p style="font-size:13px; color:var(--wine); font-weight:700; margin:0 0 4px; display:flex; align-items:center; gap:6px;">🏆 Ganador de esta semana:</p>
+            <p id="weekly-winner-address" style="font-family:'Outfit',monospace; font-size:12.5px; margin:6px 0 2px; word-break:break-all; color:var(--text); font-weight:700;"></p>
+            <p id="weekly-drawn-at" style="font-size:11px; color:var(--text-muted); margin:0;"></p>
+          </div>
+          
+          <button id="weekly-draw-btn" onclick="drawWeeklyRaffleAdmin()" style="background:var(--gold); color:#1c0e06; border:none; border-radius:12px; padding:12px; font-size:14px; font-weight:800; cursor:pointer; width:100%; display:flex; align-items:center; justify-content:center; gap:8px; font-family:'Outfit',sans-serif;">
+            🎲 Realizar Sorteo Semanal
+          </button>
+        </div>
+      </div>
+
       <!-- Historial de sorteos -->
       <div class="glass-card" style="margin-top:20px;">
         <div class="card-header" style="margin-bottom:16px;">
@@ -1830,7 +1869,7 @@
       loadVisits('__totales__');
       loadAnalyticsPage();
     }
-    if (pageId === 'raffles') { loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); loadScheduled(); }
+    if (pageId === 'raffles') { loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); loadScheduled(); loadWeeklyRaffleAdmin(); }
     if (pageId === 'scanner') { stopScanner(); document.getElementById('scanner-result').style.display='none'; document.getElementById('scanner-status').textContent=''; }
   }
 
@@ -2804,6 +2843,126 @@
       container.innerHTML = history.map(r => renderRow(r)).join('');
     } catch(e) {
       container.innerHTML = '<p style="font-size:12px; color:var(--text-muted); padding:12px 0;">Error cargando historial.</p>';
+    }
+  }
+
+  async function loadWeeklyRaffleAdmin() {
+    const weekEl = document.getElementById('weekly-admin-week');
+    const countEl = document.getElementById('weekly-admin-count');
+    const prizeInput = document.getElementById('weekly-prize-input');
+    const rulesInput = document.getElementById('weekly-rules-input');
+    const winnerInfo = document.getElementById('weekly-winner-info');
+    const winnerAddress = document.getElementById('weekly-winner-address');
+    const drawnAtEl = document.getElementById('weekly-drawn-at');
+    const drawBtn = document.getElementById('weekly-draw-btn');
+
+    if (!weekEl || !countEl) return;
+
+    try {
+      const res = await fetch('/api/admin/weekly/status', { headers: authHeaders() });
+      if (!res.ok) throw new Error('Failed to fetch status');
+      const data = await res.json();
+
+      weekEl.textContent = data.week || '—';
+      countEl.textContent = data.totalParticipants || '0';
+      
+      if (prizeInput && document.activeElement !== prizeInput) {
+        prizeInput.value = data.prize || '';
+      }
+      if (rulesInput && document.activeElement !== rulesInput) {
+        rulesInput.value = data.rules || '';
+      }
+
+      if (data.status === 'completed') {
+        if (winnerInfo) winnerInfo.style.display = 'block';
+        if (winnerAddress) winnerAddress.textContent = data.winnerWallet || '—';
+        if (drawnAtEl) {
+          const when = data.drawnAt ? new Date(data.drawnAt).toLocaleString('es-ES') : '—';
+          drawnAtEl.textContent = `Sorteado el: ${when}`;
+        }
+        if (drawBtn) {
+          drawBtn.disabled = true;
+          drawBtn.textContent = '🔒 Sorteo Semanal Realizado';
+          drawBtn.style.background = 'rgba(42,21,9,0.06)';
+          drawBtn.style.color = 'var(--text-muted)';
+          drawBtn.style.cursor = 'not-allowed';
+        }
+      } else {
+        if (winnerInfo) winnerInfo.style.display = 'none';
+        if (drawBtn) {
+          drawBtn.disabled = false;
+          drawBtn.textContent = '🎲 Realizar Sorteo Semanal';
+          drawBtn.style.background = 'var(--gold)';
+          drawBtn.style.color = '#1c0e06';
+          drawBtn.style.cursor = 'pointer';
+        }
+      }
+    } catch (e) {
+      console.error('Error al cargar status sorteo semanal:', e);
+      showToast('Error al cargar sorteo semanal', true);
+    }
+  }
+
+  async function saveWeeklyRaffleConfig() {
+    const prizeInput = document.getElementById('weekly-prize-input');
+    const rulesInput = document.getElementById('weekly-rules-input');
+    if (!prizeInput) return;
+
+    const prize = prizeInput.value.trim();
+    const rules = rulesInput ? rulesInput.value.trim() : '';
+    if (!prize) {
+      showToast('Introduce el nombre del premio', true);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/weekly/config', {
+        method: 'POST',
+        headers: {
+          ...authHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ prize, rules })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast('✅ Premio y operativa guardados');
+        loadWeeklyRaffleAdmin();
+      } else {
+        showToast(data.error || 'Error al guardar configuración', true);
+      }
+    } catch (e) {
+      console.error('Error al guardar config:', e);
+      showToast('Error al conectar con el servidor', true);
+    }
+  }
+
+  async function drawWeeklyRaffleAdmin() {
+    if (!confirm('¿Seguro que quieres realizar el sorteo de La Chave Semanal ahora? Se elegirá un ganador al azar de entre todos los apuntados.')) {
+      return;
+    }
+
+    const drawBtn = document.getElementById('weekly-draw-btn');
+    if (drawBtn) drawBtn.disabled = true;
+
+    try {
+      const res = await fetch('/api/admin/weekly/draw', {
+        method: 'POST',
+        headers: authHeaders()
+      });
+      const data = res.ok ? await res.json() : null;
+      if (data && data.success) {
+        showToast('🎉 ¡Sorteo Semanal realizado con éxito!');
+        loadWeeklyRaffleAdmin();
+      } else {
+        const err = data ? data.error : 'Error al realizar el sorteo';
+        showToast(err, true);
+        if (drawBtn) drawBtn.disabled = false;
+      }
+    } catch (e) {
+      console.error('Error en sorteo semanal:', e);
+      showToast('Error al conectar con el servidor', true);
+      if (drawBtn) drawBtn.disabled = false;
     }
   }
 
