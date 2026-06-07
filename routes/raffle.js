@@ -1,4 +1,5 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const {
   getEligibleRaffleParticipants, insertRaffle, acceptRaffle, rejectRaffle,
@@ -364,12 +365,33 @@ router.get('/weekly/status', (req, res) => {
   }
 });
 
+// Configuración de Rate Limiting para reclamos de Chave Semanal (Máximo 5 peticiones por minuto por IP para evitar spam)
+const claimLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minuto
+  max: 5,
+  message: { error: 'Demasiadas peticiones. Inténtalo de nuevo en un minuto, ho.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // POST /api/raffle/weekly/claim
-router.post('/weekly/claim', (req, res) => {
+router.post('/weekly/claim', claimLimiter, (req, res) => {
   const { walletAddress, week } = req.body;
   if (!walletAddress) return res.status(400).json({ error: 'Falta walletAddress' });
   const weekStr = week || getYearWeek();
   try {
+    const { db } = require('../db/database');
+    const furancheiroRow = db.prepare(`
+      SELECT 1 FROM mints WHERE LOWER(wallet_address) = LOWER(?)
+      UNION
+      SELECT 1 FROM sessions WHERE LOWER(wallet_address) = LOWER(?)
+      LIMIT 1
+    `).get(walletAddress.toLowerCase(), walletAddress.toLowerCase());
+
+    if (!furancheiroRow) {
+      return res.status(403).json({ error: 'Solo los furancheiros que hayan visitado el local o tengan un carnet VIP pueden participar en La Chave Semanal, ho.' });
+    }
+
     claimWeeklyRaffle(walletAddress, weekStr);
     res.json({ success: true, week: weekStr });
   } catch (e) {
