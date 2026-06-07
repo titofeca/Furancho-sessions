@@ -3678,6 +3678,23 @@
           const codeEl = document.getElementById('raffle-code');
           if (codeEl) codeEl.textContent = data.verificationCode || '—';
 
+          // Cambiar etiqueta para dejar claro de qué premio se trata
+          const codeLabelEl = document.querySelector('.raffle-code-label');
+          if (codeLabelEl) codeLabelEl.textContent = '🔑 Premio Chave do Furancho';
+
+          // Mostrar el premio debajo del código en el recuadro
+          const winnerBoxEl = document.querySelector('.raffle-winner-box');
+          if (winnerBoxEl) {
+            let prizeLine = winnerBoxEl.querySelector('#chave-prize-line');
+            if (!prizeLine) {
+              prizeLine = document.createElement('p');
+              prizeLine.id = 'chave-prize-line';
+              prizeLine.style.cssText = 'margin:6px 0 0; font-size:13px; font-weight:700; color:var(--gold); letter-spacing:0.5px;';
+              winnerBoxEl.appendChild(prizeLine);
+            }
+            prizeLine.textContent = data.prize;
+          }
+
           document.getElementById('raffle-particles').innerHTML = '';
           modal.style.display = 'flex';
           document.body.style.overflow = 'hidden';
@@ -4183,10 +4200,11 @@
             prizeText.innerHTML = `🏆 <strong>¡Te ha tocado, ho!</strong> ${data.prize}`;
             // Mostrar el código de verificación para que el ganador lo enseñe al staff
             if (rulesText) {
-              rulesText.innerHTML = `<div style="margin-top:10px; background:rgba(139,25,24,0.06); border:1.5px dashed rgba(139,25,24,0.25); border-radius:10px; padding:10px; text-align:center;">
-                <p style="font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); margin:0 0 4px;">🔑 Tu código — Premio Chave do Furancho</p>
-                <p style="font-family:monospace; font-size:22px; font-weight:900; color:var(--wine); margin:0; letter-spacing:3px;">${data.verificationCode || '—'}</p>
-                <p style="font-size:10px; color:var(--text-muted); margin:4px 0 0;">Muéstraselo al staff en el Furancho</p>
+              rulesText.innerHTML = `<div style="margin-top:10px; background:rgba(139,25,24,0.06); border:1.5px dashed rgba(139,25,24,0.25); border-radius:10px; padding:12px; text-align:center;">
+                <p style="font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); margin:0 0 4px;">🔑 Código — Premio Chave do Furancho</p>
+                <p style="font-family:monospace; font-size:22px; font-weight:900; color:var(--wine); margin:0 0 6px; letter-spacing:3px;">${data.verificationCode || '—'}</p>
+                <p style="font-size:12px; font-weight:700; color:var(--gold); margin:0 0 4px;">${data.prize}</p>
+                <p style="font-size:10px; color:var(--text-muted); margin:0;">Muéstraselo al staff en el Furancho</p>
               </div>`;
             }
           } else {
