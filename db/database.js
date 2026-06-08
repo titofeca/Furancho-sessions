@@ -586,7 +586,7 @@ function seedEvents() {
   dates.forEach(({ date, title, description }) => {
     db.prepare(`
       INSERT INTO events (event_date, title, description) VALUES (?, ?, ?)
-      ON CONFLICT(event_date) DO UPDATE SET title=excluded.title, description=excluded.description
+      ON CONFLICT(event_date) DO NOTHING
     `).run(date, title, description);
   });
 }
