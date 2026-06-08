@@ -1,8 +1,17 @@
 // Usa el SQLite nativo de Node.js (v22+) — sin dependencias externas ni compilación
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
+const fs = require('fs');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'furancho.db');
+
+// Asegurar que el directorio de la BD existe (necesario para volúmenes de Railway)
+const dbDir = path.dirname(DB_PATH);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+
+console.log(`[DB] Base de datos en: ${DB_PATH}`);
 const db = new DatabaseSync(DB_PATH);
 
 // Activar WAL mode, foreign keys y busy_timeout para tolerar bloqueos en rolling deploy
