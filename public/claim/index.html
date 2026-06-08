@@ -71,12 +71,27 @@
     }
 
     .header-logo-row {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
       width: 100%;
       max-width: 420px;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 12px 24px 10px;
+      background: rgba(242, 237, 227, 0.82);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1.5px solid transparent;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .header-logo-row.scrolled {
+      background: rgba(242, 237, 227, 0.94);
+      border-bottom: 1.5px solid rgba(139, 25, 24, 0.08);
+      box-shadow: 0 4px 20px rgba(139, 25, 24, 0.05);
+      padding: 8px 24px;
     }
 
     .header-logo-row img {
@@ -1472,7 +1487,7 @@
   <!-- ==================== PANTALLA 1: CLAIM ==================== -->
   <div class="screen" id="screen-claim">
     <div class="header">
-      <div class="header-logo-row" style="position: relative; width: 100%; max-width: 420px; display: flex; align-items: center; justify-content: center; padding: 12px 24px 10px;">
+      <div class="header-logo-row">
         <img src="/assets/logo.png" alt="Furancho Sessions Logo" style="height: 36px; border-radius: 6px;" />
         <button onclick="handleManualRefresh(this)" style="
           position: absolute; right: 24px; top: 50%; transform: translateY(-50%);
@@ -1731,7 +1746,7 @@
   <!-- ==================== PANTALLA 5: PERFIL CLIENTE ==================== -->
   <div class="screen" id="screen-profile">
     <div class="header">
-      <div class="header-logo-row" style="position: relative; width: 100%; max-width: 420px; display: flex; align-items: center; justify-content: center; padding: 12px 24px 10px;">
+      <div class="header-logo-row">
         <img src="/assets/logo.png" alt="Furancho Sessions Logo" style="height: 36px; border-radius: 6px;" />
         <button onclick="handleManualRefresh(this)" style="
           position: absolute; right: 24px; top: 50%; transform: translateY(-50%);
@@ -4508,6 +4523,18 @@
         }
       });
     }
+
+    // Manejador del scroll para fijar la cabecera con animación
+    window.addEventListener('scroll', () => {
+      const scrolled = window.scrollY > 10;
+      document.querySelectorAll('.header-logo-row').forEach(el => {
+        if (scrolled) {
+          el.classList.add('scrolled');
+        } else {
+          el.classList.remove('scrolled');
+        }
+      });
+    });
   });
 
   // Función de actualización manual (refresco en vivo de visitas, sesión, sorteos y agenda)
