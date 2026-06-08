@@ -113,7 +113,7 @@ router.post('/', mintLimiter, async (req, res) => {
   }
 
   try {
-    const { insertVisit, getVisitCount, checkRecentVisit, openSession, closeSession, db } = require('../db/database');
+    const { insertVisit, getVisitCount, checkRecentVisit, openSession, closeSession, clearStaleMint, db } = require('../db/database');
     
 
     // ==== CHECK COOLDOWN (Anti-Fraude) ====
@@ -175,17 +175,25 @@ router.post('/', mintLimiter, async (req, res) => {
       });
     }
 
-    // Insertar registro de mint en DB (estado: pending)
-    const mintId = insertMint({
-      email: sanitizedEmail,
-      level: targetLevel,
-      levelName,
-      walletAddress,
-      status: 'pending',
-      ipAddress: req.ip
-    });
+    // Limpiar cualquier mint bloqueado (pending/failed) antes de insertar de nuevo
+    clearStaleMint(walletAddress, targetLevel);
 
-    // Despertar la cola para procesar en segundo plano
+    if (targetLevel <= 2) {
+      // Nv1/Nv2 — off-chain: registro instantáneo sin blockchain
+      insertMint({ email: sanitizedEmail, level: targetLevel, levelName, walletAddress, status: 'success', ipAddress: req.ip });
+      return res.json({
+        success: true,
+        action: 'level_up',
+        visitCount,
+        levelName,
+        level: targetLevel,
+        walletAddress,
+        message: `¡Bienvenido al nivel ${levelName}!`
+      });
+    }
+
+    // Nv3/Nv4 — van a blockchain: insertar en cola
+    insertMint({ email: sanitizedEmail, level: targetLevel, levelName, walletAddress, status: 'pending', ipAddress: req.ip });
     notifyQueue();
 
     return res.json({

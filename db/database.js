@@ -416,16 +416,21 @@ function checkDuplicate(walletAddress, email, level) {
   let row;
   if (email) {
     row = db.prepare(`
-      SELECT id FROM mints 
-      WHERE (wallet_address = ? OR email = ?) AND level = ? AND status != 'failed'
+      SELECT id FROM mints
+      WHERE (wallet_address = ? OR email = ?) AND level = ? AND status = 'success'
     `).get(walletAddress, email.toLowerCase().trim(), level);
   } else {
     row = db.prepare(`
-      SELECT id FROM mints 
-      WHERE wallet_address = ? AND level = ? AND status != 'failed'
+      SELECT id FROM mints
+      WHERE wallet_address = ? AND level = ? AND status = 'success'
     `).get(walletAddress, level);
   }
   return !!row;
+}
+
+// Limpia mints bloqueados (pending/failed) para un wallet+level concreto — permite reintentar
+function clearStaleMint(walletAddress, level) {
+  db.prepare(`DELETE FROM mints WHERE wallet_address = ? AND level = ? AND status IN ('pending', 'failed')`).run(walletAddress, level);
 }
 
 
@@ -958,6 +963,7 @@ module.exports = {
   insertMessage,
   getMessages,
   checkDuplicate,
+  clearStaleMint,
   insertVisit,
   getVisitCount,
   getEligibleRaffleParticipants,

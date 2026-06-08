@@ -5,8 +5,8 @@ const POLYGON_RPC   = process.env.POLYGON_RPC_URL || 'https://polygon-rpc.com';
 const MINTER_KEY    = process.env.MINTER_PRIVATE_KEY;
 const CONTRACT_ADDR = process.env.NFT_CONTRACT_ADDRESS;
 
-// Token IDs en el contrato ERC-1155 (0-indexed, tal como los creas en Thirdweb)
-const TOKEN_IDS = { 1: 0, 2: 1, 3: 2, 4: 3 };
+// Token IDs en el contrato ERC-1155 (1-indexed: 1=Cautivo, 2=Cunqueiro, 3=Larpeiro, 4=Presidente)
+const TOKEN_IDS = { 1: 1, 2: 2, 3: 3, 4: 4 };
 
 // ABI mínimo del contrato FuranchoNFT
 const ABI = [
@@ -18,6 +18,12 @@ const DEMO_MODE = process.env.DEMO_MODE === 'true'
   || !MINTER_KEY
   || !CONTRACT_ADDR
   || MINTER_KEY === 'your_minter_private_key_here';
+
+if (DEMO_MODE && process.env.DEMO_MODE !== 'true') {
+  console.warn('[Polygon] ⚠️  DEMO_MODE activo por keys ausentes — MINTER_PRIVATE_KEY o NFT_CONTRACT_ADDRESS no configuradas. Los mints Nv3/Nv4 serán simulados hasta que las añadas en Railway.');
+} else if (!DEMO_MODE) {
+  console.log('[Polygon] ✅ Modo producción Polygon activo — los mints Nv3/Nv4 van a la blockchain real.');
+}
 
 async function mintNFT({ walletAddress, level, levelName }) {
   if (DEMO_MODE) {
