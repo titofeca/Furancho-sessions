@@ -37,6 +37,72 @@ app.get('/admin', (req, res) => res.set(NO_CACHE).sendFile(path.join(__dirname, 
 app.get('/claim', (req, res) => res.set(NO_CACHE).sendFile(path.join(__dirname, 'public', 'claim', 'index.html')));
 app.get('/entry', (req, res) => res.set(NO_CACHE).sendFile(path.join(__dirname, 'public', 'entry', 'index.html')));
 
+// Metadatos NFT para OpenSea / marketplaces ERC-1155
+// El contrato llama a uri(tokenId) → devuelve esta URL con el JSON de cada nivel
+const APP_URL = process.env.APP_URL || 'https://furancho.up.railway.app';
+const NFT_METADATA = {
+  1: {
+    name: 'O Cautivo',
+    description: 'El primer paso en el Furancho. Llevas una visita y ya sabes lo que es bueno. Bienvenido, neno.',
+    image: `${APP_URL}/assets/nft_nivel1_cautivo.jpg`,
+    external_url: APP_URL,
+    attributes: [
+      { trait_type: 'Nivel', value: '1' },
+      { trait_type: 'Título', value: 'O Cautivo' },
+      { trait_type: 'Visitas requeridas', value: '1' },
+      { trait_type: 'Edición', value: 'Furancho Sessions 2026' }
+    ]
+  },
+  2: {
+    name: 'O Cunqueiro',
+    description: 'Ya llevas dos visitas. Empiezas a conocer el sitio y el sitio empieza a conocerte a ti, ho.',
+    image: `${APP_URL}/assets/nft_nivel2_cunqueiro.jpg`,
+    external_url: APP_URL,
+    attributes: [
+      { trait_type: 'Nivel', value: '2' },
+      { trait_type: 'Título', value: 'O Cunqueiro' },
+      { trait_type: 'Visitas requeridas', value: '2' },
+      { trait_type: 'Edición', value: 'Furancho Sessions 2026' }
+    ]
+  },
+  3: {
+    name: 'O Larpeiro',
+    description: 'Cuatro visitas. Carallo, neno, esto ya no es casualidad. Eres un furancheiro de verdad.',
+    image: `${APP_URL}/assets/nft_nivel3_larpeiro.jpg`,
+    external_url: APP_URL,
+    attributes: [
+      { trait_type: 'Nivel', value: '3' },
+      { trait_type: 'Título', value: 'O Larpeiro' },
+      { trait_type: 'Visitas requeridas', value: '4' },
+      { trait_type: 'Blockchain', value: 'Polygon' },
+      { trait_type: 'Edición', value: 'Furancho Sessions 2026' }
+    ]
+  },
+  4: {
+    name: 'O Presidente do Furancho',
+    description: 'Doce visitas. Malo será que no te conozca ya todo el barrio. Leyenda viva del Furancho, plas.',
+    image: `${APP_URL}/assets/nft_nivel4_presidente.jpg`,
+    external_url: APP_URL,
+    attributes: [
+      { trait_type: 'Nivel', value: '4' },
+      { trait_type: 'Título', value: 'O Presidente do Furancho' },
+      { trait_type: 'Visitas requeridas', value: '12' },
+      { trait_type: 'Blockchain', value: 'Polygon' },
+      { trait_type: 'Edición', value: 'Furancho Sessions 2026' }
+    ]
+  }
+};
+
+// Acepta tanto ID decimal (1,2,3,4) como hex zero-padded que usan algunos marketplaces
+app.get('/nft-metadata/:id', (req, res) => {
+  const raw = req.params.id;
+  const tokenId = raw.length > 10 ? parseInt(raw, 16) : parseInt(raw, 10);
+  const meta = NFT_METADATA[tokenId];
+  if (!meta) return res.status(404).json({ error: 'Token no encontrado' });
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.json(meta);
+});
+
 // Archivos estáticos (assets y demás)
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 app.use(express.static(path.join(__dirname, 'public')));

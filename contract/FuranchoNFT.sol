@@ -5,14 +5,25 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract FuranchoNFT is ERC1155, Ownable {
-    // Token IDs: 0=Cautivo, 1=O Cunqueiro, 2=O Larpeiro, 3=O Presidente
+    // Token IDs: 1=O Cautivo, 2=O Cunqueiro, 3=O Larpeiro, 4=O Presidente
     string public name = "Furancho Sessions";
 
     // Wallet del servidor (minter) — puede ser distinta al owner
     address public minter;
 
+    // Pausa de emergencia
+    bool public paused = false;
+
+    // Evitar doble mint por nivel: wallet => tokenId => bool
+    mapping(address => mapping(uint256 => bool)) public hasClaimed;
+
     modifier onlyMinter() {
         require(msg.sender == minter || msg.sender == owner(), "No autorizado");
+        _;
+    }
+
+    modifier whenNotPaused() {
+        require(!paused, "Contrato pausado");
         _;
     }
 
@@ -24,7 +35,9 @@ contract FuranchoNFT is ERC1155, Ownable {
     }
 
     // El servidor llama a esta función para cada NFT
-    function mint(address to, uint256 tokenId, uint256 amount) external onlyMinter {
+    function mint(address to, uint256 tokenId, uint256 amount) external onlyMinter whenNotPaused {
+        require(!hasClaimed[to][tokenId], "Ya tiene este nivel");
+        hasClaimed[to][tokenId] = true;
         _mint(to, tokenId, amount, "");
     }
 
@@ -36,5 +49,14 @@ contract FuranchoNFT is ERC1155, Ownable {
     // Cambiar URI base (para actualizar metadatos)
     function setURI(string memory newURI) external onlyOwner {
         _setURI(newURI);
+    }
+
+    // Pausa de emergencia — detiene todos los mints
+    function pause() external onlyOwner {
+        paused = true;
+    }
+
+    function unpause() external onlyOwner {
+        paused = false;
     }
 }
