@@ -4,6 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Furancho Sessions — Panel Admin</title>
+  <link rel="manifest" href="/manifest-admin.json" />
+  <meta name="theme-color" content="#8B1918" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/assets/icon-192.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="/assets/icon-512.png">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <style>
@@ -1890,6 +1894,15 @@
 <div id="toast"></div>
 
 <script>
+  // Registro Service Worker para PWA Admin
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/service-worker.js')
+        .then(reg => console.log('Admin SW Registered'))
+        .catch(err => console.log('Admin SW Error:', err));
+    });
+  }
+
   let AUTH_TOKEN = null;
   let currentHolderFilter = 'all';
 
