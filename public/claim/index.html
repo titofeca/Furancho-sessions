@@ -1472,8 +1472,20 @@
   <!-- ==================== PANTALLA 1: CLAIM ==================== -->
   <div class="screen" id="screen-claim">
     <div class="header">
-      <div class="header-logo-row">
-        <img src="/assets/logo.png" alt="Furancho Sessions Logo" />
+      <div class="header-logo-row" style="position: relative; width: 100%; max-width: 420px; display: flex; align-items: center; justify-content: center; padding: 12px 24px 10px;">
+        <img src="/assets/logo.png" alt="Furancho Sessions Logo" style="height: 36px; border-radius: 6px;" />
+        <button onclick="handleManualRefresh(this)" style="
+          position: absolute; right: 24px; top: 50%; transform: translateY(-50%);
+          width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid rgba(42,21,9,0.12);
+          background: rgba(255,255,255,0.75); display: flex; align-items: center; justify-content: center;
+          cursor: pointer; outline: none; box-shadow: 0 2px 8px rgba(139,25,24,0.06); transition: all 0.2s ease;
+          -webkit-tap-highlight-color: transparent;"
+          title="Actualizar datos"
+          onmouseover="this.style.background='#fff'; this.style.borderColor='var(--wine)';"
+          onmouseout="this.style.background='rgba(255,255,255,0.75)'; this.style.borderColor='rgba(42,21,9,0.12)';"
+          onmousedown="this.style.transform='translateY(-50%) scale(0.9)';">
+          <span style="font-size: 16px; color: var(--wine); display: inline-block; font-weight: bold; line-height: 1; transition: transform 0.6s ease;">↻</span>
+        </button>
       </div>
       <div class="nft-image-container">
         <img id="nft-image" class="nft-image" src="/assets/nft_nivel1_cautivo.jpg" alt="NFT Furancho Sessions" />
@@ -4500,12 +4512,18 @@
 
   // Función de actualización manual (refresco en vivo de visitas, sesión, sorteos y agenda)
   async function handleManualRefresh(btn) {
-    if (!userWalletAddress) return;
-    
     const icon = btn.querySelector('span');
     if (icon) {
       icon.style.transition = 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
       icon.style.transform = 'rotate(360deg)';
+    }
+
+    if (!userWalletAddress) {
+      // Si no ha iniciado sesión, simplemente recargamos la página web para forzar actualización
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+      return;
     }
     
     try {
