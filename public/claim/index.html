@@ -4315,6 +4315,40 @@
     modal.style.display = 'flex';
     modal.offsetHeight;
     if (sheet) sheet.style.transform = 'translateY(0)';
+
+    // Auto-refresh: recargar datos de sorteos cada vez que el usuario abre el modal
+    // para que nadie se pierda un sorteo en vivo ni datos desactualizados
+    if (userWalletAddress) {
+      const stateEl = document.getElementById('prizes-state-content');
+      // Shimmer de carga ultraligero para indicar actualización
+      if (stateEl && !stateEl.querySelector('.prizes-refresh-indicator')) {
+        const indicator = document.createElement('div');
+        indicator.className = 'prizes-refresh-indicator';
+        indicator.style.cssText = 'text-align:center; padding:6px 0 2px; font-size:11px; color:var(--text-muted); opacity:0; transition:opacity 0.3s;';
+        indicator.innerHTML = '🔄 Actualizando sorteos...';
+        stateEl.parentNode.insertBefore(indicator, stateEl);
+        requestAnimationFrame(() => { indicator.style.opacity = '1'; });
+      }
+
+      // Refrescar datos en paralelo (ligero y no bloqueante)
+      Promise.all([
+        typeof renderPrizes === 'function' ? renderPrizes() : Promise.resolve(),
+        typeof loadWeeklyRaffle === 'function' ? loadWeeklyRaffle() : Promise.resolve()
+      ]).then(() => {
+        // Eliminar indicador de carga tras actualizar
+        const ind = document.querySelector('.prizes-refresh-indicator');
+        if (ind) {
+          ind.style.opacity = '0';
+          setTimeout(() => ind.remove(), 300);
+        }
+      }).catch(() => {
+        const ind = document.querySelector('.prizes-refresh-indicator');
+        if (ind) {
+          ind.innerHTML = '⚠️ Error al actualizar';
+          setTimeout(() => { ind.style.opacity = '0'; setTimeout(() => ind.remove(), 300); }, 1500);
+        }
+      });
+    }
   }
 
   function closePrizesModal() {
@@ -4524,16 +4558,35 @@
       });
     }
 
-    // Manejador del scroll para fijar la cabecera con animación
+    // Manejador del scroll para fijar la cabecera con animación (passive para mejor rendimiento en móvil)
+    let _lastScrollState = false;
     window.addEventListener('scroll', () => {
       const scrolled = window.scrollY > 10;
-      document.querySelectorAll('.header-logo-row').forEach(el => {
-        if (scrolled) {
-          el.classList.add('scrolled');
-        } else {
-          el.classList.remove('scrolled');
+      if (scrolled !== _lastScrollState) {
+        _lastScrollState = scrolled;
+        document.querySelectorAll('.header-logo-row').forEach(el => {
+          el.classList.toggle('scrolled', scrolled);
+        });
+      }
+    }, { passive: true });
+
+    // Auto-refresh cuando el usuario vuelve a la app (desbloquea el móvil, cambia de pestaña, etc.)
+    // Esto garantiza que los sorteos estén siempre actualizados sin que el cliente tenga que hacer nada
+    let _lastVisibilityRefresh = 0;
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && userWalletAddress) {
+        const now = Date.now();
+        // Debounce: solo refrescar si han pasado al menos 30 segundos desde el último refresh
+        if (now - _lastVisibilityRefresh > 30000) {
+          _lastVisibilityRefresh = now;
+          // Refrescar silenciosamente en segundo plano (sin toast ni indicadores)
+          Promise.all([
+            typeof loadWeeklyRaffle === 'function' ? loadWeeklyRaffle() : Promise.resolve(),
+            typeof renderPrizes === 'function' ? renderPrizes() : Promise.resolve(),
+            typeof loadAgenda === 'function' ? loadAgenda() : Promise.resolve()
+          ]).catch(() => {}); // Silencioso - no molestar al usuario con errores de red
         }
-      });
+      }
     });
   });
 
