@@ -1241,8 +1241,14 @@
     }
     
     @keyframes button-glow {
-      0%, 100% { border-color: rgba(196, 151, 58, 0.15); box-shadow: inset 0 0 4px rgba(196, 151, 58, 0.05); }
-      50% { border-color: rgba(196, 151, 58, 0.45); box-shadow: inset 0 0 10px rgba(196, 151, 58, 0.15); }
+      0%, 100% { 
+        border-color: rgba(139, 25, 24, 0.25); 
+        box-shadow: 0 4px 14px rgba(139, 25, 24, 0.04), inset 0 0 4px rgba(139, 25, 24, 0.05); 
+      }
+      50% { 
+        border-color: var(--gold); 
+        box-shadow: 0 6px 20px rgba(196, 151, 58, 0.35), inset 0 0 10px rgba(196, 151, 58, 0.15); 
+      }
     }
 
     /* ========== RAFFLE MEJORADA ========== */
@@ -1342,7 +1348,13 @@
     body.nivel-2 .gdpr-label { color: rgba(28,43,53,0.5); }
     /* ========== ESTILOS DE LA GUÍA VIP ========== */
     .guide-card {
-      transition: all 0.25s ease-in-out;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+    }
+    .guide-card:hover {
+      border-color: rgba(139, 25, 24, 0.35) !important;
+      box-shadow: 0 6px 18px rgba(139, 25, 24, 0.08);
+      transform: translateY(-1px);
     }
     .guide-card-arrow {
       font-size: 11px;
@@ -1707,8 +1719,20 @@
   <!-- ==================== PANTALLA 5: PERFIL CLIENTE ==================== -->
   <div class="screen" id="screen-profile">
     <div class="header">
-      <div class="header-logo-row">
-        <img src="/assets/logo.png" alt="Furancho Sessions Logo" />
+      <div class="header-logo-row" style="position: relative; width: 100%; max-width: 420px; display: flex; align-items: center; justify-content: center; padding: 12px 24px 10px;">
+        <img src="/assets/logo.png" alt="Furancho Sessions Logo" style="height: 36px; border-radius: 6px;" />
+        <button onclick="handleManualRefresh(this)" style="
+          position: absolute; right: 24px; top: 50%; transform: translateY(-50%);
+          width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid rgba(42,21,9,0.12);
+          background: rgba(255,255,255,0.75); display: flex; align-items: center; justify-content: center;
+          cursor: pointer; outline: none; box-shadow: 0 2px 8px rgba(139,25,24,0.06); transition: all 0.2s ease;
+          -webkit-tap-highlight-color: transparent;"
+          title="Actualizar datos"
+          onmouseover="this.style.background='#fff'; this.style.borderColor='var(--wine)';"
+          onmouseout="this.style.background='rgba(255,255,255,0.75)'; this.style.borderColor='rgba(42,21,9,0.12)';"
+          onmousedown="this.style.transform='translateY(-50%) scale(0.9)';">
+          <span style="font-size: 16px; color: var(--wine); display: inline-block; font-weight: bold; line-height: 1; transition: transform 0.6s ease;">↻</span>
+        </button>
       </div>
       <div class="nft-image-container">
         <img id="profile-nft-image" class="nft-image" src="/assets/nft_nivel1_cautivo.jpg" alt="NFT" />
@@ -1908,13 +1932,13 @@
           <p style="font-size:11px; color:var(--text-muted); margin-top:8px;">Enseña este código al staff para que te den lo tuyo.</p>
         </div>
 
-        <!-- Botón interactivo de la Tómbola -->
+        <!-- Botón interactivo de Sorteos -->
         <button onclick="openPrizesModal()" class="raffle-menu-btn">
           <div style="display:flex; align-items:center; gap:12px; flex:1; min-width:0;">
             <span class="raffle-icon" style="font-size:30px; flex-shrink:0; transition: transform 0.25s;">🎰</span>
             <div style="flex:1; min-width:0;">
-              <h3 style="font-family:'Playfair Display',serif; font-size:16px; font-weight:900; color:var(--wine); margin:0 0 3px 0;">Sorteos do Furancho (O Bombo)</h3>
-              <p id="raffle-status-text" style="font-size:12px; color:var(--text-muted); margin:0; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">El bombo quiere sonare...</p>
+              <h3 style="font-family:'Playfair Display',serif; font-size:16px; font-weight:900; color:var(--wine); margin:0 0 3px 0;">Sorteos do Furancho</h3>
+              <p id="raffle-status-text" style="font-size:12px; color:var(--text-muted); margin:0; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">👉 ¡Toca aquí para ver los sorteos y tus premios, ho! 👈</p>
             </div>
           </div>
           <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
@@ -1950,7 +1974,7 @@
             <p style="font-size:13.5px; font-weight:700; color:var(--wine); text-transform:uppercase; letter-spacing:1px; margin:0; font-family:'Outfit',sans-serif;">Guía del Furancheiro VIP</p>
           </div>
           <span class="guide-card-arrow">
-            <span class="arrow-icon" style="transition: transform 0.2s; display: inline-block;">▼</span> <span style="font-family:'Outfit',sans-serif; font-size:11px; font-weight:700;">Preguntas</span>
+            <span class="arrow-icon" style="transition: transform 0.2s; display: inline-block;">▼</span> <span id="guide-toggle-text" style="font-family:'Outfit',sans-serif; font-size:11px; font-weight:700;">Toca para abrir</span>
           </span>
         </summary>
         <div style="margin-top:14px; border-top: 1px dashed rgba(139,25,24,0.15); padding-top:14px;">
@@ -1977,7 +2001,7 @@
                 <span class="guide-arrow">▼</span>
               </summary>
               <p class="guide-text">
-                ¡Y tanto que molan, ho! Sorteamos desde tazas de viño de la casa y raciones de empanada de las buenas hasta botellas para llevar y ascensos directos para fardar con los amigos. Y además, alguna que otra sorpresa de esas que no te podemos desvelar por aquí... ¡tendrás que venir al local a descubrirlo, neno! 🎁
+                ¡Y tanto que molan, ho! Sorteamos desde tazas de viño de la casa y raciones abundantes de empanada casera, hasta botellas enteras para llevar y ascensos directos de rango VIP para fardar con los amigos en la barra. Pero ojo, que eso no es todo: el patrón anda tramando sorpresas secretas que no podemos escribir aquí para que no se entere la competencia (¡delicatesen gallegas, pases exclusivos y alguna que otra carallada que te dejará de piedra!). Tendrás que venir al local a descubrirlo, neno... 🤫🎁
               </p>
             </details>
   
@@ -4440,6 +4464,58 @@
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  }
+
+  // Manejador del toggle de la guía para cambiar el texto del botón
+  document.addEventListener('DOMContentLoaded', () => {
+    const guideCard = document.querySelector('.guide-card');
+    if (guideCard) {
+      guideCard.addEventListener('toggle', (e) => {
+        const textEl = document.getElementById('guide-toggle-text');
+        if (textEl) {
+          textEl.textContent = e.target.open ? 'Toca para cerrar' : 'Toca para abrir';
+        }
+      });
+    }
+  });
+
+  // Función de actualización manual (refresco en vivo de visitas, sesión, sorteos y agenda)
+  async function handleManualRefresh(btn) {
+    if (!userWalletAddress) return;
+    
+    const icon = btn.querySelector('span');
+    if (icon) {
+      icon.style.transition = 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+      icon.style.transform = 'rotate(360deg)';
+    }
+    
+    try {
+      // 1. Refrescar historial, visitas, niveles y estado de sesión
+      await checkUserHistoryAndAdjustLevel();
+      
+      // 2. Refrescar sorteo semanal
+      await loadWeeklyRaffle();
+      
+      // 3. Refrescar agenda de eventos
+      await loadAgenda();
+      
+      // 4. Refrescar premios
+      if (typeof renderPrizes === 'function') {
+        await renderPrizes();
+      }
+      
+      showToast('🔄 Datos actualizados en vivo, rapaz.');
+    } catch (e) {
+      console.error('Error al actualizar datos:', e);
+      showToast('❌ Algo falló al actualizar. Revisa tu conexión, ho.');
+    } finally {
+      setTimeout(() => {
+        if (icon) {
+          icon.style.transition = 'none';
+          icon.style.transform = 'rotate(0deg)';
+        }
+      }, 600);
+    }
   }
 
   </script>

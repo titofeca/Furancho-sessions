@@ -1630,6 +1630,10 @@
               <button type="button" onclick="applyWeeklyTemplate('tapa')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">🍳 Ración Especial</button>
               <button type="button" onclick="applyWeeklyTemplate('cesta')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">🧺 Lote Furancheiro</button>
               <button type="button" onclick="applyWeeklyTemplate('merch')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">👕 Camiseta Oficial</button>
+              <button type="button" onclick="applyWeeklyTemplate('licor_cafe')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">☕ Licor Café</button>
+              <button type="button" onclick="applyWeeklyTemplate('empanada')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">🥧 Empanada Enteira</button>
+              <button type="button" onclick="applyWeeklyTemplate('cena')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">💑 Xantar para Dous</button>
+              <button type="button" onclick="applyWeeklyTemplate('sorpresa')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">🎁 Sorpresa do Patrón</button>
             </div>
           </div>
           
@@ -3416,6 +3420,18 @@
     } else if (type === 'merch') {
       prizeInput.value = 'Camiseta Oficial Furancho Sessions';
       rulesInput.value = '¡Viste con estilo furancheiro! Llévate la camiseta oficial de Furancho Sessions de edición limitada con diseño retro de los 80. ¡Serás el más pintón del barrio!';
+    } else if (type === 'licor_cafe') {
+      prizeInput.value = 'Botella de Licor Café Casero';
+      rulesInput.value = '¡El elixir do furancheiro, ho! Una botella de licor café artesanal de receta secreta para espabilar el alma. Ideal para tomar bien frío después de un buen xantar. ¡Pura retranca líquida!';
+    } else if (type === 'empanada') {
+      prizeInput.value = 'Empanada Gallega Entera';
+      rulesInput.value = '¡Para compartir con la pandilla! Una empanada casera entera (de atún, carne o bacalao) hecha con la masa fina clásica gallega en horno de piedra. ¡La reina de cualquier esmorga, ho!';
+    } else if (type === 'cena') {
+      prizeInput.value = 'Cena para Dos Furancheiros';
+      rulesInput.value = '¡Xantar completo para dos! Incluye una jarra de viño cosechero, dos raciones copiosas a elegir y postre de la casa. Para que presumas de invitación de la hostia con quien tú quieras.';
+    } else if (type === 'sorpresa') {
+      prizeInput.value = 'La Caja Sorpresa do Patrón';
+      rulesInput.value = '¡Sorpresa sorpresa, ho! Una caja de madera misteriosa preparada a mano por el patrón del furancho con productos secretos que no te podemos desvelar... ¡Atrévete a descubrir lo que hay dentro!';
     }
   }
 
