@@ -1,7 +1,8 @@
-const CACHE_NAME = 'furancho-vip-v25';
+const CACHE_NAME = 'furancho-vip-v27';
 const ASSETS_TO_CACHE = [
   '/claim',
   '/entry',
+  '/admin',
   '/assets/logo.png',
   '/assets/icon-192.png',
   '/assets/icon-512.png',
@@ -11,7 +12,8 @@ const ASSETS_TO_CACHE = [
   '/assets/nft_nivel2_cunqueiro.jpg',
   '/assets/nft_nivel3_larpeiro.jpg',
   '/assets/nft_nivel4_presidente.jpg',
-  '/manifest.json'
+  '/manifest.json',
+  '/manifest-admin.json'
 ];
 
 self.addEventListener('install', (event) => {

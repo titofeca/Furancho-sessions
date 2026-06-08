@@ -430,7 +430,23 @@ function checkDuplicate(walletAddress, email, level) {
 
 // Limpia mints bloqueados (pending/failed) para un wallet+level concreto — permite reintentar
 function clearStaleMint(walletAddress, level) {
-  db.prepare(`DELETE FROM mints WHERE wallet_address = ? AND level = ? AND status IN ('pending', 'failed')`).run(walletAddress, level);
+  db.prepare(`DELETE FROM mints WHERE wallet_address = ? AND level = ? AND status IN ('pending', 'failed', 'pending_approval')`).run(walletAddress, level);
+}
+
+function getPendingApprovalMints() {
+  return db.prepare(`
+    SELECT id, wallet_address, level, level_name, minted_at, ip_address
+    FROM mints WHERE status = 'pending_approval'
+    ORDER BY minted_at ASC
+  `).all();
+}
+
+function approveMint(id) {
+  db.prepare(`UPDATE mints SET status = 'pending' WHERE id = ? AND status = 'pending_approval'`).run(id);
+}
+
+function rejectMint(id) {
+  db.prepare(`UPDATE mints SET status = 'rejected_admin' WHERE id = ? AND status = 'pending_approval'`).run(id);
 }
 
 
@@ -964,6 +980,9 @@ module.exports = {
   getMessages,
   checkDuplicate,
   clearStaleMint,
+  getPendingApprovalMints,
+  approveMint,
+  rejectMint,
   insertVisit,
   getVisitCount,
   getEligibleRaffleParticipants,

@@ -1865,6 +1865,13 @@
         <!-- Hint siguiente nivel -->
         <p id="profile-progress-hint" style="font-size:12px; color:var(--text-muted); margin:0 0 16px; line-height:1.5;"></p>
 
+        <!-- Banner NFT en preparación (pending_approval) -->
+        <div id="pending-approval-banner" style="display:none; background:linear-gradient(135deg,#f59e0b22,#a855f722); border:1px solid #f59e0b66; border-radius:14px; padding:14px 16px; margin-bottom:16px; text-align:center;">
+          <div style="font-size:20px; margin-bottom:6px;">🏅</div>
+          <div style="font-size:14px; font-weight:700; color:#92400e; margin-bottom:4px;">¡Carallo, neno, lo conseguiste!</div>
+          <div style="font-size:12px; color:#78350f; line-height:1.5;">Tu Tarjeta <strong id="pending-approval-level-name"></strong> está siendo preparada en la blockchain. Malo será que tarde mucho, ho.</div>
+        </div>
+
         <!-- Journey: línea con 4 nodos -->
         <div style="position:relative; display:flex; align-items:flex-start; justify-content:space-between;">
           <div style="position:absolute; top:18px; left:18px; right:18px; height:3px; background:rgba(42,21,9,0.08); border-radius:100px; z-index:0;"></div>
@@ -2495,7 +2502,7 @@
             userVisitCount = refreshed.visitCount || userVisitCount;
             userClaimedLevels = refreshed.levels || userClaimedLevels;
           }
-          showProfileScreen(userVisitCount, userClaimedLevels);
+          showProfileScreen(userVisitCount, userClaimedLevels, data.pendingApproval || null);
           return;
         }
 
@@ -2674,7 +2681,7 @@
       return Math.max(lvlByVisits, lvlByClaimed);
     }
 
-    function showProfileScreen(visitCount, claimedLevels) {
+    function showProfileScreen(visitCount, claimedLevels, pendingApproval) {
       try {
       const lvl = getDisplayLevel(visitCount, claimedLevels);
       const levelName = LEVEL_NAMES[lvl] || 'CAUTIVO';
@@ -2700,6 +2707,18 @@
           hint.textContent = `Te faltan ${12 - visitCount} visitas para coronarte como O Presidente, ho!`;
         } else {
           hint.textContent = `Te faltan ${4 - visitCount} visitas para trincar tu primer pase de coleccionista`;
+        }
+      }
+
+      // Banner NFT en preparación (pending_approval)
+      const pendingBanner = document.getElementById('pending-approval-banner');
+      if (pendingBanner) {
+        if (pendingApproval && pendingApproval.level_name) {
+          pendingBanner.style.display = 'block';
+          const nameEl = document.getElementById('pending-approval-level-name');
+          if (nameEl) nameEl.textContent = pendingApproval.level_name;
+        } else {
+          pendingBanner.style.display = 'none';
         }
       }
 

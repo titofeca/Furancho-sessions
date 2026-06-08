@@ -13,8 +13,8 @@ const mintLimiter = rateLimit({
 });
 
 const { Wallet } = require('ethers');
-const { mintNFT, DEMO_MODE, notifyQueue } = require('../services/polygon');
 const { insertMint, updateMintStatus, checkDuplicate } = require('../db/database');
+const { sendNftApprovalEmail } = require('../services/notifications');
 
 const LEVEL_NAMES = {
   1: 'Cautivo',
@@ -192,18 +192,20 @@ router.post('/', mintLimiter, async (req, res) => {
       });
     }
 
-    // Nv3/Nv4 — van a blockchain: insertar en cola
-    insertMint({ email: sanitizedEmail, level: targetLevel, levelName, walletAddress, status: 'pending', ipAddress: req.ip });
-    notifyQueue();
+    // Nv3/Nv4 — requieren aprobación del admin antes de ir a blockchain
+    const mintId = insertMint({ email: sanitizedEmail, level: targetLevel, levelName, walletAddress, status: 'pending_approval', ipAddress: req.ip });
+
+    const adminUrl = `${process.env.APP_URL || 'https://furancho.up.railway.app'}/admin`;
+    sendNftApprovalEmail({ mintId, walletAddress, level: targetLevel, levelName, visitCount, adminUrl }).catch(() => {});
 
     return res.json({
       success: true,
-      action: 'mint_queued',
+      action: 'pending_approval',
       visitCount,
       levelName,
       level: targetLevel,
       walletAddress,
-      message: `¡Tu Pase ${levelName} está en camino!`
+      message: `¡Lo conseguiste, neno! Tu Tarjeta ${levelName} está siendo preparada. En breve es tuya.`
     });
 
   } catch (error) {
@@ -235,7 +237,8 @@ router.get('/history', (req, res) => {
     const levels = getClaimedLevels(wallet);
     const visitCount = getVisitCount(wallet);
     const activeSession = db.prepare(`SELECT id FROM sessions WHERE wallet_address = ? AND exit_time IS NULL LIMIT 1`).get(wallet);
-    res.json({ levels, visitCount, hasActiveSession: !!activeSession });
+    const pendingApproval = db.prepare(`SELECT level, level_name FROM mints WHERE wallet_address = ? AND status = 'pending_approval' ORDER BY level DESC LIMIT 1`).get(wallet);
+    res.json({ levels, visitCount, hasActiveSession: !!activeSession, pendingApproval: pendingApproval || null });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

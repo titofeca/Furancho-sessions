@@ -1298,6 +1298,18 @@
             <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:16px;">Cargando...</div>
           </div>
         </div>
+
+        <!-- NFTs pendientes de aprobación -->
+        <div class="glass-card" id="pending-mints-card">
+          <div class="card-header">
+            <span class="card-title">🏅 NFTs pendientes de aprobar</span>
+            <span id="pending-mints-badge" style="display:none; background:#f59e0b; color:#000; font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; margin-left:8px;"></span>
+          </div>
+          <p style="font-size:13px; color:var(--text-muted); margin:0 0 14px;">Clientes que han alcanzado Nv3 o Nv4. Aprueba el mint para que reciban su NFT real en Polygon.</p>
+          <div id="pending-mints-list" style="display:flex; flex-direction:column; gap:8px;">
+            <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:16px;">Cargando...</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1948,6 +1960,7 @@
       document.getElementById('main-app').style.display = 'flex';
       loadStats();
       loadHolders('all');
+      loadPendingMints();
       loadMessages();
       loadPeakHours();
       loadVipBadge();
@@ -2223,6 +2236,59 @@
       if (chev) chev.style.transform = 'rotate(180deg)';
     }
     loadHolders(level);
+  }
+
+  // ==================== PENDING MINTS ====================
+  async function loadPendingMints() {
+    const container = document.getElementById('pending-mints-list');
+    const badge = document.getElementById('pending-mints-badge');
+    try {
+      const res = await fetch('/api/admin/pending-mints', { headers: authHeaders() });
+      const mints = await res.json();
+      if (!mints.length) {
+        badge.style.display = 'none';
+        container.innerHTML = `<div style="text-align:center; color:var(--text-muted); font-size:13px; padding:16px;">Sin NFTs pendientes de aprobar, neno 🍷</div>`;
+        return;
+      }
+      badge.textContent = mints.length;
+      badge.style.display = 'inline-block';
+      const levelColors = { 3: '#f59e0b', 4: '#a855f7' };
+      container.innerHTML = mints.map(m => {
+        const col = levelColors[m.level] || '#888';
+        return `<div style="background:var(--bg); border:1px solid ${col}44; border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <span style="background:${col}22; color:${col}; border:1px solid ${col}44; border-radius:100px; padding:3px 10px; font-size:10px; font-weight:700; white-space:nowrap;">Nv${m.level} ${m.level_name}</span>
+          <span style="font-family:monospace; font-size:11px; color:var(--text-muted); flex:1;">${m.wallet_masked}</span>
+          <span style="font-size:11px; color:var(--text-muted);">${m.visit_count} visitas</span>
+          <span style="font-size:10px; color:var(--text-muted);">${m.minted_at ? m.minted_at.slice(0, 16) : '—'}</span>
+          <div style="display:flex; gap:6px; flex-shrink:0;">
+            <button onclick="approvePendingMint(${m.id})" style="background:#22c55e; color:#fff; border:none; border-radius:8px; padding:6px 14px; font-size:12px; font-weight:600; cursor:pointer;">✅ Aprobar</button>
+            <button onclick="rejectPendingMint(${m.id})" style="background:#ef4444; color:#fff; border:none; border-radius:8px; padding:6px 14px; font-size:12px; font-weight:600; cursor:pointer;">❌ Rechazar</button>
+          </div>
+        </div>`;
+      }).join('');
+    } catch (e) {
+      container.innerHTML = `<div style="text-align:center; color:#ef4444; font-size:13px; padding:16px;">Error cargando pendientes</div>`;
+    }
+  }
+
+  async function approvePendingMint(id) {
+    if (!confirm('¿Aprobar este NFT? Se minteará en Polygon.')) return;
+    try {
+      const res = await fetch(`/api/admin/mints/${id}/approve`, { method: 'POST', headers: authHeaders() });
+      const data = await res.json();
+      alert(data.message || 'Aprobado');
+      loadPendingMints();
+    } catch (e) { alert('Error al aprobar'); }
+  }
+
+  async function rejectPendingMint(id) {
+    if (!confirm('¿Rechazar este mint? El cliente NO recibirá el NFT.')) return;
+    try {
+      const res = await fetch(`/api/admin/mints/${id}/reject`, { method: 'POST', headers: authHeaders() });
+      const data = await res.json();
+      alert(data.message || 'Rechazado');
+      loadPendingMints();
+    } catch (e) { alert('Error al rechazar'); }
   }
 
   // ==================== PEAK HOURS ====================

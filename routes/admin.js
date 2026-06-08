@@ -13,7 +13,11 @@ const {
   getReactionsForMessages,
   ALLOWED_REACTIONS,
   getEventSessions,
-  getSessionDates
+  getSessionDates,
+  getPendingApprovalMints,
+  approveMint,
+  rejectMint,
+  getVisitCount
 } = require('../db/database');
 const { DEMO_MODE } = require('../services/polygon');
 const { sendPushToAll, sendPushToWallet } = require('../services/push');
@@ -697,6 +701,44 @@ router.get('/inspect-wallet/:address', requireAuth, (req, res) => {
       activeSessionStart: activeSession ? activeSession.entry_time : null,
       tapasByDay
     });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/pending-mints — lista de NFTs esperando aprobación
+router.get('/pending-mints', requireAuth, (_req, res) => {
+  try {
+    const mints = getPendingApprovalMints().map(m => ({
+      ...m,
+      wallet_masked: `${m.wallet_address.slice(0, 6)}...${m.wallet_address.slice(-4)}`,
+      visit_count: getVisitCount(m.wallet_address)
+    }));
+    res.json(mints);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/mints/:id/approve — aprueba el mint y lo manda a la cola blockchain
+router.post('/mints/:id/approve', requireAuth, (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    approveMint(id);
+    const { notifyQueue } = require('../services/polygon');
+    notifyQueue();
+    res.json({ success: true, message: '¡Aprobado! El NFT entrará en la cola de Polygon ahora mismo.' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/mints/:id/reject — rechaza el mint (no se mintea nada)
+router.post('/mints/:id/reject', requireAuth, (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    rejectMint(id);
+    res.json({ success: true, message: 'Mint rechazado correctamente.' });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
