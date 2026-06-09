@@ -232,6 +232,9 @@ scheduleWeeklyRaffle();
 // ─── AUTO-LANZAMIENTO DE SORTEOS PROGRAMADOS ─────────────────────────────────
 // Cada minuto comprueba si hay sorteos con hora = hora actual en Madrid que aún están pendientes.
 // Si los encuentra, los lanza automáticamente igual que si el admin pulsara "Lanzar".
+// IDs de sorteos a los que ya se les mandó el aviso de 15min (reset en cada arranque del server)
+const _notifiedRaffleIds = new Set();
+
 function scheduleAutoRaffles() {
   setInterval(() => {
     const now = new Date();
@@ -239,8 +242,33 @@ function scheduleAutoRaffles() {
     const currentTime = `${String(madridTime.getHours()).padStart(2,'0')}:${String(madridTime.getMinutes()).padStart(2,'0')}`;
     const currentDate = `${madridTime.getFullYear()}-${String(madridTime.getMonth()+1).padStart(2,'0')}-${String(madridTime.getDate()).padStart(2,'0')}`;
 
+    // Hora que será en 15 minutos
+    const in15 = new Date(madridTime.getTime() + 15 * 60 * 1000);
+    const in15Time = `${String(in15.getHours()).padStart(2,'0')}:${String(in15.getMinutes()).padStart(2,'0')}`;
+
     try {
       const { db } = require('./db/database');
+      const { sendPushToAll } = require('./services/push');
+
+      // ── Avisos 15 min antes ──────────────────────────────────────────────
+      const upcoming = db.prepare(
+        `SELECT * FROM scheduled_raffles WHERE status = 'pending' AND event_date = ? AND scheduled_time = ?`
+      ).all(currentDate, in15Time);
+
+      upcoming.forEach(s => {
+        if (!_notifiedRaffleIds.has(s.id)) {
+          _notifiedRaffleIds.add(s.id);
+          const prizeName = s.hide_name ? 'Sorpresa 🎁' : s.prize;
+          sendPushToAll(
+            '⏰ ¡Sorteo en 15 minutos!',
+            `${prizeName} — abre la app para estar listo, neno 🍷`,
+            { url: '/claim' }
+          );
+          console.log(`[AutoRaffle] 🔔 Aviso 15min enviado para sorteo #${s.id}: "${s.prize}"`);
+        }
+      });
+
+      // ── Lanzamiento automático ───────────────────────────────────────────
       const pending = db.prepare(
         `SELECT * FROM scheduled_raffles WHERE status = 'pending' AND event_date = ? AND scheduled_time = ?`
       ).all(currentDate, currentTime);

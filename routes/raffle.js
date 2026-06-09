@@ -100,7 +100,18 @@ function doLaunch({ prize, type = 'night', targetLevel = null, prizeDetails = nu
   }
 
   const connectedWallets = [...new Set(clients.filter(c => c.walletAddress).map(c => c.walletAddress))];
-  const sessionWallets = getEligibleRaffleParticipants();
+  let sessionWallets = getEligibleRaffleParticipants();
+
+  // Sorteo VIP: solo participan "O Presidente" (Nivel 4)
+  if (type === 'vip') {
+    const { db } = require('../db/database');
+    const vipWallets = new Set(
+      db.prepare(`SELECT DISTINCT wallet_address FROM mints WHERE level = 4 AND status != 'failed'`).all().map(r => r.wallet_address)
+    );
+    sessionWallets = sessionWallets.filter(w => vipWallets.has(w));
+    if (sessionWallets.length === 0) throw new Error('No hay furancheiros O Presidente presentes esta noche.');
+  }
+
   const eligibleWallets = connectedWallets.length > 0
     ? sessionWallets.filter(w => connectedWallets.includes(w))
     : sessionWallets;

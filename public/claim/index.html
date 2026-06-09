@@ -2016,6 +2016,16 @@
           <p style="font-size:11px; color:var(--text-muted); margin-top:8px;">Enseña este código al staff para que te den lo tuyo.</p>
         </div>
 
+        <!-- Countdown próximo sorteo -->
+        <div id="next-raffle-countdown" style="display:none; margin-bottom:10px; background:linear-gradient(135deg,rgba(139,25,24,0.06),rgba(196,151,58,0.04)); border:1.5px solid rgba(196,151,58,0.3); border-radius:14px; padding:10px 14px; display:flex; align-items:center; gap:10px;">
+          <span style="font-size:22px; flex-shrink:0;">⏰</span>
+          <div style="flex:1; min-width:0;">
+            <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--gold); margin:0 0 2px;">Próximo sorteo</p>
+            <p id="next-raffle-time-text" style="font-size:13px; font-weight:700; color:var(--text); margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">—</p>
+          </div>
+          <div id="next-raffle-mins" style="background:var(--wine); color:#fff; border-radius:20px; padding:4px 10px; font-size:12px; font-weight:700; white-space:nowrap; flex-shrink:0;"></div>
+        </div>
+
         <!-- Botón interactivo de Sorteos -->
         <button onclick="openPrizesModal()" class="raffle-menu-btn">
           <div style="display:flex; align-items:center; gap:12px; flex:1; min-width:0;">
@@ -2784,6 +2794,62 @@
       return Math.max(lvlByVisits, lvlByClaimed);
     }
 
+    // ── Countdown próximo sorteo ──────────────────────────────────────────────
+    let _nextRaffleInterval = null;
+    async function loadNextRaffleCountdown() {
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const raffles = await fetch(`/api/raffle/scheduled?date=${today}`).then(r => r.json());
+        const nowMadrid = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+        const nowMins = nowMadrid.getHours() * 60 + nowMadrid.getMinutes();
+
+        // Filtrar sorteos pendientes que aún no han pasado
+        const upcoming = (raffles || []).filter(s => {
+          if (s.status !== 'pending') return false;
+          const [h, m] = s.scheduled_time.split(':').map(Number);
+          return (h * 60 + m) > nowMins;
+        }).sort((a, b) => a.scheduled_time.localeCompare(b.scheduled_time));
+
+        const banner = document.getElementById('next-raffle-countdown');
+        const timeText = document.getElementById('next-raffle-time-text');
+        const minsEl = document.getElementById('next-raffle-mins');
+        if (!banner) return;
+
+        if (!upcoming.length) { banner.style.display = 'none'; return; }
+
+        const next = upcoming[0];
+        const [h, m] = next.scheduled_time.split(':').map(Number);
+        const diff = (h * 60 + m) - nowMins;
+        const prizeName = next.hide_name ? 'Sorpresa 🎁' : next.prize;
+
+        banner.style.display = 'flex';
+        timeText.textContent = `${prizeName} — a las ${next.scheduled_time}`;
+        if (diff <= 1) {
+          minsEl.textContent = '¡Ahora!';
+          minsEl.style.background = 'var(--gold)';
+        } else if (diff < 60) {
+          minsEl.textContent = `${diff} min`;
+          minsEl.style.background = diff <= 15 ? 'var(--gold)' : 'var(--wine)';
+          minsEl.style.color = '#fff';
+        } else {
+          const hrs = Math.floor(diff / 60);
+          const mins = diff % 60;
+          minsEl.textContent = `${hrs}h ${mins > 0 ? mins + 'min' : ''}`.trim();
+          minsEl.style.background = 'var(--wine)';
+          minsEl.style.color = '#fff';
+        }
+      } catch(e) {
+        const banner = document.getElementById('next-raffle-countdown');
+        if (banner) banner.style.display = 'none';
+      }
+    }
+
+    function startNextRaffleCountdown() {
+      if (_nextRaffleInterval) clearInterval(_nextRaffleInterval);
+      loadNextRaffleCountdown();
+      _nextRaffleInterval = setInterval(loadNextRaffleCountdown, 60 * 1000);
+    }
+
     function showProfileScreen(visitCount, claimedLevels, pendingApproval) {
       try {
       const lvl = getDisplayLevel(visitCount, claimedLevels);
@@ -2881,6 +2947,7 @@
       loadAgenda();
       loadWeeklyRaffle();
       checkPendingMnemonic();
+      startNextRaffleCountdown();
 
       // Mostrar toast si viene de restauración por QR
       if (_isQrRestore) {
@@ -3919,6 +3986,7 @@
         if (statusText) statusText.textContent = 'El bombo ya quiere sonar...';
         if (dot) dot.classList.remove('live');
         renderPrizes();
+        loadNextRaffleCountdown(); // refrescar countdown tras sorteo terminado
       });
 
       evtSource.addEventListener('raffle_rejected', () => {

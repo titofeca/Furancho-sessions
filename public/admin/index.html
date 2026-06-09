@@ -1032,6 +1032,16 @@
         </div>
       </div>
 
+      <!-- Gráfica de entradas por hora (tiempo real) -->
+      <div class="glass-card" style="margin-bottom:20px;" id="hourly-chart-card">
+        <div class="card-header" style="margin-bottom:14px;">
+          <span class="card-title">📊 Entradas por hora — hoy</span>
+          <button class="btn-download" onclick="loadHourlyChart()" style="font-size:11px; padding:6px 12px;">↻</button>
+        </div>
+        <canvas id="hourly-chart" height="140" style="width:100%; display:block;"></canvas>
+        <p id="hourly-chart-empty" style="display:none; font-size:12px; color:var(--text-muted); text-align:center; padding:16px 0;">Sin entradas registradas hoy todavía 🍷</p>
+      </div>
+
       <!-- QR Acceso Clientes — destacado en dashboard -->
       <div style="background: rgba(196,151,58,0.06); border: 1px solid rgba(196,151,58,0.22); border-radius: 20px; padding: 22px; margin-bottom: 24px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
         <img src="/api/qr/checkin" alt="QR Clientes" style="width: 110px; height: 110px; border-radius: 12px; flex-shrink: 0;" />
@@ -1540,9 +1550,10 @@
         </div>
 
         <!-- Tipo de sorteo programado -->
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:10px;">
-          <button id="sched-type-night" type="button" onclick="setSchedType('night')" style="padding:7px; border-radius:10px; border:1.5px solid var(--wine); background:rgba(139,25,24,0.08); color:var(--wine); font-family:'Outfit',sans-serif; font-size:12px; font-weight:700; cursor:pointer; text-align:center; transition:all 0.2s;">🎁 Premio Noche</button>
-          <button id="sched-type-local" type="button" onclick="setSchedType('local')" style="padding:7px; border-radius:10px; border:1.5px solid rgba(42,21,9,0.15); background:transparent; color:var(--text-muted); font-family:'Outfit',sans-serif; font-size:12px; font-weight:700; cursor:pointer; text-align:center; transition:all 0.2s;">🏪 Local Colaborador</button>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:10px;">
+          <button id="sched-type-night" type="button" onclick="setSchedType('night')" style="padding:7px; border-radius:10px; border:1.5px solid var(--wine); background:rgba(139,25,24,0.08); color:var(--wine); font-family:'Outfit',sans-serif; font-size:12px; font-weight:700; cursor:pointer; text-align:center; transition:all 0.2s;">🎁 Noche</button>
+          <button id="sched-type-local" type="button" onclick="setSchedType('local')" style="padding:7px; border-radius:10px; border:1.5px solid rgba(42,21,9,0.15); background:transparent; color:var(--text-muted); font-family:'Outfit',sans-serif; font-size:12px; font-weight:700; cursor:pointer; text-align:center; transition:all 0.2s;">🏪 Local</button>
+          <button id="sched-type-vip" type="button" onclick="setSchedType('vip')" style="padding:7px; border-radius:10px; border:1.5px solid rgba(196,151,58,0.4); background:transparent; color:var(--gold); font-family:'Outfit',sans-serif; font-size:12px; font-weight:700; cursor:pointer; text-align:center; transition:all 0.2s;">⭐ VIP Nv4</button>
         </div>
 
         <!-- Nombre del premio (siempre visible) -->
@@ -1602,9 +1613,10 @@
         <!-- Tipo de sorteo -->
         <div class="form-group" style="margin-bottom:14px;">
           <label class="form-label">Tipo de sorteo</label>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
             <button id="raffle-type-night" type="button" onclick="setRaffleType('night')" style="padding:11px 8px; border-radius:12px; border:1.5px solid var(--wine); background:rgba(139,25,24,0.08); color:var(--wine); font-family:'Outfit',sans-serif; font-size:13px; font-weight:700; cursor:pointer; text-align:center; transition:all 0.2s; line-height:1.3;">🎁<br><span style="font-size:11px;">Premio Noche</span></button>
             <button id="raffle-type-local" type="button" onclick="setRaffleType('local')" style="padding:11px 8px; border-radius:12px; border:1.5px solid rgba(42,21,9,0.15); background:transparent; color:var(--text-muted); font-family:'Outfit',sans-serif; font-size:13px; font-weight:700; cursor:pointer; text-align:center; transition:all 0.2s; line-height:1.3;">🏪<br><span style="font-size:11px;">Local Colaborador</span></button>
+            <button id="raffle-type-vip" type="button" onclick="setRaffleType('vip')" style="padding:11px 8px; border-radius:12px; border:1.5px solid rgba(196,151,58,0.4); background:transparent; color:var(--gold); font-family:'Outfit',sans-serif; font-size:13px; font-weight:700; cursor:pointer; text-align:center; transition:all 0.2s; line-height:1.3;">⭐<br><span style="font-size:11px;">Solo Nv4</span></button>
           </div>
         </div>
 
@@ -2042,6 +2054,7 @@
         loadMessages();
         loadPeakHours();
         loadVipBadge();
+        loadHourlyChart();
       } else {
         errorDiv.style.display = 'block';
       }
@@ -2135,6 +2148,7 @@
       document.body.scrollTop = 0;
     }, 0);
     if (pageId === 'events') loadEventsPage();
+    if (pageId === 'dashboard') { loadStats(); loadHourlyChart(); }
     loadVipBadge();
     if (pageId === 'holders') {
       loadVisits('__totales__');
@@ -2312,6 +2326,111 @@
     } catch (e) {
       console.error('Error loading stats:', e);
     }
+  }
+
+  // ==================== GRÁFICA ENTRADAS POR HORA ====================
+  async function loadHourlyChart() {
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const res = await apiFetch(`/api/admin/report-data?date=${today}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const canvas = document.getElementById('hourly-chart');
+      const emptyMsg = document.getElementById('hourly-chart-empty');
+      if (!canvas) return;
+
+      const entries = (data.hourly?.entries_by_hour || []).filter(e => e.count > 0);
+      if (!entries.length) {
+        canvas.style.display = 'none';
+        if (emptyMsg) emptyMsg.style.display = 'block';
+        return;
+      }
+      canvas.style.display = 'block';
+      if (emptyMsg) emptyMsg.style.display = 'none';
+
+      // Completar horas 18–03 (horario furancho)
+      const hours = [];
+      for (let h = 18; h <= 27; h++) hours.push(h % 24);
+      const countByHour = {};
+      entries.forEach(e => { countByHour[e.hour] = e.count; });
+      const labels = hours.map(h => `${String(h).padStart(2,'0')}h`);
+      const values = hours.map(h => countByHour[h] || 0);
+
+      const dpr = window.devicePixelRatio || 1;
+      const W = canvas.offsetWidth || canvas.parentElement.offsetWidth || 320;
+      const H = 140;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      canvas.style.width = W + 'px';
+      canvas.style.height = H + 'px';
+
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, W, H);
+
+      const maxVal = Math.max(...values, 1);
+      const padL = 28, padR = 10, padT = 14, padB = 28;
+      const chartW = W - padL - padR;
+      const chartH = H - padT - padB;
+      const barW = Math.max(4, chartW / labels.length * 0.6);
+      const gap = chartW / labels.length;
+
+      // Fondo y líneas guía
+      ctx.strokeStyle = 'rgba(42,21,9,0.07)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i++) {
+        const y = padT + (chartH / 4) * i;
+        ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+      }
+
+      // Barras
+      const wine = '#8B1918';
+      const gold = '#C4973A';
+      const nowHour = new Date().getHours();
+
+      values.forEach((v, i) => {
+        const x = padL + gap * i + (gap - barW) / 2;
+        const barH = v > 0 ? Math.max(4, (v / maxVal) * chartH) : 0;
+        const y = padT + chartH - barH;
+        const isNow = hours[i] === nowHour;
+        ctx.fillStyle = isNow ? gold : wine;
+        ctx.globalAlpha = v > 0 ? 1 : 0.15;
+        const r = 4;
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + barW - r, y);
+        ctx.quadraticCurveTo(x + barW, y, x + barW, y + r);
+        ctx.lineTo(x + barW, y + barH);
+        ctx.lineTo(x, y + barH);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        // Valor encima si > 0
+        if (v > 0) {
+          ctx.fillStyle = isNow ? gold : wine;
+          ctx.font = `bold ${dpr > 1 ? 9 : 10}px Outfit, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.fillText(v, x + barW / 2, y - 3);
+        }
+
+        // Label hora
+        ctx.fillStyle = isNow ? gold : 'rgba(42,21,9,0.45)';
+        ctx.font = `${isNow ? 'bold ' : ''}9px Outfit, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(labels[i], x + barW / 2, H - padB + 12);
+      });
+
+      // Total del día
+      const total = values.reduce((a, b) => a + b, 0);
+      ctx.fillStyle = 'rgba(42,21,9,0.35)';
+      ctx.font = '10px Outfit, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(`Total: ${total} entradas`, W - padR, padT - 3);
+
+    } catch(e) { console.error('loadHourlyChart error:', e); }
   }
 
   // ==================== HOLDERS ====================
@@ -2803,23 +2922,31 @@
     currentRaffleType = type;
     const nightBtn = document.getElementById('raffle-type-night');
     const localBtn = document.getElementById('raffle-type-local');
+    const vipBtn   = document.getElementById('raffle-type-vip');
     const nightExtras = document.getElementById('raffle-night-extras');
     const localExtras = document.getElementById('raffle-local-extras');
     if (!nightBtn || !localBtn) return;
 
-    const activeStyle = { background: 'rgba(139,25,24,0.08)', borderColor: 'var(--wine)', color: 'var(--wine)' };
-    const inactiveStyle = { background: 'transparent', borderColor: 'rgba(42,21,9,0.15)', color: 'var(--text-muted)' };
+    const wineActive  = { background: 'rgba(139,25,24,0.08)', borderColor: 'var(--wine)', color: 'var(--wine)' };
+    const goldActive  = { background: 'rgba(196,151,58,0.1)', borderColor: 'rgba(196,151,58,0.6)', color: 'var(--gold)' };
+    const inactive    = { background: 'transparent', borderColor: 'rgba(42,21,9,0.15)', color: 'var(--text-muted)' };
+    const inactiveGold= { background: 'transparent', borderColor: 'rgba(196,151,58,0.4)', color: 'var(--gold)' };
+
+    Object.assign(nightBtn.style, inactive);
+    Object.assign(localBtn.style, inactive);
+    if (vipBtn) Object.assign(vipBtn.style, inactiveGold);
+    if (nightExtras) nightExtras.style.display = 'none';
+    if (localExtras) localExtras.style.display = 'none';
 
     if (type === 'night') {
-      Object.assign(nightBtn.style, activeStyle);
-      Object.assign(localBtn.style, inactiveStyle);
+      Object.assign(nightBtn.style, wineActive);
       if (nightExtras) nightExtras.style.display = 'block';
-      if (localExtras) localExtras.style.display = 'none';
-    } else {
-      Object.assign(localBtn.style, activeStyle);
-      Object.assign(nightBtn.style, inactiveStyle);
-      if (nightExtras) nightExtras.style.display = 'none';
+    } else if (type === 'local') {
+      Object.assign(localBtn.style, wineActive);
       if (localExtras) localExtras.style.display = 'block';
+    } else if (type === 'vip') {
+      if (vipBtn) Object.assign(vipBtn.style, goldActive);
+      if (nightExtras) nightExtras.style.display = 'block'; // ocultar nombre también aplica al VIP
     }
   }
 
@@ -2827,23 +2954,31 @@
     currentSchedType = type;
     const nightBtn = document.getElementById('sched-type-night');
     const localBtn = document.getElementById('sched-type-local');
+    const vipBtn   = document.getElementById('sched-type-vip');
     const hideWrap = document.getElementById('sched-hide-wrap');
     const localExtra = document.getElementById('sched-local-extra');
     if (!nightBtn || !localBtn) return;
 
-    const activeStyle = { background: 'rgba(139,25,24,0.08)', borderColor: 'var(--wine)', color: 'var(--wine)' };
-    const inactiveStyle = { background: 'transparent', borderColor: 'rgba(42,21,9,0.15)', color: 'var(--text-muted)' };
+    const wineActive  = { background: 'rgba(139,25,24,0.08)', borderColor: 'var(--wine)', color: 'var(--wine)' };
+    const goldActive  = { background: 'rgba(196,151,58,0.1)', borderColor: 'rgba(196,151,58,0.6)', color: 'var(--gold)' };
+    const inactive    = { background: 'transparent', borderColor: 'rgba(42,21,9,0.15)', color: 'var(--text-muted)' };
+    const inactiveGold= { background: 'transparent', borderColor: 'rgba(196,151,58,0.4)', color: 'var(--gold)' };
+
+    Object.assign(nightBtn.style, inactive);
+    Object.assign(localBtn.style, inactive);
+    if (vipBtn) Object.assign(vipBtn.style, inactiveGold);
+    if (hideWrap) hideWrap.style.display = 'none';
+    if (localExtra) localExtra.style.display = 'none';
 
     if (type === 'night') {
-      Object.assign(nightBtn.style, activeStyle);
-      Object.assign(localBtn.style, inactiveStyle);
+      Object.assign(nightBtn.style, wineActive);
       if (hideWrap) hideWrap.style.display = 'flex';
-      if (localExtra) localExtra.style.display = 'none';
-    } else {
-      Object.assign(localBtn.style, activeStyle);
-      Object.assign(nightBtn.style, inactiveStyle);
-      if (hideWrap) hideWrap.style.display = 'none';
+    } else if (type === 'local') {
+      Object.assign(localBtn.style, wineActive);
       if (localExtra) localExtra.style.display = 'block';
+    } else if (type === 'vip') {
+      if (vipBtn) Object.assign(vipBtn.style, goldActive);
+      if (hideWrap) hideWrap.style.display = 'flex'; // ocultar nombre también aplica
     }
   }
 
