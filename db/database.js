@@ -20,6 +20,12 @@ db.exec('PRAGMA foreign_keys = ON');
 db.exec('PRAGMA busy_timeout = 5000');
 
 // Migraciones seguras
+// Solo un evento hasta ahora → nadie puede tener nivel 2 legítimamente; bajar a nivel 1
+try {
+  const downgraded = db.prepare(`UPDATE mints SET level = 1 WHERE level = 2`).run();
+  if (downgraded.changes > 0) console.log(`[DB] Migración: ${downgraded.changes} mints bajados de Nv2 → Nv1`);
+} catch (_) {}
+
 try { db.exec(`ALTER TABLE events ADD COLUMN vip_max INTEGER DEFAULT 15`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected INTEGER DEFAULT 0`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_at TEXT`); } catch (_) {}
