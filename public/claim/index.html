@@ -1665,30 +1665,10 @@
         👁️ Ver mi carné furancheiro VIP
       </button>
 
-      <!-- Ver NFT en blockchain -->
-      <div id="success-nft-links" style="display:none; margin-bottom:12px; background:rgba(196,151,58,0.06); border:1.5px solid rgba(196,151,58,0.22); border-radius:16px; padding:14px 16px;">
-        <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:var(--gold); margin:0 0 10px;">🔗 Tu NFT en la blockchain</p>
-        <p style="font-size:12px; color:var(--text-muted); margin:0 0 12px; line-height:1.5;">Este pase es tuyo de verdad — vive en Polygon, la blockchain. Nadie te lo puede quitar, ho.</p>
-        <div style="display:flex; flex-direction:column; gap:8px;">
-          <a id="success-opensea-link" href="#" target="_blank" rel="noopener"
-            style="display:flex; align-items:center; gap:10px; padding:11px 14px; background:#fff; border:1.5px solid rgba(196,151,58,0.25); border-radius:12px; text-decoration:none; color:var(--text);">
-            <span style="font-size:20px; flex-shrink:0;">🌊</span>
-            <div style="flex:1;">
-              <div style="font-size:13px; font-weight:700;">Ver en OpenSea</div>
-              <div style="font-size:11px; color:var(--text-muted);">Marketplace de NFTs · Polygon</div>
-            </div>
-            <span style="font-size:12px; color:var(--gold); font-weight:700;">→</span>
-          </a>
-          <a id="success-polygonscan-link" href="#" target="_blank" rel="noopener"
-            style="display:flex; align-items:center; gap:10px; padding:11px 14px; background:#fff; border:1.5px solid rgba(196,151,58,0.25); border-radius:12px; text-decoration:none; color:var(--text);">
-            <span style="font-size:20px; flex-shrink:0;">🔍</span>
-            <div style="flex:1;">
-              <div style="font-size:13px; font-weight:700;">Ver en Polygonscan</div>
-              <div style="font-size:11px; color:var(--text-muted);">Explorador de blockchain</div>
-            </div>
-            <span style="font-size:12px; color:var(--gold); font-weight:700;">→</span>
-          </a>
-        </div>
+      <!-- Ver NFT (discreto) -->
+      <div id="success-nft-links" style="display:none; margin-bottom:12px; text-align:center; padding:4px 0;">
+        <a id="success-opensea-link" href="#" target="_blank" rel="noopener" style="display:inline-block; margin:0 6px; font-size:11px; color:rgba(42,21,9,0.35); text-decoration:none;">🌊 OpenSea</a>
+        <a id="success-polygonscan-link" href="#" target="_blank" rel="noopener" style="display:inline-block; margin:0 6px; font-size:11px; color:rgba(42,21,9,0.35); text-decoration:none;">🔍 Polygonscan</a>
       </div>
 
       <!-- Recuperar cuenta -->
@@ -1849,30 +1829,6 @@
       <!-- prizes-section: ahora vive dentro de la Zona de Juegos -->
       <div id="prizes-section" style="display:none;"></div>
 
-      <!-- Tu NFT en blockchain -->
-      <div id="profile-nft-links" style="display:none; margin-bottom:16px; background:rgba(196,151,58,0.06); border:1.5px solid rgba(196,151,58,0.22); border-radius:16px; padding:14px 16px;">
-        <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:var(--gold); margin:0 0 6px;">🔗 Tu NFT en la blockchain</p>
-        <p style="font-size:12px; color:var(--text-muted); margin:0 0 12px; line-height:1.5;">Este pase es tuyo de verdad — nadie te lo puede quitar, ho.</p>
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <a id="profile-opensea-link" href="#" target="_blank" rel="noopener"
-            style="flex:1; min-width:120px; display:flex; align-items:center; gap:8px; padding:10px 12px; background:#fff; border:1.5px solid rgba(196,151,58,0.25); border-radius:12px; text-decoration:none; color:var(--text);">
-            <span style="font-size:18px;">🌊</span>
-            <div>
-              <div style="font-size:12px; font-weight:700;">OpenSea</div>
-              <div style="font-size:10px; color:var(--text-muted);">Ver NFT</div>
-            </div>
-          </a>
-          <a id="profile-polygonscan-link" href="#" target="_blank" rel="noopener"
-            style="flex:1; min-width:120px; display:flex; align-items:center; gap:8px; padding:10px 12px; background:#fff; border:1.5px solid rgba(196,151,58,0.25); border-radius:12px; text-decoration:none; color:var(--text);">
-            <span style="font-size:18px;">🔍</span>
-            <div>
-              <div style="font-size:12px; font-weight:700;">Polygonscan</div>
-              <div style="font-size:10px; color:var(--text-muted);">Explorador</div>
-            </div>
-          </a>
-        </div>
-      </div>
-
       <!-- ① GUARDAR EN MI MÓVIL — primero si no está instalado -->
 
       <!-- Android -->
@@ -1946,7 +1902,7 @@
         <div id="pending-approval-banner" style="display:none; background:linear-gradient(135deg,#f59e0b22,#a855f722); border:1px solid #f59e0b66; border-radius:14px; padding:14px 16px; margin-bottom:16px; text-align:center;">
           <div style="font-size:20px; margin-bottom:6px;">🏅</div>
           <div style="font-size:14px; font-weight:700; color:#92400e; margin-bottom:4px;">¡Carallo, neno, lo conseguiste!</div>
-          <div style="font-size:12px; color:#78350f; line-height:1.5;">Tu Tarjeta <strong id="pending-approval-level-name"></strong> está siendo preparada en la blockchain. Malo será que tarde mucho, ho.</div>
+          <div style="font-size:12px; color:#78350f; line-height:1.5;">Tu Tarjeta <strong id="pending-approval-level-name"></strong> está siendo preparada. Malo será que tarde mucho, ho.</div>
         </div>
 
         <!-- Journey: línea con 4 nodos -->
@@ -2206,6 +2162,12 @@
       <p class="footer-note" style="margin-top: 20px;">
         No te olvides de fichar en la puerta al entrar y salir para acumular visitas. ¡El objetivo final es coronarse Presidente, ho! 👑
       </p>
+
+      <!-- Links discretos al pase (solo para quien sabe lo que son) -->
+      <div id="profile-nft-links" style="display:none; text-align:center; padding:8px 0 4px; margin-top:4px;">
+        <a id="profile-opensea-link" href="#" target="_blank" rel="noopener" style="display:inline-block; margin:0 8px; font-size:11px; color:rgba(42,21,9,0.3); text-decoration:none;">🌊 OpenSea</a>
+        <a id="profile-polygonscan-link" href="#" target="_blank" rel="noopener" style="display:inline-block; margin:0 8px; font-size:11px; color:rgba(42,21,9,0.3); text-decoration:none;">🔍 Polygonscan</a>
+      </div>
     </div>
   </div>
 
@@ -2692,7 +2654,7 @@
       if (_pollingInterval) clearInterval(_pollingInterval);
 
       // Mostrar banner de progreso en la pantalla de perfil
-      showProfileBanner(`⏳ <strong>Preparando pase en Polygon:</strong> Estamos generando tu pase de <strong>${targetLevelName}</strong> en segundo plano, ho. Esto puede tardar un ratito...`, 'gold');
+      showProfileBanner(`⏳ <strong>Preparando tu pase:</strong> Estamos generando tu pase de <strong>${targetLevelName}</strong> en segundo plano, ho. Esto puede tardar un ratito...`, 'gold');
 
       let attempts = 0;
       _pollingInterval = setInterval(async () => {

@@ -836,6 +836,46 @@ router.post('/test-raffle/cleanup', requireAuth, (req, res) => {
   }
 });
 
+// POST /api/admin/one-time/fix-levels — limpieza de mints de prueba (uso único)
+router.post('/one-time/fix-levels', requireAuth, (req, res) => {
+  try {
+    const { db } = require('../db/database');
+
+    // Estado previo para el log
+    const antes = {
+      nv4: db.prepare('SELECT COUNT(*) as c FROM mints WHERE level = 4').get().c,
+      nv2: db.prepare('SELECT COUNT(*) as c FROM mints WHERE level = 2').get().c,
+      nv1: db.prepare('SELECT COUNT(*) as c FROM mints WHERE level = 1').get().c,
+    };
+
+    // 1. Borrar todos los Nivel 4 (eran pruebas)
+    const del4 = db.prepare(`DELETE FROM mints WHERE level = 4`).run();
+
+    // 2. Downgrade Nivel 2 → Nivel 1 (solo hubo un evento)
+    const upd2 = db.prepare(`UPDATE mints SET level = 1 WHERE level = 2`).run();
+
+    const despues = {
+      nv4: db.prepare('SELECT COUNT(*) as c FROM mints WHERE level = 4').get().c,
+      nv2: db.prepare('SELECT COUNT(*) as c FROM mints WHERE level = 2').get().c,
+      nv1: db.prepare('SELECT COUNT(*) as c FROM mints WHERE level = 1').get().c,
+    };
+
+    console.log(`[FixLevels] Nv4 eliminados: ${del4.changes}, Nv2→Nv1: ${upd2.changes}`);
+    console.log(`[FixLevels] Antes:`, antes, '→ Después:', despues);
+
+    res.json({
+      success: true,
+      antes,
+      despues,
+      deleted_nv4: del4.changes,
+      downgraded_nv2_to_nv1: upd2.changes,
+      message: 'Listo. Sesiones y visitas intactas 🍷'
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;
 module.exports.requireAuth = requireAuth;
 module.exports.verifyAdminToken = verifyToken;
