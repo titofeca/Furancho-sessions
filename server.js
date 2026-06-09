@@ -44,7 +44,7 @@ const NFT_METADATA = {
   1: {
     name: 'O Cautivo',
     description: 'El primer paso en el Furancho. Llevas una visita y ya sabes lo que es bueno. Bienvenido, neno.',
-    image: `${APP_URL}/assets/nft_nivel1_cautivo.jpg`,
+    image: `https://ipfs.io/ipfs/bafkreigd4y7hinbsllo57rgshlf2wszzutxh7nrwpzof6vemdvcmqorfim`,
     external_url: APP_URL,
     attributes: [
       { trait_type: 'Nivel', value: '1' },
@@ -56,7 +56,7 @@ const NFT_METADATA = {
   2: {
     name: 'O Cunqueiro',
     description: 'Ya llevas dos visitas. Empiezas a conocer el sitio y el sitio empieza a conocerte a ti, ho.',
-    image: `${APP_URL}/assets/nft_nivel2_cunqueiro.jpg`,
+    image: `https://ipfs.io/ipfs/bafkreiacmqczigpyjhdv74ksuulpfxl7n3qqojs7jvr7in6bzqzt777xzq`,
     external_url: APP_URL,
     attributes: [
       { trait_type: 'Nivel', value: '2' },
@@ -68,7 +68,7 @@ const NFT_METADATA = {
   3: {
     name: 'O Larpeiro',
     description: 'Cuatro visitas. Carallo, neno, esto ya no es casualidad. Eres un furancheiro de verdad.',
-    image: `${APP_URL}/assets/nft_nivel3_larpeiro.jpg`,
+    image: `https://ipfs.io/ipfs/bafkreif3cfwvcobdeai7xxzs4kqii2ecj6fax7euq5q56uxa2dfxg2aqny`,
     external_url: APP_URL,
     attributes: [
       { trait_type: 'Nivel', value: '3' },
@@ -81,7 +81,7 @@ const NFT_METADATA = {
   4: {
     name: 'O Presidente do Furancho',
     description: 'Doce visitas. Malo será que no te conozca ya todo el barrio. Leyenda viva del Furancho, plas.',
-    image: `${APP_URL}/assets/nft_nivel4_presidente.jpg`,
+    image: `https://ipfs.io/ipfs/bafkreiaaaba2w7r6dqrhwqql32j7q4xyfbgdcoxj2k4mespdxf44nrvl2y`,
     external_url: APP_URL,
     attributes: [
       { trait_type: 'Nivel', value: '4' },
