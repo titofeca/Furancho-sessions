@@ -120,7 +120,7 @@ router.post('/react', (req, res) => {
 router.get('/stats', requireAuth, (req, res) => {
   try {
     const stats = getStats();
-    res.json({ ...stats, demoMode: DEMO_MODE });
+    res.json({ ...stats, demoMode: DEMO_MODE, contractAddress: process.env.NFT_CONTRACT_ADDRESS || null });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

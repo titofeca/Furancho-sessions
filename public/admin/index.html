@@ -1108,6 +1108,7 @@
       <div class="subpage-tabs" style="margin-bottom: 20px;">
         <button class="subpage-tab active" id="subtab-metrics" onclick="switchSubPage('metrics', this)">📊 Métricas y Afluencia</button>
         <button class="subpage-tab" id="subtab-clients" onclick="switchSubPage('clients', this)">👥 Listado y Segmentos</button>
+        <button class="subpage-tab" id="subtab-nfts" onclick="switchSubPage('nfts', this)">🏅 NFTs Polygon</button>
       </div>
 
       <!-- SUBPÁGINA 1: MÉTRICAS Y AFLUENCIA -->
@@ -1299,18 +1300,44 @@
           </div>
         </div>
 
-        <!-- NFTs pendientes de aprobación -->
-        <div class="glass-card" id="pending-mints-card">
-          <div class="card-header">
-            <span class="card-title">🏅 NFTs pendientes de aprobar</span>
-            <span id="pending-mints-badge" style="display:none; background:#f59e0b; color:#000; font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; margin-left:8px;"></span>
+      </div>
+
+      <!-- SUBPÁGINA 3: NFTs POLYGON -->
+      <div id="subpage-nfts" class="subpage-panel">
+
+        <!-- Resumen NFTs -->
+        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:16px;">
+          <div style="background:var(--surface); border-radius:14px; padding:14px; text-align:center; border:1px solid var(--border);">
+            <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700; margin-bottom:4px;">NFTs minteados</div>
+            <div id="nft-total-count" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:var(--wine);">—</div>
           </div>
-          <p style="font-size:13px; color:var(--text-muted); margin:0 0 14px;">Clientes que han alcanzado Nv3 o Nv4. Aprueba el mint para que reciban su NFT real en Polygon.</p>
-          <div id="pending-mints-list" style="display:flex; flex-direction:column; gap:8px;">
-            <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:16px;">Cargando...</div>
+          <div style="background:var(--surface); border-radius:14px; padding:14px; text-align:center; border:1px solid var(--border);">
+            <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700; margin-bottom:4px;">En blockchain real</div>
+            <div id="nft-real-count" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:#4ade80;">—</div>
+          </div>
+        </div>
+
+        <!-- Info del contrato -->
+        <div class="glass-card" style="margin-bottom:16px;">
+          <div class="card-title" style="margin-bottom:12px;">📄 Contrato en Polygon</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">Dirección del contrato:</div>
+          <div style="font-size:11px; font-family:monospace; background:rgba(42,21,9,0.05); padding:10px 12px; border-radius:10px; word-break:break-all; margin-bottom:10px;" id="nft-contract-addr">—</div>
+          <a id="nft-polygonscan-link" href="#" target="_blank" style="display:inline-block; font-size:12px; color:var(--wine); font-weight:600; text-decoration:none;">🔍 Ver en PolygonScan →</a>
+        </div>
+
+        <!-- Historial de mints -->
+        <div class="glass-card">
+          <div class="card-header" style="margin-bottom:12px;">
+            <span class="card-title">📋 Historial de NFTs minteados</span>
+          </div>
+          <p style="font-size:13px; color:var(--text-muted); margin:0 0 14px;">Todos los NFTs entregados a clientes en la blockchain de Polygon. Los mints son automáticos al alcanzar el nivel.</p>
+          <div id="nfts-history-list" style="display:flex; flex-direction:column; gap:8px;">
+            <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Cargando...</div>
           </div>
         </div>
       </div>
+
+    </div>
     </div>
 
     <!-- ==================== MESSAGES ==================== -->
@@ -1891,11 +1918,6 @@
       <span>Eventos</span>
       <span id="vip-pending-badge" style="display:none; position:absolute; top:6px; right:10px; background:var(--wine); color:#fff; font-size:9px; font-weight:900; border-radius:100px; padding:1px 5px; min-width:14px; text-align:center;">0</span>
     </button>
-    <button class="nav-item" onclick="showPage('nfts')" id="nav-nfts" style="position:relative;">
-      <span class="nav-icon">🏅</span>
-      <span>NFTs</span>
-      <span id="nft-pending-badge" style="display:none; position:absolute; top:6px; right:10px; background:#f59e0b; color:#000; font-size:9px; font-weight:900; border-radius:100px; padding:1px 5px; min-width:14px; text-align:center;">0</span>
-    </button>
   </nav>
 </div>
 
@@ -2276,8 +2298,26 @@
 
   // ==================== NFTs PAGE ====================
   async function loadNftsPage() {
-    await loadPendingMints();
     await loadNftHistory();
+    // Cargar dirección del contrato
+    const contractEl = document.getElementById('nft-contract-addr');
+    const linkEl = document.getElementById('nft-polygonscan-link');
+    if (contractEl) {
+      try {
+        const res = await fetch('/api/admin/stats', { headers: authHeaders() });
+        const data = await res.json();
+        const addr = data.contractAddress || '—';
+        contractEl.textContent = addr;
+        if (linkEl && addr !== '—') {
+          linkEl.href = `https://polygonscan.com/address/${addr}`;
+        }
+        // Contadores
+        const totalEl = document.getElementById('nft-total-count');
+        const realEl = document.getElementById('nft-real-count');
+        if (totalEl) totalEl.textContent = data.totalMints ?? '—';
+        if (realEl) realEl.textContent = data.realMints ?? data.totalMints ?? '—';
+      } catch(e) {}
+    }
   }
 
   async function loadNftHistory() {
@@ -4077,6 +4117,7 @@
     document.querySelectorAll('.subpage-panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(`subpage-${subpage}`).classList.add('active');
+    if (subpage === 'nfts') loadNftsPage();
   }
 
   function switchSegTab(name, btn) {
