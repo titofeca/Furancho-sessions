@@ -605,7 +605,7 @@ const EVENT_SEED = [
   {
     date: '2026-06-25',
     title: 'Furancho Sessions — 25 Junio',
-    description: 'Especial Noche de San Juan. Fogata simbólica, música tradicional gallega y nuestro menú especial de tapas y vinos galardonados.'
+    description: '¡Bua, neno, que es esta noche! Estrenamos el furancho en la terraza del Parrote (sí, la que está pegada al hotel, no tiene pérdida). 🌊🔥\nSe viene una noche bastante más intensa y divertida de lo normal. Tendremos música, fogata simbólica y hasta ritual de limpieza con el agua purificadora de San Juan para espantar el meigallo. Todo esto, claro, con nuestro menú especial de tapas, los vinos galardonados... y alguna sorpresa más que no os voy a contar.'
   },
   {
     date: '2026-07-02',
@@ -616,7 +616,7 @@ const EVENT_SEED = [
 
 // Fechas cuya descripción debe actualizarse aunque ya exista en BD (cuando cambias el texto desde aquí).
 // Añade la fecha aquí cuando quieras forzar la actualización desde código.
-const FORCED_UPDATE_DATES = [];
+const FORCED_UPDATE_DATES = ['2026-06-25'];
 
 function seedEvents() {
   const dates = EVENT_SEED;
