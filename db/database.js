@@ -26,6 +26,22 @@ try {
   if (downgraded.changes > 0) console.log(`[DB] Migración: ${downgraded.changes} mints bajados de Nv2 → Nv1`);
 } catch (_) {}
 
+// Wallets con mint nivel 4 son de prueba → dejar solo 1 visita contada (la más antigua)
+try {
+  const fixed = db.prepare(`
+    UPDATE sessions SET counted_as_visit = 0
+    WHERE counted_as_visit = 1
+      AND wallet_address IN (SELECT DISTINCT wallet_address FROM mints WHERE level = 4)
+      AND id NOT IN (
+        SELECT MIN(id) FROM sessions
+        WHERE counted_as_visit = 1
+          AND wallet_address IN (SELECT DISTINCT wallet_address FROM mints WHERE level = 4)
+        GROUP BY wallet_address
+      )
+  `).run();
+  if (fixed.changes > 0) console.log(`[DB] Migración: ${fixed.changes} visitas extra de wallets Nv4 puestas a 0`);
+} catch (_) {}
+
 try { db.exec(`ALTER TABLE events ADD COLUMN vip_max INTEGER DEFAULT 15`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected INTEGER DEFAULT 0`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_at TEXT`); } catch (_) {}
