@@ -129,11 +129,13 @@ try {
     name TEXT NOT NULL,
     description TEXT,
     emoji TEXT DEFAULT '🍽️',
+    allergens TEXT DEFAULT '',
     sort_order INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (event_id) REFERENCES events(id)
   )`);
 } catch (_) {}
+try { db.exec(`ALTER TABLE tapas ADD COLUMN allergens TEXT DEFAULT ''`); } catch (_) {}
 
 // =====================
 // CREAR TABLAS

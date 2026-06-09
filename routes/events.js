@@ -185,7 +185,7 @@ router.delete('/:id', requireAuth, ({ params }, res) => {
 router.get('/:id/tapas', (req, res) => {
   try {
     const { db } = require('../db/database');
-    const rows = db.prepare(`SELECT id, name, description, emoji, sort_order FROM tapas WHERE event_id = ? ORDER BY sort_order ASC, id ASC`).all(parseInt(req.params.id));
+    const rows = db.prepare(`SELECT id, name, description, allergens, sort_order FROM tapas WHERE event_id = ? ORDER BY sort_order ASC, id ASC`).all(parseInt(req.params.id));
     res.json(rows);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -193,26 +193,25 @@ router.get('/:id/tapas', (req, res) => {
 // POST /api/events/:id/tapas — añadir tapa (admin)
 router.post('/:id/tapas', requireAuth, (req, res) => {
   const eventId = parseInt(req.params.id);
-  const { name, description, emoji } = req.body;
+  const { name, description, allergens } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
   try {
     const { db } = require('../db/database');
-    // Max 5 tapas por evento
     const count = db.prepare(`SELECT COUNT(*) as c FROM tapas WHERE event_id = ?`).get(eventId).c;
     if (count >= 5) return res.status(400).json({ error: 'Máximo 5 tapas por evento' });
     const order = db.prepare(`SELECT COALESCE(MAX(sort_order),0)+1 as next FROM tapas WHERE event_id = ?`).get(eventId).next;
-    const result = db.prepare(`INSERT INTO tapas (event_id, name, description, emoji, sort_order) VALUES (?, ?, ?, ?, ?)`).run(eventId, name.trim(), (description||'').trim(), (emoji||'🍽️').trim(), order);
+    const result = db.prepare(`INSERT INTO tapas (event_id, name, description, allergens, sort_order) VALUES (?, ?, ?, ?, ?)`).run(eventId, name.trim(), (description||'').trim(), (allergens||''), order);
     res.json({ success: true, id: result.lastInsertRowid });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // PATCH /api/events/tapas/:tapaid — editar tapa (admin)
 router.patch('/tapas/:tapaid', requireAuth, (req, res) => {
-  const { name, description, emoji } = req.body;
+  const { name, description, allergens } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
   try {
     const { db } = require('../db/database');
-    db.prepare(`UPDATE tapas SET name=?, description=?, emoji=? WHERE id=?`).run(name.trim(), (description||'').trim(), (emoji||'🍽️').trim(), parseInt(req.params.tapaid));
+    db.prepare(`UPDATE tapas SET name=?, description=?, allergens=? WHERE id=?`).run(name.trim(), (description||'').trim(), (allergens||''), parseInt(req.params.tapaid));
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

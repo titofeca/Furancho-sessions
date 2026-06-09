@@ -3077,16 +3077,34 @@
                 ${(() => {
                   const tapas = tapasMap[ev.id] || [];
                   if (!tapas.length) return '';
+                  const ALLERGENS_CLIENT = {
+                    gluten: {icon:'🌾', name:'Gluten'}, crustaceos: {icon:'🦞', name:'Crustáceos'},
+                    huevos: {icon:'🥚', name:'Huevos'}, pescado: {icon:'🐟', name:'Pescado'},
+                    cacahuetes: {icon:'🥜', name:'Cacahuetes'}, soja: {icon:'🫘', name:'Soja'},
+                    lacteos: {icon:'🥛', name:'Lácteos'}, frutos_secos: {icon:'🌰', name:'Frutos secos'},
+                    apio: {icon:'🌿', name:'Apio'}, mostaza: {icon:'🟡', name:'Mostaza'},
+                    sesamo: {icon:'🌱', name:'Sésamo'}, sulfitos: {icon:'🍷', name:'Sulfitos'},
+                    altramuces: {icon:'🌼', name:'Altramuces'}, moluscos: {icon:'🐚', name:'Moluscos'}
+                  };
                   return `<div style="margin:4px 0 16px; background:linear-gradient(135deg,rgba(139,25,24,0.04),rgba(196,151,58,0.04)); border:1.5px solid rgba(196,151,58,0.2); border-radius:14px; padding:14px;">
-                    <p style="font-size:10px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; color:var(--gold); margin:0 0 10px; display:flex; align-items:center; gap:6px;">🍽️ Tapas de la sesión</p>
-                    <div style="display:flex; flex-direction:column; gap:8px;">
-                      ${tapas.map(t => `<div style="display:flex; align-items:center; gap:10px;">
-                        <span style="font-size:24px; flex-shrink:0; line-height:1;">${t.emoji || '🍽️'}</span>
-                        <div style="flex:1; min-width:0;">
-                          <p style="font-size:14px; font-weight:700; color:var(--text); margin:0; line-height:1.3;">${t.name}</p>
-                          ${t.description ? `<p style="font-size:12px; color:var(--text-muted); margin:2px 0 0; font-style:italic;">${t.description}</p>` : ''}
-                        </div>
-                      </div>`).join('')}
+                    <p style="font-size:10px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; color:var(--gold); margin:0 0 12px;">🍽️ Tapas de la sesión</p>
+                    <div style="display:flex; flex-direction:column; gap:12px;">
+                      ${tapas.map(t => {
+                        const allergenIds = (t.allergens||'').split(',').filter(Boolean);
+                        const allergenBadges = allergenIds.length ? `<div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:6px;">` +
+                          allergenIds.map(id => {
+                            const a = ALLERGENS_CLIENT[id];
+                            return a ? `<span style="display:inline-flex; align-items:center; gap:2px; background:rgba(42,21,9,0.06); border:1px solid rgba(42,21,9,0.1); border-radius:20px; padding:3px 8px; font-size:11px; color:var(--text-muted); font-weight:600;">${a.icon} ${a.name}</span>` : '';
+                          }).join('') + `</div>` : '';
+                        return `<div style="display:flex; align-items:flex-start; gap:10px; padding-bottom:10px; border-bottom:1px solid rgba(42,21,9,0.06);">
+                          <span style="font-size:26px; flex-shrink:0; line-height:1; margin-top:2px;">🍽️</span>
+                          <div style="flex:1; min-width:0;">
+                            <p style="font-size:15px; font-weight:700; color:var(--text); margin:0; line-height:1.3;">${t.name}</p>
+                            ${t.description ? `<p style="font-size:12px; color:var(--text-muted); margin:3px 0 0; font-style:italic;">${t.description}</p>` : ''}
+                            ${allergenBadges}
+                          </div>
+                        </div>`;
+                      }).join('')}
                     </div>
                   </div>`;
                 })()}
