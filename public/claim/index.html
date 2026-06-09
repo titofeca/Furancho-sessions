@@ -1861,22 +1861,7 @@
       </div>
 
       <!-- BOTÓN MARCHO — visible solo con sesión activa -->
-      <div id="marcho-banner" style="display:none; margin-bottom:16px;">
-        <button onclick="marcharDoFurancho()" style="
-          width:100%; padding:16px 20px;
-          background:rgba(42,21,9,0.05);
-          border:1.5px solid rgba(42,21,9,0.15);
-          border-radius:16px;
-          font-family:'Outfit',sans-serif; font-size:15px; font-weight:600;
-          color:var(--text-muted); cursor:pointer;
-          display:flex; align-items:center; justify-content:center; gap:10px;
-          transition:all 0.2s;"
-          onmouseover="this.style.borderColor='rgba(42,21,9,0.3)'; this.style.background='rgba(42,21,9,0.08)'"
-          onmouseout="this.style.borderColor='rgba(42,21,9,0.15)'; this.style.background='rgba(42,21,9,0.05)'">
-          <span style="font-size:18px;">🚪</span>
-          <span>🚪 Marcho, que tengo que marchar (que ya está bien de leria, ho)</span>
-        </button>
-      </div>
+      <div id="marcho-banner" style="display:none;"></div>
 
       <!-- ① TU CAMINO — visitas + journey -->
       <div class="profile-progress-card" style="padding:22px; margin-bottom:20px;">
@@ -2163,8 +2148,13 @@
         No te olvides de fichar en la puerta al entrar y salir para acumular visitas. ¡El objetivo final es coronarse Presidente, ho! 👑
       </p>
 
+      <!-- Botón de salida discreto (para quien sabe que existe) -->
+      <div id="marcho-footer" style="display:none; text-align:center; margin-top:8px;">
+        <button onclick="marcharDoFurancho()" style="background:none; border:none; font-family:'Outfit',sans-serif; font-size:11px; color:rgba(42,21,9,0.3); cursor:pointer; padding:4px 8px;">🚪 Registrar salida</button>
+      </div>
+
       <!-- Links discretos al pase (solo para quien sabe lo que son) -->
-      <div id="profile-nft-links" style="display:none; text-align:center; padding:8px 0 4px; margin-top:4px;">
+      <div id="profile-nft-links" style="display:none; text-align:center; padding:4px 0;">
         <a id="profile-opensea-link" href="#" target="_blank" rel="noopener" style="display:inline-block; margin:0 8px; font-size:11px; color:rgba(42,21,9,0.3); text-decoration:none;">🌊 OpenSea</a>
         <a id="profile-polygonscan-link" href="#" target="_blank" rel="noopener" style="display:inline-block; margin:0 8px; font-size:11px; color:rgba(42,21,9,0.3); text-decoration:none;">🔍 Polygonscan</a>
       </div>
@@ -2513,8 +2503,8 @@
     }
 
     async function marcharDoFurancho() {
-      const btn = document.querySelector('#marcho-banner button');
-      if (btn) { btn.disabled = true; btn.querySelector('span:last-child').textContent = 'Marchando...'; }
+      const btn = document.querySelector('#marcho-footer button');
+      if (btn) { btn.disabled = true; btn.textContent = '🚪 Registrando...'; }
       try {
         const res = await fetch('/api/mint', {
           method: 'POST',
@@ -2522,7 +2512,7 @@
           body: JSON.stringify({ walletAddress: userWalletAddress })
         });
         const data = await res.json();
-        document.getElementById('marcho-banner').style.display = 'none';
+        document.getElementById('marcho-footer').style.display = 'none';
         document.getElementById('session-active-badge').style.display = 'none';
         const saidaTexts = [
           '¡Hasta luego! No tardes en volver, ho.',
@@ -2543,7 +2533,7 @@
           showProfileScreen(userVisitCount, userClaimedLevels);
         }
       } catch(e) {
-        if (btn) { btn.disabled = false; btn.querySelector('span:last-child').textContent = 'Marcho que me tengo que marchar'; }
+        if (btn) { btn.disabled = false; btn.textContent = '🚪 Registrar salida'; }
         showToast('😬 Algo fue mal al registrar la salida. Inténtalo de nuevo, ho.');
       }
     }
@@ -2563,7 +2553,7 @@
         userClaimedLevels = data.levels || [];
         // Mostrar/ocultar botón Marcho según sesión activa
         if (data.hasActiveSession) {
-          document.getElementById('marcho-banner').style.display = 'block';
+          document.getElementById('marcho-footer').style.display = 'block';
           document.getElementById('session-active-badge').style.display = 'block';
         }
 
@@ -2997,13 +2987,13 @@
           }
         } else if (data.action === 'cooldown') {
           btn.disabled = false;
-          btn.textContent = '🚪 Marcho que me tengo que marchar';
+          btn.textContent = '🚪 Registrar salida';
           alert('Ya registraste visita esta semana, ho. No me abuses, pero vuelve pronto, ¿eh?');
         } else {
           btn.disabled = false;
           btn.textContent = '✅ ¡Hasta luego, ho!';
           showProfileBanner(getRandomExitMessage(), 'green');
-          setTimeout(() => { btn.textContent = '🚪 Marcho que me tengo que marchar'; btn.disabled = false; }, 2500);
+          setTimeout(() => { btn.textContent = '🚪 Registrar salida'; btn.disabled = false; }, 2500);
         }
       } catch (e) {
         btn.disabled = false;
