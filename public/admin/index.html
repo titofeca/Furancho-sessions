@@ -963,7 +963,7 @@
 </div>
 
 <!-- ==================== MAIN APP ==================== -->
-<div id="main-app" style="display:flex; flex-direction: column;">
+<div id="main-app">
 
   <!-- Top Header -->
   <header class="top-header">
@@ -2030,7 +2030,7 @@
         AUTH_TOKEN = data.token;
         localStorage.setItem('furancho_admin_token', AUTH_TOKEN);
         document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('main-app').style.display = 'flex';
+        document.getElementById('main-app').style.display = 'block';
         errorDiv.style.display = 'none';
         loadStats();
         loadMessages();
@@ -2051,7 +2051,7 @@
     if (saved) {
       AUTH_TOKEN = saved;
       document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('main-app').style.display = 'flex';
+      document.getElementById('main-app').style.display = 'block';
       loadStats();
       loadHolders('all');
       loadPendingMints();
