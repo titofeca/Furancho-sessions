@@ -3824,24 +3824,26 @@
 
     try {
       if (currentEventId) {
-        await fetch(`/api/events/${currentEventId}`, {
+        const res = await fetch(`/api/events/${currentEventId}`, {
           method: 'PATCH',
           headers: authHeaders(),
           body: JSON.stringify({ date, title, description, active })
         });
-        showToast('Evento actualizado');
+        if (!res.ok) { const d = await res.json().catch(() => ({})); return showToast(d.error || 'Error al guardar', true); }
+        showToast('✅ Evento guardado');
       } else {
-        await fetch('/api/events', {
+        const res = await fetch('/api/events', {
           method: 'POST',
           headers: authHeaders(),
           body: JSON.stringify({ date, title, description })
         });
-        showToast('Evento creado');
+        if (!res.ok) { const d = await res.json().catch(() => ({})); return showToast(d.error || 'Error al crear', true); }
+        showToast('✅ Evento creado');
       }
       closeEventModal();
       loadAgenda();
     } catch(e) {
-      showToast('Error guardando');
+      showToast('Error de red al guardar — reintenta', true);
     }
   }
 

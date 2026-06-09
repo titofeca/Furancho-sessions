@@ -584,14 +584,42 @@ function getAllEvents() {
   `).all();
 }
 
+// Textos canónicos de cada evento — editables desde el admin, pero estos son el fallback si la BD se reinicia.
+// Para añadir o cambiar una descripción desde el código: edita el array y añade la fecha a FORCED_UPDATE_DATES.
+const EVENT_SEED = [
+  {
+    date: '2026-06-04',
+    title: 'Furancho Sessions — 4 Junio',
+    description: 'Menudo estreno nos marcamos en el primer furancho, ¡carallo! 🍷✨\nJugaba la selección en la ciudad y el estadio estaba a tope, pero con nosotros se quedó la gente que sabe divertirse de verdad. ¡Qué nivelazo de público!\nVaya lujazo de noche con Carmen Rey y Rubén Appratto al micro, y el gran Tito Fernández (chef e ideólogo de todo este invento) saliéndose.'
+  },
+  {
+    date: '2026-06-11',
+    title: 'Furancho Sessions — 11 Junio',
+    description: 'La primera. La que marca el ritmo. Vinos locales gallegos, tapas de autor y el ambiente que solo el Furancho sabe crear. Nos vemos el jueves.'
+  },
+  {
+    date: '2026-06-18',
+    title: 'Furancho Sessions — 18 Junio',
+    description: 'Una cata selecta acompañada de las mejores tapas de temporada. Descubre nuevos sabores en un ambiente único y relajado entre amigos.'
+  },
+  {
+    date: '2026-06-25',
+    title: 'Furancho Sessions — 25 Junio',
+    description: 'Especial Noche de San Juan. Fogata simbólica, música tradicional gallega y nuestro menú especial de tapas y vinos galardonados.'
+  },
+  {
+    date: '2026-07-02',
+    title: 'Furancho Sessions — 2 Julio',
+    description: 'Algo está preparándose. No podemos decir mucho… solo que merece la pena estar. Apúntate y descúbrelo.'
+  },
+];
+
+// Fechas cuya descripción debe actualizarse aunque ya exista en BD (cuando cambias el texto desde aquí).
+// Añade la fecha aquí cuando quieras forzar la actualización desde código.
+const FORCED_UPDATE_DATES = ['2026-06-04'];
+
 function seedEvents() {
-  const dates = [
-    { date: '2026-06-04', title: 'Furancho Sessions — 4 Junio', description: 'Inauguración de Furancho Sessions. La gran apertura: vinos locales seleccionados, picoteo y cunca de bienvenida.' },
-    { date: '2026-06-11', title: 'Furancho Sessions — 11 Junio', description: 'La primera. La que marca el ritmo. Vinos locales gallegos, tapas de autor y el ambiente que solo el Furancho sabe crear. Nos vemos el jueves.' },
-    { date: '2026-06-18', title: 'Furancho Sessions — 18 Junio', description: 'Una cata selecta acompañada de las mejores tapas de temporada. Descubre nuevos sabores en un ambiente único y relajado entre amigos.' },
-    { date: '2026-06-25', title: 'Furancho Sessions — 25 Junio', description: 'Especial Noche de San Juan. Fogata simbólica, música tradicional gallega y nuestro menú especial de tapas y vinos galardonados.' },
-    { date: '2026-07-02', title: 'Furancho Sessions — 2 Julio', description: 'Algo está preparándose. No podemos decir mucho… solo que merece la pena estar. Apúntate y descúbrelo.' },
-  ];
+  const dates = EVENT_SEED;
   // UPSERT: inserta si no existe, actualiza título/descripción si cambian
   // NUNCA borra — los IDs se mantienen estables entre reinicios para que las reservas no se huerfanen
   dates.forEach(({ date, title, description }) => {
@@ -602,6 +630,18 @@ function seedEvents() {
   });
 }
 try { seedEvents(); } catch(e) { console.warn('[DB] seedEvents falló (posible lock en deploy):', e.message); }
+
+// Forzar actualización de eventos cuya descripción ha sido editada desde el código.
+// Solo actualiza las fechas listadas en FORCED_UPDATE_DATES — el resto no se toca.
+// Cuando el admin edite desde móvil y quiera persistir, añade la fecha aquí y modifica EVENT_SEED arriba.
+try {
+  FORCED_UPDATE_DATES.forEach(date => {
+    const entry = EVENT_SEED.find(e => e.date === date);
+    if (!entry) return;
+    db.prepare(`UPDATE events SET title = ?, description = ? WHERE event_date = ?`)
+      .run(entry.title, entry.description, date);
+  });
+} catch(e) { console.warn('[DB] forced event update falló:', e.message); }
 
 function getVipCapacity(eventId) {
   const event = db.prepare(`SELECT vip_max FROM events WHERE id=?`).get(eventId);
