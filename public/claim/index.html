@@ -1925,7 +1925,7 @@
             <div style="flex:1; min-width:0;">
               <p style="font-size:10px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin:0 0 2px;">Chave Semanal (Sorteo)</p>
               <p id="weekly-prize-text" style="font-size:13.5px; font-weight:700; color:var(--wine); margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Premio: Botella de Viño de la Casa</p>
-              <p id="weekly-rules-text" style="font-size:11px; color:var(--text-muted); margin:4px 0 0; line-height:1.4; display:block;"></p>
+              <p id="weekly-rules-text" style="font-size:13px; color:var(--text-muted); margin:4px 0 0; line-height:1.5; display:block;"></p>
             </div>
           </div>
           <button id="weekly-claim-btn" onclick="claimWeeklyTicket()" style="
@@ -3053,14 +3053,14 @@
               <div class="event-card-header" onclick="toggleEventCard(${ev.id})">
                 <div style="text-align:center; min-width:44px; background:${isFirst ? 'rgba(139,25,24,0.08)' : attending ? 'rgba(139,25,24,0.08)' : 'rgba(42,21,9,0.06)'}; border-radius:10px; padding:6px 4px; position:relative;">
                   ${isFirst && !isPast ? '<div style="position:absolute;top:-5px;right:-5px;width:10px;height:10px;background:var(--wine);border-radius:50%;border:2px solid #F2EDE3;"></div>' : ''}
-                  <p style="font-size:9px; text-transform:uppercase; color:var(--text-muted); margin:0 0 2px 0;">${days[d.getDay()]}</p>
+                  <p style="font-size:10px; text-transform:uppercase; color:var(--text-muted); margin:0 0 2px 0;">${days[d.getDay()]}</p>
                   <p style="font-size:20px; font-weight:900; font-family:'Playfair Display',serif; color:${isFirst || attending ? 'var(--wine)' : 'var(--text)'}; line-height:1; margin:0 0 2px 0;">${d.getDate()}</p>
-                  <p style="font-size:9px; color:var(--text-muted); margin:0;">${months[d.getMonth()]}</p>
+                  <p style="font-size:10px; color:var(--text-muted); margin:0;">${months[d.getMonth()]}</p>
                 </div>
                 <div style="flex:1; text-align:left; display:flex; justify-content:space-between; align-items:center; gap:8px;">
                   <div>
-                    <p style="font-size:14px; font-weight:600; color:var(--text); margin:0;">${ev.title}</p>
-                    <p style="font-size:11px; color:var(--text-muted); margin:4px 0 0 0;">👥 ${ev.rsvp_count + baseline} personas apuntadas</p>
+                    <p style="font-size:15px; font-weight:600; color:var(--text); margin:0;">${ev.title}</p>
+                    <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0;">👥 ${ev.rsvp_count + baseline} personas apuntadas</p>
                   </div>
                   ${badgesHTML}
                 </div>
@@ -3068,25 +3068,25 @@
               </div>
               <div class="event-card-content" id="event-content-${ev.id}"
                 style="max-height:${isFirst ? '400px' : '0'}; overflow:hidden; transition:max-height 0.35s ease-out; text-align:left;">
-                <p style="font-size:13px; color:var(--text); line-height:1.6; margin:12px 0;">${ev.description || 'Furancho Sessions: Afterwork con vino y tapas.'}</p>
+                <p style="font-size:15px; color:var(--text); line-height:1.65; margin:12px 0;">${ev.description || 'Furancho Sessions: Afterwork con vino y tapas.'}</p>
                 <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(42,21,9,0.05); padding-top:12px; margin-top:12px;">
-                  <span style="font-size:12px; color:var(--text-muted);">👥 ${ev.rsvp_count + baseline} confirmados</span>
+                  <span style="font-size:13px; color:var(--text-muted);">👥 ${ev.rsvp_count + baseline} confirmados</span>
                   ${!isPast ? `
                   <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
                     <button onclick="event.stopPropagation(); toggleRsvpBtn(${ev.id}, this)" data-attending="${attending}" style="
-                      padding:8px 14px; border-radius:50px; font-size:12px; font-weight:700; cursor:pointer;
+                      padding:9px 16px; border-radius:50px; font-size:13px; font-weight:700; cursor:pointer;
                       border:1.5px solid ${attending?'var(--wine)':'rgba(42,21,9,0.15)'};
                       background:${attending?'var(--wine)':'transparent'};
                       color:${attending?'#fff':'var(--text-muted)'};
                       font-family:'Outfit',sans-serif; white-space:nowrap;">${attending?'✓ Apuntado':'Me apunto'}</button>
                     <button onclick="event.stopPropagation(); addToCalendar('${ev.title.replace(/'/g, "\\'")}', '${ev.event_date}', '${(ev.description || 'Furancho Sessions: Afterwork con vino y tapas.').replace(/'/g, "\\'").replace(/\n/g, " ")}')" style="
-                      padding:8px 14px; border-radius:50px; font-size:12px; font-weight:700; cursor:pointer;
+                      padding:9px 16px; border-radius:50px; font-size:13px; font-weight:700; cursor:pointer;
                       border:1.5px solid rgba(42,21,9,0.15); background:transparent;
                       color:var(--text-muted); font-family:'Outfit',sans-serif; white-space:nowrap; display:inline-flex; align-items:center; gap:4px;">
                       📅 Guardar
                     </button>
                     ${myVip ? `
-                      <span id="vip-status-${ev.id}" style="display:inline-flex; align-items:center; gap:5px; padding:7px 13px; border-radius:50px; font-size:12px; font-weight:700; font-family:'Outfit',sans-serif; white-space:nowrap;
+                      <span id="vip-status-${ev.id}" style="display:inline-flex; align-items:center; gap:5px; padding:8px 14px; border-radius:50px; font-size:13px; font-weight:700; font-family:'Outfit',sans-serif; white-space:nowrap;
                         background:${myVip.status==='confirmed'?'rgba(74,222,128,0.12)':myVip.status==='cancelled'?'rgba(248,113,113,0.1)':'rgba(196,151,58,0.1)'};
                         border:1.5px solid ${myVip.status==='confirmed'?'rgba(74,222,128,0.4)':myVip.status==='cancelled'?'rgba(248,113,113,0.3)':'rgba(196,151,58,0.35)'};
                         color:${myVip.status==='confirmed'?'#16a34a':myVip.status==='cancelled'?'#dc2626':'var(--gold)'};">
@@ -3094,10 +3094,10 @@
                         <span style="font-weight:400; opacity:0.8;">${myVip.group_size} pax</span>
                       </span>` :
                     `<button onclick="event.stopPropagation(); openVipModal(${ev.id},'${ev.title} · ${d.getDate()} ${months[d.getMonth()]}')" style="
-                      padding:8px 14px; border-radius:50px; font-size:12px; font-weight:700; cursor:pointer;
+                      padding:9px 16px; border-radius:50px; font-size:13px; font-weight:700; cursor:pointer;
                       border:1.5px solid rgba(196,151,58,0.35); background:transparent;
                       color:var(--gold); font-family:'Outfit',sans-serif; white-space:nowrap;">⭐ Reservar VIP</button>`}
-                  </div>` : `<span style="font-size:12px;color:var(--text-muted);">Evento finalizado</span>`}
+                  </div>` : `<span style="font-size:13px;color:var(--text-muted);">Evento finalizado</span>`}
                 </div>
               </div>
             </div>`;
@@ -3111,8 +3111,8 @@
           restEvents.map(ev => buildCard(ev, true)).join('') +
           (restCount > 0 ? `
             <button id="agenda-more-btn" onclick="toggleAgendaRest(${restCount})"
-              style="width:100%; padding:11px; background:transparent; border:1px solid rgba(42,21,9,0.1); border-radius:12px;
-                font-family:'Outfit',sans-serif; font-size:13px; color:var(--text-muted); cursor:pointer; margin-top:2px;">
+              style="width:100%; padding:12px; background:transparent; border:1px solid rgba(42,21,9,0.1); border-radius:12px;
+                font-family:'Outfit',sans-serif; font-size:14px; color:var(--text-muted); cursor:pointer; margin-top:2px;">
               Ver ${restCount} sesión${restCount>1?'es más':' más'} ▾
             </button>` : '');
       } catch(e) {}
@@ -3433,7 +3433,7 @@
             return `
             <div style="display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid rgba(42,21,9,0.05);">
               <span style="font-size:12px; font-weight:700; color:${isLaunched ? 'var(--text-muted)' : 'var(--wine)'}; width:42px; flex-shrink:0;">${s.scheduled_time}</span>
-              <span style="font-size:13px; color:${isLaunched ? 'var(--text-muted)' : 'var(--text)'}; flex:1; text-decoration:${isLaunched ? 'line-through' : 'none'};">🎁 ${s.prize}</span>
+              <span style="font-size:14px; color:${isLaunched ? 'var(--text-muted)' : 'var(--text)'}; flex:1; text-decoration:${isLaunched ? 'line-through' : 'none'};">🎁 ${s.prize}</span>
               ${badge}
             </div>`;
           }).join('')}
@@ -4541,7 +4541,7 @@
         btn.style.display = 'none';
         prizeText.innerHTML = `🍀 <strong style="color:var(--wine);">Chave do Furancho</strong>`;
         if (rulesText) {
-          rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:11.5px; line-height:1.5;">😢 <strong>Esta semana non foi, ho.</strong> O domingo a las 21:00 sale el siguiente. ¡A por él!</span>`;
+          rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:13px; line-height:1.5;">😢 <strong>Esta semana non foi, ho.</strong> O domingo a las 21:00 sale el siguiente. ¡A por él!</span>`;
         }
         return;
       }
@@ -4587,7 +4587,7 @@
         btn.style.display = 'none';
         prizeText.innerHTML = `🔑 <strong style="color:var(--wine);">Chave do Furancho</strong>`;
         if (rulesText) {
-          rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:11.5px; line-height:1.5;">⏳ O domingo ás 21:00 abre el siguiente sorteo. ¡Estate atento, ho!</span>`;
+          rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:13px; line-height:1.5;">⏳ O domingo ás 21:00 abre el siguiente sorteo. ¡Estate atento, ho!</span>`;
         }
       }
     } catch (e) {
@@ -5031,9 +5031,9 @@
       <h2 style="font-family:'Playfair Display',serif; font-size:24px; font-weight:900; color:var(--wine); margin:0 0 16px 0;">Sorteos y Premios</h2>
 
       <!-- Reglas del Sorteo (Unificadas y más legibles, font-size: 13.5px) -->
-      <div style="background:rgba(139,25,24,0.03); border:1.5px dashed rgba(139,25,24,0.18); border-radius:16px; padding:14px; margin-bottom:20px; text-align:left;">
-        <p style="font-size:13.5px; color:var(--text); line-height:1.6; margin:0;">
-          ⚠️ <strong style="color:var(--wine); font-size:14.5px;">¡Al loro!</strong> Cuando oigas la señal de que empieza el sorteo, abre la app. Si te toca, tienes que aceptar el premio en pantalla. Pero ojo: hay tiempo límite. Si te despistas pidiendo otra taza y no aceptas a tiempo, el premio vuelve al bombo y pasamos al siguiente.
+      <div style="background:rgba(139,25,24,0.03); border:1.5px dashed rgba(139,25,24,0.18); border-radius:16px; padding:16px; margin-bottom:20px; text-align:left;">
+        <p style="font-size:15px; color:var(--text); line-height:1.65; margin:0;">
+          ⚠️ <strong style="color:var(--wine); font-size:15px;">¡Al loro!</strong> Cuando oigas la señal del sorteo, abre la app. Si te toca, acepta el premio en pantalla. Hay tiempo límite — si te despistas, el premio vuelve al bombo. ¡Sin excusas, ho!
         </p>
       </div>
 
@@ -5041,7 +5041,7 @@
       <div style="text-align:left; margin-bottom:24px;">
         <div id="prizes-state-content" style="margin-top:12px;"></div>
         <div id="my-prizes-section" style="display:none; margin-top:14px;">
-          <p style="font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); margin-bottom:10px;" id="prizes-header-title">Mis premios y sorteos</p>
+          <p style="font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); margin-bottom:10px;" id="prizes-header-title">Mis premios y sorteos</p>
           <div id="prizes-list" style="display:flex; flex-direction:column; gap:8px;"></div>
         </div>
       </div>
