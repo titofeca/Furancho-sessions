@@ -92,22 +92,11 @@ router.get('/stream', (req, res) => {
   });
 });
 
-// POST /api/raffle/start — admin lanza sorteo
-// POST /api/raffle/upload-image — sube imagen del premio (admin)
-router.post('/upload-image', requireAuth, upload.single('image'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No se recibió imagen' });
-  const url = `/prize-images/${req.file.filename}`;
-  res.json({ success: true, url });
-});
-
-router.post('/start', requireAuth, (req, res) => {
-  const { prize, scheduledId, targetLevel, prizeDetails, prizeImage, establishment } = req.body;
-  if (!prize) return res.status(400).json({ error: 'Falta el nombre del premio' });
-
-  // Si se pasa targetLevel, verificar que sea válido
+// ── FUNCIÓN CENTRAL DE LANZAMIENTO (usada por /start, /launch-scheduled y auto-launcher) ────
+function doLaunch({ prize, type = 'night', targetLevel = null, prizeDetails = null, prizeImage = null, establishment = null, hideName = false, scheduledId = null }) {
   const sanitizedTargetLevel = targetLevel ? parseInt(targetLevel) : null;
   if (sanitizedTargetLevel && ![2, 3, 4].includes(sanitizedTargetLevel)) {
-    return res.status(400).json({ error: 'Nivel de destino no válido. Debe ser 2, 3 o 4.' });
+    throw new Error('Nivel de destino no válido. Debe ser 2, 3 o 4.');
   }
 
   const connectedWallets = [...new Set(clients.filter(c => c.walletAddress).map(c => c.walletAddress))];
@@ -116,45 +105,36 @@ router.post('/start', requireAuth, (req, res) => {
     ? sessionWallets.filter(w => connectedWallets.includes(w))
     : sessionWallets;
 
-  if (eligibleWallets.length === 0) {
-    return res.status(400).json({ error: 'No hay clientes con entrada fichada.' });
-  }
+  if (eligibleWallets.length === 0) throw new Error('No hay clientes con entrada fichada.');
 
-  // Doble Oportunidad: si el ganador de "La Chave Semanal" de esta semana está en los elegibles, duplicarlo en el bombo.
+  // Doble Oportunidad para el ganador de La Chave Semanal
   try {
     const { db } = require('../db/database');
     const weekStr = getWeeklyRaffleTargetWeek();
-    const weeklyRaffle = db.prepare(`SELECT winner_wallet FROM weekly_raffles WHERE claimed_week = ? AND status = 'completed'`).get(weekStr);
-    const weeklyWinner = weeklyRaffle ? weeklyRaffle.winner_wallet : null;
-
+    const weeklyWinner = db.prepare(`SELECT winner_wallet FROM weekly_raffles WHERE claimed_week = ? AND status = 'completed'`).get(weekStr)?.winner_wallet;
     if (weeklyWinner && eligibleWallets.includes(weeklyWinner)) {
       eligibleWallets.push(weeklyWinner);
-      console.log(`[Raffle] Ganador de Chave Semanal (${weeklyWinner}) tiene DOBLE OPORTUNIDAD hoy. Duplicada en bombo.`);
+      console.log(`[Raffle] Doble oportunidad para Chave Semanal: ${weeklyWinner.slice(0,6)}...`);
     }
-  } catch (e) {
-    console.error('Error al aplicar doble oportunidad:', e.message);
-  }
+  } catch (e) {}
 
-  const winnerIndex = Math.floor(Math.random() * eligibleWallets.length);
-  const winnerWallet = eligibleWallets[winnerIndex];
-
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const winnerWallet = eligibleWallets[Math.floor(Math.random() * eligibleWallets.length)];
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let verificationCode = '';
-  for (let i = 0; i < 4; i++) verificationCode += characters.charAt(Math.floor(Math.random() * characters.length));
+  for (let i = 0; i < 4; i++) verificationCode += chars.charAt(Math.floor(Math.random() * chars.length));
 
-  const raffleId = insertRaffle(prize, winnerWallet, verificationCode, eligibleWallets, sanitizedTargetLevel, prizeDetails || null, prizeImage || null, establishment || null);
+  const raffleId = insertRaffle(prize, winnerWallet, verificationCode, eligibleWallets, sanitizedTargetLevel, prizeDetails, prizeImage, establishment, type, hideName ? 1 : 0);
   if (scheduledId) { try { linkScheduledRaffle(parseInt(scheduledId), raffleId); } catch(_) {} }
 
-  console.log(`[Raffle] #${raffleId} iniciado. Participantes: ${eligibleWallets.length}, SSE: ${connectedWallets.length}`);
-  broadcast('raffle_start', { duration: 15, prize, raffleId });
-  sendPushToAll('🎰 ¡Sorteo en Furancho!', `Se sortea: ${prize} — ¡Abre la app ahora!`, { url: '/claim' });
+  const displayPrize = hideName ? 'Sorpresa 🎁' : prize;
+  console.log(`[Raffle] #${raffleId} (${type}) iniciado. Participantes: ${eligibleWallets.length}, SSE: ${connectedWallets.length}`);
+  broadcast('raffle_start', { duration: 15, prize: displayPrize, raffleId, type });
+  sendPushToAll('🎰 ¡Sorteo en Furancho!', `¡Abre la app ahora!`, { url: '/claim' });
 
-  // Revelar ganador tras 15s
   setTimeout(() => {
-    broadcast('raffle_result', { winnerWallet, verificationCode, prize, raffleId, acceptWindow: 180, prizeDetails: prizeDetails || null, prizeImage: prizeImage || null, establishment: establishment || null });
+    broadcast('raffle_result', { winnerWallet, verificationCode, prize, raffleId, acceptWindow: 180, type, prizeDetails: prizeDetails || null, prizeImage: prizeImage || null, establishment: establishment || null });
   }, 15000);
 
-  // Auto-rechazar si no acepta en 180s + 15s de animación
   setTimeout(() => {
     try {
       const { db } = require('../db/database');
@@ -167,7 +147,44 @@ router.post('/start', requireAuth, (req, res) => {
     } catch (e) { console.error('[Raffle] Error en auto-rechazo:', e.message); }
   }, 195000);
 
-  return res.json({ success: true, participants: eligibleWallets.length, raffleId, winnerWallet, verificationCode });
+  return { raffleId, winnerWallet, verificationCode, participants: eligibleWallets.length };
+}
+
+// POST /api/raffle/upload-image — sube imagen del premio (admin)
+router.post('/upload-image', requireAuth, upload.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No se recibió imagen' });
+  const url = `/prize-images/${req.file.filename}`;
+  res.json({ success: true, url });
+});
+
+// POST /api/raffle/start — admin lanza sorteo manualmente con todos los datos
+router.post('/start', requireAuth, (req, res) => {
+  const { prize, scheduledId, targetLevel, prizeDetails, prizeImage, establishment, type, hideName } = req.body;
+  if (!prize) return res.status(400).json({ error: 'Falta el nombre del premio' });
+  try {
+    const result = doLaunch({ prize, type: type || 'night', targetLevel, prizeDetails, prizeImage, establishment, hideName: !!hideName, scheduledId });
+    return res.json({ success: true, ...result });
+  } catch(e) {
+    return res.status(400).json({ error: e.message });
+  }
+});
+
+// POST /api/raffle/launch-scheduled/:id — lanza un sorteo programado directamente por ID (admin + auto-launcher)
+router.post('/launch-scheduled/:id', requireAuth, (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const s = db.prepare(`SELECT * FROM scheduled_raffles WHERE id = ?`).get(parseInt(req.params.id));
+    if (!s) return res.status(404).json({ error: 'Sorteo programado no encontrado' });
+    if (s.status !== 'pending') return res.status(400).json({ error: 'Este sorteo ya fue lanzado o cancelado' });
+    const result = doLaunch({
+      prize: s.prize, type: s.type || 'night', targetLevel: s.target_level,
+      prizeDetails: s.prize_details, prizeImage: s.prize_image, establishment: s.establishment,
+      hideName: s.hide_name ? true : false, scheduledId: s.id
+    });
+    return res.json({ success: true, ...result });
+  } catch(e) {
+    return res.status(400).json({ error: e.message });
+  }
 });
 
 // POST /api/raffle/:id/accept — ganador acepta el premio (público, valida wallet)
@@ -344,25 +361,31 @@ router.get('/scheduled/all', requireAuth, (req, res) => {
 
 // POST /api/raffle/scheduled — admin, crear sorteo programado
 router.post('/scheduled', requireAuth, (req, res) => {
-  const { eventDate, scheduledTime, prize, targetLevel } = req.body;
+  const { eventDate, scheduledTime, prize, targetLevel, type, hideName, prizeDetails, prizeImage, establishment } = req.body;
   if (!eventDate || !scheduledTime || !prize)
     return res.status(400).json({ error: 'Faltan campos: eventDate, scheduledTime, prize' });
   try {
-    const id = createScheduledRaffle({ eventDate, scheduledTime, prize, targetLevel: targetLevel ? parseInt(targetLevel) : null });
+    const id = createScheduledRaffle({
+      eventDate, scheduledTime, prize,
+      targetLevel: targetLevel ? parseInt(targetLevel) : null,
+      type: type || 'night',
+      hideName: !!hideName,
+      prizeDetails: prizeDetails || null,
+      prizeImage: prizeImage || null,
+      establishment: establishment || null
+    });
     res.json({ success: true, id });
   } catch(e) { res.status(400).json({ error: e.message }); }
 });
 
 // PATCH /api/raffle/scheduled/:id — admin, editar
 router.patch('/scheduled/:id', requireAuth, (req, res) => {
-  const { eventDate, scheduledTime, prize, status, targetLevel } = req.body;
+  const { eventDate, scheduledTime, prize, status, targetLevel, type, hideName, prizeDetails, prizeImage, establishment } = req.body;
   try {
     updateScheduledRaffle(parseInt(req.params.id), {
-      eventDate,
-      scheduledTime,
-      prize,
-      status,
-      targetLevel: targetLevel !== undefined ? (targetLevel ? parseInt(targetLevel) : null) : undefined
+      eventDate, scheduledTime, prize, status,
+      targetLevel: targetLevel !== undefined ? (targetLevel ? parseInt(targetLevel) : null) : undefined,
+      type, hideName, prizeDetails, prizeImage, establishment
     });
     res.json({ success: true });
   } catch(e) { res.status(400).json({ error: e.message }); }
@@ -378,6 +401,7 @@ router.delete('/scheduled/:id', requireAuth, (req, res) => {
 
 module.exports = router;
 module.exports.broadcast = broadcast;
+module.exports.doLaunch = doLaunch;
 
 // --- LÓGICA DE SORTEO SEMANAL ("LA CHAVE SEMANAL") ---
 

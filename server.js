@@ -229,6 +229,50 @@ function scheduleWeeklyRaffle() {
 }
 scheduleWeeklyRaffle();
 
+// ─── AUTO-LANZAMIENTO DE SORTEOS PROGRAMADOS ─────────────────────────────────
+// Cada minuto comprueba si hay sorteos con hora = hora actual en Madrid que aún están pendientes.
+// Si los encuentra, los lanza automáticamente igual que si el admin pulsara "Lanzar".
+function scheduleAutoRaffles() {
+  setInterval(() => {
+    const now = new Date();
+    const madridTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+    const currentTime = `${String(madridTime.getHours()).padStart(2,'0')}:${String(madridTime.getMinutes()).padStart(2,'0')}`;
+    const currentDate = `${madridTime.getFullYear()}-${String(madridTime.getMonth()+1).padStart(2,'0')}-${String(madridTime.getDate()).padStart(2,'0')}`;
+
+    try {
+      const { db } = require('./db/database');
+      const pending = db.prepare(
+        `SELECT * FROM scheduled_raffles WHERE status = 'pending' AND event_date = ? AND scheduled_time = ?`
+      ).all(currentDate, currentTime);
+
+      if (!pending.length) return;
+
+      const { doLaunch } = require('./routes/raffle');
+      pending.forEach(s => {
+        console.log(`[AutoRaffle] ⏰ Lanzando automáticamente #${s.id}: "${s.prize}" (${s.type || 'night'}) a las ${s.scheduled_time}`);
+        try {
+          const result = doLaunch({
+            prize: s.prize,
+            type: s.type || 'night',
+            targetLevel: s.target_level,
+            prizeDetails: s.prize_details,
+            prizeImage: s.prize_image,
+            establishment: s.establishment,
+            hideName: s.hide_name ? true : false,
+            scheduledId: s.id
+          });
+          console.log(`[AutoRaffle] ✅ Sorteo #${s.id} lanzado — ganador: ${result.winnerWallet.slice(0,6)}..., código: ${result.verificationCode}`);
+        } catch(e) {
+          console.error(`[AutoRaffle] ❌ Error lanzando sorteo #${s.id}:`, e.message);
+        }
+      });
+    } catch(e) {
+      console.error('[AutoRaffle] Error en scheduler:', e.message);
+    }
+  }, 60 * 1000);
+}
+scheduleAutoRaffles();
+
 // Iniciar servidor
 const server = app.listen(PORT, () => {
   const { DEMO_MODE } = require('./services/crossmint');

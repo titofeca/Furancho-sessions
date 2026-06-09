@@ -1515,31 +1515,38 @@
       <!-- Agenda de sorteos programados -->
       <div class="glass-card" style="margin-bottom:16px;">
         <div class="card-header" style="margin-bottom:14px;">
-          <span class="card-title">🗓️ Agenda de sorteos</span>
+          <span class="card-title">🗓️ Programar sorteo</span>
           <button class="btn-download" onclick="loadScheduled()" style="font-size:11px; padding:6px 12px;">↻</button>
         </div>
 
-        <!-- Formulario nuevo sorteo programado -->
+        <!-- Fecha y hora -->
         <div style="display:grid; grid-template-columns:1fr 90px; gap:8px; margin-bottom:10px;">
           <input type="date" class="input-field" id="sched-date" style="margin:0; font-size:14px;" />
           <input type="time" class="input-field" id="sched-time" style="margin:0; font-size:14px;" />
         </div>
+
+        <!-- Tipo de sorteo programado -->
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:10px;">
-          <button id="sched-type-std" type="button" onclick="setSchedRaffleType('std')" style="padding:6px; border-radius:8px; border:1px solid var(--wine); background:rgba(139,25,24,0.07); color:var(--wine); font-family:'Outfit',sans-serif; font-size:11px; font-weight:600; cursor:pointer; text-align:center; transition:all 0.2s;">🎁 Estándar</button>
-          <button id="sched-type-level" type="button" onclick="setSchedRaffleType('level')" style="padding:6px; border-radius:8px; border:1px solid rgba(42,21,9,0.15); background:transparent; color:var(--text-muted); font-family:'Outfit',sans-serif; font-size:11px; font-weight:600; cursor:pointer; text-align:center; transition:all 0.2s;">⚡ Nivel</button>
+          <button id="sched-type-night" type="button" onclick="setSchedType('night')" style="padding:7px; border-radius:10px; border:1.5px solid var(--wine); background:rgba(139,25,24,0.08); color:var(--wine); font-family:'Outfit',sans-serif; font-size:12px; font-weight:700; cursor:pointer; text-align:center; transition:all 0.2s;">🎁 Premio Noche</button>
+          <button id="sched-type-local" type="button" onclick="setSchedType('local')" style="padding:7px; border-radius:10px; border:1.5px solid rgba(42,21,9,0.15); background:transparent; color:var(--text-muted); font-family:'Outfit',sans-serif; font-size:12px; font-weight:700; cursor:pointer; text-align:center; transition:all 0.2s;">🏪 Local Colaborador</button>
         </div>
-        <div id="sched-std-wrap" style="display:flex; gap:8px; margin-bottom:12px;">
-          <input type="text" class="input-field" id="sched-prize" placeholder="Premio (ej: Botella Mencía)" style="flex:1; margin:0; font-size:14px;" />
-          <button onclick="addScheduled()" style="background:var(--wine); color:#fff; border:none; border-radius:12px; padding:0 16px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0;">+ Añadir</button>
+
+        <!-- Nombre del premio (siempre visible) -->
+        <input type="text" class="input-field" id="sched-prize" placeholder="Nombre del premio" style="margin-bottom:8px; font-size:14px;" />
+
+        <!-- Toggle ocultar nombre — solo para Noche -->
+        <div id="sched-hide-wrap" style="display:flex; align-items:center; gap:8px; margin-bottom:10px; padding:8px 12px; background:rgba(42,21,9,0.04); border-radius:10px;">
+          <input type="checkbox" id="sched-hide-name" style="width:16px; height:16px; accent-color:var(--wine); cursor:pointer;" />
+          <label for="sched-hide-name" style="font-size:12px; color:var(--text-muted); cursor:pointer; line-height:1.4;">Ocultar nombre hasta lanzar <span style="color:var(--wine);">(los clientes ven "Sorpresa 🎁")</span></label>
         </div>
-        <div id="sched-level-wrap" style="display:none; gap:8px; margin-bottom:12px;">
-          <select id="sched-level-select" class="input-field" style="flex:1; margin:0; font-size:14px; background:var(--surface); color:var(--text); border:1px solid var(--border); padding:10px; border-radius:12px; outline:none; cursor:pointer; height:42px; font-family:'Outfit',sans-serif;">
-            <option value="2">Subir a Nivel 2: O Cunqueiro</option>
-            <option value="3">Subir a Nivel 3: O Larpeiro</option>
-            <option value="4">Subir a Nivel 4: O Presidente</option>
-          </select>
-          <button onclick="addScheduled()" style="background:var(--wine); color:#fff; border:none; border-radius:12px; padding:0 16px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0;">+ Añadir</button>
+
+        <!-- Campos extra para Local Colaborador -->
+        <div id="sched-local-extra" style="display:none; margin-bottom:8px;">
+          <input type="text" class="input-field" id="sched-establishment" placeholder="Nombre del establecimiento" style="margin-bottom:8px; font-size:14px;" />
+          <textarea class="input-field" id="sched-details" placeholder="Detalles del premio (condiciones, validez...)" rows="2" style="font-size:13px; resize:vertical; font-family:'Outfit',sans-serif;"></textarea>
         </div>
+
+        <button onclick="addScheduled()" style="width:100%; background:var(--wine); color:#fff; border:none; border-radius:12px; padding:11px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; margin-bottom:14px;">+ Programar sorteo</button>
 
         <!-- Lista de sorteos programados -->
         <div id="scheduled-list" style="display:flex; flex-direction:column; gap:8px;">
@@ -1562,37 +1569,52 @@
 
       <!-- Lanzar sorteo -->
       <div class="message-form">
-        <div class="form-group" style="margin-bottom:12px;">
-          <label class="form-label">Participantes elegibles</label>
-          <div style="display:flex; align-items:center; gap:10px;">
-            <div class="raffle-eligible-count" id="raffle-eligible-count" style="flex:1;">—</div>
-            <button class="btn-download" onclick="loadEligibleParticipants()" style="font-size:11px; padding:6px 12px; flex-shrink:0;">↻</button>
+        <!-- Estado: participantes y contador -->
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; padding:10px 14px; background:rgba(42,21,9,0.04); border-radius:12px;">
+          <div>
+            <p style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700; margin:0 0 2px;">Elegibles ahora</p>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="raffle-eligible-count" id="raffle-eligible-count" style="font-size:22px;">—</span>
+              <button class="btn-download" onclick="loadEligibleParticipants()" style="font-size:10px; padding:4px 8px;">↻</button>
+            </div>
           </div>
-          <p style="font-size:11px; color:var(--text-muted); margin-top:4px; font-weight:300;">Sorteos esta noche: <strong id="raffle-count-tonight">—</strong> / 2</p>
+          <div style="text-align:right;">
+            <p style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700; margin:0 0 2px;">Esta noche</p>
+            <p style="font-size:18px; font-weight:700; color:var(--text); margin:0;"><span id="raffle-count-tonight">—</span> / 2</p>
+          </div>
         </div>
 
+        <!-- Tipo de sorteo -->
         <div class="form-group" style="margin-bottom:14px;">
-          <label class="form-label">Tipo de Premio</label>
+          <label class="form-label">Tipo de sorteo</label>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-            <button id="raffle-type-std" type="button" onclick="setRaffleType('std')" style="padding:10px; border-radius:12px; border:1.5px solid var(--wine); background:rgba(139,25,24,0.07); color:var(--wine); font-family:'Outfit',sans-serif; font-size:13px; font-weight:700; cursor:pointer; text-align:center; transition:all 0.2s;">🎁 Físico / Consumición</button>
-            <button id="raffle-type-level" type="button" onclick="setRaffleType('level')" style="padding:10px; border-radius:12px; border:1.5px solid rgba(42,21,9,0.15); background:transparent; color:var(--text-muted); font-family:'Outfit',sans-serif; font-size:13px; font-weight:700; cursor:pointer; text-align:center; transition:all 0.2s;">⚡ Subida de Nivel</button>
+            <button id="raffle-type-night" type="button" onclick="setRaffleType('night')" style="padding:11px 8px; border-radius:12px; border:1.5px solid var(--wine); background:rgba(139,25,24,0.08); color:var(--wine); font-family:'Outfit',sans-serif; font-size:13px; font-weight:700; cursor:pointer; text-align:center; transition:all 0.2s; line-height:1.3;">🎁<br><span style="font-size:11px;">Premio Noche</span></button>
+            <button id="raffle-type-local" type="button" onclick="setRaffleType('local')" style="padding:11px 8px; border-radius:12px; border:1.5px solid rgba(42,21,9,0.15); background:transparent; color:var(--text-muted); font-family:'Outfit',sans-serif; font-size:13px; font-weight:700; cursor:pointer; text-align:center; transition:all 0.2s; line-height:1.3;">🏪<br><span style="font-size:11px;">Local Colaborador</span></button>
           </div>
         </div>
 
-        <div class="form-group" id="raffle-std-inputs">
+        <!-- Premio (siempre visible) -->
+        <div class="form-group" style="margin-bottom:10px;">
           <label class="form-label">Premio a sortear</label>
           <div id="preset-buttons" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;"></div>
-          <input type="text" class="input-field" id="raffle-prize" placeholder="Nombre del premio (ej: Cena para 2)" style="font-size:14px; margin-bottom:8px;" />
-          <input type="text" class="input-field" id="raffle-establishment" placeholder="Establecimiento (ej: Restaurante A Taberna)" style="font-size:14px; margin-bottom:8px;" />
-          <textarea class="input-field" id="raffle-prize-details" placeholder="Detalles del premio (condiciones, validez...)" rows="2" style="font-size:13px; resize:vertical; margin-bottom:8px; font-family:'Outfit',sans-serif;"></textarea>
-          <!-- Upload imagen logo/foto del establecimiento -->
-          <label style="display:block; font-size:12px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">📷 Logo o foto del local (opcional)</label>
-          <div style="display:flex; align-items:center; gap:10px;">
-            <label for="raffle-image-input" style="background:var(--surface); border:1.5px dashed var(--border); border-radius:12px; padding:10px 18px; font-size:13px; color:var(--text-muted); cursor:pointer; flex:1; text-align:center;">
-              📁 Seleccionar imagen
-            </label>
-            <input type="file" id="raffle-image-input" accept="image/jpeg,image/jpg,image/png,image/webp" style="display:none;" onchange="previewPrizeImage(this)" />
+          <input type="text" class="input-field" id="raffle-prize" placeholder="Nombre del premio" style="font-size:14px;" />
+        </div>
+
+        <!-- Extras Noche: ocultar nombre -->
+        <div id="raffle-night-extras" class="form-group" style="margin-bottom:10px;">
+          <div style="display:flex; align-items:center; gap:8px; padding:9px 12px; background:rgba(42,21,9,0.04); border-radius:10px;">
+            <input type="checkbox" id="raffle-hide-name" style="width:16px; height:16px; accent-color:var(--wine); cursor:pointer;" />
+            <label for="raffle-hide-name" style="font-size:12px; color:var(--text-muted); cursor:pointer; line-height:1.4;">Ocultar nombre en los móviles <span style="color:var(--wine);">(ven "Sorpresa 🎁")</span></label>
           </div>
+        </div>
+
+        <!-- Extras Local Colaborador: establecimiento + detalles + imagen -->
+        <div id="raffle-local-extras" class="form-group" style="display:none; margin-bottom:10px;">
+          <input type="text" class="input-field" id="raffle-establishment" placeholder="Nombre del establecimiento" style="font-size:14px; margin-bottom:8px;" />
+          <textarea class="input-field" id="raffle-prize-details" placeholder="Detalles del premio (condiciones, validez...)" rows="2" style="font-size:13px; resize:vertical; margin-bottom:8px; font-family:'Outfit',sans-serif;"></textarea>
+          <label style="display:block; font-size:12px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">📷 Logo o foto del local</label>
+          <label for="raffle-image-input" style="display:block; background:var(--surface); border:1.5px dashed var(--border); border-radius:12px; padding:10px 18px; font-size:13px; color:var(--text-muted); cursor:pointer; text-align:center;">📁 Seleccionar imagen (JPG/PNG)</label>
+          <input type="file" id="raffle-image-input" accept="image/jpeg,image/jpg,image/png,image/webp" style="display:none;" onchange="previewPrizeImage(this)" />
           <div id="raffle-image-preview" style="display:none; margin-top:8px; text-align:center;">
             <img id="raffle-image-thumb" src="" style="max-height:80px; max-width:100%; border-radius:10px; border:1.5px solid var(--border);" />
             <button onclick="clearPrizeImage()" style="display:block; margin:6px auto 0; font-size:11px; color:#ef4444; background:none; border:none; cursor:pointer;">✕ Quitar imagen</button>
@@ -1600,17 +1622,8 @@
           <input type="hidden" id="raffle-image-url" value="" />
         </div>
 
-        <div class="form-group" id="raffle-level-inputs" style="display:none;">
-          <label class="form-label">Nivel a Sortear</label>
-          <select id="raffle-level-select" class="input-field" style="font-size:14px; background:var(--surface); color:var(--text); border:1px solid var(--border); padding:10px 14px; border-radius:12px; width:100%; margin-bottom:0; outline:none; cursor:pointer; height:42px; font-family:'Outfit',sans-serif;" onchange="updateLevelRafflePrizeName()">
-            <option value="2">Nivel 2: O Cunqueiro (Pase bronce)</option>
-            <option value="3">Nivel 3: O Larpeiro (Pase plata)</option>
-            <option value="4">Nivel 4: O Presidente do Furancho (Pase oro)</option>
-          </select>
-        </div>
-
         <button class="btn-primary" id="start-raffle-btn" onclick="startRaffle()" style="width:100%; background:linear-gradient(135deg,var(--wine) 0%,var(--wine-dark) 100%);">
-          🎲 LANZAR SORTEO
+          🎲 LANZAR SORTEO AHORA
         </button>
 
         <!-- Estado: animación en curso -->
@@ -2711,80 +2724,60 @@
 
   // ==================== RAFFLES ====================
   let _acceptanceInterval = null;
-  let currentRaffleType = 'std';
-  let currentSchedRaffleType = 'std';
+  let currentRaffleType = 'night';
+  let currentSchedType = 'night';
 
   function setRaffleType(type) {
     currentRaffleType = type;
-    const stdBtn = document.getElementById('raffle-type-std');
-    const lvlBtn = document.getElementById('raffle-type-level');
-    const stdInputs = document.getElementById('raffle-std-inputs');
-    const lvlInputs = document.getElementById('raffle-level-inputs');
-    if (!stdBtn || !lvlBtn || !stdInputs || !lvlInputs) return;
+    const nightBtn = document.getElementById('raffle-type-night');
+    const localBtn = document.getElementById('raffle-type-local');
+    const nightExtras = document.getElementById('raffle-night-extras');
+    const localExtras = document.getElementById('raffle-local-extras');
+    if (!nightBtn || !localBtn) return;
 
-    if (type === 'std') {
-      stdBtn.style.background = 'rgba(139,25,24,0.07)';
-      stdBtn.style.borderColor = 'var(--wine)';
-      stdBtn.style.color = 'var(--wine)';
-      lvlBtn.style.background = 'transparent';
-      lvlBtn.style.borderColor = 'rgba(42,21,9,0.15)';
-      lvlBtn.style.color = 'var(--text-muted)';
-      stdInputs.style.display = 'block';
-      lvlInputs.style.display = 'none';
-      document.getElementById('raffle-prize').value = '';
+    const activeStyle = { background: 'rgba(139,25,24,0.08)', borderColor: 'var(--wine)', color: 'var(--wine)' };
+    const inactiveStyle = { background: 'transparent', borderColor: 'rgba(42,21,9,0.15)', color: 'var(--text-muted)' };
+
+    if (type === 'night') {
+      Object.assign(nightBtn.style, activeStyle);
+      Object.assign(localBtn.style, inactiveStyle);
+      if (nightExtras) nightExtras.style.display = 'block';
+      if (localExtras) localExtras.style.display = 'none';
     } else {
-      lvlBtn.style.background = 'rgba(139,25,24,0.07)';
-      lvlBtn.style.borderColor = 'var(--wine)';
-      lvlBtn.style.color = 'var(--wine)';
-      stdBtn.style.background = 'transparent';
-      stdBtn.style.borderColor = 'rgba(42,21,9,0.15)';
-      stdBtn.style.color = 'var(--text-muted)';
-      stdInputs.style.display = 'none';
-      lvlInputs.style.display = 'block';
-      updateLevelRafflePrizeName();
+      Object.assign(localBtn.style, activeStyle);
+      Object.assign(nightBtn.style, inactiveStyle);
+      if (nightExtras) nightExtras.style.display = 'none';
+      if (localExtras) localExtras.style.display = 'block';
     }
   }
 
-  function updateLevelRafflePrizeName() {
-    const select = document.getElementById('raffle-level-select');
-    if (!select) return;
-    const level = select.value;
-    const levelNames = {
-      2: 'Subida a Nivel 2: O Cunqueiro',
-      3: 'Subida a Nivel 3: O Larpeiro',
-      4: 'Subida a Nivel 4: O Presidente'
-    };
-    document.getElementById('raffle-prize').value = levelNames[level] || `Subida a Nivel ${level}`;
-  }
+  function setSchedType(type) {
+    currentSchedType = type;
+    const nightBtn = document.getElementById('sched-type-night');
+    const localBtn = document.getElementById('sched-type-local');
+    const hideWrap = document.getElementById('sched-hide-wrap');
+    const localExtra = document.getElementById('sched-local-extra');
+    if (!nightBtn || !localBtn) return;
 
-  function setSchedRaffleType(type) {
-    currentSchedRaffleType = type;
-    const stdBtn = document.getElementById('sched-type-std');
-    const lvlBtn = document.getElementById('sched-type-level');
-    const stdWrap = document.getElementById('sched-std-wrap');
-    const lvlWrap = document.getElementById('sched-level-wrap');
-    if (!stdBtn || !lvlBtn || !stdWrap || !lvlWrap) return;
+    const activeStyle = { background: 'rgba(139,25,24,0.08)', borderColor: 'var(--wine)', color: 'var(--wine)' };
+    const inactiveStyle = { background: 'transparent', borderColor: 'rgba(42,21,9,0.15)', color: 'var(--text-muted)' };
 
-    if (type === 'std') {
-      stdBtn.style.background = 'rgba(139,25,24,0.07)';
-      stdBtn.style.borderColor = 'var(--wine)';
-      stdBtn.style.color = 'var(--wine)';
-      lvlBtn.style.background = 'transparent';
-      lvlBtn.style.borderColor = 'rgba(42,21,9,0.15)';
-      lvlBtn.style.color = 'var(--text-muted)';
-      stdWrap.style.display = 'flex';
-      lvlWrap.style.display = 'none';
+    if (type === 'night') {
+      Object.assign(nightBtn.style, activeStyle);
+      Object.assign(localBtn.style, inactiveStyle);
+      if (hideWrap) hideWrap.style.display = 'flex';
+      if (localExtra) localExtra.style.display = 'none';
     } else {
-      lvlBtn.style.background = 'rgba(139,25,24,0.07)';
-      lvlBtn.style.borderColor = 'var(--wine)';
-      lvlBtn.style.color = 'var(--wine)';
-      stdBtn.style.background = 'transparent';
-      stdBtn.style.borderColor = 'rgba(42,21,9,0.15)';
-      stdBtn.style.color = 'var(--text-muted)';
-      stdWrap.style.display = 'none';
-      lvlWrap.style.display = 'flex';
+      Object.assign(localBtn.style, activeStyle);
+      Object.assign(nightBtn.style, inactiveStyle);
+      if (hideWrap) hideWrap.style.display = 'none';
+      if (localExtra) localExtra.style.display = 'block';
     }
   }
+
+  // Compatibilidad con código antiguo que pudiera llamar setSchedRaffleType o setRaffleType con 'std'
+  function setSchedRaffleType(t) { setSchedType(t === 'std' ? 'night' : t); }
+  function updateLevelRafflePrizeName() {} // no-op, mantenida por compatibilidad
 
   // ── AGENDA DE SORTEOS ──────────────────────────────────────────────────────
   async function loadScheduled() {
@@ -2799,21 +2792,28 @@
       const days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
       const statusLabel = { pending:'⏳ Pendiente', launched:'✅ Lanzado', cancelled:'✕ Cancelado' };
       const statusColor = { pending:'var(--text-muted)', launched:'#4ade80', cancelled:'rgba(42,21,9,0.3)' };
+      const typeLabel = { night:'🎁 Noche', local:'🏪 Local', chave:'🔑 Chave' };
+      const typeBg = { night:'rgba(139,25,24,0.07)', local:'rgba(196,151,58,0.1)', chave:'rgba(196,151,58,0.15)' };
+      const typeColor = { night:'var(--wine)', local:'var(--gold)', chave:'var(--gold)' };
       container.innerHTML = rows.map(r => {
         const d = new Date(r.event_date + 'T12:00:00');
         const dateStr = `${days[d.getDay()]} ${d.getDate()} ${d.toLocaleString('es-ES',{month:'short'})}`;
         const isPending = r.status === 'pending';
+        const t = r.type || 'night';
+        const prizeDisplay = r.hide_name && isPending ? '🎁 Sorpresa' : r.prize;
+        const extraInfo = r.establishment ? `<span style="font-size:11px; color:var(--text-muted);">· ${r.establishment}</span>` : '';
         return `<div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 14px; display:flex; align-items:center; gap:10px;">
           <div style="flex:1; min-width:0;">
-            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:3px;">
               <span style="font-size:12px; font-weight:700; color:var(--wine);">${r.scheduled_time}</span>
               <span style="font-size:11px; color:var(--text-muted);">${dateStr}</span>
-              <span style="font-size:10px; color:${statusColor[r.status] || 'var(--text-muted)'};">${statusLabel[r.status] || r.status}</span>
+              <span style="font-size:10px; font-weight:700; padding:2px 7px; border-radius:100px; background:${typeBg[t]||typeBg.night}; color:${typeColor[t]||typeColor.night};">${typeLabel[t]||typeLabel.night}</span>
+              <span style="font-size:10px; color:${statusColor[r.status]||'var(--text-muted)'};">${statusLabel[r.status]||r.status}</span>
             </div>
-            <p style="font-size:13px; font-weight:600; color:var(--text); margin:3px 0 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${r.prize}</p>
+            <p style="font-size:13px; font-weight:600; color:var(--text); margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${prizeDisplay} ${extraInfo}</p>
           </div>
           <div style="display:flex; gap:6px; flex-shrink:0;">
-            ${isPending ? `<button onclick="launchScheduled(${r.id}, '${r.prize.replace(/'/g,"\\'")}', ${r.target_level || 'null'}, this)"
+            ${isPending ? `<button onclick="launchScheduled(${r.id}, this)"
               style="padding:5px 10px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">
               ▶ Lanzar
             </button>` : ''}
@@ -2832,32 +2832,25 @@
   async function addScheduled() {
     const date  = document.getElementById('sched-date').value;
     const time  = document.getElementById('sched-time').value;
-    let prize = '';
-    let targetLevel = null;
+    const prize = document.getElementById('sched-prize').value.trim();
+    const type  = currentSchedType || 'night';
+    const hideName = type === 'night' && document.getElementById('sched-hide-name')?.checked;
+    const establishment = type === 'local' ? (document.getElementById('sched-establishment')?.value.trim() || null) : null;
+    const prizeDetails  = type === 'local' ? (document.getElementById('sched-details')?.value.trim() || null) : null;
 
-    if (currentSchedRaffleType === 'std') {
-      prize = document.getElementById('sched-prize').value.trim();
-    } else {
-      const select = document.getElementById('sched-level-select');
-      targetLevel = parseInt(select.value);
-      const levelNames = {
-        2: 'Subida a Nivel 2: O Cunqueiro',
-        3: 'Subida a Nivel 3: O Larpeiro',
-        4: 'Subida a Nivel 4: O Presidente'
-      };
-      prize = levelNames[targetLevel] || `Subida a Nivel ${targetLevel}`;
-    }
-
-    if (!date || !time || !prize) return showToast('Completa fecha, hora y premio', true);
+    if (!date || !time || !prize) return showToast('Completa fecha, hora y nombre del premio', true);
     try {
       const res = await fetch('/api/raffle/scheduled', {
         method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventDate: date, scheduledTime: time, prize, targetLevel })
+        body: JSON.stringify({ eventDate: date, scheduledTime: time, prize, type, hideName, establishment, prizeDetails })
       });
       const data = await res.json();
       if (data.success) {
         document.getElementById('sched-prize').value = '';
-        showToast('Sorteo programado');
+        if (document.getElementById('sched-hide-name')) document.getElementById('sched-hide-name').checked = false;
+        if (document.getElementById('sched-establishment')) document.getElementById('sched-establishment').value = '';
+        if (document.getElementById('sched-details')) document.getElementById('sched-details').value = '';
+        showToast('✅ Sorteo programado — se lanzará automáticamente');
         loadScheduled();
       } else showToast(data.error || 'Error', true);
     } catch(e) { showToast('Error', true); }
@@ -2871,19 +2864,40 @@
     } catch(e) { btn.disabled = false; }
   }
 
-  async function launchScheduled(scheduledId, prize, targetLevel, btn) {
+  async function launchScheduled(scheduledId, btn) {
+    if (!confirm('¿Lanzar este sorteo ahora mismo?')) return;
     btn.disabled = true;
-    document.getElementById('raffle-prize').value = prize;
-    window._pendingScheduledId = scheduledId;
-    window._pendingScheduledLevel = targetLevel || null;
-    if (targetLevel) {
-      setRaffleType('level');
-      document.getElementById('raffle-level-select').value = targetLevel;
-    } else {
-      setRaffleType('std');
-    }
-    showToast(`Lanzando: ${prize}`);
-    await startRaffle(scheduledId);
+    btn.textContent = '...';
+    try {
+      const res = await fetch(`/api/raffle/launch-scheduled/${scheduledId}`, {
+        method: 'POST', headers: authHeaders()
+      });
+      const data = await res.json();
+      if (data.error) {
+        btn.disabled = false; btn.textContent = '▶ Lanzar';
+        return showToast(data.error, true);
+      }
+      showToast(`🎲 Sorteo lanzado · ${data.participants} participantes`);
+      loadScheduled();
+      // Mostrar panel de estado
+      window._activeRaffle = { id: data.raffleId, verificationCode: data.verificationCode };
+      document.getElementById('raffle-status').style.display = 'block';
+      document.getElementById('raffle-winner-box').style.display = 'none';
+      document.getElementById('accepted-banner').style.display = 'none';
+      document.getElementById('collect-btn-wrap').style.display = 'none';
+      document.getElementById('reject-btn-wrap').style.display = 'none';
+      document.getElementById('raffle-status-title').textContent = '🎲 Sorteo en curso...';
+      document.getElementById('raffle-status-desc').textContent = 'Mostrando ruleta en móviles...';
+      setTimeout(() => {
+        document.getElementById('raffle-status-title').textContent = '⏳ Esperando aceptación';
+        document.getElementById('raffle-status-desc').textContent = `Código: ${data.verificationCode}`;
+        document.getElementById('raffle-winner-box').style.display = 'block';
+        document.getElementById('raffle-winner-code').textContent = data.verificationCode;
+        document.getElementById('collect-raffle-id').value = data.raffleId;
+        document.getElementById('reject-btn-wrap').style.display = 'block';
+        loadRaffleHistory(); loadEligibleParticipants();
+      }, 15000);
+    } catch(e) { btn.disabled = false; btn.textContent = '▶ Lanzar'; showToast('Error', true); }
   }
 
   async function loadPrizePresets() {
@@ -2970,22 +2984,24 @@
 
   async function startRaffle(scheduledId) {
     const prize = document.getElementById('raffle-prize').value.trim();
-    if (!prize) return showToast('Selecciona o escribe un premio primero', true);
-    const establishment = document.getElementById('raffle-establishment')?.value.trim() || '';
-    const prizeDetails = document.getElementById('raffle-prize-details')?.value.trim() || '';
-    if (!confirm(`¿Lanzar sorteo ahora?\nPremio: ${prize}${establishment ? '\nLocal: ' + establishment : ''}`)) return;
+    if (!prize) return showToast('Escribe el nombre del premio primero', true);
+    const type = currentRaffleType || 'night';
+    const hideName = type === 'night' && (document.getElementById('raffle-hide-name')?.checked || false);
+    const establishment = type === 'local' ? (document.getElementById('raffle-establishment')?.value.trim() || '') : '';
+    const prizeDetails  = type === 'local' ? (document.getElementById('raffle-prize-details')?.value.trim() || '') : '';
 
-    // Subir imagen si hay una seleccionada
+    const confirmMsg = `¿Lanzar sorteo ahora?\nTipo: ${type === 'local' ? '🏪 Local Colaborador' : '🎁 Premio Noche'}\nPremio: ${hideName ? 'Sorpresa' : prize}${establishment ? '\nLocal: '+establishment : ''}`;
+    if (!confirm(confirmMsg)) return;
+
+    // Subir imagen si hay una seleccionada (solo local)
     let prizeImageUrl = document.getElementById('raffle-image-url')?.value || '';
     const imageFile = document.getElementById('raffle-image-input')?.files[0];
-    if (imageFile && !prizeImageUrl) {
+    if (imageFile && !prizeImageUrl && type === 'local') {
       try {
         const formData = new FormData();
         formData.append('image', imageFile);
         const uploadRes = await fetch('/api/raffle/upload-image', {
-          method: 'POST',
-          headers: { 'x-admin-token': AUTH_TOKEN },
-          body: formData
+          method: 'POST', headers: { 'x-admin-token': AUTH_TOKEN }, body: formData
         });
         const uploadData = await uploadRes.json();
         if (uploadData.url) prizeImageUrl = uploadData.url;
@@ -3009,14 +3025,14 @@
     }, 1000);
 
     try {
-      const targetLevel = currentRaffleType === 'level' ? parseInt(document.getElementById('raffle-level-select').value) : (window._pendingScheduledLevel || null);
       const res = await fetch('/api/raffle/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-token': AUTH_TOKEN },
         body: JSON.stringify({
           prize,
-          scheduledId: scheduledId || window._pendingScheduledId || null,
-          targetLevel,
+          type,
+          hideName,
+          scheduledId: scheduledId || null,
           prizeDetails: prizeDetails || null,
           prizeImage: prizeImageUrl || null,
           establishment: establishment || null
@@ -3164,18 +3180,24 @@
         container.innerHTML = '<p style="font-size:13px; color:var(--text-muted); text-align:center; padding:20px 0;">Sin sorteos todavía.</p>';
         return;
       }
+      const typeLabel = { night:'🎁 Noche', local:'🏪 Local', chave:'🔑 Chave' };
+      const typeColor = { night:'var(--wine)', local:'var(--gold)', chave:'var(--gold)' };
       const renderRow = (r) => {
         const statusIcon = r.status === 'collected' ? '✅' : r.status === 'rejected' ? '✕' : r.status === 'accepted' ? '🏆' : '⏳';
         const statusColor = r.status === 'collected' ? '#4ade80' : r.status === 'rejected' ? 'var(--text-muted)' : r.status === 'accepted' ? 'var(--gold)' : 'var(--text-muted)';
         const canCollect = r.status === 'accepted';
-        const canPdf = r.status === 'accepted' || r.status === 'collected';
+        const canPdf = (r.status === 'accepted' || r.status === 'collected') && r.type === 'local';
         const when = new Date(r.created_at).toLocaleString('es-ES', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+        const t = r.type || 'night';
         const imgHtml = r.prize_image ? `<img src="${r.prize_image}" style="width:36px;height:36px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0;" />` : `<div style="flex-shrink:0; width:36px; height:36px; border-radius:50%; background:rgba(42,21,9,0.05); display:flex; align-items:center; justify-content:center; font-size:15px;">${statusIcon}</div>`;
         return `<div style="padding:12px 0; border-top:1px solid rgba(42,21,9,0.06);">
           <div style="display:flex; align-items:center; gap:10px;">
             ${imgHtml}
             <div style="flex:1; min-width:0;">
-              <p style="font-size:13px; font-weight:700; color:var(--text); margin:0 0 1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${r.prize}</p>
+              <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px; flex-wrap:wrap;">
+                <p style="font-size:13px; font-weight:700; color:var(--text); margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${r.prize}</p>
+                <span style="font-size:9px; font-weight:700; padding:1px 6px; border-radius:100px; background:rgba(42,21,9,0.06); color:${typeColor[t]||typeColor.night}; white-space:nowrap;">${typeLabel[t]||typeLabel.night}</span>
+              </div>
               ${r.establishment ? `<p style="font-size:10px; color:var(--wine); font-weight:600; margin:0 0 1px;">${r.establishment}</p>` : ''}
               <p style="font-size:10px; color:var(--text-muted); margin:0;">${r.wallet_masked} · ${when}</p>
               ${r.status === 'rejected' ? `<p style="font-size:10px; color:var(--text-muted); margin:2px 0 0; font-style:italic;">${r.rejection_note || 'Rechazado'}</p>` : ''}

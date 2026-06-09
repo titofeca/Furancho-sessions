@@ -3264,10 +3264,10 @@
           if (_acceptCountdownInterval) clearInterval(_acceptCountdownInterval);
           renderPrizes();
 
-          // Mostrar botón PDF del bono del premio
+          // Mostrar botón PDF solo para premios de local colaborador
           const pdfBtn = document.getElementById('raffle-pdf-btn');
           const raffleId = window._currentRaffleId || _acceptRaffleId;
-          if (pdfBtn && raffleId) {
+          if (pdfBtn && raffleId && window._currentRaffleType === 'local') {
             pdfBtn.href = `/api/pdf/premio/${raffleId}`;
             pdfBtn.style.display = 'block';
           }
@@ -3776,22 +3776,24 @@
           document.getElementById('raffle-winner-prize').textContent = data.prize;
           document.getElementById('raffle-code').textContent = data.verificationCode;
 
-          // Mostrar imagen del establecimiento si existe
+          // Para tipo 'local': mostrar imagen, establecimiento, detalles
+          const isLocal = data.type === 'local';
           const prizeImgWrap = document.getElementById('raffle-prize-image-wrap');
           const prizeImg = document.getElementById('raffle-prize-image');
-          if (data.prizeImage && prizeImgWrap && prizeImg) {
+          if (isLocal && data.prizeImage && prizeImgWrap && prizeImg) {
             prizeImg.src = data.prizeImage;
             prizeImgWrap.style.display = 'block';
-          }
-          // Mostrar nombre del establecimiento
+          } else if (prizeImgWrap) prizeImgWrap.style.display = 'none';
           const estEl = document.getElementById('raffle-establishment');
-          if (data.establishment && estEl) { estEl.textContent = data.establishment; estEl.style.display = 'block'; }
-          // Mostrar detalles del premio
+          if (isLocal && data.establishment && estEl) { estEl.textContent = data.establishment; estEl.style.display = 'block'; }
+          else if (estEl) estEl.style.display = 'none';
           const detailsEl = document.getElementById('raffle-prize-details');
-          if (data.prizeDetails && detailsEl) { detailsEl.textContent = data.prizeDetails; detailsEl.style.display = 'block'; }
+          if (isLocal && data.prizeDetails && detailsEl) { detailsEl.textContent = data.prizeDetails; detailsEl.style.display = 'block'; }
+          else if (detailsEl) detailsEl.style.display = 'none';
 
-          // Guardar raffleId para el PDF
+          // Guardar raffleId y tipo para el PDF
           window._currentRaffleId = data.raffleId;
+          window._currentRaffleType = data.type || 'night';
 
           launchParticles();
           if (navigator.vibrate) navigator.vibrate([100,50,100,50,100,50,100,50,500,100,500,100,800]);
