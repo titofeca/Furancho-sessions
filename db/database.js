@@ -595,7 +595,7 @@ const EVENT_SEED = [
   {
     date: '2026-06-11',
     title: 'Furancho Sessions — 11 Junio',
-    description: 'La primera. La que marca el ritmo. Vinos locales gallegos, tapas de autor y el ambiente que solo el Furancho sabe crear. Nos vemos el jueves.'
+    description: 'Volvemos a activar el furancho con DJ y el lujazo de tener otra vez con nosotros a Carmen Rey para darle nivelazo a la noche. Suma a eso 5 tapas espectaculares, buen vino y bebida para arreglar el mundo desde la tarde hasta la noche.'
   },
   {
     date: '2026-06-18',
@@ -616,7 +616,7 @@ const EVENT_SEED = [
 
 // Fechas cuya descripción debe actualizarse aunque ya exista en BD (cuando cambias el texto desde aquí).
 // Añade la fecha aquí cuando quieras forzar la actualización desde código.
-const FORCED_UPDATE_DATES = ['2026-06-04'];
+const FORCED_UPDATE_DATES = ['2026-06-04', '2026-06-11'];
 
 function seedEvents() {
   const dates = EVENT_SEED;
