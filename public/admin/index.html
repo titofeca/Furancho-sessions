@@ -6,8 +6,11 @@
   <title>Furancho Sessions — Panel Admin</title>
   <link rel="manifest" href="/manifest-admin.json" />
   <meta name="theme-color" content="#8B1918" />
-  <link rel="apple-touch-icon" sizes="192x192" href="/assets/icon-192.png">
-  <link rel="apple-touch-icon" sizes="512x512" href="/assets/icon-512.png">
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Furancho Admin" />
+  <link rel="apple-touch-icon" href="/assets/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/icon-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <style>
@@ -148,9 +151,9 @@
     /* ========== MAIN LAYOUT ========== */
     #main-app {
       display: none;
-      flex-direction: column;
-      min-height: 100vh;
     }
+    /* Reset scroll instantáneo al cambiar de página */
+    html { scroll-behavior: auto !important; }
 
     /* ========== TOP HEADER ========== */
     .top-header {
@@ -277,7 +280,6 @@
     .main-content {
       margin-top: 60px;
       margin-bottom: 72px;
-      flex: 1;
       padding: 12px 16px 32px;
       max-width: 900px;
       width: 100%;
@@ -286,15 +288,7 @@
     }
 
     .page { display: none; }
-    .page.active {
-      display: block;
-      animation: pageEnter 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
-    }
-
-    @keyframes pageEnter {
-      from { opacity: 0; transform: translateY(10px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
+    .page.active { display: block; }
 
     /* ========== PAGE HEADER ========== */
     .page-header {
@@ -1089,6 +1083,21 @@
             <tbody id="bydate-tbody"></tbody>
           </table>
         </div>
+      </div>
+
+      <!-- TEST SORTEO (temporal — borrar tras el jueves) -->
+      <div id="test-raffle-panel" style="margin: 16px 0 0; background: rgba(196,151,58,0.07); border: 1.5px dashed rgba(196,151,58,0.5); border-radius: 16px; padding: 14px 16px;">
+        <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:var(--gold); margin:0 0 4px;">🧪 Panel de Test — Sorteo de Prueba</p>
+        <p style="font-size:12px; color:var(--text-muted); margin:0 0 12px; line-height:1.5;">1) Pulsa <strong>Crear fichas</strong> → 2) Ve a <strong>Rifa</strong> y lanza un sorteo → 3) Verifica que todo fluye → 4) Pulsa <strong>Limpiar</strong> antes del jueves.</p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+          <button onclick="testRaffleSetup()" style="padding:9px 16px; background:rgba(196,151,58,0.12); border:1.5px solid rgba(196,151,58,0.4); border-radius:50px; font-family:'Outfit',sans-serif; font-size:13px; font-weight:700; color:var(--gold); cursor:pointer;">
+            ✅ Crear fichas prueba
+          </button>
+          <button onclick="testRaffleCleanup()" style="padding:9px 16px; background:rgba(139,25,24,0.06); border:1.5px solid rgba(139,25,24,0.25); border-radius:50px; font-family:'Outfit',sans-serif; font-size:13px; font-weight:700; color:var(--wine); cursor:pointer;">
+            🗑 Limpiar todo (pre-jueves)
+          </button>
+        </div>
+        <div id="test-raffle-status" style="font-size:12px; color:var(--text-muted); min-height:16px;"></div>
       </div>
     </div>
 
@@ -2056,12 +2065,69 @@
     return { 'Content-Type': 'application/json', 'x-admin-token': AUTH_TOKEN };
   }
 
+  // Detecta 401 global → muestra login
+  async function apiFetch(url, opts = {}) {
+    opts.headers = opts.headers || authHeaders();
+    const res = await fetch(url, opts);
+    if (res.status === 401) {
+      localStorage.removeItem('furancho_admin_token');
+      AUTH_TOKEN = null;
+      document.getElementById('main-app').style.display = 'none';
+      document.getElementById('login-screen').style.display = 'flex';
+      showToast('⏰ Sesión expirada, vuelve a entrar', 4000);
+    }
+    return res;
+  }
+
+  // ==================== TEST SORTEO ====================
+  async function testRaffleSetup() {
+    const statusEl = document.getElementById('test-raffle-status');
+    statusEl.textContent = '⏳ Creando fichas de prueba...';
+    try {
+      const res = await apiFetch('/api/admin/test-raffle/setup', { method: 'POST', headers: authHeaders() });
+      const data = await res.json();
+      if (data.success) {
+        statusEl.innerHTML = `✅ ${data.message} — <strong>${data.wallets.length} wallets</strong> en el bombo. Ve a <strong>Rifa</strong> y lanza.`;
+        showToast('✅ Fichas de test creadas — ve a Rifa y lanza', 4000);
+      } else {
+        statusEl.textContent = '❌ Error: ' + (data.error || 'desconocido');
+      }
+    } catch (e) {
+      statusEl.textContent = '❌ Error de red: ' + e.message;
+    }
+  }
+
+  async function testRaffleCleanup() {
+    if (!confirm('¿Limpiar TODOS los datos de prueba? Esto borrará fichas, sorteos y mints de test. Irreversible.')) return;
+    const statusEl = document.getElementById('test-raffle-status');
+    statusEl.textContent = '⏳ Limpiando...';
+    try {
+      const res = await apiFetch('/api/admin/test-raffle/cleanup', { method: 'POST', headers: authHeaders() });
+      const data = await res.json();
+      if (data.success) {
+        statusEl.innerHTML = `🍷 ${data.message} — Sesiones: ${data.deleted.sessions}, Mints: ${data.deleted.mints}, Sorteos: ${data.deleted.raffles}`;
+        showToast('🍷 Todo limpio para el jueves', 4000);
+        loadStats();
+      } else {
+        statusEl.textContent = '❌ Error: ' + (data.error || 'desconocido');
+      }
+    } catch (e) {
+      statusEl.textContent = '❌ Error de red: ' + e.message;
+    }
+  }
+
   // ==================== NAVIGATION ====================
   function showPage(pageId) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.getElementById(`page-${pageId}`).classList.add('active');
     document.getElementById(`nav-${pageId}`).classList.add('active');
+    // Reset scroll — setTimeout(0) garantiza que el browser ya pintó la nueva página
+    setTimeout(() => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }, 0);
     if (pageId === 'events') loadEventsPage();
     loadVipBadge();
     if (pageId === 'holders') {

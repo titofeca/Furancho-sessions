@@ -23,8 +23,14 @@ const { DEMO_MODE } = require('../services/polygon');
 const { sendPushToAll, sendPushToWallet } = require('../services/push');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'furancho2024';
+// ⚠️  IMPORTANTE: TOKEN_SECRET debe estar en Railway como variable de entorno.
+//    Sin ella, cada deploy genera un secreto nuevo y los tokens guardados se invalidan.
+//    Genera un valor fijo con: node -e "require('crypto').randomBytes(32).toString('hex')|>console.log"
 const TOKEN_SECRET = process.env.TOKEN_SECRET || crypto.randomBytes(32).toString('hex');
-const TOKEN_TTL_MS = 8 * 60 * 60 * 1000; // 8 horas
+if (!process.env.TOKEN_SECRET) {
+  console.warn('[Admin] ⚠️  TOKEN_SECRET no está en las variables de entorno. Los tokens de admin se invalidarán en cada reinicio del servidor.');
+}
+const TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 días
 
 // Genera un token firmado con HMAC: base64(payload).signature
 function generateToken() {
@@ -739,6 +745,81 @@ router.post('/mints/:id/reject', requireAuth, (req, res) => {
     const id = parseInt(req.params.id);
     rejectMint(id);
     res.json({ success: true, message: 'Mint rechazado correctamente.' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── TEST RAFFLE — endpoints temporales para probar el flujo completo ────────
+// POST /api/admin/test-raffle/setup — crea sesiones de prueba para hoy
+// POST /api/admin/test-raffle/cleanup — borra TODO rastro del test
+const TEST_WALLETS = [
+  '0xTEST000000000000000000000000000000000001',
+  '0xTEST000000000000000000000000000000000002',
+  '0xTEST000000000000000000000000000000000003',
+  '0xTEST000000000000000000000000000000000004',
+];
+
+router.post('/test-raffle/setup', requireAuth, (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const now = new Date();
+    const madridTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+    const today = `${madridTime.getFullYear()}-${String(madridTime.getMonth()+1).padStart(2,'0')}-${String(madridTime.getDate()).padStart(2,'0')}`;
+    const entryTime = `${today} 19:00:00`;
+
+    // Wallets de prueba fijos
+    const allWallets = [...TEST_WALLETS];
+
+    // Si el admin pasa wallets extra (p.ej. el wallet real del tester)
+    const extra = req.body.extraWallets || [];
+    extra.forEach(w => { if (w && !allWallets.includes(w)) allWallets.push(w); });
+
+    let inserted = 0;
+    const stmt = db.prepare(`INSERT OR IGNORE INTO sessions (wallet_address, entry_time, exit_time) VALUES (?, ?, NULL)`);
+    for (const w of allWallets) {
+      stmt.run(w, entryTime);
+      inserted++;
+    }
+
+    // También en mints para que aparezcan como holders nivel 1
+    const mintStmt = db.prepare(`INSERT OR IGNORE INTO mints (wallet_address, level, level_name, status, event_date) VALUES (?, 1, 'CAUTIVO', 'completed', ?)`);
+    for (const w of allWallets) {
+      mintStmt.run(w, today);
+    }
+
+    console.log(`[TestRaffle] Setup: ${inserted} sesiones de prueba creadas para ${today}`);
+    res.json({ success: true, wallets: allWallets, count: inserted, date: today, message: `${inserted} fichas de prueba creadas. Lanza el sorteo desde el admin ahora.` });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/test-raffle/cleanup', requireAuth, (req, res) => {
+  try {
+    const { db } = require('../db/database');
+
+    // Borrar sesiones de test
+    const s1 = db.prepare(`DELETE FROM sessions WHERE wallet_address LIKE '0xTEST%'`).run();
+    // Borrar mints de test
+    const s2 = db.prepare(`DELETE FROM mints WHERE wallet_address LIKE '0xTEST%'`).run();
+    // Borrar puntos y visitas de test
+    db.prepare(`DELETE FROM points WHERE wallet_address LIKE '0xTEST%'`).run();
+    try { db.prepare(`DELETE FROM visits WHERE wallet_address LIKE '0xTEST%'`).run(); } catch(_) {}
+    try { db.prepare(`DELETE FROM weekly_claims WHERE wallet_address LIKE '0xTEST%'`).run(); } catch(_) {}
+    // Borrar sorteos de test (participants que incluyan test wallets)
+    // Raffles: borrar entradas de prueba de raffle_participants
+    const raffleSchema = db.prepare("SELECT sql FROM sqlite_master WHERE name='raffle_participants'").get();
+    let s3 = { changes: 0 };
+    if (raffleSchema) {
+      s3 = db.prepare(`DELETE FROM raffle_participants WHERE wallet_address LIKE '0xTEST%'`).run();
+    }
+    // Borrar raffles que solo tuvieron test wallets como ganador
+    const s4 = db.prepare(`DELETE FROM raffles WHERE winner_wallet LIKE '0xTEST%'`).run();
+
+    const total = s1.changes + s2.changes + s3.changes + s4.changes;
+    console.log(`[TestRaffle] Cleanup: ${total} registros de prueba eliminados`);
+    res.json({ success: true, deleted: { sessions: s1.changes, mints: s2.changes, raffleParticipants: s3.changes, raffles: s4.changes }, message: `Todo limpio para el jueves 🍷` });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
