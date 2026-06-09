@@ -181,6 +181,51 @@ router.delete('/:id', requireAuth, ({ params }, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET /api/events/:id/tapas — tapas de un evento (público)
+router.get('/:id/tapas', (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const rows = db.prepare(`SELECT id, name, description, emoji, sort_order FROM tapas WHERE event_id = ? ORDER BY sort_order ASC, id ASC`).all(parseInt(req.params.id));
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/events/:id/tapas — añadir tapa (admin)
+router.post('/:id/tapas', requireAuth, (req, res) => {
+  const eventId = parseInt(req.params.id);
+  const { name, description, emoji } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
+  try {
+    const { db } = require('../db/database');
+    // Max 5 tapas por evento
+    const count = db.prepare(`SELECT COUNT(*) as c FROM tapas WHERE event_id = ?`).get(eventId).c;
+    if (count >= 5) return res.status(400).json({ error: 'Máximo 5 tapas por evento' });
+    const order = db.prepare(`SELECT COALESCE(MAX(sort_order),0)+1 as next FROM tapas WHERE event_id = ?`).get(eventId).next;
+    const result = db.prepare(`INSERT INTO tapas (event_id, name, description, emoji, sort_order) VALUES (?, ?, ?, ?, ?)`).run(eventId, name.trim(), (description||'').trim(), (emoji||'🍽️').trim(), order);
+    res.json({ success: true, id: result.lastInsertRowid });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PATCH /api/events/tapas/:tapaid — editar tapa (admin)
+router.patch('/tapas/:tapaid', requireAuth, (req, res) => {
+  const { name, description, emoji } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
+  try {
+    const { db } = require('../db/database');
+    db.prepare(`UPDATE tapas SET name=?, description=?, emoji=? WHERE id=?`).run(name.trim(), (description||'').trim(), (emoji||'🍽️').trim(), parseInt(req.params.tapaid));
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /api/events/tapas/:tapaid — eliminar tapa (admin)
+router.delete('/tapas/:tapaid', requireAuth, (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    db.prepare(`DELETE FROM tapas WHERE id=?`).run(parseInt(req.params.tapaid));
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // GET /api/events/analytics — para el admin
 router.get('/analytics', requireAuth, (req, res) => {
   try {

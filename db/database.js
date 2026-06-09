@@ -121,6 +121,19 @@ try {
 try {
   db.exec(`DELETE FROM vip_reservations WHERE event_id NOT IN (SELECT id FROM events)`);
 } catch (_) {}
+// Tapas por evento
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS tapas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    emoji TEXT DEFAULT '🍽️',
+    sort_order INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (event_id) REFERENCES events(id)
+  )`);
+} catch (_) {}
 
 // =====================
 // CREAR TABLAS
