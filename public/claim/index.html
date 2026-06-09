@@ -4528,10 +4528,9 @@
         prizeText.innerHTML = `🏆 <strong>¡Tenche tocado, ho!</strong> ${data.prize}`;
         if (rulesText) {
           rulesText.innerHTML = `<div style="margin-top:10px; background:rgba(139,25,24,0.06); border:1.5px dashed rgba(139,25,24,0.25); border-radius:10px; padding:12px; text-align:center;">
-            <p style="font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); margin:0 0 4px;">🔑 Código — Premio Chave do Furancho</p>
+            <p style="font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); margin:0 0 4px;">🔑 Tu código del premio</p>
             <p style="font-family:monospace; font-size:22px; font-weight:900; color:var(--wine); margin:0 0 6px; letter-spacing:3px;">${data.verificationCode || '—'}</p>
-            <p style="font-size:12px; font-weight:700; color:var(--gold); margin:0 0 4px;">${data.prize}</p>
-            <p style="font-size:10px; color:var(--text-muted); margin:0;">Muéstraselo al staff en el Furancho para trincar el premio</p>
+            <p style="font-size:10px; color:var(--text-muted); margin:0;">Enséñaselo al staff para trincar el premio 🍷</p>
           </div>`;
         }
         return;
@@ -4542,7 +4541,7 @@
         btn.style.display = 'none';
         prizeText.innerHTML = `🍀 <strong style="color:var(--wine);">Chave do Furancho</strong>`;
         if (rulesText) {
-          rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:11.5px; line-height:1.5;">😢 <strong>¡Non tiveches sorte esta semana, ho!</strong><br>A seguir intentándoo na próxima esmorga. ¡El domingo a las 21:00 publicamos el siguiente sorteo!</span>`;
+          rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:11.5px; line-height:1.5;">😢 <strong>Esta semana non foi, ho.</strong> O domingo a las 21:00 sale el siguiente. ¡A por él!</span>`;
         }
         return;
       }
@@ -4567,7 +4566,7 @@
         btn.style.display = 'block';
         prizeText.innerHTML = `Premio: <strong style="color:var(--wine);">${data.prize || 'Sorpresa do Furancho'}</strong>`;
         if (rulesText) {
-          rulesText.textContent = data.rules || 'Trinca tu participación una vez por semana antes de que empiecen los eventos. ¡Se sorteará un regalo de la hostia!';
+          rulesText.textContent = data.rules || 'Trinca el boleto y a esperar al sorteo. ¡Un regalo de la hostia te puede tocar, rapaz!';
         }
 
         if (data.claimed) {
@@ -4588,7 +4587,7 @@
         btn.style.display = 'none';
         prizeText.innerHTML = `🔑 <strong style="color:var(--wine);">Chave do Furancho</strong>`;
         if (rulesText) {
-          rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:11.5px; line-height:1.5;">⏳ <strong>Se está creando o próximo sorteo de Chave do Furancho.</strong><br>O domingo ás 21:00 publícase. ¡Non te quedes sen trincar o teu boleto para ter doble oportunidad en los sorteos en vivo!</span>`;
+          rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:11.5px; line-height:1.5;">⏳ O domingo ás 21:00 abre el siguiente sorteo. ¡Estate atento, ho!</span>`;
         }
       }
     } catch (e) {
