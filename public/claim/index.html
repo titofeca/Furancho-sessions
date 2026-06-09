@@ -1944,7 +1944,7 @@
         <div id="accept-prize-banner" style="display:none; background:linear-gradient(135deg,rgba(196,151,58,0.15),rgba(139,25,24,0.08)); border:2px solid var(--gold); border-radius:16px; padding:18px; text-align:center; position:relative; overflow:hidden; margin-bottom:12px; box-shadow:0 4px 20px rgba(139,25,24,0.15);">
           <div style="position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--wine),var(--gold),var(--wine));"></div>
           <div style="font-size:32px; margin-bottom:8px;">🏆</div>
-          <p style="font-family:'Playfair Display',serif; font-size:18px; font-weight:900; color:var(--wine); margin-bottom:4px;">¡Al loro, ho! ¡El premio es para ti, neno!</p>
+          <p style="font-family:'Playfair Display',serif; font-size:18px; font-weight:900; color:var(--wine); margin-bottom:4px;">¡TE TOCÓ, RAPAZ! 🏆</p>
           <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;" id="accept-prize-name"></p>
           <div style="font-family:'Outfit',monospace; font-size:40px; font-weight:700; letter-spacing:6px; color:var(--wine); margin-bottom:14px;" id="accept-prize-code">----</div>
           <div id="accept-countdown-wrap" style="margin-bottom:14px;">
@@ -2213,29 +2213,29 @@
       </div>
       <!-- Establecimiento -->
       <p id="raffle-establishment" style="display:none; font-size:12px; text-transform:uppercase; letter-spacing:2px; color:var(--wine); font-weight:700; margin-bottom:6px;"></p>
-      <p style="font-size: 15px; color: var(--text); margin-bottom: 8px; font-weight: 300;">Esta noche te llevas: <strong id="raffle-winner-prize" style="font-weight: 700; color: var(--gold);"></strong></p>
+      <p style="font-size: 15px; color: var(--text); margin-bottom: 8px; font-weight: 300;">Premio: <strong id="raffle-winner-prize" style="font-weight: 700; color: var(--gold);"></strong></p>
       <!-- Detalles del premio -->
       <p id="raffle-prize-details" style="display:none; font-size:13px; color:var(--text-muted); font-style:italic; margin-bottom:16px; line-height:1.5;"></p>
       <div class="raffle-winner-box">
-        <p class="raffle-code-label">Tu código de la suerte</p>
+        <p class="raffle-code-label">Tu código</p>
         <p class="raffle-code" id="raffle-code">----</p>
       </div>
       <button id="modal-accept-btn" onclick="acceptPrize(); document.getElementById('raffle-modal').style.display='none'; document.body.style.overflow='auto';"
         style="width:100%; padding:15px; margin-top:20px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:16px; font-weight:700; cursor:pointer; box-shadow:0 6px 20px rgba(139,25,24,0.35);">
-        ¡ES PARA MÍ! Reclamar el premio 🎉 <span id="modal-accept-countdown" style="opacity:0.75; font-size:13px;"></span>
+        ¡ES MÍO! Trincar premio 🎉 <span id="modal-accept-countdown" style="opacity:0.75; font-size:13px;"></span>
       </button>
       <!-- Botón PDF (aparece tras aceptar) -->
       <a id="raffle-pdf-btn" href="#" target="_blank" style="display:none; width:100%; box-sizing:border-box; padding:13px; margin-top:10px; background:rgba(196,151,58,0.1); border:1.5px solid var(--gold); color:var(--gold); border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer; text-align:center; text-decoration:none;">
-        📄 Descargar bono del premio
+        📄 Descargar bono
       </a>
-      <p class="raffle-note" style="margin-top:14px;">🍷 Pulsa el botón y enséñale la pantalla al staff antes de que se enfríe el vino.</p>
+      <p class="raffle-note" style="margin-top:14px;">🍷 Enséñale esto al staff y trinca el premio antes de que se acabe el vino.</p>
     </div>
  
     <!-- Loser View -->
     <div id="raffle-loser" style="display: none; width: 100%; max-width: 360px;">
       <div style="font-size: 64px; margin-bottom: 18px; animation: winnerBounce 0.5s ease both;" id="raffle-loser-emoji">😤</div>
       <h2 id="raffle-loser-title" style="font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; color: var(--text); margin-bottom: 10px;">El bombo quiso a otro, ho...</h2>
-      <p id="raffle-loser-msg" style="font-size: 15px; color: var(--text-muted); margin-bottom: 28px; font-weight: 300; line-height: 1.6;">El premio de <strong id="raffle-loser-prize" style="color: var(--text);"></strong> se lo lleva otro furancheiro.<br>Pero el vino sigue fresco y la noche no ha terminado.</p>
+      <p id="raffle-loser-msg" style="font-size: 15px; color: var(--text-muted); margin-bottom: 28px; font-weight: 300; line-height: 1.6;"><strong id="raffle-loser-prize" style="color: var(--text);"></strong> se lo lleva otro furancheiro.<br>Pero la noche sigue y el vino está fresco, ho.</p>
       <button onclick="document.getElementById('raffle-modal').style.display='none'; document.body.style.overflow='auto';" class="btn-vip" style="max-width: 240px; margin: 0 auto;">Venga, el próximo es el mío 🍷</button>
     </div>
 
