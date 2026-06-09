@@ -616,7 +616,7 @@ const EVENT_SEED = [
 
 // Fechas cuya descripción debe actualizarse aunque ya exista en BD (cuando cambias el texto desde aquí).
 // Añade la fecha aquí cuando quieras forzar la actualización desde código.
-const FORCED_UPDATE_DATES = ['2026-06-04', '2026-06-11'];
+const FORCED_UPDATE_DATES = [];
 
 function seedEvents() {
   const dates = EVENT_SEED;
