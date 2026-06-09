@@ -105,6 +105,7 @@ app.get('/nft-metadata/:id', (req, res) => {
 
 // Archivos estáticos (assets y demás)
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
+app.use('/prize-images', express.static(path.join(__dirname, 'public', 'prize-images')));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Health check — Railway lo llama periódicamente para verificar que el servidor vive

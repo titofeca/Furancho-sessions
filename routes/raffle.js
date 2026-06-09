@@ -1,6 +1,9 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const {
   getEligibleRaffleParticipants, insertRaffle, acceptRaffle, rejectRaffle,
   collectRaffle, getRaffleHistory, getMyWins, getRaffleParticipation,
@@ -13,6 +16,26 @@ const {
 const { requireAuth } = require('./admin');
 const { sendPushToAll } = require('../services/push');
 const { notifyQueue } = require('../services/polygon');
+
+// Configuración de upload de imágenes de premio
+const uploadsDir = path.join(__dirname, '..', 'public', 'prize-images');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadsDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
+    cb(null, `prize_${Date.now()}${ext}`);
+  }
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB máx
+  fileFilter: (req, file, cb) => {
+    if (/image\/(jpeg|jpg|png|webp)/.test(file.mimetype)) cb(null, true);
+    else cb(new Error('Solo se permiten imágenes JPG/PNG'));
+  }
+});
 
 let clients = [];
 
@@ -70,8 +93,15 @@ router.get('/stream', (req, res) => {
 });
 
 // POST /api/raffle/start — admin lanza sorteo
+// POST /api/raffle/upload-image — sube imagen del premio (admin)
+router.post('/upload-image', requireAuth, upload.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No se recibió imagen' });
+  const url = `/prize-images/${req.file.filename}`;
+  res.json({ success: true, url });
+});
+
 router.post('/start', requireAuth, (req, res) => {
-  const { prize, scheduledId, targetLevel } = req.body;
+  const { prize, scheduledId, targetLevel, prizeDetails, prizeImage, establishment } = req.body;
   if (!prize) return res.status(400).json({ error: 'Falta el nombre del premio' });
 
   // Si se pasa targetLevel, verificar que sea válido
@@ -112,7 +142,7 @@ router.post('/start', requireAuth, (req, res) => {
   let verificationCode = '';
   for (let i = 0; i < 4; i++) verificationCode += characters.charAt(Math.floor(Math.random() * characters.length));
 
-  const raffleId = insertRaffle(prize, winnerWallet, verificationCode, eligibleWallets, sanitizedTargetLevel);
+  const raffleId = insertRaffle(prize, winnerWallet, verificationCode, eligibleWallets, sanitizedTargetLevel, prizeDetails || null, prizeImage || null, establishment || null);
   if (scheduledId) { try { linkScheduledRaffle(parseInt(scheduledId), raffleId); } catch(_) {} }
 
   console.log(`[Raffle] #${raffleId} iniciado. Participantes: ${eligibleWallets.length}, SSE: ${connectedWallets.length}`);
@@ -121,7 +151,7 @@ router.post('/start', requireAuth, (req, res) => {
 
   // Revelar ganador tras 15s
   setTimeout(() => {
-    broadcast('raffle_result', { winnerWallet, verificationCode, prize, raffleId, acceptWindow: 180 });
+    broadcast('raffle_result', { winnerWallet, verificationCode, prize, raffleId, acceptWindow: 180, prizeDetails: prizeDetails || null, prizeImage: prizeImage || null, establishment: establishment || null });
   }, 15000);
 
   // Auto-rechazar si no acepta en 180s + 15s de animación

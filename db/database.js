@@ -31,6 +31,12 @@ try { db.exec(`ALTER TABLE raffles ADD COLUMN rejected_at TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN rejection_note TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN target_level INTEGER`); } catch (_) {}
 try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN target_level INTEGER`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN prize_details TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN prize_image TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN establishment TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN prize_details TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN prize_image TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN establishment TEXT`); } catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS prize_presets (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, active INTEGER DEFAULT 1, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS raffle_participants (raffle_id INTEGER NOT NULL, wallet_address TEXT NOT NULL, PRIMARY KEY (raffle_id, wallet_address))`); } catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS scheduled_raffles (id INTEGER PRIMARY KEY AUTOINCREMENT, event_date TEXT NOT NULL, scheduled_time TEXT NOT NULL, prize TEXT NOT NULL, status TEXT DEFAULT 'pending', raffle_id INTEGER, target_level INTEGER, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
@@ -717,12 +723,12 @@ function autoCloseSessionsAt23() {
   return open.length;
 }
 
-function insertRaffle(prize, winnerWallet, verificationCode, participantWallets = [], targetLevel = null) {
+function insertRaffle(prize, winnerWallet, verificationCode, participantWallets = [], targetLevel = null, prizeDetails = null, prizeImage = null, establishment = null) {
   const deadline = new Date(Date.now() + 195000).toISOString().replace('T', ' ').slice(0, 19);
   const id = db.prepare(`
-    INSERT INTO raffles (prize, winner_wallet, verification_code, status, acceptance_deadline, target_level)
-    VALUES (?, ?, ?, 'pending_acceptance', ?, ?)
-  `).run(prize, winnerWallet, verificationCode, deadline, targetLevel).lastInsertRowid;
+    INSERT INTO raffles (prize, winner_wallet, verification_code, status, acceptance_deadline, target_level, prize_details, prize_image, establishment)
+    VALUES (?, ?, ?, 'pending_acceptance', ?, ?, ?, ?, ?)
+  `).run(prize, winnerWallet, verificationCode, deadline, targetLevel, prizeDetails, prizeImage, establishment).lastInsertRowid;
   if (participantWallets.length) {
     const stmt = db.prepare(`INSERT OR IGNORE INTO raffle_participants (raffle_id, wallet_address) VALUES (?, ?)`);
     participantWallets.forEach(w => stmt.run(id, w));
@@ -756,7 +762,8 @@ function getRaffleHistory() {
     SELECT id, prize,
            substr(winner_wallet,1,6)||'...'||substr(winner_wallet,-4) as wallet_masked,
            winner_wallet, verification_code, created_at,
-           collected, collected_at, collected_by, status, rejection_note, accepted_at, target_level
+           collected, collected_at, collected_by, status, rejection_note, accepted_at, target_level,
+           prize_details, prize_image, establishment
     FROM raffles
     ORDER BY created_at DESC LIMIT 100
   `).all();
@@ -764,7 +771,8 @@ function getRaffleHistory() {
 
 function getMyWins(walletAddress) {
   return db.prepare(`
-    SELECT id, prize, verification_code, created_at, collected, collected_at, status, target_level
+    SELECT id, prize, verification_code, created_at, collected, collected_at, status, target_level,
+           prize_details, prize_image, establishment
     FROM raffles WHERE winner_wallet = ? AND status IN ('accepted','collected')
     ORDER BY created_at DESC LIMIT 20
   `).all(walletAddress);

@@ -2195,7 +2195,15 @@
     <div id="raffle-winner" style="display: none; width: 100%; max-width: 360px;">
       <span class="raffle-winner-emoji">🏆</span>
       <h2 class="raffle-winner-title" id="raffle-winner-title">¡TE CAYÓ EL PREMIO, NENO! 🏆</h2>
-      <p style="font-size: 15px; color: var(--text); margin-bottom: 20px; font-weight: 300;">Te llevas a casa: <strong id="raffle-winner-prize" style="font-weight: 700; color: var(--gold);"></strong></p>
+      <!-- Imagen del establecimiento -->
+      <div id="raffle-prize-image-wrap" style="display:none; margin-bottom:14px;">
+        <img id="raffle-prize-image" src="" style="max-height:90px; max-width:160px; border-radius:12px; border:2px solid var(--gold); object-fit:contain;" />
+      </div>
+      <!-- Establecimiento -->
+      <p id="raffle-establishment" style="display:none; font-size:12px; text-transform:uppercase; letter-spacing:2px; color:var(--wine); font-weight:700; margin-bottom:6px;"></p>
+      <p style="font-size: 15px; color: var(--text); margin-bottom: 8px; font-weight: 300;">Te llevas a casa: <strong id="raffle-winner-prize" style="font-weight: 700; color: var(--gold);"></strong></p>
+      <!-- Detalles del premio -->
+      <p id="raffle-prize-details" style="display:none; font-size:13px; color:var(--text-muted); font-style:italic; margin-bottom:16px; line-height:1.5;"></p>
       <div class="raffle-winner-box">
         <p class="raffle-code-label">Tu código de la suerte</p>
         <p class="raffle-code" id="raffle-code">----</p>
@@ -2204,6 +2212,10 @@
         style="width:100%; padding:15px; margin-top:20px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:16px; font-weight:700; cursor:pointer; box-shadow:0 6px 20px rgba(139,25,24,0.35);">
         ¡ES PARA MÍ! Trincar premio 🎉 <span id="modal-accept-countdown" style="opacity:0.75; font-size:13px;"></span>
       </button>
+      <!-- Botón PDF (aparece tras aceptar) -->
+      <a id="raffle-pdf-btn" href="#" target="_blank" style="display:none; width:100%; box-sizing:border-box; padding:13px; margin-top:10px; background:rgba(196,151,58,0.1); border:1.5px solid var(--gold); color:var(--gold); border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer; text-align:center; text-decoration:none;">
+        📄 Descargar bono del premio
+      </a>
       <p class="raffle-note" style="margin-top:14px;">🍷 Pulsa el botón y enséñale la pantalla al staff antes de que se entere el patrón, ho.</p>
     </div>
  
@@ -3252,6 +3264,14 @@
           if (_acceptCountdownInterval) clearInterval(_acceptCountdownInterval);
           renderPrizes();
 
+          // Mostrar botón PDF del bono del premio
+          const pdfBtn = document.getElementById('raffle-pdf-btn');
+          const raffleId = window._currentRaffleId || _acceptRaffleId;
+          if (pdfBtn && raffleId) {
+            pdfBtn.href = `/api/pdf/premio/${raffleId}`;
+            pdfBtn.style.display = 'block';
+          }
+
           // Si es subida de nivel, iniciar el polling de Polygon
           if (data && data.targetLevel) {
             startPollingForLevel(data.targetLevel, data.levelName);
@@ -3755,6 +3775,24 @@
           document.getElementById('raffle-winner').style.display = 'block';
           document.getElementById('raffle-winner-prize').textContent = data.prize;
           document.getElementById('raffle-code').textContent = data.verificationCode;
+
+          // Mostrar imagen del establecimiento si existe
+          const prizeImgWrap = document.getElementById('raffle-prize-image-wrap');
+          const prizeImg = document.getElementById('raffle-prize-image');
+          if (data.prizeImage && prizeImgWrap && prizeImg) {
+            prizeImg.src = data.prizeImage;
+            prizeImgWrap.style.display = 'block';
+          }
+          // Mostrar nombre del establecimiento
+          const estEl = document.getElementById('raffle-establishment');
+          if (data.establishment && estEl) { estEl.textContent = data.establishment; estEl.style.display = 'block'; }
+          // Mostrar detalles del premio
+          const detailsEl = document.getElementById('raffle-prize-details');
+          if (data.prizeDetails && detailsEl) { detailsEl.textContent = data.prizeDetails; detailsEl.style.display = 'block'; }
+
+          // Guardar raffleId para el PDF
+          window._currentRaffleId = data.raffleId;
+
           launchParticles();
           if (navigator.vibrate) navigator.vibrate([100,50,100,50,100,50,100,50,500,100,500,100,800]);
 

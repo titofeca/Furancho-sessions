@@ -4,6 +4,7 @@ const router = express.Router();
 const PDFDocument = require('pdfkit');
 const QRCode = require('qrcode');
 const path = require('path');
+const fs = require('fs');
 
 const LOGO_PATH = path.join(__dirname, '..', 'assets', 'logo.png');
 
@@ -309,6 +310,116 @@ router.get('/vip', async (req, res) => {
      .text('furancho.sessions  ·  Imprime · Plastifica · Coloca  ·  Job done.', 0, H - 44, { align: 'center', characterSpacing: 1, width: W });
 
   doc.end();
+});
+
+// ─── GET /api/pdf/premio/:id — Bono visual del premio ganado ─────────────────
+router.get('/premio/:id', async (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const raffle = db.prepare(`
+      SELECT id, prize, winner_wallet, verification_code, created_at, status,
+             prize_details, prize_image, establishment
+      FROM raffles WHERE id = ? AND status IN ('accepted','collected')
+    `).get(parseInt(req.params.id));
+
+    if (!raffle) return res.status(404).send('Premio no encontrado o no aceptado todavía');
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Furancho_Premio_${raffle.id}.pdf"`);
+
+    const doc = new PDFDocument({ size: 'A4', margin: 0, info: { Title: `Premio Furancho — ${raffle.prize}`, Author: 'Furancho Sessions' } });
+    doc.pipe(res);
+
+    const W = doc.page.width;
+    const H = doc.page.height;
+
+    // ── Fondo crema ─────────────────────────────────────────────────────────────
+    doc.rect(0, 0, W, H).fill(CREAM);
+
+    // ── Banda superior vino ──────────────────────────────────────────────────────
+    doc.rect(0, 0, W, 120).fill(WINE);
+    doc.rect(0, 120, W, 4).fill(GOLD);
+
+    // ── Logo ─────────────────────────────────────────────────────────────────────
+    try { doc.image(LOGO_PATH, (W - 52) / 2, 10, { width: 52, height: 92 }); } catch(_) {}
+
+    // ── FURANCHO SESSIONS ────────────────────────────────────────────────────────
+    doc.fillColor(MUTED).fontSize(9).font('Helvetica')
+       .text('FURANCHO SESSIONS', 0, 130, { align: 'center', characterSpacing: 3 });
+
+    // ── 🎉 GANADOR ───────────────────────────────────────────────────────────────
+    doc.fillColor(WINE).fontSize(13).font('Helvetica-Bold')
+       .text('🎉 ¡PARABÉNS, GAÑADOR!', 0, 150, { align: 'center', characterSpacing: 1, width: W });
+
+    // ── Imagen del establecimiento (si existe) ───────────────────────────────────
+    let y = 178;
+    if (raffle.prize_image) {
+      try {
+        const imgPath = path.join(__dirname, '..', 'public', raffle.prize_image.replace(/^\//, ''));
+        if (fs.existsSync(imgPath)) {
+          const imgSize = 110;
+          const imgX = (W - imgSize) / 2;
+          doc.roundedRect(imgX - 6, y - 6, imgSize + 12, imgSize + 12, 12).fill('#FFFFFF');
+          doc.roundedRect(imgX - 7, y - 7, imgSize + 14, imgSize + 14, 13).stroke(GOLD).lineWidth(1.5);
+          doc.image(imgPath, imgX, y, { width: imgSize, height: imgSize, fit: [imgSize, imgSize] });
+          y += imgSize + 20;
+        }
+      } catch(_) { y += 10; }
+    }
+
+    // ── Establecimiento ──────────────────────────────────────────────────────────
+    if (raffle.establishment) {
+      doc.fillColor(MUTED).fontSize(10).font('Helvetica-Bold')
+         .text(raffle.establishment.toUpperCase(), 40, y, { align: 'center', width: W - 80, characterSpacing: 2 });
+      y += 20;
+    }
+
+    // ── Título del premio ────────────────────────────────────────────────────────
+    doc.fillColor(DARK).fontSize(28).font('Helvetica-Bold')
+       .text(raffle.prize, 40, y, { align: 'center', width: W - 80, lineGap: 4 });
+    y += doc.heightOfString(raffle.prize, { width: W - 80, fontSize: 28 }) + 12;
+
+    // ── Descripción del premio ───────────────────────────────────────────────────
+    if (raffle.prize_details) {
+      doc.fillColor(WINE).fontSize(12).font('Helvetica-Oblique')
+         .text(raffle.prize_details, 60, y, { align: 'center', width: W - 120, lineGap: 4 });
+      y += doc.heightOfString(raffle.prize_details, { width: W - 120, fontSize: 12 }) + 18;
+    }
+
+    // ── Línea decorativa ─────────────────────────────────────────────────────────
+    doc.moveTo(60, y).lineTo(W - 60, y).stroke(GOLD).lineWidth(0.8);
+    y += 18;
+
+    // ── Código de verificación ───────────────────────────────────────────────────
+    doc.fillColor(MUTED).fontSize(9).font('Helvetica')
+       .text('CÓDIGO DE VERIFICACIÓN', 0, y, { align: 'center', characterSpacing: 2, width: W });
+    y += 16;
+
+    doc.roundedRect((W - 140) / 2, y, 140, 52, 10).fill('#FFFFFF').stroke(GOLD).lineWidth(1.5);
+    doc.fillColor(WINE).fontSize(36).font('Helvetica-Bold')
+       .text(raffle.verification_code, 0, y + 10, { align: 'center', width: W, characterSpacing: 8 });
+    y += 70;
+
+    // ── Fecha ────────────────────────────────────────────────────────────────────
+    const fecha = raffle.created_at ? raffle.created_at.slice(0, 10) : '';
+    doc.fillColor(MUTED).fontSize(9).font('Helvetica')
+       .text(`Sorteo del ${fecha}  ·  Furancho Sessions 2026`, 0, y, { align: 'center', width: W });
+    y += 20;
+
+    // ── Estado ───────────────────────────────────────────────────────────────────
+    const estadoTxt = raffle.status === 'collected' ? '✅ Premio entregado' : '⏳ Pendiente de recoger';
+    const estadoColor = raffle.status === 'collected' ? '#22c55e' : WINE;
+    doc.fillColor(estadoColor).fontSize(10).font('Helvetica-Bold')
+       .text(estadoTxt, 0, y, { align: 'center', width: W });
+
+    // ── Footer ───────────────────────────────────────────────────────────────────
+    doc.rect(0, H - 42, W, 42).fill(WINE);
+    doc.rect(0, H - 46, W, 4).fill(GOLD);
+    doc.fillColor('#FFFFFF').fontSize(8).font('Helvetica').opacity(0.7)
+       .text('furancho.sessions  ·  O Bo Viño, A Boa Compaña', 0, H - 26, { align: 'center', characterSpacing: 1 });
+
+    doc.end();
+  } catch(e) { res.status(500).send('Error generando PDF: ' + e.message); }
 });
 
 module.exports = router;
