@@ -87,9 +87,9 @@ router.post('/recover-from-phrase', mintLimiter, (req, res) => {
 });
 
 // POST /api/mint
-// Body: { walletAddress, email, level (opcional para salto manual) }
+// Body: { walletAddress, email, level (opcional para salto manual — requiere adminToken) }
 router.post('/', mintLimiter, async (req, res) => {
-  const { walletAddress, email, level } = req.body;
+  const { walletAddress, email, level, adminToken } = req.body;
 
   // Validaciones
   if (!walletAddress) {
@@ -141,7 +141,11 @@ router.post('/', mintLimiter, async (req, res) => {
     let manualLevel = parseInt(level);
 
     if (manualLevel && [1, 2, 3, 4].includes(manualLevel)) {
-      // QR de regalo — mintear exactamente el nivel indicado
+      // QR de regalo — solo permitido con token de admin válido
+      const { verifyAdminToken } = require('./admin');
+      if (!adminToken || !verifyAdminToken(adminToken)) {
+        return res.status(403).json({ error: 'No autorizado para asignar nivel manual.' });
+      }
       targetLevel = manualLevel;
       if (checkDuplicate(walletAddress, sanitizedEmail, targetLevel)) {
         return res.status(409).json({ error: `Ya tienes el pase de ${LEVEL_NAMES[targetLevel]}.`, action: 'duplicate' });
