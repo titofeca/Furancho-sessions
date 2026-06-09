@@ -496,7 +496,7 @@
     .input-field {
       width: 100%;
       background: rgba(42, 21, 9, 0.05);
-      border: 1.5px solid rgba(255, 255, 255, 0.09);
+      border: 1.5px solid rgba(42, 21, 9, 0.18);
       border-radius: 12px;
       padding: 13px 16px;
       font-size: 14px;
@@ -511,7 +511,7 @@
       border-color: var(--wine);
       box-shadow: 0 0 0 3px rgba(139, 25, 24, 0.22);
     }
-    .input-field::placeholder { color: rgba(237,229,216,0.2); }
+    .input-field::placeholder { color: rgba(42, 21, 9, 0.38); }
     textarea.input-field { resize: vertical; min-height: 110px; }
 
     select.input-field {
@@ -1377,7 +1377,7 @@
         </div>
         <div class="form-group">
           <label class="form-label">Mensaje</label>
-          <textarea class="input-field" id="msg-body" placeholder="Escribe aquí tu mensaje para los asistentes..."></textarea>
+          <textarea class="input-field" id="msg-body" placeholder="Ej: El sorteo de esta noche empieza a las 22h. ¡Que nadie se vaya sin el móvil, neno! 🍷"></textarea>
         </div>
         <button class="btn-primary btn-send" id="send-btn" onclick="sendMessage()" style="width: 100%;">
           📢 Publicar anuncio
@@ -1529,8 +1529,14 @@
 
         <!-- Fecha y hora -->
         <div style="display:grid; grid-template-columns:1fr 90px; gap:8px; margin-bottom:10px;">
-          <input type="date" class="input-field" id="sched-date" style="margin:0; font-size:14px;" />
-          <input type="time" class="input-field" id="sched-time" style="margin:0; font-size:14px;" />
+          <div>
+            <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:5px;">📅 Fecha del sorteo</label>
+            <input type="date" class="input-field" id="sched-date" style="margin:0; font-size:14px;" />
+          </div>
+          <div>
+            <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:5px;">🕐 Hora</label>
+            <input type="time" class="input-field" id="sched-time" style="margin:0; font-size:14px;" />
+          </div>
         </div>
 
         <!-- Tipo de sorteo programado -->
@@ -1540,7 +1546,8 @@
         </div>
 
         <!-- Nombre del premio (siempre visible) -->
-        <input type="text" class="input-field" id="sched-prize" placeholder="Nombre del premio" style="margin-bottom:8px; font-size:14px;" />
+        <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:5px;">🎁 Premio a sortear</label>
+        <input type="text" class="input-field" id="sched-prize" placeholder="Ej: Botella de Mencía, Cena para 2, Tapa del chef..." style="margin-bottom:8px; font-size:14px;" />
 
         <!-- Toggle ocultar nombre — solo para Noche -->
         <div id="sched-hide-wrap" style="display:flex; align-items:center; gap:8px; margin-bottom:10px; padding:8px 12px; background:rgba(42,21,9,0.04); border-radius:10px;">
@@ -1550,8 +1557,8 @@
 
         <!-- Campos extra para Local Colaborador -->
         <div id="sched-local-extra" style="display:none; margin-bottom:8px;">
-          <input type="text" class="input-field" id="sched-establishment" placeholder="Nombre del establecimiento" style="margin-bottom:8px; font-size:14px;" />
-          <textarea class="input-field" id="sched-details" placeholder="Detalles del premio (condiciones, validez...)" rows="2" style="font-size:13px; resize:vertical; font-family:'Outfit',sans-serif;"></textarea>
+          <input type="text" class="input-field" id="sched-establishment" placeholder="Ej: Taberna O Pazo, Pulpería de Manolo..." style="margin-bottom:8px; font-size:14px;" />
+          <textarea class="input-field" id="sched-details" placeholder="Ej: Vale por 1 menú para 2 personas. Válido lunes a jueves. Caduca en 30 días." rows="2" style="font-size:13px; resize:vertical; font-family:'Outfit',sans-serif;"></textarea>
         </div>
 
         <button onclick="addScheduled()" style="width:100%; background:var(--wine); color:#fff; border:none; border-radius:12px; padding:11px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; margin-bottom:14px;">+ Programar sorteo</button>
@@ -1605,7 +1612,7 @@
         <div class="form-group" style="margin-bottom:10px;">
           <label class="form-label">Premio a sortear</label>
           <div id="preset-buttons" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;"></div>
-          <input type="text" class="input-field" id="raffle-prize" placeholder="Nombre del premio" style="font-size:14px;" />
+          <input type="text" class="input-field" id="raffle-prize" placeholder="Ej: Botella de Mencía, Cena para 2, Tapa del chef..." style="font-size:14px;" />
         </div>
 
         <!-- Extras Noche: ocultar nombre -->
@@ -1618,8 +1625,8 @@
 
         <!-- Extras Local Colaborador: establecimiento + detalles + imagen -->
         <div id="raffle-local-extras" class="form-group" style="display:none; margin-bottom:10px;">
-          <input type="text" class="input-field" id="raffle-establishment" placeholder="Nombre del establecimiento" style="font-size:14px; margin-bottom:8px;" />
-          <textarea class="input-field" id="raffle-prize-details" placeholder="Detalles del premio (condiciones, validez...)" rows="2" style="font-size:13px; resize:vertical; margin-bottom:8px; font-family:'Outfit',sans-serif;"></textarea>
+          <input type="text" class="input-field" id="raffle-establishment" placeholder="Ej: Taberna O Pazo, Pulpería de Manolo..." style="font-size:14px; margin-bottom:8px;" />
+          <textarea class="input-field" id="raffle-prize-details" placeholder="Ej: Vale por 1 menú para 2 personas. Válido lunes a jueves. Caduca en 30 días." rows="2" style="font-size:13px; resize:vertical; margin-bottom:8px; font-family:'Outfit',sans-serif;"></textarea>
           <label style="display:block; font-size:12px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">📷 Logo o foto del local</label>
           <label for="raffle-image-input" style="display:block; background:var(--surface); border:1.5px dashed var(--border); border-radius:12px; padding:10px 18px; font-size:13px; color:var(--text-muted); cursor:pointer; text-align:center;">📁 Seleccionar imagen (JPG/PNG)</label>
           <input type="file" id="raffle-image-input" accept="image/jpeg,image/jpg,image/png,image/webp" style="display:none;" onchange="previewPrizeImage(this)" />
@@ -1906,7 +1913,7 @@
       <div class="card" style="margin-bottom:16px;">
         <p style="font-size:12px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">🔍 O buscar wallet</p>
         <div style="display:flex; gap:8px;">
-          <input id="scanner-manual-input" type="text" placeholder="0x..."
+          <input id="scanner-manual-input" type="text" placeholder="Pega aquí la wallet del furancheiro (0x...)"
             style="flex:1; background:rgba(42,21,9,0.05); border:1.5px solid rgba(42,21,9,0.1); border-radius:12px; padding:12px 14px; font-size:14px; color:var(--text); font-family:'Outfit',sans-serif; outline:none;"
             onkeydown="if(event.key==='Enter') inspectWallet(this.value.trim())"
           />
@@ -1973,11 +1980,11 @@
       </div>
       <div>
         <label style="font-size:11px; color:#8B1918; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; display:block; margin-bottom:8px;">Título</label>
-        <input id="event-title" type="text" placeholder="Furancho Sessions — 11 Junio" style="width:100%; background:#fff; color:#2A1509; border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; padding:13px 14px; font-size:16px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+        <input id="event-title" type="text" placeholder="Ej: Furancho Sessions — Noche de Verán" style="width:100%; background:#fff; color:#2A1509; border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; padding:13px 14px; font-size:16px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
       </div>
       <div>
         <label style="font-size:11px; color:#8B1918; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; display:block; margin-bottom:8px;">Descripción</label>
-        <textarea id="event-desc" rows="4" placeholder="Describe el evento para los clientes..." style="width:100%; background:#fff; color:#2A1509; border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; padding:13px 14px; font-size:15px; font-family:'Outfit',sans-serif; resize:none; box-sizing:border-box; line-height:1.6;"></textarea>
+        <textarea id="event-desc" rows="4" placeholder="Ej: Una noche de vino, buena compañía y sorteos en el Furancho. Entrada con ficha QR. ¡Ven con ganas, neno!" style="width:100%; background:#fff; color:#2A1509; border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; padding:13px 14px; font-size:15px; font-family:'Outfit',sans-serif; resize:none; box-sizing:border-box; line-height:1.6;"></textarea>
       </div>
       <div id="event-active-row" style="display:none; align-items:center; justify-content:space-between; background:#fff; border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; padding:14px 16px;">
         <div>
