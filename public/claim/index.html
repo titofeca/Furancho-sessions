@@ -4665,27 +4665,37 @@
   let _lastWeeklyData = null;
 
   function openChaveModal() {
-    const data = _lastWeeklyData;
-    if (!data) return;
     const modal = document.getElementById('chave-modal');
     const sheet = document.getElementById('chave-modal-sheet');
     if (!modal || !sheet) return;
 
-    const isWinner = data.winnerWallet && userWalletAddress && data.winnerWallet.toLowerCase() === userWalletAddress.toLowerCase();
+    const data = _lastWeeklyData;
+
     const prizeEl = document.getElementById('chave-modal-prize');
-    if (prizeEl) prizeEl.textContent = data.prize || 'Sorpresa do Furancho';
-
     const rulesEl = document.getElementById('chave-modal-rules');
-    if (rulesEl) rulesEl.textContent = data.rules || 'Trinca tu participación una vez por semana antes de que empiecen los eventos. ¡Se sorteará un regalo de la hostia!';
-
     const codeWrap = document.getElementById('chave-modal-code-wrap');
     const codeEl = document.getElementById('chave-modal-code');
-    if (codeWrap && codeEl) {
-      if (isWinner && data.status === 'completed' && data.verificationCode) {
-        codeEl.textContent = data.verificationCode;
-        codeWrap.style.display = 'block';
-      } else {
-        codeWrap.style.display = 'none';
+
+    if (!data) {
+      // Sin datos cargados aún
+      if (prizeEl) prizeEl.textContent = 'Chave do Furancho';
+      if (rulesEl) rulesEl.textContent = 'O domingo ás 21:00 abre o sorteo semanal. Durante a semana podes trincar o teu boleto dende aquí. O venres sortéase e o ganador ten ata o final do seguinte evento para vir recoller o premio. ¡Moita sorte, ho!';
+      if (codeWrap) codeWrap.style.display = 'none';
+    } else {
+      const isWinner = data.winnerWallet && userWalletAddress && data.winnerWallet.toLowerCase() === userWalletAddress.toLowerCase();
+
+      if (prizeEl) prizeEl.textContent = data.prize || 'Sorpresa do Furancho';
+
+      if (rulesEl) rulesEl.textContent = data.rules ||
+        'O domingo ás 21:00 abre o sorteo semanal. Durante a semana podes trincar o teu boleto dende aquí. O venres sortéase e o ganador ten ata o final do seguinte evento para vir recoller o premio. ¡Moita sorte, ho!';
+
+      if (codeWrap && codeEl) {
+        if (isWinner && data.status === 'completed' && data.verificationCode) {
+          codeEl.textContent = data.verificationCode;
+          codeWrap.style.display = 'block';
+        } else {
+          codeWrap.style.display = 'none';
+        }
       }
     }
 
@@ -4720,7 +4730,7 @@
       // Guardar para el modal flotante con la info completa
       _lastWeeklyData = data;
       const infoBtn = document.getElementById('weekly-info-btn');
-      if (infoBtn) infoBtn.style.display = (data.rules && data.rules.trim()) ? 'inline-block' : 'none';
+      if (infoBtn) infoBtn.style.display = 'inline-block';
 
       // 1. Verificar si el usuario actual es el ganador del sorteo
       const isWinner = data.winnerWallet && data.winnerWallet.toLowerCase() === userWalletAddress.toLowerCase();
