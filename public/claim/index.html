@@ -2087,49 +2087,54 @@
         </div>
       </details>
  
-      <!-- Recuperación de cuenta — sección principal -->
-      <div style="background:linear-gradient(135deg,rgba(139,25,24,0.06),rgba(196,151,58,0.04)); border:1.5px solid rgba(139,25,24,0.18); border-radius:20px; padding:20px; margin-bottom:20px;">
-        <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
-          <span style="font-size:22px;">🔐</span>
-          <p style="font-size:13px; font-weight:700; color:var(--wine); text-transform:uppercase; letter-spacing:1px;">Llave de recuperación (¡Dabuti!)</p>
-        </div>
-        <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px; line-height:1.6;">
-          Si cambias de peluco tecnológico o borras la app, necesitas esto para recuperar tus galones.<br>
-          <strong style="color:var(--wine);">Sin esta llave, tu progreso se esfuma como el vino. En serio, ho.</strong>
-        </p>
-        <div style="display:flex; flex-direction:column; gap:10px;">
-          <button onclick="openRecoverySheet('words')"
-            style="width:100%; padding:13px 16px; background:#fff; border:1.5px solid rgba(196,151,58,0.35); border-radius:14px; display:flex; align-items:center; gap:12px; cursor:pointer; font-family:'Outfit',sans-serif; text-align:left;">
-            <span style="font-size:22px; flex-shrink:0;">📝</span>
-            <div>
-              <p style="font-size:13px; font-weight:700; color:var(--text); margin:0 0 2px 0;">Apuntar mis 12 palabras</p>
-              <p style="font-size:11px; color:var(--text-muted); margin:0;">Apúntatelas en una libreta. Son tu salvavidas furancheiro, tronco.</p>
-            </div>
-          </button>
-          <button onclick="openRecoverySheet('qr')"
-            style="width:100%; padding:13px 16px; background:#fff; border:1.5px solid rgba(42,21,9,0.12); border-radius:14px; display:flex; align-items:center; gap:12px; cursor:pointer; font-family:'Outfit',sans-serif; text-align:left;">
-            <span style="font-size:22px; flex-shrink:0;">📱</span>
-            <div>
-              <p style="font-size:13px; font-weight:700; color:var(--text); margin:0 0 2px 0;">Guardar QR de recuperación</p>
-              <p style="font-size:11px; color:var(--text-muted); margin:0;">Guarda la foto. La escaneas en tu móvil nuevo y a correr.</p>
-            </div>
-          </button>
- 
-          <!-- Separador -->
-          <div style="display:flex; align-items:center; gap:8px; margin:2px 0;">
-            <div style="flex:1; height:1px; background:rgba(42,21,9,0.08);"></div>
-            <span style="font-size:11px; color:var(--text-muted);">¿Tienes otra cuenta?</span>
-            <div style="flex:1; height:1px; background:rgba(42,21,9,0.08);"></div>
+      <!-- Recuperación de cuenta — sección plegable -->
+      <div style="background:linear-gradient(135deg,rgba(139,25,24,0.06),rgba(196,151,58,0.04)); border:1.5px solid rgba(139,25,24,0.18); border-radius:20px; margin-bottom:20px; overflow:hidden;">
+        <!-- Cabecera — siempre visible, toca para plegar/desplegar -->
+        <button onclick="toggleRecovery()" id="recovery-toggle-btn"
+          style="width:100%; padding:16px 18px; background:none; border:none; cursor:pointer; font-family:'Outfit',sans-serif; display:flex; align-items:center; justify-content:space-between; gap:10px; -webkit-tap-highlight-color:transparent;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:22px;">🔐</span>
+            <p style="font-size:13px; font-weight:700; color:var(--wine); text-transform:uppercase; letter-spacing:1px; margin:0;">Llave de recuperación</p>
           </div>
- 
-          <button onclick="openRestoreFlow()"
-            style="width:100%; padding:13px 16px; background:transparent; border:1.5px solid rgba(42,21,9,0.1); border-radius:14px; display:flex; align-items:center; gap:12px; cursor:pointer; font-family:'Outfit',sans-serif; text-align:left;">
-            <span style="font-size:22px; flex-shrink:0;">🔑</span>
-            <div>
-              <p style="font-size:13px; font-weight:700; color:var(--text-muted); margin:0 0 2px 0;">Restaurar pase con mis 12 palabras</p>
-              <p style="font-size:11px; color:var(--text-muted); margin:0;">Por si cambiaste de peluco o quieres importar tu historial.</p>
+          <span id="recovery-arrow" style="font-size:16px; color:var(--wine); transition:transform 0.25s; display:inline-block;">▼</span>
+        </button>
+        <!-- Contenido plegable -->
+        <div id="recovery-body" style="max-height:0; overflow:hidden; transition:max-height 0.35s ease-out;">
+          <div style="padding:0 18px 18px; display:flex; flex-direction:column; gap:10px;">
+            <p style="font-size:12px; color:var(--text-muted); margin:0 0 4px; line-height:1.6;">
+              Si cambias de peluco tecnológico o borras la app, necesitas esto para recuperar tus galones.<br>
+              <strong style="color:var(--wine);">Sin esta llave, tu progreso se esfuma como el vino. En serio, ho.</strong>
+            </p>
+            <button onclick="openRecoverySheet('words')"
+              style="width:100%; padding:13px 16px; background:#fff; border:1.5px solid rgba(196,151,58,0.35); border-radius:14px; display:flex; align-items:center; gap:12px; cursor:pointer; font-family:'Outfit',sans-serif; text-align:left;">
+              <span style="font-size:22px; flex-shrink:0;">📝</span>
+              <div>
+                <p style="font-size:13px; font-weight:700; color:var(--text); margin:0 0 2px 0;">Apuntar mis 12 palabras</p>
+                <p style="font-size:11px; color:var(--text-muted); margin:0;">Apúntatelas en una libreta. Son tu salvavidas furancheiro, tronco.</p>
+              </div>
+            </button>
+            <button onclick="openRecoverySheet('qr')"
+              style="width:100%; padding:13px 16px; background:#fff; border:1.5px solid rgba(42,21,9,0.12); border-radius:14px; display:flex; align-items:center; gap:12px; cursor:pointer; font-family:'Outfit',sans-serif; text-align:left;">
+              <span style="font-size:22px; flex-shrink:0;">📱</span>
+              <div>
+                <p style="font-size:13px; font-weight:700; color:var(--text); margin:0 0 2px 0;">Guardar QR de recuperación</p>
+                <p style="font-size:11px; color:var(--text-muted); margin:0;">Guarda la foto. La escaneas en tu móvil nuevo y a correr.</p>
+              </div>
+            </button>
+            <div style="display:flex; align-items:center; gap:8px; margin:2px 0;">
+              <div style="flex:1; height:1px; background:rgba(42,21,9,0.08);"></div>
+              <span style="font-size:11px; color:var(--text-muted);">¿Tienes otra cuenta?</span>
+              <div style="flex:1; height:1px; background:rgba(42,21,9,0.08);"></div>
             </div>
-          </button>
+            <button onclick="openRestoreFlow()"
+              style="width:100%; padding:13px 16px; background:transparent; border:1.5px solid rgba(42,21,9,0.1); border-radius:14px; display:flex; align-items:center; gap:12px; cursor:pointer; font-family:'Outfit',sans-serif; text-align:left;">
+              <span style="font-size:22px; flex-shrink:0;">🔑</span>
+              <div>
+                <p style="font-size:13px; font-weight:700; color:var(--text-muted); margin:0 0 2px 0;">Restaurar pase con mis 12 palabras</p>
+                <p style="font-size:11px; color:var(--text-muted); margin:0;">Por si cambiaste de peluco o quieres importar tu historial.</p>
+              </div>
+            </button>
+          </div>
         </div>
       </div>
  
@@ -4190,6 +4195,14 @@
     if (mnemonic && !confirmed) {
       setTimeout(() => showMnemonicModal(mnemonic), 1200);
     }
+  }
+
+  function toggleRecovery() {
+    const body = document.getElementById('recovery-body');
+    const arrow = document.getElementById('recovery-arrow');
+    const open = body.style.maxHeight && body.style.maxHeight !== '0px' && body.style.maxHeight !== '0';
+    body.style.maxHeight = open ? '0' : '600px';
+    arrow.style.transform = open ? 'rotate(0deg)' : 'rotate(180deg)';
   }
 
   function openRecoverySheet(tab) {
