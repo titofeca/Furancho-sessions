@@ -66,6 +66,16 @@ try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN type TEXT DEFAULT 'night
 try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN hide_name INTEGER DEFAULT 0`); } catch (_) {}
 try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN participant_level INTEGER`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN participant_level INTEGER`); } catch (_) {}
+// Número de serie del mint dentro de su nivel (1 = primero en alcanzar ese nivel)
+try { db.exec(`ALTER TABLE mints ADD COLUMN mint_serial INTEGER`); } catch (_) {}
+// Rellenar seriales históricos para mints existentes sin serial
+try {
+  [1,2,3,4].forEach(lvl => {
+    const existing = db.prepare(`SELECT COUNT(*) as c FROM mints WHERE level = ? AND mint_serial IS NOT NULL AND status != 'failed'`).get(lvl).c;
+    const rows = db.prepare(`SELECT id FROM mints WHERE level = ? AND mint_serial IS NULL AND status != 'failed' ORDER BY minted_at ASC`).all(lvl);
+    rows.forEach((r, i) => db.prepare(`UPDATE mints SET mint_serial = ? WHERE id = ?`).run(existing + i + 1, r.id));
+  });
+} catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS prize_presets (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, active INTEGER DEFAULT 1, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS raffle_participants (raffle_id INTEGER NOT NULL, wallet_address TEXT NOT NULL, PRIMARY KEY (raffle_id, wallet_address))`); } catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS scheduled_raffles (id INTEGER PRIMARY KEY AUTOINCREMENT, event_date TEXT NOT NULL, scheduled_time TEXT NOT NULL, prize TEXT NOT NULL, status TEXT DEFAULT 'pending', raffle_id INTEGER, target_level INTEGER, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
@@ -276,11 +286,13 @@ try {
 // =====================
 
 function insertMint({ email, level, levelName, walletAddress, crossmintActionId, status, ipAddress }) {
+  // Calcular el siguiente número de serie para este nivel
+  const nextSerial = (db.prepare(`SELECT COUNT(*) as c FROM mints WHERE level = ? AND status != 'failed'`).get(level)?.c || 0) + 1;
   const stmt = db.prepare(`
-    INSERT INTO mints (email, level, level_name, wallet_address, crossmint_action_id, status, ip_address)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO mints (email, level, level_name, wallet_address, crossmint_action_id, status, ip_address, mint_serial)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  const result = stmt.run(email || null, level, levelName, walletAddress, crossmintActionId || null, status || 'pending', ipAddress || null);
+  const result = stmt.run(email || null, level, levelName, walletAddress, crossmintActionId || null, status || 'pending', ipAddress || null, nextSerial);
   return result.lastInsertRowid;
 }
 
@@ -382,11 +394,26 @@ function getStats() {
     GROUP BY event_date ORDER BY event_date DESC LIMIT 30
   `).all();
 
-  const totalVisitsRow = db.prepare(`SELECT COUNT(*) as count FROM visits`).get();
+  // Visitas únicas totales = sesiones con counted_as_visit (fuente única de verdad)
   const totalSessionsRow = db.prepare(`SELECT COUNT(*) as count FROM sessions WHERE counted_as_visit = 1`).get();
-  const totalVisits = (totalVisitsRow ? totalVisitsRow.count : 0) + (totalSessionsRow ? totalSessionsRow.count : 0);
+  const totalVisits = totalSessionsRow ? totalSessionsRow.count : 0;
 
-  return { total: total.count, byLevel, recent, byDate, totalVisits };
+  // Visitas por día (últimos 30 eventos con al menos 1 visita)
+  const visitsByDay = db.prepare(`
+    SELECT date(entry_time) as day, COUNT(*) as count
+    FROM sessions WHERE counted_as_visit = 1
+    GROUP BY date(entry_time) ORDER BY day DESC LIMIT 30
+  `).all();
+
+  // Total wallets únicas que han visitado (con o sin NFT)
+  const uniqueVisitors = db.prepare(`SELECT COUNT(DISTINCT wallet_address) as count FROM sessions WHERE counted_as_visit = 1`).get()?.count || 0;
+
+  // Total mints exitosos por nivel
+  const mintsByLevel = db.prepare(`
+    SELECT level, COUNT(*) as count FROM mints WHERE status != 'failed' GROUP BY level ORDER BY level
+  `).all();
+
+  return { total: total.count, byLevel, recent, byDate, totalVisits, visitsByDay, uniqueVisitors, mintsByLevel };
 }
 
 function getHolders(levelFilter) {

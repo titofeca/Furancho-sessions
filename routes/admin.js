@@ -761,6 +761,25 @@ router.post('/mints/:id/reject', requireAuth, (req, res) => {
   }
 });
 
+// POST /api/admin/mint-direct — mintea directamente un nivel a una wallet (sin visitas, sin Crossmint)
+router.post('/mint-direct', requireAuth, (req, res) => {
+  const { walletAddress, level } = req.body;
+  if (!walletAddress || !level) return res.status(400).json({ error: 'Faltan walletAddress y level' });
+  const lvl = parseInt(level);
+  if (![1,2,3,4].includes(lvl)) return res.status(400).json({ error: 'Level debe ser 1, 2, 3 o 4' });
+  const ethRegex = /^0x[a-fA-F0-9]{40}$/i;
+  if (!ethRegex.test(walletAddress)) return res.status(400).json({ error: 'Wallet inválida' });
+  try {
+    const { insertMint, clearStaleMint } = require('../db/database');
+    const LEVEL_NAMES = { 1: 'O Cautivo', 2: 'O Cunqueiro', 3: 'O Larpeiro', 4: 'O Presidente' };
+    clearStaleMint(walletAddress, lvl);
+    const id = insertMint({ email: null, level: lvl, levelName: LEVEL_NAMES[lvl], walletAddress, status: 'success', ipAddress: 'admin-direct' });
+    res.json({ success: true, id, level: lvl, levelName: LEVEL_NAMES[lvl], walletAddress });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── TEST RAFFLE — endpoints temporales para probar el flujo completo ────────
 // POST /api/admin/test-raffle/setup — crea sesiones de prueba para hoy
 // POST /api/admin/test-raffle/cleanup — borra TODO rastro del test
