@@ -125,18 +125,14 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Error interno del servidor' });
 });
 
-// Auto-checkout a las 23:00 — comprueba cada minuto si es hora de cerrar sesiones
+// Auto-checkout al terminar el horario del evento (definido en la agenda) — comprueba cada minuto.
+// La función sólo cierra sesiones cuando la hora de cierre del evento ya ha pasado.
 function scheduleAutoCheckout() {
   setInterval(() => {
-    const now = new Date();
-    const madridTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
-    const madridHour = madridTime.getHours();
-    const madridMinute = madridTime.getMinutes();
-    
-    if (madridHour === 23 && madridMinute === 0) {
-      const { autoCloseSessionsAt23 } = require('./db/database');
-      autoCloseSessionsAt23();
-    }
+    try {
+      const { autoCloseSessionsAfterEvent } = require('./db/database');
+      autoCloseSessionsAfterEvent();
+    } catch (_) {}
   }, 60 * 1000); // cada minuto
 }
 scheduleAutoCheckout();

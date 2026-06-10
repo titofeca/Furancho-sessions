@@ -911,15 +911,42 @@ function getEligibleRaffleParticipants() {
   return [...eligible];
 }
 
-function autoCloseSessionsAt23() {
+// Cierre automático de sesiones: ocurre cuando TERMINA el horario del evento de la agenda
+// (no a una hora fija). Se llama cada minuto desde server.js; sólo actúa al pasar la hora de cierre.
+function autoCloseSessionsAfterEvent() {
   const now = new Date();
-  const madridTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
-  const yyyy = madridTime.getFullYear();
-  const mm = String(madridTime.getMonth() + 1).padStart(2, '0');
-  const dd = String(madridTime.getDate()).padStart(2, '0');
-  const madridDateStr = `${yyyy}-${mm}-${dd}`;
+  const madridNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+  const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const todayStr = fmt(madridNow);
+  const yest = new Date(madridNow); yest.setDate(yest.getDate() - 1);
+  const yestStr = fmt(yest);
 
-  const open = db.prepare(`SELECT id FROM sessions WHERE exit_time IS NULL AND date(entry_time) = ?`).all(madridDateStr);
+  // Evento relevante: el de hoy, o el de ayer si su ventana cruza medianoche
+  let event = getEventForMadridDate(todayStr);
+  let eventDayStr = todayStr;
+  if (!event) {
+    const yEvent = getEventForMadridDate(yestStr);
+    if (yEvent) {
+      const [ysh, ysm] = (yEvent.start_time || '19:00').split(':').map(Number);
+      const [yeh, yem] = (yEvent.end_time || '23:59').split(':').map(Number);
+      if ((yeh * 60 + yem) <= (ysh * 60 + ysm)) { event = yEvent; eventDayStr = yestStr; }
+    }
+  }
+  if (!event) return 0; // sin evento → no se cierra nada automáticamente
+
+  // Calcular fin del evento en el mismo marco que getEligibleRaffleParticipants
+  const [sh, sm] = (event.start_time || '19:00').split(':').map(Number);
+  const [eh, em] = (event.end_time || '23:59').split(':').map(Number);
+  const [ey, emo, ed] = eventDayStr.split('-').map(Number);
+  const dayStart = new Date(ey, emo - 1, ed, 0, 0, 0, 0);
+  const startMs = dayStart.getTime() + (sh * 60 + sm) * 60000;
+  let endMs = dayStart.getTime() + (eh * 60 + em) * 60000;
+  if (endMs <= startMs) endMs += 24 * 60 * 60 * 1000; // cruza medianoche
+
+  if (madridNow.getTime() < endMs) return 0; // el evento aún no ha terminado
+
+  // Cerrar sesiones abiertas del día del evento (y siguiente por si cruza medianoche)
+  const open = db.prepare(`SELECT id FROM sessions WHERE exit_time IS NULL AND (date(entry_time) = ? OR date(entry_time) = date(?, '+1 day'))`).all(eventDayStr, eventDayStr);
   const stmt = db.prepare(`
     UPDATE sessions
     SET exit_time = datetime('now'),
@@ -930,9 +957,11 @@ function autoCloseSessionsAt23() {
     WHERE id = ?
   `);
   open.forEach(s => stmt.run(s.id));
-  console.log(`[Auto-checkout 23:00] Sesiones cerradas: ${open.length}`);
+  if (open.length) console.log(`[Auto-checkout fin evento ${event.end_time}] Sesiones cerradas: ${open.length}`);
   return open.length;
 }
+// Alias retrocompatible
+const autoCloseSessionsAt23 = autoCloseSessionsAfterEvent;
 
 function insertRaffle(prize, winnerWallet, verificationCode, participantWallets = [], targetLevel = null, prizeDetails = null, prizeImage = null, establishment = null, type = 'night', hideName = 0, participantLevel = null) {
   const deadline = new Date(Date.now() + 195000).toISOString().replace('T', ' ').slice(0, 19);
@@ -1228,6 +1257,7 @@ module.exports = {
   getVisitCount,
   getEligibleRaffleParticipants,
   autoCloseSessionsAt23,
+  autoCloseSessionsAfterEvent,
 
   insertRaffle,
   collectRaffle,
