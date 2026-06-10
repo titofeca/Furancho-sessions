@@ -2511,7 +2511,7 @@
       const btn = document.querySelector('#marcho-footer button');
       if (btn) { btn.disabled = true; btn.textContent = '🚪 Registrando...'; }
       try {
-        const res = await fetch('/api/mint', {
+        const res = await fetch('/api/mint/exit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ walletAddress: userWalletAddress })
@@ -2545,6 +2545,7 @@
 
     // Comprobar historial de reclamos
     let userVisitCount = 0;
+    let userHasActiveSession = false;
 
     async function checkUserHistoryAndAdjustLevel() {
       const urlParams = new URLSearchParams(window.location.search);
@@ -2557,6 +2558,7 @@
         userVisitCount = data.visitCount || 0;
         userClaimedLevels = data.levels || [];
         // Mostrar/ocultar botón Marcho según sesión activa
+        userHasActiveSession = !!data.hasActiveSession;
         if (data.hasActiveSession) {
           document.getElementById('marcho-footer').style.display = 'block';
           document.getElementById('session-active-badge').style.display = 'block';
@@ -2930,31 +2932,21 @@
     }
 
     async function autoRegistrarSalida() {
+      // Solo ejecutar si el usuario tiene sesión activa (evita llamadas falsas al volver a la app)
+      if (!userHasActiveSession) return;
       try {
-        const res = await fetch('/api/mint', {
+        const res = await fetch('/api/mint/exit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ walletAddress: userWalletAddress })
         });
         const data = await res.json();
-
-        if (data.action === 'mint' || data.action === 'mint_queued') {
-          // Subió de nivel → actualizar perfil con banner
-          const refreshed = await fetch(`/api/mint/history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => null);
-          if (refreshed) {
-            userVisitCount = refreshed.visitCount || 0;
-            userClaimedLevels = refreshed.levels || [];
-            showProfileScreen(userVisitCount, userClaimedLevels);
-          }
-          if (data.action === 'mint_queued') {
-            startPollingForLevel(data.level, data.levelName);
-          } else {
-            showProfileBanner(`🎉 <strong>¡Carallo, qué nivelazo!</strong> Conseguiste el pase <strong>${data.levelName}</strong>`, 'gold');
-          }
-        } else if (data.action === 'visit') {
+        if (data.action === 'exit') {
+          userHasActiveSession = false;
+          document.getElementById('marcho-footer').style.display = 'none';
+          document.getElementById('session-active-badge').style.display = 'none';
           showProfileBanner(getRandomExitMessage(), 'green');
         }
-        // Si cooldown o error → nada visible, no interrumpir
       } catch (e) {
         // Silencioso — no romper la experiencia
       }
@@ -2975,7 +2967,7 @@
       btn.disabled = true;
       btn.textContent = 'Registrando...';
       try {
-        const res = await fetch('/api/mint', {
+        const res = await fetch('/api/mint/exit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ walletAddress: userWalletAddress })

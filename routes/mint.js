@@ -55,6 +55,38 @@ router.post('/entry', mintLimiter, async (req, res) => {
   }
 });
 
+// POST /api/mint/exit — cierra sesión de forma dedicada (sin abrir nueva visita)
+// Soluciona la race condition donde marcharDoFurancho(), fichaSalida() y autoRegistrarSalida()
+// llamaban al mismo endpoint que la entrada, pudiendo generar visitas fantasma o dobles.
+const _exitLocks = new Set(); // previene dobles salidas simultáneas por la misma wallet
+router.post('/exit', mintLimiter, (req, res) => {
+  const { walletAddress } = req.body;
+  if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress))
+    return res.status(400).json({ error: 'Falta walletAddress' });
+
+  if (_exitLocks.has(walletAddress.toLowerCase())) {
+    return res.json({ success: true, action: 'already_processing' });
+  }
+  _exitLocks.add(walletAddress.toLowerCase());
+  setTimeout(() => _exitLocks.delete(walletAddress.toLowerCase()), 5000);
+
+  try {
+    const { closeSession, db } = require('../db/database');
+    const activeSession = db.prepare(`SELECT id FROM sessions WHERE wallet_address = ? AND exit_time IS NULL LIMIT 1`).get(walletAddress);
+    if (!activeSession) {
+      _exitLocks.delete(walletAddress.toLowerCase());
+      return res.json({ success: true, action: 'no_session' });
+    }
+    closeSession(walletAddress);
+    _exitLocks.delete(walletAddress.toLowerCase());
+    return res.json({ success: true, action: 'exit' });
+  } catch (e) {
+    _exitLocks.delete(walletAddress.toLowerCase());
+    console.error('Error en /exit:', e.message);
+    res.status(500).json({ error: 'Error al registrar salida' });
+  }
+});
+
 // POST /api/mint/create-wallet
 // Genera una billetera Web3 aleatoria con mnemónico de 12 palabras
 router.post('/create-wallet', mintLimiter, (req, res) => {

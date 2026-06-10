@@ -229,6 +229,78 @@ function scheduleWeeklyRaffle() {
 }
 scheduleWeeklyRaffle();
 
+// ─── PUSH "¿CUÁNDO VUELVES?" — 6 días sin visita + evento mañana ─────────────
+// Se ejecuta cada minuto pero solo dispara una vez al día a las 18:00 hora Madrid.
+let _lastComebackCheckDate = null;
+
+function scheduleComebackPushes() {
+  setInterval(async () => {
+    try {
+      const now = new Date();
+      const madridStr = now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' });
+      const madridDate = new Date(madridStr);
+      const hour = madridDate.getHours();
+      const yyyy = madridDate.getFullYear();
+      const mm = String(madridDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(madridDate.getDate()).padStart(2, '0');
+      const todayStr = `${yyyy}-${mm}-${dd}`;
+
+      // Solo disparar una vez al día a las 18:00 h Madrid
+      if (hour !== 18 || _lastComebackCheckDate === todayStr) return;
+      _lastComebackCheckDate = todayStr;
+
+      const { db } = require('./db/database');
+
+      // Calcular fecha de mañana en Madrid
+      const tmrw = new Date(madridDate);
+      tmrw.setDate(tmrw.getDate() + 1);
+      const ty = tmrw.getFullYear();
+      const tm = String(tmrw.getMonth() + 1).padStart(2, '0');
+      const td = String(tmrw.getDate()).padStart(2, '0');
+      const tomorrowStr = `${ty}-${tm}-${td}`;
+
+      // Solo si hay evento activo mañana
+      const event = db.prepare(`SELECT title FROM events WHERE event_date = ? AND active = 1`).get(tomorrowStr);
+      if (!event) return;
+
+      // Wallets con push subscription, que han visitado alguna vez,
+      // pero NO en los últimos 6 días
+      const wallets = db.prepare(`
+        SELECT DISTINCT ps.wallet_address
+        FROM push_subscriptions ps
+        WHERE ps.wallet_address IS NOT NULL
+          AND EXISTS (
+            SELECT 1 FROM sessions s2
+            WHERE s2.wallet_address = ps.wallet_address
+              AND s2.counted_as_visit = 1
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM sessions s
+            WHERE s.wallet_address = ps.wallet_address
+              AND s.counted_as_visit = 1
+              AND s.entry_time >= datetime('now', '-6 days')
+          )
+      `).all();
+
+      if (!wallets.length) return;
+
+      const { sendPushToWallet } = require('./services/push');
+      for (const w of wallets) {
+        sendPushToWallet(
+          w.wallet_address,
+          'Furancho Sessions 🍷',
+          `Hace más de 6 días que no apareces, rapaz. Mañana hay Furancho — ¿vienes?`,
+          { url: '/claim' }
+        );
+      }
+      console.log(`[Comeback] 🍷 Push enviado a ${wallets.length} furancheiros ausentes (evento mañana: ${event.title})`);
+    } catch (e) {
+      console.error('[Comeback] Error:', e.message);
+    }
+  }, 60 * 1000);
+}
+scheduleComebackPushes();
+
 // ─── AUTO-LANZAMIENTO DE SORTEOS PROGRAMADOS ─────────────────────────────────
 // Cada minuto comprueba si hay sorteos con hora = hora actual en Madrid que aún están pendientes.
 // Si los encuentra, los lanza automáticamente igual que si el admin pulsara "Lanzar".

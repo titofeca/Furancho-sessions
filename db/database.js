@@ -305,31 +305,45 @@ function insertVisit(walletAddress, email, ipAddress) {
 
 
 function checkRecentVisit(walletAddress, hours = 12) {
+  // Solo sessions (tabla visits es legacy). Comprueba si ya hay visita contada
+  // en el mismo DÍA de evento (Madrid), no en las últimas N horas.
+  // Esto evita que dos eventos en días distintos de la misma semana se bloqueen mutuamente.
+  const now = new Date();
+  const madridStr = now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' });
+  const madridDate = new Date(madridStr);
+  const yyyy = madridDate.getFullYear();
+  const mm = String(madridDate.getMonth() + 1).padStart(2, '0');
+  const dd = String(madridDate.getDate()).padStart(2, '0');
+  const todayMadrid = `${yyyy}-${mm}-${dd}`;
+
+  // Si se llama con el cooldown de 168h (entrada de la semana) comprueba el día actual
+  // Si se llama con otras horas (cooldown corto) mantiene el comportamiento por horas
+  if (hours >= 24) {
+    const row = db.prepare(`
+      SELECT entry_time FROM sessions
+      WHERE wallet_address = ?
+        AND date(entry_time, '+1 hour') = ?
+        AND counted_as_visit = 1
+      LIMIT 1
+    `).get(walletAddress, todayMadrid);
+    return !!row;
+  }
   const row = db.prepare(`
-    SELECT visited_at 
-    FROM visits 
-    WHERE wallet_address = ? 
-      AND visited_at >= datetime('now', '-${hours} hours')
-    ORDER BY visited_at DESC 
-    LIMIT 1
-  `).get(walletAddress);
-  const row2 = db.prepare(`
-    SELECT entry_time
-    FROM sessions
+    SELECT entry_time FROM sessions
     WHERE wallet_address = ?
       AND entry_time >= datetime('now', '-${hours} hours')
       AND counted_as_visit = 1
-    ORDER BY entry_time DESC
     LIMIT 1
   `).get(walletAddress);
-  return !!row || !!row2;
+  return !!row;
 }
 
 
 function getVisitCount(walletAddress) {
-  const row = db.prepare(`SELECT COUNT(*) as count FROM visits WHERE wallet_address = ?`).get(walletAddress);
-  const row2 = db.prepare(`SELECT COUNT(*) as count FROM sessions WHERE wallet_address = ? AND counted_as_visit = 1`).get(walletAddress);
-  return (row ? row.count : 0) + (row2 ? row2.count : 0);
+  // Solo sessions (sistema actual). La tabla visits es legacy y ya no se inserta en ella.
+  // Sumarla causaba doble conteo para usuarios con datos en ambas tablas.
+  const row = db.prepare(`SELECT COUNT(*) as count FROM sessions WHERE wallet_address = ? AND counted_as_visit = 1`).get(walletAddress);
+  return row ? row.count : 0;
 }
 
 function getStats() {
