@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const {
   getEligibleRaffleParticipants, insertRaffle, acceptRaffle, rejectRaffle,
-  collectRaffle, getRaffleHistory, getMyWins, getRaffleParticipation,
+  collectRaffle, getRaffleHistory, getMyWins, getRaffleParticipation, getRaffleById,
   getPrizePresets, addPrizePreset, deletePrizePreset, getRaffleCountTonight,
   getScheduledRaffles, createScheduledRaffle, updateScheduledRaffle,
   deleteScheduledRaffle, linkScheduledRaffle, insertMint,
@@ -93,11 +93,12 @@ router.get('/stream', (req, res) => {
 });
 
 // ── FUNCIÓN CENTRAL DE LANZAMIENTO (usada por /start, /launch-scheduled y auto-launcher) ────
-function doLaunch({ prize, type = 'night', targetLevel = null, prizeDetails = null, prizeImage = null, establishment = null, hideName = false, scheduledId = null }) {
+function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel = null, prizeDetails = null, prizeImage = null, establishment = null, hideName = false, scheduledId = null }) {
   const sanitizedTargetLevel = targetLevel ? parseInt(targetLevel) : null;
   if (sanitizedTargetLevel && ![2, 3, 4].includes(sanitizedTargetLevel)) {
     throw new Error('Nivel de destino no válido. Debe ser 2, 3 o 4.');
   }
+  const sanitizedParticipantLevel = participantLevel ? parseInt(participantLevel) : null;
 
   const connectedWallets = [...new Set(clients.filter(c => c.walletAddress).map(c => c.walletAddress))];
   let sessionWallets = getEligibleRaffleParticipants();
@@ -112,11 +113,25 @@ function doLaunch({ prize, type = 'night', targetLevel = null, prizeDetails = nu
     if (sessionWallets.length === 0) throw new Error('No hay furancheiros O Presidente presentes esta noche.');
   }
 
-  const eligibleWallets = connectedWallets.length > 0
-    ? sessionWallets.filter(w => connectedWallets.includes(w))
-    : sessionWallets;
+  // Filtro por nivel mínimo de participante (sorteos solo para nivel X o superior)
+  if (sanitizedParticipantLevel) {
+    const { db } = require('../db/database');
+    const levelWallets = new Set(
+      db.prepare(`SELECT DISTINCT wallet_address FROM mints WHERE level >= ? AND status != 'failed'`).all(sanitizedParticipantLevel).map(r => r.wallet_address)
+    );
+    sessionWallets = sessionWallets.filter(w => levelWallets.has(w));
+    if (sessionWallets.length === 0) throw new Error(`No hay participantes de nivel ${sanitizedParticipantLevel}+ presentes en el local.`);
+  }
 
-  if (eligibleWallets.length === 0) throw new Error('No hay clientes con entrada fichada.');
+  // Elegibles = intersección entre sesión activa hoy Y app abierta (SSE conectado)
+  // Si nadie tiene la app abierta → 0 elegibles (sin fallback a todas las sesiones)
+  const eligibleWallets = sessionWallets.filter(w => connectedWallets.includes(w));
+
+  if (eligibleWallets.length === 0) {
+    throw new Error(connectedWallets.length === 0
+      ? 'Nadie tiene la app abierta en este momento. Pídeles que abran Furancho Sessions.'
+      : 'No hay clientes con entrada fichada y app abierta.');
+  }
 
   // Doble Oportunidad para el ganador de La Chave Semanal
   try {
@@ -134,7 +149,7 @@ function doLaunch({ prize, type = 'night', targetLevel = null, prizeDetails = nu
   let verificationCode = '';
   for (let i = 0; i < 4; i++) verificationCode += chars.charAt(Math.floor(Math.random() * chars.length));
 
-  const raffleId = insertRaffle(prize, winnerWallet, verificationCode, eligibleWallets, sanitizedTargetLevel, prizeDetails, prizeImage, establishment, type, hideName ? 1 : 0);
+  const raffleId = insertRaffle(prize, winnerWallet, verificationCode, eligibleWallets, sanitizedTargetLevel, prizeDetails, prizeImage, establishment, type, hideName ? 1 : 0, sanitizedParticipantLevel);
   if (scheduledId) { try { linkScheduledRaffle(parseInt(scheduledId), raffleId); } catch(_) {} }
 
   const displayPrize = hideName ? 'Sorpresa 🎁' : prize;
@@ -170,10 +185,10 @@ router.post('/upload-image', requireAuth, upload.single('image'), (req, res) => 
 
 // POST /api/raffle/start — admin lanza sorteo manualmente con todos los datos
 router.post('/start', requireAuth, (req, res) => {
-  const { prize, scheduledId, targetLevel, prizeDetails, prizeImage, establishment, type, hideName } = req.body;
+  const { prize, scheduledId, targetLevel, participantLevel, prizeDetails, prizeImage, establishment, type, hideName } = req.body;
   if (!prize) return res.status(400).json({ error: 'Falta el nombre del premio' });
   try {
-    const result = doLaunch({ prize, type: type || 'night', targetLevel, prizeDetails, prizeImage, establishment, hideName: !!hideName, scheduledId });
+    const result = doLaunch({ prize, type: type || 'night', targetLevel, participantLevel, prizeDetails, prizeImage, establishment, hideName: !!hideName, scheduledId });
     return res.json({ success: true, ...result });
   } catch(e) {
     return res.status(400).json({ error: e.message });
@@ -188,7 +203,7 @@ router.post('/launch-scheduled/:id', requireAuth, (req, res) => {
     if (!s) return res.status(404).json({ error: 'Sorteo programado no encontrado' });
     if (s.status !== 'pending') return res.status(400).json({ error: 'Este sorteo ya fue lanzado o cancelado' });
     const result = doLaunch({
-      prize: s.prize, type: s.type || 'night', targetLevel: s.target_level,
+      prize: s.prize, type: s.type || 'night', targetLevel: s.target_level, participantLevel: s.participant_level,
       prizeDetails: s.prize_details, prizeImage: s.prize_image, establishment: s.establishment,
       hideName: s.hide_name ? true : false, scheduledId: s.id
     });
@@ -327,7 +342,8 @@ router.get('/history', requireAuth, (req, res) => {
 router.get('/eligible', requireAuth, (req, res) => {
   const connected = [...new Set(clients.filter(c => c.walletAddress).map(c => c.walletAddress))];
   const sessions = getEligibleRaffleParticipants();
-  const eligible = connected.length > 0 ? sessions.filter(w => connected.includes(w)) : sessions;
+  // Elegibles = sesión activa hoy + app abierta (SSE). Sin fallback a sesiones solas.
+  const eligible = sessions.filter(w => connected.includes(w));
   const tonight = getRaffleCountTonight();
   res.json({ count: eligible.length, withApp: connected.length, checkedIn: sessions.length, tonight });
 });
@@ -372,13 +388,14 @@ router.get('/scheduled/all', requireAuth, (req, res) => {
 
 // POST /api/raffle/scheduled — admin, crear sorteo programado
 router.post('/scheduled', requireAuth, (req, res) => {
-  const { eventDate, scheduledTime, prize, targetLevel, type, hideName, prizeDetails, prizeImage, establishment } = req.body;
+  const { eventDate, scheduledTime, prize, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment } = req.body;
   if (!eventDate || !scheduledTime || !prize)
     return res.status(400).json({ error: 'Faltan campos: eventDate, scheduledTime, prize' });
   try {
     const id = createScheduledRaffle({
       eventDate, scheduledTime, prize,
       targetLevel: targetLevel ? parseInt(targetLevel) : null,
+      participantLevel: participantLevel ? parseInt(participantLevel) : null,
       type: type || 'night',
       hideName: !!hideName,
       prizeDetails: prizeDetails || null,
@@ -391,11 +408,12 @@ router.post('/scheduled', requireAuth, (req, res) => {
 
 // PATCH /api/raffle/scheduled/:id — admin, editar
 router.patch('/scheduled/:id', requireAuth, (req, res) => {
-  const { eventDate, scheduledTime, prize, status, targetLevel, type, hideName, prizeDetails, prizeImage, establishment } = req.body;
+  const { eventDate, scheduledTime, prize, status, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment } = req.body;
   try {
     updateScheduledRaffle(parseInt(req.params.id), {
       eventDate, scheduledTime, prize, status,
       targetLevel: targetLevel !== undefined ? (targetLevel ? parseInt(targetLevel) : null) : undefined,
+      participantLevel: participantLevel !== undefined ? (participantLevel ? parseInt(participantLevel) : null) : undefined,
       type, hideName, prizeDetails, prizeImage, establishment
     });
     res.json({ success: true });
@@ -408,6 +426,77 @@ router.delete('/scheduled/:id', requireAuth, (req, res) => {
     deleteScheduledRaffle(parseInt(req.params.id));
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/raffle/voucher/:id?wallet=0x... — bono descargable del ganador (HTML imprimible)
+router.get('/voucher/:id', (req, res) => {
+  const { wallet } = req.query;
+  if (!wallet) return res.status(400).send('Falta wallet');
+  try {
+    const raffle = getRaffleById(parseInt(req.params.id));
+    if (!raffle) return res.status(404).send('Sorteo no encontrado');
+    if (raffle.winner_wallet.toLowerCase() !== wallet.toLowerCase()) return res.status(403).send('Acceso denegado');
+    if (!['accepted','collected'].includes(raffle.status)) return res.status(400).send('Premio no aceptado aún');
+
+    const prizeImgHtml = raffle.prize_image
+      ? `<div style="margin-bottom:12px;"><img src="${raffle.prize_image}" style="max-height:80px;max-width:160px;object-fit:contain;border-radius:10px;" alt="Logo" /></div>`
+      : '';
+    const establishmentHtml = raffle.establishment
+      ? `<p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#8B1918;margin:4px 0 0;">${raffle.establishment}</p>`
+      : '';
+    const detailsHtml = raffle.prize_details
+      ? `<div style="margin:12px auto;max-width:340px;background:#f9f4ec;border:1px dashed rgba(139,25,24,0.25);border-radius:12px;padding:12px 16px;text-align:left;"><p style="font-size:12px;color:#7A6A5A;line-height:1.6;margin:0;">${raffle.prize_details}</p></div>`
+      : '';
+    const dateStr = new Date((raffle.accepted_at || raffle.created_at).replace(' ', 'T') + 'Z')
+      .toLocaleDateString('es-ES', { day:'numeric', month:'long', year:'numeric' });
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(`<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Bono Premio · Furancho Sessions</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{background:#F2EDE3;font-family:"Outfit",sans-serif;color:#2A1509;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+    .voucher{background:#fff;border-radius:20px;max-width:400px;width:100%;box-shadow:0 8px 40px rgba(42,21,9,.12);overflow:hidden;border:1px solid rgba(139,25,24,.1)}
+    .vh{background:linear-gradient(135deg,#8B1918,#6B1212);padding:24px 20px 20px;text-align:center}
+    .vb{padding:24px 20px;text-align:center}
+    .vf{background:rgba(42,21,9,.04);border-top:1px dashed rgba(42,21,9,.15);padding:16px 20px;text-align:center}
+    .code-box{background:#8B1918;color:#fff;border-radius:14px;padding:18px 24px;margin:16px 0;display:inline-block}
+    .code-text{font-family:monospace;font-size:36px;font-weight:900;letter-spacing:8px}
+    @media print{body{background:#fff;padding:0}.voucher{box-shadow:none;border:1px solid #ccc}.pBtn{display:none!important}}
+  </style>
+</head>
+<body>
+  <div class="voucher">
+    <div class="vh">
+      <img src="/assets/logo.png" alt="Furancho Sessions" style="height:48px;margin-bottom:8px;"/>
+      <p style="color:rgba(255,255,255,.7);font-size:11px;text-transform:uppercase;letter-spacing:2px;margin:0;">Bono Premio · Furancho Sessions</p>
+    </div>
+    <div class="vb">
+      ${prizeImgHtml}
+      ${establishmentHtml}
+      <h1 style="font-family:'Playfair Display',serif;font-size:26px;font-weight:900;color:#8B1918;margin:12px 0 6px;line-height:1.2;">${raffle.prize}</h1>
+      ${detailsHtml}
+      <p style="font-size:12px;color:#7A6A5A;margin-top:10px;">Otorgado el ${dateStr}</p>
+      <div class="code-box">
+        <p style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,.7);margin-bottom:4px;">Código de verificación</p>
+        <p class="code-text">${raffle.verification_code}</p>
+      </div>
+      <p style="font-size:12px;color:#7A6A5A;line-height:1.6;margin-top:4px;">Presenta este bono al staff del local colaborador.<br>El código garantiza la autenticidad del premio.</p>
+    </div>
+    <div class="vf">
+      <img src="/assets/logo.png" alt="" style="height:28px;opacity:.4;margin-bottom:4px;"/><br>
+      <p style="font-size:10px;color:#7A6A5A;margin:0;">furancho.up.railway.app · Premio oficial Furancho Sessions</p>
+      <button class="pBtn" onclick="window.print()" style="margin-top:12px;padding:10px 28px;background:#8B1918;color:#fff;border:none;border-radius:50px;font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;cursor:pointer;">🖨️ Imprimir / Guardar PDF</button>
+    </div>
+  </div>
+</body>
+</html>`);
+  } catch (e) { res.status(500).send('Error al generar bono'); }
 });
 
 module.exports = router;

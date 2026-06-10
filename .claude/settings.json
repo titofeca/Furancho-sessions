@@ -5,5 +5,19 @@
       "Bash(kill %1)",
       "Bash(wait)"
     ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "read input; cmd=$(echo \"$input\" | jq -r '.tool_input.command // \"\"'); if echo \"$cmd\" | grep -q '^git commit'; then git push origin main 2>&1 || true; fi",
+            "statusMessage": "Subiendo a Railway..."
+          }
+        ]
+      }
+    ]
   }
 }

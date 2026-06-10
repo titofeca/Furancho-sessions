@@ -64,6 +64,8 @@ try { db.exec(`ALTER TABLE raffles ADD COLUMN type TEXT DEFAULT 'night'`); } cat
 try { db.exec(`ALTER TABLE raffles ADD COLUMN hide_name INTEGER DEFAULT 0`); } catch (_) {}
 try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN type TEXT DEFAULT 'night'`); } catch (_) {}
 try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN hide_name INTEGER DEFAULT 0`); } catch (_) {}
+try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN participant_level INTEGER`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN participant_level INTEGER`); } catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS prize_presets (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, active INTEGER DEFAULT 1, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS raffle_participants (raffle_id INTEGER NOT NULL, wallet_address TEXT NOT NULL, PRIMARY KEY (raffle_id, wallet_address))`); } catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS scheduled_raffles (id INTEGER PRIMARY KEY AUTOINCREMENT, event_date TEXT NOT NULL, scheduled_time TEXT NOT NULL, prize TEXT NOT NULL, status TEXT DEFAULT 'pending', raffle_id INTEGER, target_level INTEGER, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
@@ -819,12 +821,12 @@ function autoCloseSessionsAt23() {
   return open.length;
 }
 
-function insertRaffle(prize, winnerWallet, verificationCode, participantWallets = [], targetLevel = null, prizeDetails = null, prizeImage = null, establishment = null, type = 'night', hideName = 0) {
+function insertRaffle(prize, winnerWallet, verificationCode, participantWallets = [], targetLevel = null, prizeDetails = null, prizeImage = null, establishment = null, type = 'night', hideName = 0, participantLevel = null) {
   const deadline = new Date(Date.now() + 195000).toISOString().replace('T', ' ').slice(0, 19);
   const id = db.prepare(`
-    INSERT INTO raffles (prize, winner_wallet, verification_code, status, acceptance_deadline, target_level, prize_details, prize_image, establishment, type, hide_name)
-    VALUES (?, ?, ?, 'pending_acceptance', ?, ?, ?, ?, ?, ?, ?)
-  `).run(prize, winnerWallet, verificationCode, deadline, targetLevel, prizeDetails, prizeImage, establishment, type, hideName ? 1 : 0).lastInsertRowid;
+    INSERT INTO raffles (prize, winner_wallet, verification_code, status, acceptance_deadline, target_level, prize_details, prize_image, establishment, type, hide_name, participant_level)
+    VALUES (?, ?, ?, 'pending_acceptance', ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(prize, winnerWallet, verificationCode, deadline, targetLevel, prizeDetails, prizeImage, establishment, type, hideName ? 1 : 0, participantLevel || null).lastInsertRowid;
   if (participantWallets.length) {
     const stmt = db.prepare(`INSERT OR IGNORE INTO raffle_participants (raffle_id, wallet_address) VALUES (?, ?)`);
     participantWallets.forEach(w => stmt.run(id, w));
@@ -878,12 +880,19 @@ function getRaffleParticipation(walletAddress) {
   return db.prepare(`
     SELECT r.id, r.prize, r.status, r.created_at, r.collected, r.collected_at, r.rejection_note, r.acceptance_deadline,
            CASE WHEN r.winner_wallet = ? THEN 1 ELSE 0 END as is_winner,
-           CASE WHEN r.winner_wallet = ? THEN r.verification_code ELSE NULL END as verification_code
+           CASE WHEN r.winner_wallet = ? THEN r.verification_code ELSE NULL END as verification_code,
+           CASE WHEN r.winner_wallet = ? THEN r.prize_details ELSE NULL END as prize_details,
+           CASE WHEN r.winner_wallet = ? THEN r.prize_image ELSE NULL END as prize_image,
+           CASE WHEN r.winner_wallet = ? THEN r.establishment ELSE NULL END as establishment
     FROM raffles r
     WHERE r.id IN (SELECT raffle_id FROM raffle_participants WHERE wallet_address = ?)
        OR r.winner_wallet = ?
     ORDER BY r.created_at DESC LIMIT 30
-  `).all(walletAddress, walletAddress, walletAddress, walletAddress);
+  `).all(walletAddress, walletAddress, walletAddress, walletAddress, walletAddress, walletAddress, walletAddress);
+}
+
+function getRaffleById(id) {
+  return db.prepare(`SELECT * FROM raffles WHERE id = ?`).get(id);
 }
 
 function getPrizePresets() {
@@ -909,23 +918,24 @@ function getScheduledRaffles(eventDate) {
   return eventDate ? db.prepare(q).all(eventDate) : db.prepare(q).all();
 }
 
-function createScheduledRaffle({ eventDate, scheduledTime, prize, targetLevel, type, hideName, prizeDetails, prizeImage, establishment }) {
-  return db.prepare(`INSERT INTO scheduled_raffles (event_date, scheduled_time, prize, target_level, type, hide_name, prize_details, prize_image, establishment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .run(eventDate, scheduledTime, prize, targetLevel || null, type || 'night', hideName ? 1 : 0, prizeDetails || null, prizeImage || null, establishment || null).lastInsertRowid;
+function createScheduledRaffle({ eventDate, scheduledTime, prize, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment }) {
+  return db.prepare(`INSERT INTO scheduled_raffles (event_date, scheduled_time, prize, target_level, participant_level, type, hide_name, prize_details, prize_image, establishment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(eventDate, scheduledTime, prize, targetLevel || null, participantLevel || null, type || 'night', hideName ? 1 : 0, prizeDetails || null, prizeImage || null, establishment || null).lastInsertRowid;
 }
 
-function updateScheduledRaffle(id, { eventDate, scheduledTime, prize, status, targetLevel, type, hideName, prizeDetails, prizeImage, establishment }) {
+function updateScheduledRaffle(id, { eventDate, scheduledTime, prize, status, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment }) {
   const fields = [], vals = [];
-  if (eventDate !== undefined)    { fields.push('event_date = ?');      vals.push(eventDate); }
-  if (scheduledTime !== undefined){ fields.push('scheduled_time = ?');  vals.push(scheduledTime); }
-  if (prize !== undefined)        { fields.push('prize = ?');           vals.push(prize); }
-  if (status !== undefined)       { fields.push('status = ?');          vals.push(status); }
-  if (targetLevel !== undefined)  { fields.push('target_level = ?');    vals.push(targetLevel); }
-  if (type !== undefined)         { fields.push('type = ?');            vals.push(type); }
-  if (hideName !== undefined)     { fields.push('hide_name = ?');       vals.push(hideName ? 1 : 0); }
-  if (prizeDetails !== undefined) { fields.push('prize_details = ?');   vals.push(prizeDetails); }
-  if (prizeImage !== undefined)   { fields.push('prize_image = ?');     vals.push(prizeImage); }
-  if (establishment !== undefined){ fields.push('establishment = ?');   vals.push(establishment); }
+  if (eventDate !== undefined)       { fields.push('event_date = ?');        vals.push(eventDate); }
+  if (scheduledTime !== undefined)   { fields.push('scheduled_time = ?');    vals.push(scheduledTime); }
+  if (prize !== undefined)           { fields.push('prize = ?');             vals.push(prize); }
+  if (status !== undefined)          { fields.push('status = ?');            vals.push(status); }
+  if (targetLevel !== undefined)     { fields.push('target_level = ?');      vals.push(targetLevel); }
+  if (participantLevel !== undefined){ fields.push('participant_level = ?'); vals.push(participantLevel); }
+  if (type !== undefined)            { fields.push('type = ?');              vals.push(type); }
+  if (hideName !== undefined)        { fields.push('hide_name = ?');         vals.push(hideName ? 1 : 0); }
+  if (prizeDetails !== undefined)    { fields.push('prize_details = ?');     vals.push(prizeDetails); }
+  if (prizeImage !== undefined)      { fields.push('prize_image = ?');       vals.push(prizeImage); }
+  if (establishment !== undefined)   { fields.push('establishment = ?');     vals.push(establishment); }
   if (!fields.length) return;
   vals.push(id);
   db.prepare(`UPDATE scheduled_raffles SET ${fields.join(', ')} WHERE id = ?`).run(...vals);
@@ -1136,6 +1146,7 @@ module.exports = {
   acceptRaffle,
   rejectRaffle,
   getRaffleParticipation,
+  getRaffleById,
   getPrizePresets,
   addPrizePreset,
   deletePrizePreset,
