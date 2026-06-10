@@ -1169,33 +1169,18 @@ function getEventSessions(dateFilter) {
 }
 
 function getSessionDates() {
-  // Fechas de la agenda (eventos activos) + obligatoriamente el 4 de junio
+  // Todas las fechas que tienen al menos una sesión registrada
   return db.prepare(`
-    SELECT day, MAX(count) as count FROM (
-      -- Fechas de la agenda (eventos programados)
-      SELECT
-        e.event_date as day,
-        COUNT(CASE
-          WHEN s.entry_time IS NOT NULL
-            AND NOT (e.event_date = '2026-06-04' AND time(s.entry_time) < '17:30:00')
-          THEN 1
-        END) as count
-      FROM events e
-      LEFT JOIN sessions s ON date(s.entry_time) = e.event_date
-      WHERE e.active = 1
-      GROUP BY e.event_date
-      UNION
-      -- Inauguración 4 jun fija (solo si no está ya en la agenda)
-      SELECT
-        '2026-06-04' as day,
-        COUNT(CASE WHEN time(entry_time) >= '17:30:00' THEN 1 END) as count
-      FROM sessions
-      WHERE date(entry_time) = '2026-06-04'
-        AND '2026-06-04' NOT IN (SELECT event_date FROM events WHERE active = 1)
-    )
-    GROUP BY day
+    SELECT
+      date(entry_time) as day,
+      COUNT(*) as count
+    FROM sessions
+    WHERE entry_time IS NOT NULL
+      AND NOT (date(entry_time) = '2026-06-04' AND time(entry_time) < '17:30:00')
+    GROUP BY date(entry_time)
+    HAVING count > 0
     ORDER BY day DESC
-    LIMIT 30
+    LIMIT 60
   `).all();
 }
 
