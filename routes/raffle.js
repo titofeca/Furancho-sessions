@@ -332,9 +332,16 @@ router.get('/eligible-check', (req, res) => {
   if (!wallet) return res.status(400).json({ error: 'Falta wallet' });
   try {
     const { db } = require('../db/database');
-    const session = db.prepare(
-      `SELECT id FROM sessions WHERE wallet_address = ? AND date(entry_time) = date('now') LIMIT 1`
-    ).get(wallet);
+    // Usa la misma lógica que getEligibleRaffleParticipants — sesión de hoy sin salida (o post-23h)
+    const nowMadrid = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+    const madridHour = nowMadrid.getHours();
+    const madridDate = `${nowMadrid.getFullYear()}-${String(nowMadrid.getMonth()+1).padStart(2,'0')}-${String(nowMadrid.getDate()).padStart(2,'0')}`;
+    const sessionQ = madridHour < 23
+      ? `SELECT id FROM sessions WHERE wallet_address = ? AND date(entry_time) = ? AND exit_time IS NULL LIMIT 1`
+      : `SELECT id FROM sessions WHERE wallet_address = ? AND date(entry_time) = ? AND (date(exit_time) = ? OR exit_time IS NULL) LIMIT 1`;
+    const session = madridHour < 23
+      ? db.prepare(sessionQ).get(wallet, madridDate)
+      : db.prepare(sessionQ).get(wallet, madridDate, madridDate);
     const rafflesDone = db.prepare(
       `SELECT COUNT(*) as count FROM raffles WHERE date(created_at) = date('now')`
     ).get()?.count || 0;

@@ -356,6 +356,7 @@ function scheduleAutoRaffles() {
             prize: s.prize,
             type: s.type || 'night',
             targetLevel: s.target_level,
+            participantLevel: s.participant_level,
             prizeDetails: s.prize_details,
             prizeImage: s.prize_image,
             establishment: s.establishment,

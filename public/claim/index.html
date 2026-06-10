@@ -3835,64 +3835,131 @@
         const data = await fetch(`/api/raffle/active?wallet=${wallet}`).then(r => r.json());
         if (!data.active) return;
         if (data.phase === 'start') {
-          // Simular raffle_start
+          // Mostrar modal de animación
           const modal = document.getElementById('raffle-modal');
-          document.getElementById('raffle-roulette').style.display = 'block';
-          document.getElementById('raffle-winner').style.display = 'none';
-          document.getElementById('raffle-loser').style.display = 'none';
-          document.getElementById('raffle-particles').innerHTML = '';
-          document.getElementById('raffle-prize-text').textContent = 'Sorteando: ' + data.prize;
-          modal.style.display = 'flex'; document.body.style.overflow = 'hidden';
-          startSlotAnimation();
+          if (modal) {
+            document.getElementById('raffle-roulette').style.display = 'block';
+            document.getElementById('raffle-winner').style.display = 'none';
+            document.getElementById('raffle-loser').style.display = 'none';
+            document.getElementById('raffle-particles').innerHTML = '';
+            document.getElementById('raffle-prize-text').textContent = 'Sorteando: ' + data.prize;
+            modal.style.display = 'flex'; document.body.style.overflow = 'hidden';
+            startSlotAnimation();
+          }
         } else if (data.phase === 'result') {
-          // Simular raffle_result directamente
-          const fakeEvt = { data: JSON.stringify(data) };
-          // Disparar event sintético — buscamos el handler directo
           _handleRaffleResult(data);
         }
       } catch (_) {}
     }
 
+    // Arrays de frases — declarados a nivel de módulo para que sean accesibles
+    // desde connectRaffle(), checkActiveRaffle() y _handleRaffleResult()
+    const _searchingPhrases = [
+      'El bombo ya está girando...',
+      'A ver quién se lleva el premio esta noche...',
+      'Quién será, quién será...',
+      'Removiendo a los furancheiros...',
+      'Esto no es el Euromillón, pero casi casi...',
+      'Alguien se va a marchar muy contento esta noche...',
+      'Un poco de paciencia, neno...',
+      'El vino ya está servido, el premio también...',
+      'La suerte está en el aire del Furancho...',
+    ];
+    const _winnerTitles = [
+      '¡TE TOCÓ, NENO! 🍷',
+      '¡CARALLO, ES TU NOCHE!',
+      '¡LA SUERTE ESTABA EN TU VASO!',
+      '¡CAMPEÓN DEL FURANCHO!',
+      '¡EL BOMBO CANTÓ TU NOMBRE!',
+    ];
+    const _loserEmojis = ['🍷', '😅', '🫠', '🙃', '😬'];
+    const _loserTitles = [
+      'El bombo quiso a otro esta vez...',
+      'Sin suerte, rapaz',
+      'El vino consuela, que no es poco',
+      'El próximo es el tuyo, prometido',
+      'Ni esta vez, carallo...',
+    ];
+    const _loserMsgs = [
+      'El vino sigue fresco y la noche es larga. Habrá más.',
+      'No todo el monte es orégano, pero el Furancho casi.',
+      'El mejor premio ya lo tienes: estar aquí con el mejor vinísimo.',
+      'Tranquilo, el karma furancheiro existe. Otra noche será.',
+      'Sin suerte en el bombo, pero con buen gusto para el vino. Eso cuenta.',
+      'El próximo sorteo ya tiene tu nombre escrito, neno.',
+    ];
+
+    // Manejador del resultado de sorteo — declarado a nivel de módulo para ser
+    // accesible desde SSE, checkActiveRaffle() y recarga de página
+    function _handleRaffleResult(data) {
+      const myWallet = localStorage.getItem('furancho_wallet_address');
+      stopSlotAnimation();
+      const modal = document.getElementById('raffle-modal');
+      if (modal?._tickInterval) { clearInterval(modal._tickInterval); }
+      const searchEl = document.getElementById('raffle-searching-text');
+      if (searchEl?._interval) { clearInterval(searchEl._interval); }
+
+      document.getElementById('raffle-roulette').style.display = 'none';
+      const dot = document.getElementById('raffle-live-dot');
+      const statusText = document.getElementById('raffle-status-text');
+
+      // Asegurar que el modal está abierto (puede que el cliente no viera raffle_start)
+      if (modal) { modal.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+
+      if (data.winnerWallet === myWallet) {
+        const titleEl = document.getElementById('raffle-winner-title');
+        if (titleEl) titleEl.textContent = _winnerTitles[Math.floor(Math.random()*_winnerTitles.length)];
+        document.getElementById('raffle-winner').style.display = 'block';
+        document.getElementById('raffle-winner-prize').textContent = data.prize;
+        document.getElementById('raffle-code').textContent = data.verificationCode;
+        document.getElementById('raffle-loser').style.display = 'none';
+
+        const isLocal = data.type === 'local';
+        const prizeImgWrap = document.getElementById('raffle-prize-image-wrap');
+        const prizeImg = document.getElementById('raffle-prize-image');
+        if (isLocal && data.prizeImage && prizeImgWrap && prizeImg) {
+          prizeImg.src = data.prizeImage; prizeImgWrap.style.display = 'block';
+        } else if (prizeImgWrap) prizeImgWrap.style.display = 'none';
+        const estEl = document.getElementById('raffle-establishment');
+        if (isLocal && data.establishment && estEl) { estEl.textContent = data.establishment; estEl.style.display = 'block'; }
+        else if (estEl) estEl.style.display = 'none';
+        const detailsEl = document.getElementById('raffle-prize-details');
+        if (isLocal && data.prizeDetails && detailsEl) { detailsEl.textContent = data.prizeDetails; detailsEl.style.display = 'block'; }
+        else if (detailsEl) detailsEl.style.display = 'none';
+
+        window._currentRaffleId = data.raffleId;
+        window._currentRaffleType = data.type || 'night';
+
+        launchParticles();
+        if (navigator.vibrate) navigator.vibrate([100,50,100,50,100,50,100,50,500,100,500,100,800]);
+        if (dot) dot.classList.add('live');
+        if (statusText) statusText.textContent = '🏆 ¡Te tocó! Reclámalo antes de que expire, ho';
+        showAcceptBanner(data.raffleId, data.prize, data.verificationCode, data.acceptWindow || 180);
+        renderPrizes();
+      } else {
+        const loserEmoji = _loserEmojis[Math.floor(Math.random()*_loserEmojis.length)];
+        const loserTitle = _loserTitles[Math.floor(Math.random()*_loserTitles.length)];
+        const loserMsg   = _loserMsgs[Math.floor(Math.random()*_loserMsgs.length)];
+        const loserEmojiEl = document.getElementById('raffle-loser-emoji');
+        const loserTitleEl = document.getElementById('raffle-loser-title');
+        const loserMsgEl   = document.getElementById('raffle-loser-msg');
+        if (loserEmojiEl) loserEmojiEl.textContent = loserEmoji;
+        if (loserTitleEl) loserTitleEl.textContent = loserTitle;
+        document.getElementById('raffle-winner').style.display = 'none';
+        document.getElementById('raffle-loser').style.display = 'block';
+        document.getElementById('raffle-loser-prize').textContent = data.prize;
+        if (loserMsgEl) loserMsgEl.innerHTML = `El premio de <strong style="color:var(--text);">${data.prize}</strong> fue para otro.<br>${loserMsg}`;
+
+        if (navigator.vibrate) navigator.vibrate([200]);
+        if (dot) dot.classList.remove('live');
+        if (statusText) statusText.textContent = 'El bombo ya quiere sonar...';
+        renderPrizes();
+      }
+    }
+
     function connectRaffle() {
       const wallet = localStorage.getItem('furancho_wallet_address') || '';
       const evtSource = new EventSource(`/api/raffle/stream${wallet ? '?wallet=' + wallet : ''}`);
-
-      const _searchingPhrases = [
-        'El bombo ya está girando...',
-        'A ver quién se lleva el premio esta noche...',
-        'Quién será, quién será...',
-        'Removiendo a los furancheiros...',
-        'Esto no es el Euromillón, pero casi casi...',
-        'Alguien se va a marchar muy contento esta noche...',
-        'Un poco de paciencia, neno...',
-        'El vino ya está servido, el premio también...',
-        'La suerte está en el aire del Furancho...',
-      ];
-
-      const _winnerTitles = [
-        '¡TE TOCÓ, NENO! 🍷',
-        '¡CARALLO, ES TU NOCHE!',
-        '¡LA SUERTE ESTABA EN TU VASO!',
-        '¡CAMPEÓN DEL FURANCHO!',
-        '¡EL BOMBO CANTÓ TU NOMBRE!',
-      ];
-
-      const _loserEmojis = ['🍷', '😅', '🫠', '🙃', '😬'];
-      const _loserTitles = [
-        'El bombo quiso a otro esta vez...',
-        'Sin suerte, rapaz',
-        'El vino consuela, que no es poco',
-        'El próximo es el tuyo, prometido',
-        'Ni esta vez, carallo...',
-      ];
-      const _loserMsgs = [
-        'El vino sigue fresco y la noche es larga. Habrá más.',
-        'No todo el monte es orégano, pero el Furancho casi.',
-        'El mejor premio ya lo tienes: estar aquí con el mejor vinísimo.',
-        'Tranquilo, el karma furancheiro existe. Otra noche será.',
-        'Sin suerte en el bombo, pero con buen gusto para el vino. Eso cuenta.',
-        'El próximo sorteo ya tiene tu nombre escrito, neno.',
-      ];
 
       evtSource.addEventListener('raffle_start', (e) => {
         const data = JSON.parse(e.data);
@@ -3937,78 +4004,6 @@
         modal._tickInterval = tickInterval;
       });
 
-      function _handleRaffleResult(data) {
-        const myWallet = localStorage.getItem('furancho_wallet_address');
-        stopSlotAnimation();
-        if (document.getElementById('raffle-modal')._tickInterval) {
-          clearInterval(document.getElementById('raffle-modal')._tickInterval);
-        }
-        // Parar animación de frases
-        const searchEl = document.getElementById('raffle-searching-text');
-        if (searchEl?._interval) { clearInterval(searchEl._interval); }
-
-        document.getElementById('raffle-roulette').style.display = 'none';
-
-        const dot = document.getElementById('raffle-live-dot');
-        const statusText = document.getElementById('raffle-status-text');
-
-        if (data.winnerWallet === myWallet) {
-          // Título ganador aleatorio
-          const titleEl = document.getElementById('raffle-winner-title');
-          if (titleEl) titleEl.textContent = _winnerTitles[Math.floor(Math.random()*_winnerTitles.length)];
-
-          document.getElementById('raffle-winner').style.display = 'block';
-          document.getElementById('raffle-winner-prize').textContent = data.prize;
-          document.getElementById('raffle-code').textContent = data.verificationCode;
-
-          // Para tipo 'local': mostrar imagen, establecimiento, detalles
-          const isLocal = data.type === 'local';
-          const prizeImgWrap = document.getElementById('raffle-prize-image-wrap');
-          const prizeImg = document.getElementById('raffle-prize-image');
-          if (isLocal && data.prizeImage && prizeImgWrap && prizeImg) {
-            prizeImg.src = data.prizeImage;
-            prizeImgWrap.style.display = 'block';
-          } else if (prizeImgWrap) prizeImgWrap.style.display = 'none';
-          const estEl = document.getElementById('raffle-establishment');
-          if (isLocal && data.establishment && estEl) { estEl.textContent = data.establishment; estEl.style.display = 'block'; }
-          else if (estEl) estEl.style.display = 'none';
-          const detailsEl = document.getElementById('raffle-prize-details');
-          if (isLocal && data.prizeDetails && detailsEl) { detailsEl.textContent = data.prizeDetails; detailsEl.style.display = 'block'; }
-          else if (detailsEl) detailsEl.style.display = 'none';
-
-          // Guardar raffleId y tipo para el PDF
-          window._currentRaffleId = data.raffleId;
-          window._currentRaffleType = data.type || 'night';
-
-          launchParticles();
-          if (navigator.vibrate) navigator.vibrate([100,50,100,50,100,50,100,50,500,100,500,100,800]);
-
-          if (dot) dot.classList.add('live');
-          if (statusText) statusText.textContent = '🏆 ¡Te tocó! Reclámalo antes de que expire, ho';
-
-          showAcceptBanner(data.raffleId, data.prize, data.verificationCode, data.acceptWindow || 180);
-          renderPrizes();
-        } else {
-          // Textos loser aleatorios
-          const loserEmoji = _loserEmojis[Math.floor(Math.random()*_loserEmojis.length)];
-          const loserTitle = _loserTitles[Math.floor(Math.random()*_loserTitles.length)];
-          const loserMsg = _loserMsgs[Math.floor(Math.random()*_loserMsgs.length)];
-          const loserEmojiEl = document.getElementById('raffle-loser-emoji');
-          const loserTitleEl = document.getElementById('raffle-loser-title');
-          const loserMsgEl = document.getElementById('raffle-loser-msg');
-          if (loserEmojiEl) loserEmojiEl.textContent = loserEmoji;
-          if (loserTitleEl) loserTitleEl.textContent = loserTitle;
-
-          document.getElementById('raffle-loser').style.display = 'block';
-          document.getElementById('raffle-loser-prize').textContent = data.prize;
-          if (loserMsgEl) loserMsgEl.innerHTML = `El premio de <strong style="color:var(--text);">${data.prize}</strong> fue para otro.<br>${loserMsg}`;
-
-          if (navigator.vibrate) navigator.vibrate([200]);
-          if (dot) dot.classList.remove('live');
-          if (statusText) statusText.textContent = 'El bombo ya quiere sonar...';
-          renderPrizes();
-        }
-      }
       evtSource.addEventListener('raffle_result', (e) => { _handleRaffleResult(JSON.parse(e.data)); });
 
       evtSource.addEventListener('raffle_timeout', () => {
