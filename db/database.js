@@ -417,7 +417,7 @@ function getStats() {
     SELECT COUNT(*) as count FROM (
       SELECT wallet_address, date(entry_time) as day FROM sessions WHERE counted_as_visit = 1
       UNION
-      SELECT wallet_address, date(created_at) as day FROM visits
+      SELECT wallet_address, date(visited_at) as day FROM visits
       WHERE wallet_address NOT IN (SELECT DISTINCT wallet_address FROM sessions WHERE counted_as_visit = 1)
     )
   `).get()?.count || 0;
@@ -427,7 +427,7 @@ function getStats() {
     SELECT day, COUNT(*) as count FROM (
       SELECT wallet_address, date(entry_time) as day FROM sessions WHERE counted_as_visit = 1
       UNION
-      SELECT wallet_address, date(created_at) as day FROM visits
+      SELECT wallet_address, date(visited_at) as day FROM visits
       WHERE wallet_address NOT IN (SELECT DISTINCT wallet_address FROM sessions WHERE counted_as_visit = 1)
     )
     GROUP BY day ORDER BY day DESC LIMIT 30
