@@ -2281,7 +2281,7 @@
       .event-card-content {
         max-height: 0;
         overflow: hidden;
-        transition: max-height 0.3s ease-out;
+        transition: max-height 0.45s ease-out;
       }
     </style>
   </div>
@@ -3069,7 +3069,7 @@
                 <div style="font-size:12px; color:var(--text-muted); margin-left:4px;" id="event-arrow-${ev.id}">${isFirst ? '▲' : '▼'}</div>
               </div>
               <div class="event-card-content" id="event-content-${ev.id}"
-                style="max-height:${isFirst ? '400px' : '0'}; overflow:hidden; transition:max-height 0.35s ease-out; text-align:left;">
+                style="max-height:${isFirst ? '6000px' : '0'}; overflow:hidden; transition:max-height 0.45s ease-out; text-align:left;">
                 <p style="font-size:15px; color:var(--text); line-height:1.65; margin:12px 0;">${ev.description || 'Furancho Sessions: Afterwork con vino y tapas.'}</p>
                 ${(() => {
                   const tapas = tapasMap[ev.id] || [];
@@ -3093,8 +3093,12 @@
                             const a = ALLERGENS_CLIENT[id];
                             return a ? `<span style="display:inline-flex; align-items:center; gap:2px; background:rgba(42,21,9,0.06); border:1px solid rgba(42,21,9,0.1); border-radius:20px; padding:3px 8px; font-size:11px; color:var(--text-muted); font-weight:600;">${a.icon} ${a.name}</span>` : '';
                           }).join('') + `</div>` : '';
+                              const tapaNum = tapas.indexOf(t) + 1;
                         return `<div style="display:flex; align-items:flex-start; gap:10px; padding-bottom:10px; border-bottom:1px solid rgba(42,21,9,0.06);">
-                          <span style="font-size:26px; flex-shrink:0; line-height:1; margin-top:2px;">🍽️</span>
+                          <div style="flex-shrink:0; text-align:center; min-width:32px;">
+                            <span style="display:block; font-size:9px; font-weight:800; letter-spacing:0.5px; text-transform:uppercase; color:var(--gold); margin-bottom:2px;">Tapa</span>
+                            <span style="display:block; font-size:18px; font-weight:900; font-family:'Playfair Display',serif; color:var(--wine); line-height:1;">${tapaNum}</span>
+                          </div>
                           <div style="flex:1; min-width:0;">
                             <p style="font-size:15px; font-weight:700; color:var(--text); margin:0; line-height:1.3;">${t.name}</p>
                             ${t.description ? `<p style="font-size:12px; color:var(--text-muted); margin:3px 0 0; font-style:italic;">${t.description}</p>` : ''}
@@ -3188,7 +3192,7 @@
       
       if (!isExpanded) {
         card.classList.add('expanded');
-        content.style.maxHeight = content.scrollHeight + 'px';
+        content.style.maxHeight = '6000px';
         arrow.textContent = '▲';
       }
     }

@@ -216,6 +216,19 @@ router.patch('/tapas/:tapaid', requireAuth, (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// POST /api/events/tapas/reorder — reordenar tapas (admin)
+router.post('/tapas/reorder', requireAuth, (req, res) => {
+  const { items } = req.body; // [{id, sort_order}, ...]
+  if (!Array.isArray(items)) return res.status(400).json({ error: 'items debe ser array' });
+  try {
+    const { db } = require('../db/database');
+    const stmt = db.prepare(`UPDATE tapas SET sort_order=? WHERE id=?`);
+    const tx = db.transaction(() => items.forEach(item => stmt.run(item.sort_order, item.id)));
+    tx();
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // DELETE /api/events/tapas/:tapaid — eliminar tapa (admin)
 router.delete('/tapas/:tapaid', requireAuth, (req, res) => {
   try {
