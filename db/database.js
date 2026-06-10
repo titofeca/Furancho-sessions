@@ -76,6 +76,24 @@ try {
     rows.forEach((r, i) => db.prepare(`UPDATE mints SET mint_serial = ? WHERE id = ?`).run(existing + i + 1, r.id));
   });
 } catch (_) {}
+// Migración: corregir sesiones que quedaron con counted_as_visit=0 por falta de evento registrado.
+// Se marcan como visita si no había otra visita contada del mismo wallet en las 168h anteriores.
+try {
+  const uncounted = db.prepare(`SELECT id, wallet_address, entry_time FROM sessions WHERE counted_as_visit = 0 ORDER BY entry_time ASC`).all();
+  let fixed = 0;
+  uncounted.forEach(s => {
+    const prior = db.prepare(`
+      SELECT id FROM sessions
+      WHERE wallet_address = ? AND counted_as_visit = 1
+        AND entry_time < ? AND entry_time > datetime(?, '-168 hours')
+    `).get(s.wallet_address, s.entry_time, s.entry_time);
+    if (!prior) {
+      db.prepare(`UPDATE sessions SET counted_as_visit = 1 WHERE id = ?`).run(s.id);
+      fixed++;
+    }
+  });
+  if (fixed > 0) console.log(`[DB] Migración: ${fixed} sesiones retroactivamente marcadas como visita`);
+} catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS prize_presets (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, active INTEGER DEFAULT 1, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS raffle_participants (raffle_id INTEGER NOT NULL, wallet_address TEXT NOT NULL, PRIMARY KEY (raffle_id, wallet_address))`); } catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS scheduled_raffles (id INTEGER PRIMARY KEY AUTOINCREMENT, event_date TEXT NOT NULL, scheduled_time TEXT NOT NULL, prize TEXT NOT NULL, status TEXT DEFAULT 'pending', raffle_id INTEGER, target_level INTEGER, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
@@ -394,19 +412,36 @@ function getStats() {
     GROUP BY event_date ORDER BY event_date DESC LIMIT 30
   `).all();
 
-  // Visitas únicas totales = sesiones con counted_as_visit (fuente única de verdad)
-  const totalSessionsRow = db.prepare(`SELECT COUNT(*) as count FROM sessions WHERE counted_as_visit = 1`).get();
-  const totalVisits = totalSessionsRow ? totalSessionsRow.count : 0;
+  // Visitas totales = sessions counted_as_visit=1 UNION legacy visits (evita doble conteo)
+  const totalVisits = db.prepare(`
+    SELECT COUNT(*) as count FROM (
+      SELECT wallet_address, date(entry_time) as day FROM sessions WHERE counted_as_visit = 1
+      UNION
+      SELECT wallet_address, date(created_at) as day FROM visits
+      WHERE wallet_address NOT IN (SELECT DISTINCT wallet_address FROM sessions WHERE counted_as_visit = 1)
+    )
+  `).get()?.count || 0;
 
-  // Visitas por día (últimos 30 eventos con al menos 1 visita)
+  // Visitas por día (últimos 30 días con al menos 1 visita) — misma lógica UNION
   const visitsByDay = db.prepare(`
-    SELECT date(entry_time) as day, COUNT(*) as count
-    FROM sessions WHERE counted_as_visit = 1
-    GROUP BY date(entry_time) ORDER BY day DESC LIMIT 30
+    SELECT day, COUNT(*) as count FROM (
+      SELECT wallet_address, date(entry_time) as day FROM sessions WHERE counted_as_visit = 1
+      UNION
+      SELECT wallet_address, date(created_at) as day FROM visits
+      WHERE wallet_address NOT IN (SELECT DISTINCT wallet_address FROM sessions WHERE counted_as_visit = 1)
+    )
+    GROUP BY day ORDER BY day DESC LIMIT 30
   `).all();
 
   // Total wallets únicas que han visitado (con o sin NFT)
-  const uniqueVisitors = db.prepare(`SELECT COUNT(DISTINCT wallet_address) as count FROM sessions WHERE counted_as_visit = 1`).get()?.count || 0;
+  const uniqueVisitors = db.prepare(`
+    SELECT COUNT(DISTINCT wallet_address) as count FROM (
+      SELECT wallet_address FROM sessions WHERE counted_as_visit = 1
+      UNION
+      SELECT wallet_address FROM visits
+      WHERE wallet_address NOT IN (SELECT DISTINCT wallet_address FROM sessions WHERE counted_as_visit = 1)
+    )
+  `).get()?.count || 0;
 
   // Total mints exitosos por nivel
   const mintsByLevel = db.prepare(`
@@ -560,11 +595,10 @@ function openSession(walletAddress) {
     const dd = String(madridTime.getDate()).padStart(2, '0');
     const todayMadrid = `${yyyy}-${mm}-${dd}`;
 
-    const hasEvent = !!db.prepare(`SELECT 1 FROM events WHERE event_date = ?`).get(todayMadrid);
-    
     // Evitar exploit de acumulación de visitas ilimitadas el mismo día/semana
+    // Se cuenta como visita siempre que no haya otra visita contada en las últimas 168h (7 días)
     const alreadyVisited = checkRecentVisit(walletAddress, 168);
-    const countedAsVisit = (hasEvent && !alreadyVisited) ? 1 : 0;
+    const countedAsVisit = alreadyVisited ? 0 : 1;
 
     db.prepare(`INSERT INTO sessions (wallet_address, counted_as_visit) VALUES (?, ?)`).run(walletAddress, countedAsVisit);
   }
