@@ -43,6 +43,9 @@ try {
 } catch (_) {}
 
 try { db.exec(`ALTER TABLE events ADD COLUMN vip_max INTEGER DEFAULT 15`); } catch (_) {}
+// Ventana horaria del evento (hora Madrid) — define cuándo un fichaje cuenta como elegible para sorteos en vivo
+try { db.exec(`ALTER TABLE events ADD COLUMN start_time TEXT DEFAULT '19:00'`); } catch (_) {}
+try { db.exec(`ALTER TABLE events ADD COLUMN end_time TEXT DEFAULT '23:59'`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected INTEGER DEFAULT 0`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_at TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_by TEXT`); } catch (_) {}
@@ -146,6 +149,10 @@ try {
 } catch (_) {}
 try {
   db.exec(`ALTER TABLE weekly_raffles ADD COLUMN collected_at TEXT`);
+} catch (_) {}
+// Premio dado por perdido (no recogido a tiempo): queda registrado pero no como entregado
+try {
+  db.exec(`ALTER TABLE weekly_raffles ADD COLUMN forfeited_at TEXT`);
 } catch (_) {}
 // Limpiar reservas VIP huérfanas (apuntan a eventos que ya no existen)
 try {
@@ -665,21 +672,23 @@ function getRsvpStatus(walletAddress) {
   return db.prepare(`SELECT event_id FROM rsvps WHERE wallet_address=?`).all(walletAddress).map(r => r.event_id);
 }
 
-function createEvent({ date, title, description }) {
+function createEvent({ date, title, description, startTime, endTime }) {
   return db.prepare(`
-    INSERT INTO events (event_date, title, description)
-    VALUES (?, ?, ?)
-    ON CONFLICT(event_date) DO UPDATE SET title=excluded.title, description=excluded.description
-  `).run(date, title || 'Furancho Sessions', description || null).lastInsertRowid;
+    INSERT INTO events (event_date, title, description, start_time, end_time)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(event_date) DO UPDATE SET title=excluded.title, description=excluded.description, start_time=excluded.start_time, end_time=excluded.end_time
+  `).run(date, title || 'Furancho Sessions', description || null, startTime || '19:00', endTime || '23:59').lastInsertRowid;
 }
 
-function updateEvent(id, { title, description, date, active }) {
+function updateEvent(id, { title, description, date, active, startTime, endTime }) {
   const fields = [];
   const vals = [];
   if (title !== undefined)       { fields.push('title = ?');       vals.push(title); }
   if (description !== undefined) { fields.push('description = ?'); vals.push(description); }
   if (date !== undefined)        { fields.push('event_date = ?');  vals.push(date); }
   if (active !== undefined)      { fields.push('active = ?');      vals.push(active ? 1 : 0); }
+  if (startTime !== undefined)   { fields.push('start_time = ?');  vals.push(startTime); }
+  if (endTime !== undefined)     { fields.push('end_time = ?');    vals.push(endTime); }
   if (!fields.length) return;
   vals.push(id);
   db.prepare(`UPDATE events SET ${fields.join(', ')} WHERE id = ?`).run(...vals);
@@ -834,30 +843,67 @@ function getSessionAnalytics() {
   return { avgByLevel, topClients, activeNow: activeNow.count, avgGlobal: avgGlobal.avg };
 }
 
+// Devuelve el evento activo de la agenda para la fecha Madrid dada (o null)
+function getEventForMadridDate(madridDateStr) {
+  return db.prepare(`SELECT id, event_date, start_time, end_time FROM events WHERE event_date = ? AND active = 1`).get(madridDateStr) || null;
+}
+
+// Convierte una hora de pared en Madrid (mismo marco que el resto de cálculos) a milisegundos comparables
+function _madridWallMs(dateStr) {
+  // dateStr en formato 'YYYY-MM-DD HH:MM:SS' (UTC, como lo guarda SQLite con datetime('now'))
+  return new Date(new Date(dateStr.replace(' ', 'T') + 'Z').toLocaleString('en-US', { timeZone: 'Europe/Madrid' })).getTime();
+}
+
 function getEligibleRaffleParticipants() {
-  // Elegibles: ficharon entrada hoy en Madrid y aún no salieron (o salida fue automática a las 23:00)
+  // Elegibles para sorteos en vivo: SOLO los que ficharon entrada DENTRO de la ventana
+  // horaria de un evento de la agenda ese día. Si no hay evento hoy, nadie es elegible.
   const now = new Date();
-  const madridTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
-  const madridHour = madridTime.getHours();
-  
-  const yyyy = madridTime.getFullYear();
-  const mm = String(madridTime.getMonth() + 1).padStart(2, '0');
-  const dd = String(madridTime.getDate()).padStart(2, '0');
+  const madridNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+  const yyyy = madridNow.getFullYear();
+  const mm = String(madridNow.getMonth() + 1).padStart(2, '0');
+  const dd = String(madridNow.getDate()).padStart(2, '0');
   const madridDateStr = `${yyyy}-${mm}-${dd}`;
 
-  if (madridHour < 23) {
-    // Si el sorteo es antes de las 23:00 (durante el evento): solo los que siguen dentro (exit_time IS NULL)
-    return db.prepare(`
-      SELECT DISTINCT wallet_address FROM sessions
-      WHERE date(entry_time) = ? AND exit_time IS NULL
-    `).all(madridDateStr).map(r => r.wallet_address);
-  } else {
-    // Si el sorteo es después de las 23:00: incluimos también las sesiones auto-cerradas de hoy
-    return db.prepare(`
-      SELECT DISTINCT wallet_address FROM sessions
-      WHERE date(entry_time) = ? AND (date(exit_time) = ? OR exit_time IS NULL)
-    `).all(madridDateStr, madridDateStr).map(r => r.wallet_address);
+  // Buscar evento de hoy; si el evento cruza medianoche, también puede ser el de ayer
+  let event = getEventForMadridDate(madridDateStr);
+  let eventDayStr = madridDateStr;
+  if (!event) {
+    // ¿Hay un evento de ayer cuya ventana cruza medianoche y sigue activa ahora?
+    const yest = new Date(madridNow); yest.setDate(yest.getDate() - 1);
+    const yestStr = `${yest.getFullYear()}-${String(yest.getMonth() + 1).padStart(2, '0')}-${String(yest.getDate()).padStart(2, '0')}`;
+    const yEvent = getEventForMadridDate(yestStr);
+    if (yEvent) {
+      const [ysh, ysm] = (yEvent.start_time || '19:00').split(':').map(Number);
+      const [yeh, yem] = (yEvent.end_time || '23:59').split(':').map(Number);
+      if ((yeh * 60 + yem) <= (ysh * 60 + ysm)) { // cruza medianoche
+        event = yEvent; eventDayStr = yestStr;
+      }
+    }
   }
+  if (!event) return []; // sin evento en agenda → nadie es elegible para sorteos en vivo
+
+  // Construir ventana [startMs, endMs] en marco "hora de pared Madrid"
+  const [sh, sm] = (event.start_time || '19:00').split(':').map(Number);
+  const [eh, em] = (event.end_time || '23:59').split(':').map(Number);
+  const [ey, emo, ed] = eventDayStr.split('-').map(Number);
+  const dayStart = new Date(ey, emo - 1, ed, 0, 0, 0, 0);
+  const startMs = dayStart.getTime() + (sh * 60 + sm) * 60000;
+  let endMs = dayStart.getTime() + (eh * 60 + em) * 60000;
+  if (endMs <= startMs) endMs += 24 * 60 * 60 * 1000; // ventana cruza medianoche
+
+  // Candidatos: sesiones que fichan el día del evento o el siguiente (por si cruza medianoche)
+  const rows = db.prepare(`
+    SELECT DISTINCT wallet_address, entry_time FROM sessions
+    WHERE (date(entry_time) = ? OR date(entry_time) = date(?, '+1 day'))
+      AND (exit_time IS NULL OR date(exit_time) >= ?)
+  `).all(eventDayStr, eventDayStr, eventDayStr);
+
+  const eligible = new Set();
+  rows.forEach(r => {
+    const entryMs = _madridWallMs(r.entry_time);
+    if (entryMs >= startMs && entryMs <= endMs) eligible.add(r.wallet_address);
+  });
+  return [...eligible];
 }
 
 function autoCloseSessionsAt23() {
@@ -1223,6 +1269,7 @@ module.exports = {
   updateWeeklyPrize,
   drawWeeklyRaffle,
   collectWeeklyRaffle,
+  forfeitWeeklyRaffle,
   getWeeklyRaffleTargetWeek
 };
 
@@ -1251,6 +1298,8 @@ function getWeeklyRaffleStatus(walletAddress, weekStr) {
     verificationCode: isWinner ? (raffle.verification_code || null) : null,
     status: raffle ? raffle.status : 'active',
     drawnAt: raffle ? raffle.drawn_at : null,
+    collectedAt: raffle ? raffle.collected_at : null,
+    forfeitedAt: raffle ? raffle.forfeited_at : null,
     totalParticipants,
     isConfigured: !!raffle
   };
@@ -1309,6 +1358,17 @@ function collectWeeklyRaffle(weekStr) {
     WHERE claimed_week = ? AND status = 'completed'
   `).run(weekStr);
   if (!result.changes) throw new Error('Sorteo no encontrado o no completado.');
+}
+
+// Dar por perdido: el premio no se recogió a tiempo. Queda registrado (en la cuenta del ganador
+// y en el historial admin) pero deja de aparecer como pendiente para el admin.
+function forfeitWeeklyRaffle(weekStr) {
+  const result = db.prepare(`
+    UPDATE weekly_raffles
+    SET forfeited_at = datetime('now'), status = 'forfeited'
+    WHERE claimed_week = ? AND status = 'completed' AND collected_at IS NULL
+  `).run(weekStr);
+  if (!result.changes) throw new Error('Sorteo no encontrado, ya entregado o no completado.');
 }
 
 function getWeeklyRaffleTargetWeek(d = new Date()) {

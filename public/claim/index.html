@@ -4662,8 +4662,20 @@
         return;
       }
 
-      // 2. Si es un perdedor (participó pero no ganó en un sorteo completado)
-      if (data.status === 'completed' && data.claimed) {
+      // 1b. Ganador de un premio que se dio por perdido (no recogido a tiempo) — queda como constancia
+      if (isWinner && data.status === 'forfeited') {
+        btn.style.display = 'none';
+        prizeText.innerHTML = `🏆 <strong>Ganaste la Chave:</strong> ${data.prize}`;
+        if (rulesText) {
+          rulesText.innerHTML = `<div style="margin-top:10px; background:rgba(42,21,9,0.05); border:1.5px dashed rgba(42,21,9,0.2); border-radius:10px; padding:12px; text-align:center;">
+            <p style="font-size:13px; color:var(--text-muted); margin:0; line-height:1.5;">⌛ <strong>Premio no recogido a tiempo.</strong><br>Quedó registrado en tu historial como recuerdo. ¡La próxima no se te escape, ho! 🍷</p>
+          </div>`;
+        }
+        return;
+      }
+
+      // 2. Si es un perdedor (participó pero no ganó en un sorteo completado o caducado)
+      if ((data.status === 'completed' || data.status === 'forfeited') && data.claimed) {
         btn.style.display = 'none';
         prizeText.innerHTML = `🍀 <strong style="color:var(--wine);">Chave do Furancho</strong>`;
         if (rulesText) {

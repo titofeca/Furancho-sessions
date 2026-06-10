@@ -10,7 +10,7 @@ const {
   getPrizePresets, addPrizePreset, deletePrizePreset, getRaffleCountTonight,
   getScheduledRaffles, createScheduledRaffle, updateScheduledRaffle,
   deleteScheduledRaffle, linkScheduledRaffle, insertMint,
-  claimWeeklyRaffle, getWeeklyRaffleStatus, updateWeeklyPrize, drawWeeklyRaffle, collectWeeklyRaffle,
+  claimWeeklyRaffle, getWeeklyRaffleStatus, updateWeeklyPrize, drawWeeklyRaffle, collectWeeklyRaffle, forfeitWeeklyRaffle,
   getWeeklyRaffleTargetWeek
 } = require('../db/database');
 const { requireAuth } = require('./admin');
@@ -332,20 +332,13 @@ router.get('/eligible-check', (req, res) => {
   if (!wallet) return res.status(400).json({ error: 'Falta wallet' });
   try {
     const { db } = require('../db/database');
-    // Usa la misma lógica que getEligibleRaffleParticipants — sesión de hoy sin salida (o post-23h)
-    const nowMadrid = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
-    const madridHour = nowMadrid.getHours();
-    const madridDate = `${nowMadrid.getFullYear()}-${String(nowMadrid.getMonth()+1).padStart(2,'0')}-${String(nowMadrid.getDate()).padStart(2,'0')}`;
-    const sessionQ = madridHour < 23
-      ? `SELECT id FROM sessions WHERE wallet_address = ? AND date(entry_time) = ? AND exit_time IS NULL LIMIT 1`
-      : `SELECT id FROM sessions WHERE wallet_address = ? AND date(entry_time) = ? AND (date(exit_time) = ? OR exit_time IS NULL) LIMIT 1`;
-    const session = madridHour < 23
-      ? db.prepare(sessionQ).get(wallet, madridDate)
-      : db.prepare(sessionQ).get(wallet, madridDate, madridDate);
+    // Misma lógica única: elegible = fichó entrada dentro de la ventana de un evento de la agenda
+    const eligibleSet = new Set(getEligibleRaffleParticipants());
+    const isEligible = eligibleSet.has(wallet);
     const rafflesDone = db.prepare(
       `SELECT COUNT(*) as count FROM raffles WHERE date(created_at) = date('now')`
     ).get()?.count || 0;
-    res.json({ hasSessionToday: !!session, rafflesDoneTonight: rafflesDone });
+    res.json({ hasSessionToday: isEligible, rafflesDoneTonight: rafflesDone });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -659,6 +652,7 @@ router.get('/admin/weekly/status', requireAuth, (req, res) => {
       winnerWallet: raffle ? raffle.winner_wallet : null,
       verificationCode: raffle ? raffle.verification_code : null,
       collectedAt: raffle ? raffle.collected_at : null,
+      forfeitedAt: raffle ? raffle.forfeited_at : null,
       drawnAt: raffle ? raffle.drawn_at : null,
       totalParticipants,
       isConfigured: !!raffle
@@ -683,6 +677,18 @@ router.post('/admin/weekly/collect', requireAuth, (req, res) => {
         week: weekStr
       }, raffle.winner_wallet);
     }
+    res.json({ success: true });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/weekly/forfeit (ADMIN) — dar premio por perdido (no recogido a tiempo)
+router.post('/admin/weekly/forfeit', requireAuth, (req, res) => {
+  const { week } = req.body;
+  const weekStr = week || getWeeklyRaffleTargetWeek();
+  try {
+    forfeitWeeklyRaffle(weekStr);
     res.json({ success: true });
   } catch (e) {
     res.status(400).json({ error: e.message });
@@ -754,6 +760,7 @@ router.get('/admin/weekly/list', requireAuth, (req, res) => {
         status: r.status,
         verificationCode: r.verification_code,
         collectedAt: r.collected_at,
+        forfeitedAt: r.forfeited_at,
         totalParticipants: count
       };
     });

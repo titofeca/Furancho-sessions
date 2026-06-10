@@ -156,19 +156,19 @@ router.get('/all', requireAuth, (req, res) => {
 
 // POST /api/events — crear nuevo evento (admin)
 router.post('/', requireAuth, (req, res) => {
-  const { date, title, description } = req.body;
+  const { date, title, description, startTime, endTime } = req.body;
   if (!date) return res.status(400).json({ error: 'Falta la fecha' });
   try {
-    const id = createEvent({ date, title, description });
+    const id = createEvent({ date, title, description, startTime, endTime });
     res.json({ success: true, id });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 // PATCH /api/events/:id — editar evento (admin)
 router.patch('/:id', requireAuth, (req, res) => {
-  const { title, description, date, active } = req.body;
+  const { title, description, date, active, startTime, endTime } = req.body;
   try {
-    updateEvent(parseInt(req.params.id), { title, description, date, active });
+    updateEvent(parseInt(req.params.id), { title, description, date, active, startTime, endTime });
     res.json({ success: true });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
