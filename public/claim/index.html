@@ -1778,6 +1778,10 @@
         <span id="profile-level-label">Nivel 1</span>
       </div>
       <h1 class="nft-title" id="profile-nft-name">CAUTIVO</h1>
+      <!-- Número de serie del mint -->
+      <div id="profile-mint-serial" style="display:none; margin: 4px 0 2px;">
+        <span id="profile-mint-serial-text" style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:2px; color:var(--gold); background:rgba(196,151,58,0.1); border:1px solid rgba(196,151,58,0.25); border-radius:100px; padding:3px 12px;"></span>
+      </div>
       <p class="nft-event">Furancho Sessions · Afterwork Viño, Tapas y Leria ochentera</p>
 
       <div style="display: flex; gap: 12px; justify-content: center; align-items: center; margin: 16px 0 24px; padding: 0 4px;">
@@ -2557,6 +2561,18 @@
         const data = await res.json();
         userVisitCount = data.visitCount || 0;
         userClaimedLevels = data.levels || [];
+        // Mostrar número de serie del nivel actual
+        if (data.serialsByLevel) {
+          const maxLevel = userClaimedLevels.length ? Math.max(...userClaimedLevels) : 0;
+          const serial = data.serialsByLevel[maxLevel];
+          const serialEl = document.getElementById('profile-mint-serial');
+          const serialTextEl = document.getElementById('profile-mint-serial-text');
+          if (serial && serialEl && serialTextEl && maxLevel >= 1) {
+            const ordinal = serial === 1 ? '🥇 Primero en alcanzar este nivel' : serial <= 3 ? `🏅 Nº${serial} en alcanzar este nivel` : `🎖️ NFT #${serial} de este nivel`;
+            serialTextEl.textContent = ordinal;
+            serialEl.style.display = 'block';
+          }
+        }
         // Mostrar/ocultar botón Marcho según sesión activa
         userHasActiveSession = !!data.hasActiveSession;
         if (data.hasActiveSession) {

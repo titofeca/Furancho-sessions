@@ -274,7 +274,13 @@ router.get('/history', (req, res) => {
     const visitCount = getVisitCount(wallet);
     const activeSession = db.prepare(`SELECT id FROM sessions WHERE wallet_address = ? AND exit_time IS NULL LIMIT 1`).get(wallet);
     const pendingApproval = db.prepare(`SELECT level, level_name FROM mints WHERE wallet_address = ? AND status = 'pending_approval' ORDER BY level DESC LIMIT 1`).get(wallet);
-    res.json({ levels, visitCount, hasActiveSession: !!activeSession, pendingApproval: pendingApproval || null });
+    // Número de serie por nivel (cuántos obtuvieron ese nivel antes que esta wallet)
+    const serialsByLevel = {};
+    levels.forEach(lvl => {
+      const row = db.prepare(`SELECT mint_serial FROM mints WHERE wallet_address = ? AND level = ? AND status != 'failed' LIMIT 1`).get(wallet, lvl);
+      if (row?.mint_serial) serialsByLevel[lvl] = row.mint_serial;
+    });
+    res.json({ levels, visitCount, hasActiveSession: !!activeSession, pendingApproval: pendingApproval || null, serialsByLevel });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

@@ -1972,6 +1972,22 @@
         </div>
       </div>
 
+      <!-- Minteo Manual (Admin) -->
+      <div class="glass-card" style="margin-bottom:16px;">
+        <div class="card-header" style="margin-bottom:12px;">
+          <span class="card-title">🎖️ Minteo manual</span>
+        </div>
+        <p style="font-size:12px; color:var(--text-muted); margin:0 0 12px; line-height:1.5;">Asigna directamente un nivel a una wallet sin necesidad de visitas ni blockchain. Útil para premios, staff, tests o el propio organizador.</p>
+        <input type="text" class="input-field" id="manual-mint-wallet" placeholder="0x... wallet del destinatario" style="font-size:13px; margin-bottom:8px;" />
+        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:12px;">
+          <button onclick="manualMint(1)" style="padding:9px 4px; border-radius:10px; border:1.5px solid rgba(42,21,9,0.15); background:transparent; color:var(--text-muted); font-family:'Outfit',sans-serif; font-size:11px; font-weight:700; cursor:pointer;">🫂<br>Nv1</button>
+          <button onclick="manualMint(2)" style="padding:9px 4px; border-radius:10px; border:1.5px solid rgba(42,21,9,0.15); background:transparent; color:var(--text-muted); font-family:'Outfit',sans-serif; font-size:11px; font-weight:700; cursor:pointer;">🥂<br>Nv2</button>
+          <button onclick="manualMint(3)" style="padding:9px 4px; border-radius:10px; border:1.5px solid rgba(42,21,9,0.15); background:transparent; color:var(--text-muted); font-family:'Outfit',sans-serif; font-size:11px; font-weight:700; cursor:pointer;">🌿<br>Nv3</button>
+          <button onclick="manualMint(4)" style="padding:9px 4px; border-radius:10px; border:1.5px solid rgba(196,151,58,0.5); background:rgba(196,151,58,0.08); color:var(--gold); font-family:'Outfit',sans-serif; font-size:11px; font-weight:700; cursor:pointer;">👑<br>Nv4</button>
+        </div>
+        <div id="manual-mint-result" style="display:none; background:rgba(74,222,128,0.08); border:1px solid rgba(74,222,128,0.3); border-radius:12px; padding:12px; font-size:13px; color:#4ade80;"></div>
+      </div>
+
       <!-- Historial de mints -->
       <div class="glass-card">
         <div class="card-header" style="margin-bottom:12px;">
@@ -2731,6 +2747,33 @@
     } catch (e) {
       if (container) container.innerHTML = `<div style="text-align:center; color:#ef4444; font-size:13px; padding:16px;">Error cargando pendientes</div>`;
     }
+  }
+
+  async function manualMint(level) {
+    const wallet = document.getElementById('manual-mint-wallet')?.value.trim();
+    if (!wallet) return showToast('Introduce la wallet primero', true);
+    const levelNames = { 1:'O Cautivo', 2:'O Cunqueiro', 3:'O Larpeiro', 4:'O Presidente' };
+    if (!confirm(`¿Mintear Nivel ${level} (${levelNames[level]}) para\n${wallet}?`)) return;
+    try {
+      const res = await fetch('/api/admin/mint-direct', {
+        method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: wallet, level })
+      });
+      const data = await res.json();
+      const resultEl = document.getElementById('manual-mint-result');
+      if (data.success) {
+        resultEl.innerHTML = `✅ Nivel ${level} (${levelNames[level]}) asignado a <strong>${wallet.slice(0,10)}...</strong>`;
+        resultEl.style.display = 'block';
+        showToast(`✅ Mint Nv${level} realizado`);
+        loadPendingMints();
+      } else {
+        resultEl.style.background = 'rgba(239,68,68,0.08)';
+        resultEl.style.borderColor = 'rgba(239,68,68,0.3)';
+        resultEl.style.color = '#ef4444';
+        resultEl.innerHTML = `❌ Error: ${data.error}`;
+        resultEl.style.display = 'block';
+      }
+    } catch(e) { showToast('Error de conexión', true); }
   }
 
   async function approvePendingMint(id) {
