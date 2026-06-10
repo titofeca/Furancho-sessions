@@ -895,12 +895,12 @@ function getEligibleRaffleParticipants() {
   if (endMs <= startMs) endMs += 24 * 60 * 60 * 1000; // ventana cruza medianoche
 
   // Candidatos: sesiones que fichan el día del evento o el siguiente (por si cruza medianoche).
-  // Elegible = sigue dentro (exit_time IS NULL) o salió SOLO por el auto-cierre de las 23:00
-  // (auto_closed = 1). Si fichó SALIDA manual, se va del bombo.
+  // Elegible = sigue DENTRO ahora mismo (exit_time IS NULL). Cualquier salida —manual o el
+  // auto-cierre de las 23:00— saca del bombo. Si el auto-cierre ya pasó, no queda nadie → 0 elegibles.
   const rows = db.prepare(`
     SELECT DISTINCT wallet_address, entry_time FROM sessions
     WHERE (date(entry_time) = ? OR date(entry_time) = date(?, '+1 day'))
-      AND (exit_time IS NULL OR auto_closed = 1)
+      AND exit_time IS NULL
   `).all(eventDayStr, eventDayStr);
 
   const eligible = new Set();
