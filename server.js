@@ -289,7 +289,7 @@ function scheduleComebackPushes() {
         sendPushToWallet(
           w.wallet_address,
           'Furancho Sessions 🍷',
-          `Hace más de 6 días que no apareces, rapaz. Mañana hay Furancho — ¿vienes?`,
+          `Mañana hay Furancho, ¿vienes?`,
           { url: '/claim' }
         );
       }
