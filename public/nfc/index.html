@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Furancho Sessions — Fichaje NFC</title>
+  <meta name="theme-color" content="#8B1918" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --wine: #8B1918;
+      --wine-dark: #6B1212;
+      --gold: #C4973A;
+      --cream: #F2EDE3;
+      --text: #2A1509;
+      --text-muted: #7A6A5A;
+    }
+    html, body {
+      height: 100%; min-height: 100vh;
+      background: var(--cream);
+      font-family: 'Outfit', sans-serif;
+      color: var(--text);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .container {
+      width: 100%; max-width: 360px;
+      padding: 40px 28px;
+      text-align: center;
+      display: flex; flex-direction: column; align-items: center; gap: 20px;
+    }
+    .logo { width: 64px; height: 64px; border-radius: 16px; object-fit: contain; margin-bottom: 4px; }
+    .icon { font-size: 72px; line-height: 1; animation: pulse 1.2s ease-in-out infinite; }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+    .title {
+      font-family: 'Playfair Display', serif;
+      font-size: 26px; font-weight: 900;
+      color: var(--wine); line-height: 1.2;
+    }
+    .subtitle {
+      font-size: 15px; color: var(--text-muted);
+      line-height: 1.6; font-weight: 400;
+    }
+    .visit-badge {
+      background: linear-gradient(135deg, rgba(139,25,24,0.1), rgba(196,151,58,0.08));
+      border: 1.5px solid rgba(196,151,58,0.3);
+      border-radius: 50px; padding: 10px 22px;
+      font-size: 15px; font-weight: 700; color: var(--wine);
+      display: none;
+    }
+    .spinner {
+      width: 48px; height: 48px;
+      border: 4px solid rgba(139,25,24,0.15);
+      border-top-color: var(--wine);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .btn {
+      width: 100%; padding: 16px;
+      background: linear-gradient(135deg, var(--wine), var(--wine-dark));
+      color: #fff; border: none; border-radius: 50px;
+      font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700;
+      cursor: pointer; box-shadow: 0 4px 16px rgba(139,25,24,0.3);
+      text-decoration: none; display: inline-block;
+    }
+    .btn-ghost {
+      background: transparent; color: var(--text-muted);
+      border: 1.5px solid rgba(42,21,9,0.12);
+      box-shadow: none; font-size: 14px;
+    }
+    .error-box {
+      background: rgba(220,50,50,0.07); border: 1.5px solid rgba(220,50,50,0.2);
+      border-radius: 14px; padding: 16px;
+      font-size: 14px; color: #cc3333; line-height: 1.5;
+      display: none;
+    }
+    .redirect-note {
+      font-size: 12px; color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img src="/assets/logo.png" alt="Furancho" class="logo" onerror="this.style.display='none'" />
+
+    <!-- Estado: cargando -->
+    <div id="state-loading">
+      <div class="spinner" style="margin: 0 auto 16px;"></div>
+      <p class="subtitle">Fichando...</p>
+    </div>
+
+    <!-- Estado: éxito entrada -->
+    <div id="state-entry" style="display:none; flex-direction:column; align-items:center; gap:16px;">
+      <div class="icon" id="entry-icon">🍷</div>
+      <h1 class="title" id="entry-title">¡Bienvenido, ho!</h1>
+      <p class="subtitle" id="entry-msg"></p>
+      <div class="visit-badge" id="entry-badge"></div>
+      <a href="/claim" class="btn">Abrir mi perfil →</a>
+      <p class="redirect-note" id="redirect-note">Redirigiendo en <span id="countdown">3</span>s...</p>
+    </div>
+
+    <!-- Estado: éxito salida -->
+    <div id="state-exit" style="display:none; flex-direction:column; align-items:center; gap:16px;">
+      <div class="icon">🚪</div>
+      <h1 class="title">¡Hasta luego, rapaz!</h1>
+      <p class="subtitle" id="exit-msg">Salida registrada. ¡Que vuelvas pronto!</p>
+      <p class="redirect-note" id="redirect-note-exit">Redirigiendo en <span id="countdown-exit">3</span>s...</p>
+    </div>
+
+    <!-- Estado: sin registro (nuevo) -->
+    <div id="state-no-wallet" style="display:none; flex-direction:column; align-items:center; gap:16px;">
+      <div class="icon">👋</div>
+      <h1 class="title">¡Primera vez, ho!</h1>
+      <p class="subtitle">Para fichar con NFC necesitas registrarte primero en la app. ¡Es rápido, rapaz!</p>
+      <a href="/claim" class="btn">Registrarme →</a>
+    </div>
+
+    <!-- Estado: error -->
+    <div id="state-error" style="display:none; flex-direction:column; align-items:center; gap:16px;">
+      <div class="icon">😬</div>
+      <h1 class="title" style="color:var(--text);">Algo fue mal</h1>
+      <div class="error-box" id="error-box" style="display:block;"></div>
+      <a href="/claim" class="btn btn-ghost">Volver al perfil</a>
+    </div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const action = params.get('action') || 'entry'; // 'entry' | 'exit'
+    const wallet = localStorage.getItem('furancho_wallet_address');
+
+    const EXIT_MESSAGES = [
+      'Salida registrada. Vete con el viento, rapaz.',
+      '¡Hasta la próxima, ho! No tardes en volver.',
+      'Cuidado con la puerta al salir. Ya nos conocemos.',
+      'Que la noche siga siendo larga... en tu casa.',
+      '¡Hasta el próximo Furancho, neno!',
+    ];
+
+    function show(id) {
+      ['state-loading','state-entry','state-exit','state-no-wallet','state-error']
+        .forEach(s => document.getElementById(s).style.display = s === id ? 'flex' : 'none');
+    }
+
+    function startCountdown(countdownId, redirectUrl) {
+      let secs = 3;
+      const el = document.getElementById(countdownId);
+      const interval = setInterval(() => {
+        secs--;
+        if (el) el.textContent = secs;
+        if (secs <= 0) { clearInterval(interval); window.location.href = redirectUrl; }
+      }, 1000);
+    }
+
+    async function run() {
+      if (!wallet) { show('state-no-wallet'); return; }
+
+      if (action === 'exit') {
+        try {
+          const res = await fetch('/api/mint/exit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ walletAddress: wallet })
+          });
+          const data = await res.json();
+          if (data.action === 'no_session') {
+            // No había sesión abierta — igual mostrar salida amable
+          }
+          document.getElementById('exit-msg').textContent =
+            EXIT_MESSAGES[Math.floor(Math.random() * EXIT_MESSAGES.length)];
+          show('state-exit');
+          startCountdown('countdown-exit', '/claim');
+        } catch (e) {
+          document.getElementById('error-box').textContent = 'Error al registrar la salida. Inténtalo desde la app.';
+          show('state-error');
+        }
+        return;
+      }
+
+      // action === 'entry'
+      try {
+        const res = await fetch('/api/mint/entry', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ walletAddress: wallet })
+        });
+        const data = await res.json();
+
+        const badge = document.getElementById('entry-badge');
+        if (data.isNew) {
+          document.getElementById('entry-icon').textContent = '🎉';
+          document.getElementById('entry-title').textContent = '¡Bienvenido a la cofradía, rapaz!';
+          document.getElementById('entry-msg').textContent = 'Primera visita registrada. Pasa, busca sitio y pídete una cunca de tinto. ¡Que empiece la esmorga!';
+          badge.textContent = '🍷 Visita 1 — ¡la primera siempre mola más!';
+        } else if (data.alreadyCounted) {
+          document.getElementById('entry-icon').textContent = '✅';
+          document.getElementById('entry-title').textContent = '¡Ya estás fichado, ho!';
+          document.getElementById('entry-msg').textContent = 'Tu entrada ya estaba registrada. ¡Disfruta la noche, rapaz!';
+          badge.textContent = `🍷 ${data.visitCount} visita${data.visitCount !== 1 ? 's' : ''} acumulada${data.visitCount !== 1 ? 's' : ''}`;
+        } else {
+          document.getElementById('entry-icon').textContent = '🍷';
+          document.getElementById('entry-title').textContent = '¡Fichado, neno!';
+          document.getElementById('entry-msg').textContent = 'Entrada registrada. Pasa y disfruta — ¡el vino está fresco!';
+          badge.textContent = `🍷 Visita ${data.visitCount} — ¡sigue sumando, rapaz!`;
+        }
+        badge.style.display = 'block';
+        show('state-entry');
+        startCountdown('countdown', '/claim');
+      } catch (e) {
+        document.getElementById('error-box').textContent = 'Error al registrar la entrada. Inténtalo de nuevo.';
+        show('state-error');
+      }
+    }
+
+    run();
+  </script>
+</body>
+</html>

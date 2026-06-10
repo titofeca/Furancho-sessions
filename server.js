@@ -36,6 +36,7 @@ app.get('/', (req, res) => res.set(NO_CACHE).sendFile(path.join(__dirname, 'publ
 app.get('/admin', (req, res) => res.set(NO_CACHE).sendFile(path.join(__dirname, 'public', 'admin', 'index.html')));
 app.get('/claim', (req, res) => res.set(NO_CACHE).sendFile(path.join(__dirname, 'public', 'claim', 'index.html')));
 app.get('/entry', (req, res) => res.set(NO_CACHE).sendFile(path.join(__dirname, 'public', 'entry', 'index.html')));
+app.get('/nfc', (req, res) => res.set(NO_CACHE).sendFile(path.join(__dirname, 'public', 'nfc', 'index.html')));
 
 // Metadatos NFT para OpenSea / marketplaces ERC-1155
 // El contrato llama a uri(tokenId) → devuelve esta URL con el JSON de cada nivel
