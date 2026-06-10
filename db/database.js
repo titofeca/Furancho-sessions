@@ -293,6 +293,9 @@ db.exec(`
 
 // Migraciones seguras
 try { db.exec(`ALTER TABLE sessions ADD COLUMN exit_points INTEGER DEFAULT 0`); } catch (_) {}
+// Marca si la salida fue por auto-cierre de las 23:00 (1) o salida manual del cliente (0).
+// Para sorteos: una salida manual saca del bombo; el auto-cierre NO (seguía dentro al acabar el evento).
+try { db.exec(`ALTER TABLE sessions ADD COLUMN auto_closed INTEGER DEFAULT 0`); } catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS points (id INTEGER PRIMARY KEY AUTOINCREMENT, wallet_address TEXT NOT NULL, points INTEGER NOT NULL, reason TEXT, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
 try { db.exec(`CREATE INDEX IF NOT EXISTS idx_points_wallet ON points(wallet_address)`); } catch (_) {}
 
@@ -891,12 +894,14 @@ function getEligibleRaffleParticipants() {
   let endMs = dayStart.getTime() + (eh * 60 + em) * 60000;
   if (endMs <= startMs) endMs += 24 * 60 * 60 * 1000; // ventana cruza medianoche
 
-  // Candidatos: sesiones que fichan el día del evento o el siguiente (por si cruza medianoche)
+  // Candidatos: sesiones que fichan el día del evento o el siguiente (por si cruza medianoche).
+  // Elegible = sigue dentro (exit_time IS NULL) o salió SOLO por el auto-cierre de las 23:00
+  // (auto_closed = 1). Si fichó SALIDA manual, se va del bombo.
   const rows = db.prepare(`
     SELECT DISTINCT wallet_address, entry_time FROM sessions
     WHERE (date(entry_time) = ? OR date(entry_time) = date(?, '+1 day'))
-      AND (exit_time IS NULL OR date(exit_time) >= ?)
-  `).all(eventDayStr, eventDayStr, eventDayStr);
+      AND (exit_time IS NULL OR auto_closed = 1)
+  `).all(eventDayStr, eventDayStr);
 
   const eligible = new Set();
   rows.forEach(r => {
@@ -918,6 +923,7 @@ function autoCloseSessionsAt23() {
   const stmt = db.prepare(`
     UPDATE sessions
     SET exit_time = datetime('now'),
+        auto_closed = 1,
         duration_minutes = CASE WHEN (CAST((julianday('now') - julianday(entry_time)) * 1440 AS INTEGER)) > 720
           THEN 240
           ELSE CAST((julianday('now') - julianday(entry_time)) * 1440 AS INTEGER) END
