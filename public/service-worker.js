@@ -1,4 +1,4 @@
-const CACHE_NAME = 'furancho-vip-v35';
+const CACHE_NAME = 'furancho-vip-v36';
 const ASSETS_TO_CACHE = [
   '/claim',
   '/entry',
