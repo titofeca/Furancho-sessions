@@ -3,6 +3,7 @@ node_modules/
 furancho.db
 furancho.db-shm
 furancho.db-wal
+.admin_token_secret
 qr-output/
 *.log
 .DS_Store

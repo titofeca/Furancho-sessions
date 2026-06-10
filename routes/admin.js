@@ -1,6 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const router = express.Router();
 const {
   getStats,
@@ -26,10 +28,29 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'furancho2024';
 // ⚠️  IMPORTANTE: TOKEN_SECRET debe estar en Railway como variable de entorno.
 //    Sin ella, cada deploy genera un secreto nuevo y los tokens guardados se invalidan.
 //    Genera un valor fijo con: node -e "require('crypto').randomBytes(32).toString('hex')|>console.log"
-const TOKEN_SECRET = process.env.TOKEN_SECRET || crypto.randomBytes(32).toString('hex');
-if (!process.env.TOKEN_SECRET) {
-  console.warn('[Admin] ⚠️  TOKEN_SECRET no está en las variables de entorno. Los tokens de admin se invalidarán en cada reinicio del servidor.');
+// Resuelve el secreto de firma de tokens. Prioridad:
+//   1) Variable de entorno TOKEN_SECRET (recomendado).
+//   2) Secreto persistido en el volumen de datos (sobrevive reinicios/deploys sin tocar Railway).
+//   3) Efímero en memoria (último recurso — invalidaría tokens al reiniciar).
+function resolveTokenSecret() {
+  if (process.env.TOKEN_SECRET) return process.env.TOKEN_SECRET;
+  try {
+    const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'furancho.db');
+    const secretPath = path.join(path.dirname(DB_PATH), '.admin_token_secret');
+    if (fs.existsSync(secretPath)) {
+      const saved = fs.readFileSync(secretPath, 'utf8').trim();
+      if (saved) return saved;
+    }
+    const generated = crypto.randomBytes(32).toString('hex');
+    fs.writeFileSync(secretPath, generated, { mode: 0o600 });
+    console.warn('[Admin] TOKEN_SECRET no definido — generado y persistido en disco para sobrevivir reinicios.');
+    return generated;
+  } catch (e) {
+    console.warn('[Admin] ⚠️  No se pudo persistir TOKEN_SECRET, usando efímero (se cerrará sesión al reiniciar):', e.message);
+    return crypto.randomBytes(32).toString('hex');
+  }
 }
+const TOKEN_SECRET = resolveTokenSecret();
 const TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 días
 
 // Genera un token firmado con HMAC: base64(payload).signature

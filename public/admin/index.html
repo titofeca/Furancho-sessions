@@ -6,6 +6,7 @@
   <title>Furancho Sessions — Panel Admin</title>
   <link rel="manifest" href="/manifest-admin.json" />
   <meta name="theme-color" content="#8B1918" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Furancho Admin" />
@@ -959,6 +960,19 @@
       <button type="submit" class="login-btn">Entrar al Panel</button>
       <div id="login-error" class="login-error">Contraseña incorrecta</div>
     </form>
+  </div>
+</div>
+
+<!-- Banner instalación PWA (se muestra solo en navegador móvil, no en app instalada) -->
+<div id="install-banner" style="display:none; position:fixed; left:0; right:0; bottom:0; z-index:20000; background:#2A1509; color:#fff; padding:14px 16px calc(14px + env(safe-area-inset-bottom)); box-shadow:0 -4px 20px rgba(0,0,0,0.25); font-family:'Outfit',sans-serif;">
+  <div style="max-width:520px; margin:0 auto; display:flex; align-items:center; gap:12px;">
+    <span style="font-size:24px; flex-shrink:0;">📲</span>
+    <div style="flex:1; min-width:0;">
+      <p style="margin:0 0 2px; font-size:13.5px; font-weight:700;">Instala el panel como app</p>
+      <p id="install-banner-hint" style="margin:0; font-size:11.5px; color:rgba(255,255,255,0.7); line-height:1.4;">Sin barra del navegador y sin volver a escribir la contraseña.</p>
+    </div>
+    <button id="install-banner-btn" onclick="triggerInstall()" style="display:none; background:#8B1918; color:#fff; border:none; border-radius:10px; padding:9px 14px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; white-space:nowrap;">Instalar</button>
+    <button onclick="dismissInstallBanner()" style="background:rgba(255,255,255,0.12); border:none; color:#fff; font-size:16px; cursor:pointer; width:32px; height:32px; border-radius:50%; flex-shrink:0;">×</button>
   </div>
 </div>
 
@@ -2185,6 +2199,55 @@
   let AUTH_TOKEN = null;
   let currentHolderFilter = 'all';
 
+  // ==================== INSTALACIÓN PWA ====================
+  let _deferredInstallPrompt = null;
+
+  function isStandalone() {
+    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  }
+
+  function dismissInstallBanner() {
+    const b = document.getElementById('install-banner');
+    if (b) b.style.display = 'none';
+    try { localStorage.setItem('furancho_admin_install_dismissed', '1'); } catch (_) {}
+  }
+
+  async function triggerInstall() {
+    if (_deferredInstallPrompt) {
+      _deferredInstallPrompt.prompt();
+      const { outcome } = await _deferredInstallPrompt.userChoice;
+      _deferredInstallPrompt = null;
+      if (outcome === 'accepted') dismissInstallBanner();
+    }
+  }
+
+  // Android/Chrome: capturar el evento de instalación nativo
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    _deferredInstallPrompt = e;
+    const btn = document.getElementById('install-banner-btn');
+    if (btn) btn.style.display = 'inline-block';
+    maybeShowInstallBanner();
+  });
+
+  function maybeShowInstallBanner() {
+    if (isStandalone()) return; // ya instalada, nada que hacer
+    let dismissed = false;
+    try { dismissed = localStorage.getItem('furancho_admin_install_dismissed') === '1'; } catch (_) {}
+    if (dismissed) return;
+    const banner = document.getElementById('install-banner');
+    const hint = document.getElementById('install-banner-hint');
+    if (!banner) return;
+    // iOS no soporta beforeinstallprompt → mostrar instrucciones manuales
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    if (isIOS && hint) {
+      hint.textContent = 'Toca Compartir ⬆️ y luego "Añadir a pantalla de inicio".';
+    }
+    banner.style.display = 'block';
+  }
+
+  window.addEventListener('appinstalled', () => dismissInstallBanner());
+
   // ==================== AUTH ====================
   async function handleLogin(event) {
     event.preventDefault();
@@ -2221,6 +2284,7 @@
 
   // Auto-login si hay token guardado
   window.addEventListener('load', () => {
+    setTimeout(maybeShowInstallBanner, 1500); // iOS: si no hay beforeinstallprompt, mostrar instrucciones
     const saved = localStorage.getItem('furancho_admin_token');
     if (saved) {
       AUTH_TOKEN = saved;
