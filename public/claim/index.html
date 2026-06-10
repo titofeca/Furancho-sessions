@@ -2880,26 +2880,10 @@
       // No aplicar tema oscuro en el perfil — mantener fondo crema siempre
       document.body.className = '';
 
-      // Buzón completo de mensajes — solo los de después de crear la cuenta
-      const _accountCreated = localStorage.getItem('furancho_account_created_at') || '';
-      const _inboxUrl = `/api/admin/inbox?level=${lvl}&wallet=${encodeURIComponent(userWalletAddress)}` + (_accountCreated ? `&since=${encodeURIComponent(_accountCreated)}` : '');
-      fetch(_inboxUrl)
-        .then(r => r.json()).then(msgs => {
-          if (!msgs || !msgs.length) return;
-          // Separar activos de archivados
-          _allMessages = msgs.filter(m => !m.archived);
-          _archivedMessages = msgs.filter(m => m.archived);
-          const readIds = getReadIds();
-          const unread = _allMessages.filter(m => !readIds.includes(msgKey(m)));
-          // Mostrar banner solo si hay mensajes no leídos y no archivados
-          if (unread.length > 0) {
-            const box = document.getElementById('profile-admin-msg');
-            const body = document.getElementById('profile-admin-msg-body');
-            body.textContent = unread[0].body;
-            box.style.display = 'block';
-          }
-          updateMsgFab();
-        }).catch(() => {});
+      // Buzón de mensajes: carga inicial + arrancar polling
+      startInboxPolling(lvl, userWalletAddress);
+      updateMsgFab(); // mostrar FAB inmediatamente (vacío hasta que cargue)
+      refreshInbox(); // primera carga
 
       showScreen('screen-profile');
       renderPrizes();
@@ -4344,6 +4328,9 @@
 
   let _allMessages = [];
   let _archivedMessages = [];
+  let _inboxPollingTimer = null;
+  let _inboxLevel = '1';
+  let _inboxWallet = '';
 
   function msgKey(m) { return m.id ?? m.sent_at; }   // clave única por mensaje
 
@@ -4361,7 +4348,6 @@
   }
 
   function dismissAdminMsg() {
-    // Marcar todos los mensajes actuales como leídos
     markAllRead();
     document.getElementById('profile-admin-msg').style.display = 'none';
     updateMsgFab();
@@ -4371,12 +4357,53 @@
     const fab = document.getElementById('msg-fab');
     const badge = document.getElementById('msg-fab-badge');
     if (!fab) return;
+    // FAB siempre visible una vez iniciado el perfil (wallet cargado)
+    fab.style.display = 'flex';
     const readIds = getReadIds();
     const unread = _allMessages.filter(m => !readIds.includes(msgKey(m))).length;
-    if (_allMessages.length === 0) { fab.style.display = 'none'; return; }
-    fab.style.display = 'flex';
     badge.textContent = unread;
     badge.style.display = unread > 0 ? 'flex' : 'none';
+  }
+
+  // Recarga el inbox desde la API y actualiza estado + FAB
+  async function refreshInbox() {
+    if (!_inboxWallet) return;
+    const since = localStorage.getItem('furancho_account_created_at') || '';
+    const url = `/api/admin/inbox?level=${_inboxLevel}&wallet=${encodeURIComponent(_inboxWallet)}` + (since ? `&since=${encodeURIComponent(since)}` : '');
+    try {
+      const res = await fetch(url);
+      const msgs = await res.json();
+      if (!Array.isArray(msgs)) return;
+      const prevUnread = _allMessages.filter(m => !getReadIds().includes(msgKey(m))).length;
+      _allMessages = msgs.filter(m => !m.archived);
+      _archivedMessages = msgs.filter(m => m.archived);
+      updateMsgFab();
+      // Mostrar banner solo si hay nuevos no leídos y el panel está cerrado
+      const readIds = getReadIds();
+      const unread = _allMessages.filter(m => !readIds.includes(msgKey(m)));
+      const panelOpen = document.getElementById('msg-panel')?.style.display === 'flex';
+      if (unread.length > 0 && !panelOpen) {
+        const box = document.getElementById('profile-admin-msg');
+        const body = document.getElementById('profile-admin-msg-body');
+        if (body) body.textContent = unread[0].body;
+        if (box) box.style.display = 'block';
+      }
+    } catch (_) {}
+  }
+
+  // Inicia polling de mensajes cada 60s + refresco al volver a la app
+  function startInboxPolling(level, wallet) {
+    _inboxLevel = level;
+    _inboxWallet = wallet;
+    // Limpiar timer previo si existe
+    if (_inboxPollingTimer) clearInterval(_inboxPollingTimer);
+    _inboxPollingTimer = setInterval(refreshInbox, 60000);
+    // Refrescar también cuando el usuario vuelve a la app (minimizada o cambio de pestaña)
+    document.removeEventListener('visibilitychange', _onVisibilityChange);
+    document.addEventListener('visibilitychange', _onVisibilityChange);
+  }
+  function _onVisibilityChange() {
+    if (document.visibilityState === 'visible') refreshInbox();
   }
 
   function _buildMsgCard(m, wasUnread) {
