@@ -1311,6 +1311,11 @@
       <!-- SUBPÁGINA 3: NFTs POLYGON -->
       <div id="subpage-nfts" class="subpage-panel">
 
+        <!-- Acceso a gestión de mints: aprobar pendientes + minteo manual -->
+        <button onclick="showPage('nfts')" style="width:100%; margin-bottom:16px; background:linear-gradient(135deg,var(--wine),var(--wine-dark,#6e1413)); color:#fff; border:none; border-radius:14px; padding:14px 16px; font-size:14px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; display:flex; align-items:center; justify-content:center; gap:8px;">
+          🎖️ Aprobar NFTs y Minteo manual →
+        </button>
+
         <!-- Resumen NFTs -->
         <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:16px;">
           <div style="background:var(--surface); border-radius:14px; padding:14px; text-align:center; border:1px solid var(--border);">
@@ -1969,6 +1974,7 @@
     <!-- ==================== NFTs ==================== -->
     <div class="page" id="page-nfts">
       <div class="page-header">
+        <button onclick="showPage('dashboard')" style="background:none; border:none; color:var(--wine); font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; padding:0; margin-bottom:8px;">← Volver al panel</button>
         <h1 class="page-title">🏅 NFTs</h1>
         <p class="page-subtitle">Gestiona los mints de Polygon — aprueba o rechaza antes de que vayan a blockchain</p>
       </div>
@@ -2303,8 +2309,10 @@
   function showPage(pageId) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.getElementById(`page-${pageId}`).classList.add('active');
-    document.getElementById(`nav-${pageId}`).classList.add('active');
+    const pageEl = document.getElementById(`page-${pageId}`);
+    if (pageEl) pageEl.classList.add('active');
+    const navEl = document.getElementById(`nav-${pageId}`);
+    if (navEl) navEl.classList.add('active'); // algunas páginas (ej. nfts) no tienen item en el menú
     // Reset scroll — setTimeout(0) garantiza que el browser ya pintó la nueva página
     setTimeout(() => {
       window.scrollTo(0, 0);
