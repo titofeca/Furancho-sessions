@@ -3827,6 +3827,32 @@
     function startSlotAnimation() {}
     function stopSlotAnimation() {}
 
+    // Comprueba si hay un sorteo activo al cargar (por si el SSE llegó antes de tener wallet)
+    async function checkActiveRaffle() {
+      const wallet = localStorage.getItem('furancho_wallet_address');
+      if (!wallet) return;
+      try {
+        const data = await fetch(`/api/raffle/active?wallet=${wallet}`).then(r => r.json());
+        if (!data.active) return;
+        if (data.phase === 'start') {
+          // Simular raffle_start
+          const modal = document.getElementById('raffle-modal');
+          document.getElementById('raffle-roulette').style.display = 'block';
+          document.getElementById('raffle-winner').style.display = 'none';
+          document.getElementById('raffle-loser').style.display = 'none';
+          document.getElementById('raffle-particles').innerHTML = '';
+          document.getElementById('raffle-prize-text').textContent = 'Sorteando: ' + data.prize;
+          modal.style.display = 'flex'; document.body.style.overflow = 'hidden';
+          startSlotAnimation();
+        } else if (data.phase === 'result') {
+          // Simular raffle_result directamente
+          const fakeEvt = { data: JSON.stringify(data) };
+          // Disparar event sintético — buscamos el handler directo
+          _handleRaffleResult(data);
+        }
+      } catch (_) {}
+    }
+
     function connectRaffle() {
       const wallet = localStorage.getItem('furancho_wallet_address') || '';
       const evtSource = new EventSource(`/api/raffle/stream${wallet ? '?wallet=' + wallet : ''}`);
@@ -3911,8 +3937,7 @@
         modal._tickInterval = tickInterval;
       });
 
-      evtSource.addEventListener('raffle_result', (e) => {
-        const data = JSON.parse(e.data);
+      function _handleRaffleResult(data) {
         const myWallet = localStorage.getItem('furancho_wallet_address');
         stopSlotAnimation();
         if (document.getElementById('raffle-modal')._tickInterval) {
@@ -3983,7 +4008,8 @@
           if (statusText) statusText.textContent = 'El bombo ya quiere sonar...';
           renderPrizes();
         }
-      });
+      }
+      evtSource.addEventListener('raffle_result', (e) => { _handleRaffleResult(JSON.parse(e.data)); });
 
       evtSource.addEventListener('raffle_timeout', () => {
         hideAcceptBanner();
@@ -4122,7 +4148,7 @@
       };
     }
 
-    setTimeout(connectRaffle, 2000);
+    setTimeout(() => { connectRaffle(); checkActiveRaffle(); }, 2000);
 
     // ===== NOTIFICACIONES PUSH =====
     async function subscribePush() {

@@ -39,12 +39,34 @@ const upload = multer({
 
 let clients = [];
 
+// Estado del sorteo activo — se rellena en doLaunch y se limpia al terminar.
+// Permite que clientes que abran la app tarde reciban el estado actual al conectar.
+let activeRaffle = null;
+// { raffleId, displayPrize, prize, type, phase: 'start'|'result',
+//   eligibleWallets: Set<string>, prizeDetails, prizeImage, establishment,
+//   winnerWallet?, verificationCode?, acceptWindow?, startedAt }
+
+// Envía evento SSE a TODOS los clientes conectados (o solo a uno por wallet)
 function broadcast(event, data, targetWallet = null) {
   const dead = [];
   const targets = targetWallet
     ? clients.filter(c => c.walletAddress === targetWallet)
     : clients;
   targets.forEach(client => {
+    try {
+      client.res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      if (typeof client.res.flush === 'function') client.res.flush();
+    } catch (e) {
+      dead.push(client.id);
+    }
+  });
+  if (dead.length) clients = clients.filter(c => !dead.includes(c.id));
+}
+
+// Envía evento SSE SOLO a los clientes cuya wallet está en la lista de elegibles
+function broadcastToEligible(event, data, walletSet) {
+  const dead = [];
+  clients.filter(c => c.walletAddress && walletSet.has(c.walletAddress)).forEach(client => {
     try {
       client.res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
       if (typeof client.res.flush === 'function') client.res.flush();
@@ -70,11 +92,31 @@ router.get('/stream', (req, res) => {
 
   // Cap: máximo 500 conexiones SSE activas para evitar memory leaks
   if (clients.length >= 500) {
-    // Eliminar la conexión más antigua
     const oldest = clients.shift();
     try { oldest.res.end(); } catch (_) {}
   }
   clients.push(newClient);
+
+  // Si hay un sorteo activo y esta wallet es elegible → enviar estado inmediatamente
+  // (cubre el caso de clientes que abren la app tarde)
+  if (activeRaffle && walletAddress && activeRaffle.eligibleWallets.has(walletAddress)) {
+    try {
+      if (activeRaffle.phase === 'start') {
+        res.write(`event: raffle_start\ndata: ${JSON.stringify({
+          duration: 15, prize: activeRaffle.displayPrize, raffleId: activeRaffle.raffleId, type: activeRaffle.type
+        })}\n\n`);
+      } else if (activeRaffle.phase === 'result') {
+        res.write(`event: raffle_result\ndata: ${JSON.stringify({
+          winnerWallet: activeRaffle.winnerWallet, verificationCode: activeRaffle.verificationCode,
+          prize: activeRaffle.prize, raffleId: activeRaffle.raffleId,
+          acceptWindow: Math.max(0, activeRaffle.acceptWindow - Math.floor((Date.now() - activeRaffle.resultAt) / 1000)),
+          type: activeRaffle.type, prizeDetails: activeRaffle.prizeDetails || null,
+          prizeImage: activeRaffle.prizeImage || null, establishment: activeRaffle.establishment || null
+        })}\n\n`);
+      }
+      if (typeof res.flush === 'function') res.flush();
+    } catch (_) {}
+  }
 
   const keepalive = setInterval(() => {
     try {
@@ -100,8 +142,8 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
   }
   const sanitizedParticipantLevel = participantLevel ? parseInt(participantLevel) : null;
 
-  const connectedWallets = [...new Set(clients.filter(c => c.walletAddress).map(c => c.walletAddress))];
-  let sessionWallets = getEligibleRaffleParticipants();
+  // Elegibles = TODOS los que ficharon entrada hoy y no han salido (sin requisito de app abierta)
+  let eligibleWallets = getEligibleRaffleParticipants();
 
   // Sorteo VIP: solo participan "O Presidente" (Nivel 4)
   if (type === 'vip') {
@@ -109,29 +151,21 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
     const vipWallets = new Set(
       db.prepare(`SELECT DISTINCT wallet_address FROM mints WHERE level = 4 AND status != 'failed'`).all().map(r => r.wallet_address)
     );
-    sessionWallets = sessionWallets.filter(w => vipWallets.has(w));
-    if (sessionWallets.length === 0) throw new Error('No hay furancheiros O Presidente presentes esta noche.');
+    eligibleWallets = eligibleWallets.filter(w => vipWallets.has(w));
+    if (eligibleWallets.length === 0) throw new Error('No hay furancheiros O Presidente presentes esta noche.');
   }
 
-  // Filtro por nivel mínimo de participante (sorteos solo para nivel X o superior)
+  // Filtro por nivel mínimo de participante
   if (sanitizedParticipantLevel) {
     const { db } = require('../db/database');
     const levelWallets = new Set(
       db.prepare(`SELECT DISTINCT wallet_address FROM mints WHERE level >= ? AND status != 'failed'`).all(sanitizedParticipantLevel).map(r => r.wallet_address)
     );
-    sessionWallets = sessionWallets.filter(w => levelWallets.has(w));
-    if (sessionWallets.length === 0) throw new Error(`No hay participantes de nivel ${sanitizedParticipantLevel}+ presentes en el local.`);
+    eligibleWallets = eligibleWallets.filter(w => levelWallets.has(w));
+    if (eligibleWallets.length === 0) throw new Error(`No hay participantes de nivel ${sanitizedParticipantLevel}+ presentes en el local.`);
   }
 
-  // Elegibles = intersección entre sesión activa hoy Y app abierta (SSE conectado)
-  // Si nadie tiene la app abierta → 0 elegibles (sin fallback a todas las sesiones)
-  const eligibleWallets = sessionWallets.filter(w => connectedWallets.includes(w));
-
-  if (eligibleWallets.length === 0) {
-    throw new Error(connectedWallets.length === 0
-      ? 'Nadie tiene la app abierta en este momento. Pídeles que abran Furancho Sessions.'
-      : 'No hay clientes con entrada fichada y app abierta.');
-  }
+  if (eligibleWallets.length === 0) throw new Error('No hay clientes con entrada fichada en el local.');
 
   // Doble Oportunidad para el ganador de La Chave Semanal
   try {
@@ -144,6 +178,9 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
     }
   } catch (e) {}
 
+  const eligibleSet = new Set(eligibleWallets);
+  const connectedCount = clients.filter(c => c.walletAddress && eligibleSet.has(c.walletAddress)).length;
+
   const winnerWallet = eligibleWallets[Math.floor(Math.random() * eligibleWallets.length)];
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let verificationCode = '';
@@ -153,12 +190,28 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
   if (scheduledId) { try { linkScheduledRaffle(parseInt(scheduledId), raffleId); } catch(_) {} }
 
   const displayPrize = hideName ? 'Sorpresa 🎁' : prize;
-  console.log(`[Raffle] #${raffleId} (${type}) iniciado. Participantes: ${eligibleWallets.length}, SSE: ${connectedWallets.length}`);
-  broadcast('raffle_start', { duration: 15, prize: displayPrize, raffleId, type });
+  console.log(`[Raffle] #${raffleId} (${type}) iniciado. Participantes: ${eligibleWallets.length}, con app: ${connectedCount}`);
+
+  // Guardar estado activo para que los clientes que abran la app tarde reciban el estado
+  activeRaffle = {
+    raffleId, prize, displayPrize, type, phase: 'start',
+    eligibleWallets: eligibleSet,
+    prizeDetails: prizeDetails || null, prizeImage: prizeImage || null, establishment: establishment || null,
+    startedAt: Date.now()
+  };
+
+  // Solo enviar SSE a los elegibles (quienes ficharon entrada hoy)
+  broadcastToEligible('raffle_start', { duration: 15, prize: displayPrize, raffleId, type }, eligibleSet);
   sendPushToAll('🎰 ¡Sorteo en Furancho!', `¡Abre la app ahora!`, { url: '/claim' });
 
   setTimeout(() => {
-    broadcast('raffle_result', { winnerWallet, verificationCode, prize, raffleId, acceptWindow: 180, type, prizeDetails: prizeDetails || null, prizeImage: prizeImage || null, establishment: establishment || null });
+    const resultData = { winnerWallet, verificationCode, prize, raffleId, acceptWindow: 180, type,
+      prizeDetails: prizeDetails || null, prizeImage: prizeImage || null, establishment: establishment || null };
+    broadcastToEligible('raffle_result', resultData, eligibleSet);
+    // Actualizar estado activo con resultado
+    if (activeRaffle?.raffleId === raffleId) {
+      activeRaffle = { ...activeRaffle, phase: 'result', winnerWallet, verificationCode, acceptWindow: 180, resultAt: Date.now() };
+    }
   }, 15000);
 
   setTimeout(() => {
@@ -167,10 +220,12 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
       const raffle = db.prepare(`SELECT status FROM raffles WHERE id = ?`).get(raffleId);
       if (raffle?.status === 'pending_acceptance') {
         rejectRaffle(raffleId, 'Tiempo de aceptación agotado');
-        broadcast('raffle_timeout', { raffleId, prize });
+        broadcastToEligible('raffle_timeout', { raffleId, prize }, eligibleSet);
         console.log(`[Raffle] #${raffleId} rechazado automáticamente — tiempo agotado`);
       }
     } catch (e) { console.error('[Raffle] Error en auto-rechazo:', e.message); }
+    // Limpiar estado activo
+    if (activeRaffle?.raffleId === raffleId) activeRaffle = null;
   }, 195000);
 
   return { raffleId, winnerWallet, verificationCode, participants: eligibleWallets.length };
@@ -221,6 +276,7 @@ router.post('/:id/accept', (req, res) => {
     const raffle = acceptRaffle(parseInt(req.params.id), wallet);
     // Notificar al admin via SSE broadcast
     broadcast('raffle_accepted', { raffleId: parseInt(req.params.id) });
+    if (activeRaffle?.raffleId === parseInt(req.params.id)) activeRaffle = null;
 
     // Si el sorteo tiene configurado un nivel de destino, encolar el minting Polygon
     if (raffle && raffle.target_level) {
@@ -260,8 +316,10 @@ router.post('/:id/accept', (req, res) => {
 router.post('/:id/reject', requireAuth, (req, res) => {
   const { note } = req.body;
   try {
-    rejectRaffle(parseInt(req.params.id), note || 'Rechazado por admin');
-    broadcast('raffle_rejected', { raffleId: parseInt(req.params.id) });
+    const rejId = parseInt(req.params.id);
+    rejectRaffle(rejId, note || 'Rechazado por admin');
+    broadcast('raffle_rejected', { raffleId: rejId });
+    if (activeRaffle?.raffleId === rejId) activeRaffle = null;
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -340,12 +398,31 @@ router.get('/history', requireAuth, (req, res) => {
 
 // GET /api/raffle/eligible
 router.get('/eligible', requireAuth, (req, res) => {
-  const connected = [...new Set(clients.filter(c => c.walletAddress).map(c => c.walletAddress))];
-  const sessions = getEligibleRaffleParticipants();
-  // Elegibles = sesión activa hoy + app abierta (SSE). Sin fallback a sesiones solas.
-  const eligible = sessions.filter(w => connected.includes(w));
+  const sessions = getEligibleRaffleParticipants(); // = elegibles (ficharon entrada hoy, no han salido)
+  const eligibleSet = new Set(sessions);
+  const withApp = clients.filter(c => c.walletAddress && eligibleSet.has(c.walletAddress)).length;
   const tonight = getRaffleCountTonight();
-  res.json({ count: eligible.length, withApp: connected.length, checkedIn: sessions.length, tonight });
+  // count = todos los que ficharon (participan aunque no tengan app abierta)
+  res.json({ count: sessions.length, withApp, checkedIn: sessions.length, tonight });
+});
+
+// GET /api/raffle/active?wallet=0x... — estado del sorteo en curso (para clientes que cargan la app tarde)
+router.get('/active', (req, res) => {
+  const { wallet } = req.query;
+  if (!activeRaffle || !wallet) return res.json({ active: false });
+  if (!activeRaffle.eligibleWallets.has(wallet)) return res.json({ active: false });
+  if (activeRaffle.phase === 'result') {
+    const elapsed = Math.floor((Date.now() - activeRaffle.resultAt) / 1000);
+    const remaining = activeRaffle.acceptWindow - elapsed;
+    if (remaining <= 0) return res.json({ active: false });
+    return res.json({ active: true, phase: 'result',
+      winnerWallet: activeRaffle.winnerWallet, verificationCode: activeRaffle.verificationCode,
+      prize: activeRaffle.prize, raffleId: activeRaffle.raffleId, acceptWindow: remaining,
+      type: activeRaffle.type, prizeDetails: activeRaffle.prizeDetails,
+      prizeImage: activeRaffle.prizeImage, establishment: activeRaffle.establishment });
+  }
+  return res.json({ active: true, phase: 'start', prize: activeRaffle.displayPrize,
+    raffleId: activeRaffle.raffleId, type: activeRaffle.type });
 });
 
 // GET /api/raffle/prizes — lista de premios preset
