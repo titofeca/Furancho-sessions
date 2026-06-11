@@ -1591,6 +1591,13 @@
           </div>
         </div>
 
+        <!-- Premios de esta noche — visible antes de fichar -->
+        <div id="claim-tonight-prizes" style="display:none; margin-bottom:14px; background:linear-gradient(135deg,rgba(196,151,58,0.1),rgba(139,25,24,0.05)); border:1.5px solid rgba(196,151,58,0.4); border-radius:16px; padding:12px 14px;">
+          <p style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.2px; color:var(--gold); margin:0 0 8px;">🎁 Premios de esta noche</p>
+          <div id="claim-tonight-list" style="display:flex; flex-direction:column; gap:5px;"></div>
+          <p style="font-size:11px; color:var(--text-muted); margin:8px 0 0; text-align:center;">Entra y participa en el bombo 🎰</p>
+        </div>
+
         <button type="submit" id="submit-btn" class="btn-primary btn-accent">
           🍷 Entrar al Furancho (¡Dabuti!)
         </button>
@@ -2641,6 +2648,7 @@
 
         // Primera vez — mostrar formulario con el nivel correcto si hay ?level
         showScreen('screen-claim');
+        loadTonightPrizes(); // mostrar premios de la noche antes de fichar
         if (hasLevel) {
           currentLevel = levelParam;
           applyLevelTheme(levelParam);
@@ -2657,6 +2665,7 @@
           showProfileScreen(userVisitCount, userClaimedLevels);
         } else {
           showScreen('screen-claim');
+          loadTonightPrizes();
           if (hasLevel) {
             currentLevel = levelParam;
             applyLevelTheme(levelParam);
@@ -3491,22 +3500,32 @@
         </div>`;
       };
 
-      // Tarjeta en el perfil
+      const itemsHtml = scheduled.map(renderItem).join('');
+
+      // Tarjeta en el perfil (después de fichar)
       const card = document.getElementById('tonight-prizes-card');
       const listEl = document.getElementById('tonight-prizes-list');
       const liveDot = document.getElementById('tonight-live-dot');
       if (card && listEl) {
-        listEl.innerHTML = scheduled.map(renderItem).join('');
+        listEl.innerHTML = itemsHtml;
         card.style.display = 'block';
         const hasLive = scheduled.some(s => s.status === 'launched');
         if (liveDot) liveDot.style.display = hasLive ? 'block' : 'none';
+      }
+
+      // Tarjeta en screen-claim (antes de fichar)
+      const claimCard = document.getElementById('claim-tonight-prizes');
+      const claimList = document.getElementById('claim-tonight-list');
+      if (claimCard && claimList) {
+        claimList.innerHTML = itemsHtml;
+        claimCard.style.display = 'block';
       }
 
       // Sección en el modal
       const modalSection = document.getElementById('modal-tonight-prizes');
       const modalList = document.getElementById('modal-tonight-list');
       if (modalSection && modalList) {
-        modalList.innerHTML = scheduled.map(renderItem).join('');
+        modalList.innerHTML = itemsHtml;
         modalSection.style.display = 'block';
       }
     }
