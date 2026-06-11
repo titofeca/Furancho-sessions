@@ -2248,11 +2248,12 @@
     </div>
  
     <!-- Loser View -->
-    <div id="raffle-loser" style="display: none; width: 100%; max-width: 360px;">
-      <div style="font-size: 64px; margin-bottom: 18px; animation: winnerBounce 0.5s ease both;" id="raffle-loser-emoji">😤</div>
-      <h2 id="raffle-loser-title" style="font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; color: var(--text); margin-bottom: 10px;">El bombo quiso a otro, ho...</h2>
-      <p id="raffle-loser-msg" style="font-size: 15px; color: var(--text-muted); margin-bottom: 28px; font-weight: 300; line-height: 1.6;"><strong id="raffle-loser-prize" style="color: var(--text);"></strong> se lo lleva otro furancheiro.<br>Pero la noche sigue y el vino está fresco, ho.</p>
-      <button onclick="document.getElementById('raffle-modal').style.display='none'; document.body.style.overflow='auto';" class="btn-vip" style="max-width: 240px; margin: 0 auto;">Venga, el próximo es el mío 🍷</button>
+    <div id="raffle-loser" style="display: none; width: 100%; max-width: 360px; text-align: center;">
+      <div style="background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 6px 16px; border-radius: 50px; font-size: 12px; font-weight: 800; text-transform: uppercase; display: inline-block; margin-bottom: 16px; border: 1px solid rgba(239, 68, 68, 0.2);">❌ No Premiado</div>
+      <div style="font-size: 64px; margin-bottom: 12px;" id="raffle-loser-emoji">😤</div>
+      <h2 id="raffle-loser-title" style="font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 700; color: #ef4444; margin-bottom: 10px;">No te ha tocado esta vez</h2>
+      <p id="raffle-loser-msg" style="font-size: 15px; color: var(--text-muted); margin-bottom: 28px; font-weight: 300; line-height: 1.6;">El premio de <strong id="raffle-loser-prize" style="color:var(--text);"></strong> se lo ha llevado otro furancheiro.<br>¡Sigue disfrutando de la noche!</p>
+      <button onclick="document.getElementById('raffle-modal').style.display='none'; document.body.style.overflow='auto';" style="background: rgba(0,0,0,0.05); color: var(--text); border: 1px solid rgba(0,0,0,0.1); padding: 12px 24px; border-radius: 50px; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; max-width: 240px; margin: 0 auto; width: 100%;">Cerrar</button>
     </div>
 
     <style>
@@ -3996,19 +3997,17 @@
     ];
     const _loserEmojis = ['🍷', '😅', '🫠', '🙃', '😬'];
     const _loserTitles = [
-      'El bombo quiso a otro esta vez...',
-      'Sin suerte, rapaz',
-      'El vino consuela, que no es poco',
-      'El próximo es el tuyo, prometido',
-      'Ni esta vez, carallo...',
+      '❌ No te ha tocado esta vez',
+      '❌ El premio fue para otro furancheiro',
+      '❌ Otra vez será, rapaz',
+      '❌ Esta vez no pudo ser, ho',
     ];
     const _loserMsgs = [
       'El vino sigue fresco y la noche es larga. Habrá más.',
-      'No todo el monte es orégano, pero el Furancho casi.',
+      'Sigue participando en los próximos sorteos.',
       'El mejor premio ya lo tienes: estar aquí con el mejor vinísimo.',
-      'Tranquilo, el karma furancheiro existe. Otra noche será.',
+      'Tranquilo, el karma furancheiro te lo devolverá en el próximo sorteo.',
       'Sin suerte en el bombo, pero con buen gusto para el vino. Eso cuenta.',
-      'El próximo sorteo ya tiene tu nombre escrito, neno.',
     ];
 
     // Manejador del resultado de sorteo — declarado a nivel de módulo para ser

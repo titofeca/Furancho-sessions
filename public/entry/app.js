@@ -265,13 +265,17 @@ function showError(msg) {
 
 // ==================== SSE LIVE RAFFLES ====================
 const _entryWinnerTitles = ['¡TE CAYÓ EL PREMIO, NENO!','¡TE TOCÓ, CAMPEÓN!','¡ESTÁS DE SUERTE, HO!','¡VAYA POTRA, TRONCO!'];
-const _entryLoserEmojis = ['😤','🙃','😅','🫠','😬'];
-const _entryLoserTitles = ['Esta vez no hubo suerte, ho...','Qué mala pata, neno','Ni esta vez, rapaz','La próxima mola más'];
+const _entryLoserTitles = [
+  '❌ No te ha tocado esta vez',
+  '❌ El premio fue para otro furancheiro',
+  '❌ Otra vez será, rapaz',
+  '❌ Esta vez no pudo ser, ho',
+];
 const _entryLoserMsgs = [
   'Pero el tinto sigue fresco en la mesa, que no es poco.',
   'Habrá más esmorga y más sorteos, ho. La noche es larga.',
   'El mejor premio es estar aquí con la basca, rapaz.',
-  'La bonoloto tampoco te toca, tronco, pero aquí no te cobramos brasa.',
+  'Sigue disfrutando del vinísimo con los tuyos.',
 ];
 
 function connectRaffle() {

@@ -520,10 +520,11 @@
     </div>
 
     <div id="raffle-loser" style="display: none; text-align: center; width: 100%; max-width: 340px;">
-      <div id="entry-loser-emoji" style="font-size: 64px; margin-bottom: 18px;">😤</div>
-      <h2 id="entry-loser-title" style="font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; color: var(--text); margin-bottom: 10px;">Esta vez no hubo suerte, ho...</h2>
-      <p id="entry-loser-msg" style="font-size: 15px; color: var(--text-muted); margin-bottom: 28px; font-weight: 300;">El premio de <strong id="raffle-loser-prize"></strong> se lo lleva otro, rapaz. Pero no llores, que el tinto sigue fresco en la mesa, que no es poco.</p>
-      <button onclick="document.getElementById('raffle-modal').style.display='none'; document.body.style.overflow='auto';" class="btn-close-raffle">Bueno, qué le vamos a hacer, ho...</button>
+      <div style="background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 6px 16px; border-radius: 50px; font-size: 12px; font-weight: 800; text-transform: uppercase; display: inline-block; margin-bottom: 16px; border: 1px solid rgba(239, 68, 68, 0.2);">❌ No Premiado</div>
+      <div id="entry-loser-emoji" style="font-size: 64px; margin-bottom: 12px;">😤</div>
+      <h2 id="entry-loser-title" style="font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 700; color: #ef4444; margin-bottom: 10px;">No te ha tocado esta vez</h2>
+      <p id="entry-loser-msg" style="font-size: 15px; color: var(--text-muted); margin-bottom: 28px; font-weight: 300; line-height: 1.6;">El premio de <strong id="raffle-loser-prize" style="color:var(--text);"></strong> se lo ha llevado otro furancheiro.<br>¡Sigue disfrutando de la noche!</p>
+      <button onclick="document.getElementById('raffle-modal').style.display='none'; document.body.style.overflow='auto';" style="background: rgba(0,0,0,0.05); color: var(--text); border: 1px solid rgba(0,0,0,0.1); padding: 12px 24px; border-radius: 50px; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; max-width: 240px; margin: 0 auto; width: 100%;">Cerrar</button>
     </div>
   </div>
 
