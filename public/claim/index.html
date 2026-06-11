@@ -53,7 +53,10 @@
       justify-content: flex-start;
       min-height: 100vh;
       padding: 0 0 60px;
-      animation: screenEnter 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+      /* Sin fill-mode: si la animación deja un transform residual, los modales
+         position:fixed de dentro se posicionan relativos a la pantalla (no al
+         viewport) y caen fuera de la vista. */
+      animation: screenEnter 0.55s cubic-bezier(0.22, 1, 0.36, 1);
     }
     .screen.active { display: flex; }
 
@@ -1921,31 +1924,6 @@
             onmouseover="this.style.background='var(--wine-light)'; this.style.borderColor='var(--wine-light)';"
             onmouseout="this.style.background='var(--wine)'; this.style.borderColor='var(--wine)';"
             onmousedown="this.style.transform='scale(0.96)';">Trincar Boleto</button>
-        </div>
-      </div>
-
-      <!-- Modal flotante: info completa de la Chave Semanal -->
-      <div id="chave-modal" onclick="if(event.target===this)closeChaveModal()" style="display:none; position:fixed; inset:0; background:rgba(28,14,6,0.82); z-index:10001; align-items:flex-end; justify-content:center;">
-        <div style="background:var(--bg, #F2EDE3); width:100%; max-width:480px; max-height:88vh; border-radius:22px 22px 0 0; display:flex; flex-direction:column; transform:translateY(100%); transition:transform 0.3s ease-out;" id="chave-modal-sheet">
-          <!-- Cabecera fija -->
-          <div style="display:flex; align-items:center; justify-content:space-between; padding:18px 22px 12px; flex-shrink:0; border-bottom:1px solid rgba(42,21,9,0.08);">
-            <h2 style="font-family:'Playfair Display',serif; font-size:19px; font-weight:700; color:var(--wine); margin:0; display:flex; align-items:center; gap:8px;">🔑 Chave do Furancho</h2>
-            <button onclick="closeChaveModal()" style="background:rgba(42,21,9,0.08); border:none; color:var(--text-muted); font-size:20px; cursor:pointer; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center;">×</button>
-          </div>
-          <!-- Cuerpo scrollable -->
-          <div style="overflow-y:auto; padding:18px 22px 28px; flex:1;">
-            <p style="font-size:10px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:var(--text-muted); margin:0 0 6px;">Premio de la semana</p>
-            <p id="chave-modal-prize" style="font-size:17px; font-weight:800; color:var(--wine); margin:0 0 16px; line-height:1.35;">—</p>
-
-            <div id="chave-modal-code-wrap" style="display:none; background:rgba(139,25,24,0.06); border:1.5px dashed rgba(139,25,24,0.3); border-radius:12px; padding:14px; text-align:center; margin-bottom:16px;">
-              <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); margin:0 0 4px;">🔑 Tu código del premio</p>
-              <p id="chave-modal-code" style="font-family:monospace; font-size:26px; font-weight:900; color:var(--wine); margin:0 0 6px; letter-spacing:3px;">—</p>
-              <p style="font-size:11px; color:var(--text-muted); margin:0;">Enséñaselo al staff para trincar el premio 🍷</p>
-            </div>
-
-            <p style="font-size:10px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:var(--text-muted); margin:0 0 6px;">Operativa y reglas</p>
-            <p id="chave-modal-rules" style="font-size:14px; color:var(--text); margin:0; line-height:1.65; white-space:pre-wrap;">—</p>
-          </div>
         </div>
       </div>
 
@@ -4753,13 +4731,13 @@
 
     if (!data) {
       // Sin datos cargados aún
-      if (prizeEl) prizeEl.textContent = 'Chave do Furancho';
+      if (prizeEl) prizeEl.textContent = '🤫 Premio aínda en segredo — o xefe anda matinando, ho…';
       if (rulesEl) rulesEl.textContent = 'O domingo ás 21:00 abre o sorteo semanal. Durante a semana podes trincar o teu boleto dende aquí. O venres sortéase e o ganador ten ata o final do seguinte evento para vir recoller o premio. ¡Moita sorte, ho!';
       if (codeWrap) codeWrap.style.display = 'none';
     } else {
       const isWinner = data.winnerWallet && userWalletAddress && data.winnerWallet.toLowerCase() === userWalletAddress.toLowerCase();
 
-      if (prizeEl) prizeEl.textContent = data.prize || 'Sorpresa do Furancho';
+      if (prizeEl) prizeEl.textContent = data.prize || '🤫 Premio aínda en segredo — o xefe anda matinando, ho…';
 
       if (rulesEl) rulesEl.textContent = data.rules ||
         'O domingo ás 21:00 abre o sorteo semanal. Durante a semana podes trincar o teu boleto dende aquí. O venres sortéase e o ganador ten ata o final do seguinte evento para vir recoller o premio. ¡Moita sorte, ho!';
@@ -5314,6 +5292,33 @@
         style="width:100%; padding:16px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; box-shadow:0 4px 10px rgba(139,25,24,0.3);">
         Cerrar pase
       </button>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL CHAVE SEMANAL =====================
+       A nivel de body: dentro de una .screen el transform de la animación
+       rompería su position:fixed -->
+  <div id="chave-modal" onclick="if(event.target===this)closeChaveModal()" style="display:none; position:fixed; inset:0; background:rgba(28,14,6,0.82); z-index:10001; align-items:flex-end; justify-content:center;">
+    <div style="background:var(--bg, #F2EDE3); width:100%; max-width:480px; max-height:88vh; border-radius:22px 22px 0 0; display:flex; flex-direction:column; transform:translateY(100%); transition:transform 0.3s ease-out;" id="chave-modal-sheet">
+      <!-- Cabecera fija -->
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:18px 22px 12px; flex-shrink:0; border-bottom:1px solid rgba(42,21,9,0.08);">
+        <h2 style="font-family:'Playfair Display',serif; font-size:19px; font-weight:700; color:var(--wine); margin:0; display:flex; align-items:center; gap:8px;">🔑 Chave do Furancho</h2>
+        <button onclick="closeChaveModal()" style="background:rgba(42,21,9,0.08); border:none; color:var(--text-muted); font-size:20px; cursor:pointer; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center;">×</button>
+      </div>
+      <!-- Cuerpo scrollable -->
+      <div style="overflow-y:auto; padding:18px 22px 28px; flex:1;">
+        <p style="font-size:10px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:var(--text-muted); margin:0 0 6px;">Premio de la semana</p>
+        <p id="chave-modal-prize" style="font-size:17px; font-weight:800; color:var(--wine); margin:0 0 16px; line-height:1.35;">—</p>
+
+        <div id="chave-modal-code-wrap" style="display:none; background:rgba(139,25,24,0.06); border:1.5px dashed rgba(139,25,24,0.3); border-radius:12px; padding:14px; text-align:center; margin-bottom:16px;">
+          <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); margin:0 0 4px;">🔑 Tu código del premio</p>
+          <p id="chave-modal-code" style="font-family:monospace; font-size:26px; font-weight:900; color:var(--wine); margin:0 0 6px; letter-spacing:3px;">—</p>
+          <p style="font-size:11px; color:var(--text-muted); margin:0;">Enséñaselo al staff para trincar el premio 🍷</p>
+        </div>
+
+        <p style="font-size:10px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:var(--text-muted); margin:0 0 6px;">Operativa y reglas</p>
+        <p id="chave-modal-rules" style="font-size:14px; color:var(--text); margin:0; line-height:1.65; white-space:pre-wrap;">—</p>
+      </div>
     </div>
   </div>
 
