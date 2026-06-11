@@ -11,6 +11,7 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/assets/icon-512.png">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     @keyframes pulse {
       from { opacity: 0.6; }
@@ -1478,9 +1479,16 @@
         <p style="font-size:14px; font-weight:700; color:var(--text); margin-bottom:14px;">¿Cómo recuperas tu pase, tronco?</p>
  
         <!-- QR — opción principal -->
-        <div style="margin-bottom:14px; padding:16px; background:rgba(196,151,58,0.07); border:1.5px solid rgba(196,151,58,0.3); border-radius:14px;">
-          <p style="font-size:13px; font-weight:700; color:var(--gold); margin-bottom:6px;">📱 Con el QR de recuperación <span style="font-size:10px; background:rgba(196,151,58,0.2); padding:2px 7px; border-radius:100px; margin-left:4px;">MÁS DABUTI</span></p>
-          <p style="font-size:12px; color:var(--text-muted); line-height:1.6; margin:0;">Abre la cámara y escanea el QR de tu cuenta <em>(furancho-mi-pase.png)</em>. La app se abre al loro y con todo restaurado, ho. Sin rodeos.</p>
+        <div style="margin-bottom:14px; padding:16px; background:rgba(196,151,58,0.07); border:1.5px solid rgba(196,151,58,0.3); border-radius:14px; display:flex; flex-direction:column; gap:8px;">
+          <div>
+            <p style="font-size:13px; font-weight:700; color:var(--gold); margin-bottom:6px;">📱 Con el QR de recuperación <span style="font-size:10px; background:rgba(196,151,58,0.2); padding:2px 7px; border-radius:100px; margin-left:4px;">MÁS DABUTI</span></p>
+            <p style="font-size:12px; color:var(--text-muted); line-height:1.6; margin:0;">Escanea el QR de tu cuenta o sube la imagen guardada en tu galería para entrar al instante, rapaz.</p>
+          </div>
+          <button id="claim-qr-upload-btn" onclick="document.getElementById('claim-qr-file-input').click()"
+            style="width: 100%; padding: 10px 12px; background: var(--gold); color: #fff; border: none; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: 'Outfit', sans-serif; display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 4px;">
+            📂 Seleccionar captura de QR desde mi galería
+          </button>
+          <input type="file" id="claim-qr-file-input" accept="image/*" style="display:none;" onchange="handleQrFileUpload(this)" />
         </div>
  
         <!-- Palabras — opción secundaria -->
@@ -2434,6 +2442,7 @@
     }
 
     // Restaurar cuenta desde QR de recuperación (?restore=0x...)
+    const isStandalone = (('standalone' in window.navigator) && (window.navigator.standalone)) || window.matchMedia('(display-mode: standalone)').matches;
     const _restoreParam = new URLSearchParams(window.location.search).get('restore');
     const _isQrRestore = !!(
       _restoreParam && /^0x[a-fA-F0-9]{40}$/.test(_restoreParam) &&
@@ -2444,7 +2453,14 @@
       if (!localStorage.getItem('furancho_account_created_at')) {
         localStorage.setItem('furancho_account_created_at', new Date().toISOString());
       }
-      history.replaceState(null, '', '/claim');
+      if (isStandalone) {
+        history.replaceState(null, '', '/claim');
+      }
+    } else {
+      const userWalletAddressTemp = localStorage.getItem('furancho_wallet_address');
+      if (userWalletAddressTemp && !isStandalone) {
+        history.replaceState(null, '', `/claim?restore=${userWalletAddressTemp}`);
+      }
     }
 
     // Variables de la billetera local
@@ -4432,6 +4448,47 @@
           onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();const inputs=document.querySelectorAll('#restore-inputs input');const next=inputs[${i}];if(next)next.focus();}" />
       `;
       container.appendChild(wrapper);
+    }
+  }
+
+  async function handleQrFileUpload(input) {
+    if (input.files.length === 0) return;
+    const file = input.files[0];
+    const btn = document.getElementById('claim-qr-upload-btn');
+    const originalText = btn ? btn.innerText : '';
+
+    if (btn) {
+      btn.disabled = true;
+      btn.innerText = '⌛ Leyendo imagen...';
+    }
+
+    let tempReader = document.getElementById('temp-qr-reader');
+    if (!tempReader) {
+      tempReader = document.createElement('div');
+      tempReader.id = 'temp-qr-reader';
+      tempReader.style.display = 'none';
+      document.body.appendChild(tempReader);
+    }
+
+    try {
+      const html5QrCode = new Html5Qrcode("temp-qr-reader");
+      const decodedText = await html5QrCode.scanFile(file, false);
+      const match = decodedText.match(/[\?&]restore=(0x[a-fA-F0-9]{40})/);
+      if (match && match[1]) {
+        const restoredAddress = match[1];
+        localStorage.setItem('furancho_wallet_address', restoredAddress);
+        localStorage.setItem('furancho_account_created_at', new Date().toISOString());
+        if (btn) btn.innerText = '✅ ¡Recuperado! Redirigiendo...';
+        input.value = '';
+        window.location.href = '/claim';
+      } else {
+        alert('El QR seleccionado no contiene un enlace de restauración válido.');
+        if (btn) { btn.disabled = false; btn.innerText = originalText; }
+      }
+    } catch (err) {
+      console.error(err);
+      alert('No se pudo encontrar ningún código QR en la imagen. Asegúrate de subir la captura de pantalla de tu QR de recuperación.');
+      if (btn) { btn.disabled = false; btn.innerText = originalText; }
     }
   }
 

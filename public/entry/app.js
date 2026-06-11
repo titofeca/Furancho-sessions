@@ -73,6 +73,10 @@ async function doEntry(walletAddress) {
     document.getElementById('screen-loading').style.display = 'none';
     const screen = document.getElementById('screen-success');
     screen.style.display = 'flex';
+    const enterBtn = document.querySelector('.btn-enter');
+    if (enterBtn) {
+      enterBtn.href = `/claim?restore=${walletAddress}`;
+    }
     launchConfetti();
 
     let selected;
@@ -206,6 +210,47 @@ async function submitEntryRestore() {
     errorEl.style.display = 'block';
     btn.disabled = false;
     btn.textContent = 'Recuperar y fichar entrada';
+  }
+}
+
+async function handleQrFileUpload(input) {
+  if (input.files.length === 0) return;
+  const file = input.files[0];
+  const btn = document.getElementById('entry-qr-upload-btn');
+  const originalText = btn ? btn.innerText : '';
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerText = '⌛ Leyendo imagen...';
+  }
+
+  let tempReader = document.getElementById('temp-qr-reader');
+  if (!tempReader) {
+    tempReader = document.createElement('div');
+    tempReader.id = 'temp-qr-reader';
+    tempReader.style.display = 'none';
+    document.body.appendChild(tempReader);
+  }
+
+  try {
+    const html5QrCode = new Html5Qrcode("temp-qr-reader");
+    const decodedText = await html5QrCode.scanFile(file, false);
+    const match = decodedText.match(/[\?&]restore=(0x[a-fA-F0-9]{40})/);
+    if (match && match[1]) {
+      const restoredAddress = match[1];
+      localStorage.setItem('furancho_wallet_address', restoredAddress);
+      localStorage.setItem('furancho_account_created_at', new Date().toISOString());
+      if (btn) btn.innerText = '✅ ¡Recuperado! Fichando...';
+      input.value = '';
+      await doEntry(restoredAddress);
+    } else {
+      alert('El QR seleccionado no contiene un enlace de restauración válido.');
+      if (btn) { btn.disabled = false; btn.innerText = originalText; }
+    }
+  } catch (err) {
+    console.error(err);
+    alert('No se pudo encontrar ningún código QR en la imagen. Asegúrate de subir la captura de pantalla de tu QR de recuperación.');
+    if (btn) { btn.disabled = false; btn.innerText = originalText; }
   }
 }
 
