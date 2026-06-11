@@ -567,7 +567,7 @@ router.get('/voucher/:id', (req, res) => {
     </div>
     <div class="vf">
       <img src="/assets/logo.png" alt="" style="height:28px;opacity:.4;margin-bottom:4px;"/><br>
-      <p style="font-size:10px;color:#7A6A5A;margin:0;">furancho.up.railway.app · Premio oficial Furancho Sessions</p>
+      <p style="font-size:10px;color:#7A6A5A;margin:0;">Furancho Sessions · Premio oficial</p>
       <button class="pBtn" onclick="window.print()" style="margin-top:12px;padding:10px 28px;background:#8B1918;color:#fff;border:none;border-radius:50px;font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;cursor:pointer;">🖨️ Imprimir / Guardar PDF</button>
     </div>
   </div>

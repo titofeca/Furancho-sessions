@@ -231,7 +231,7 @@ router.post('/', mintLimiter, async (req, res) => {
     // Nv3/Nv4 — requieren aprobación del admin antes de ir a blockchain
     const mintId = insertMint({ email: sanitizedEmail, level: targetLevel, levelName, walletAddress, status: 'pending_approval', ipAddress: req.ip });
 
-    const adminUrl = `${process.env.APP_URL || 'https://furancho.up.railway.app'}/admin`;
+    const adminUrl = `${process.env.APP_URL || 'https://furancho-sessions-production.up.railway.app'}/admin`;
     sendNftApprovalEmail({ mintId, walletAddress, level: targetLevel, levelName, visitCount, adminUrl }).catch(() => {});
 
     return res.json({

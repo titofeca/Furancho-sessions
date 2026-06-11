@@ -40,7 +40,7 @@ app.get('/nfc', (req, res) => res.set(NO_CACHE).sendFile(path.join(__dirname, 'p
 
 // Metadatos NFT para OpenSea / marketplaces ERC-1155
 // El contrato llama a uri(tokenId) → devuelve esta URL con el JSON de cada nivel
-const APP_URL = process.env.APP_URL || 'https://furancho.up.railway.app';
+const APP_URL = process.env.APP_URL || 'https://furancho-sessions-production.up.railway.app';
 const NFT_METADATA = {
   1: {
     name: 'O Cautivo',
@@ -82,7 +82,8 @@ const NFT_METADATA = {
   4: {
     name: 'O Presidente do Furancho',
     description: 'Doce visitas. Malo será que no te conozca ya todo el barrio. Leyenda viva del Furancho, plas.',
-    image: `https://ipfs.io/ipfs/bafkreiaaaba2w7r6dqrhwqql32j7q4xyfbgdcoxj2k4mespdxf44nrvl2y`,
+    // El CID IPFS original del Nv4 no resuelve en ningún gateway (504) — se sirve desde la app
+    image: `${APP_URL}/assets/nft_nivel4_presidente.jpg`,
     external_url: APP_URL,
     attributes: [
       { trait_type: 'Nivel', value: '4' },
