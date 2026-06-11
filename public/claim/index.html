@@ -2409,12 +2409,14 @@
       document.getElementById('success-date').textContent = new Date().toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
       const NFT_CONTRACT_VC = '0x30118E36F1E3681ac5B9D048659Bc22733c78913';
       const nftLinksSuccessEl = document.getElementById('success-nft-links');
-      if (nftLinksSuccessEl && userWalletAddress) {
-        // OpenSea: perfil del usuario filtrado por esta colección → ve sus NFTs propios
-        document.getElementById('success-opensea-link').href = `https://opensea.io/${userWalletAddress}?search[collections][0]=${NFT_CONTRACT_VC}`;
+      if (nftLinksSuccessEl && userWalletAddress && lvlNum >= 3) {
+        // OpenSea: token específico de este nivel
+        document.getElementById('success-opensea-link').href = `https://opensea.io/assets/matic/${NFT_CONTRACT_VC}/${lvlNum}`;
         // PolygonScan: transferencias de este token hacia esta wallet
         document.getElementById('success-polygonscan-link').href = `https://polygonscan.com/token/${NFT_CONTRACT_VC}?a=${userWalletAddress}`;
         nftLinksSuccessEl.style.display = 'block';
+      } else if (nftLinksSuccessEl) {
+        nftLinksSuccessEl.style.display = 'none';
       }
 
       showScreen('screen-virtual-card');
@@ -2906,13 +2908,13 @@
       const masked = userWalletAddress.substring(0, 6) + '...' + userWalletAddress.slice(-6);
       document.getElementById('profile-wallet-id').textContent = masked;
 
-      // NFT links en perfil (solo si tiene nivel 3 o 4, NFTs reales en Polygon)
+      // NFT links en perfil (solo Nv3/Nv4 tienen NFT real en Polygon)
       const NFT_CONTRACT = '0x30118E36F1E3681ac5B9D048659Bc22733c78913';
       const nftLinksEl = document.getElementById('profile-nft-links');
-      if (nftLinksEl && lvl >= 1) {
-        // OpenSea: perfil del usuario → ve todos sus NFTs de Furancho
-        const openSeaUrl = `https://opensea.io/${userWalletAddress}?search[collections][0]=${NFT_CONTRACT}`;
-        // PolygonScan: token de este contrato filtrado por la wallet del usuario
+      if (nftLinksEl && lvl >= 3) {
+        // OpenSea: token específico del nivel del usuario
+        const openSeaUrl = `https://opensea.io/assets/matic/${NFT_CONTRACT}/${lvl}`;
+        // PolygonScan: transferencias de este contrato filtradas por la wallet del usuario
         const polyScanUrl = `https://polygonscan.com/token/${NFT_CONTRACT}?a=${userWalletAddress}`;
         document.getElementById('profile-opensea-link').href = openSeaUrl;
         document.getElementById('profile-polygonscan-link').href = polyScanUrl;

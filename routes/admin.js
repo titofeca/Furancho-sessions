@@ -799,11 +799,17 @@ router.post('/mint-direct', requireAuth, (req, res) => {
       return res.status(409).json({ error: `Esta wallet ya tiene el Nivel ${lvl} (${LEVEL_NAMES[lvl]}) asignado` });
     }
     clearStaleMint(walletAddress, lvl);
-    const id = insertMint({ email: null, level: lvl, levelName: LEVEL_NAMES[lvl], walletAddress, status: 'success', ipAddress: 'admin-direct' });
-    // Guardar coste y fuente si se pasan
+    // Nv1/Nv2 son off-chain (success directo). Nv3/Nv4 van a la blockchain real.
+    const onChain = lvl >= 3;
+    const initialStatus = onChain ? 'pending' : 'success';
+    const id = insertMint({ email: null, level: lvl, levelName: LEVEL_NAMES[lvl], walletAddress, status: initialStatus, ipAddress: 'admin-direct' });
     const cost = mintCostMatic ? parseFloat(mintCostMatic) : null;
     db.prepare(`UPDATE mints SET mint_cost_matic = ?, mint_source = 'admin-manual' WHERE id = ?`).run(cost, id);
-    res.json({ success: true, id, level: lvl, levelName: LEVEL_NAMES[lvl], walletAddress });
+    if (onChain) {
+      const { notifyQueue } = require('../services/polygon');
+      notifyQueue();
+    }
+    res.json({ success: true, id, level: lvl, levelName: LEVEL_NAMES[lvl], walletAddress, queued: onChain });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

@@ -2806,9 +2806,9 @@
         const costBadge = m.mint_cost_matic ? `<span style="font-size:10px; color:var(--gold); font-weight:600; flex-shrink:0;">💸 ${Number(m.mint_cost_matic).toFixed(4)} MATIC</span>` : '';
         const sourceBadge = m.mint_source === 'admin-manual' ? `<span style="font-size:9px; color:var(--text-muted); background:rgba(42,21,9,0.06); border-radius:6px; padding:2px 6px; flex-shrink:0;">manual</span>` : '';
         const wallet = m.wallet_address || '';
-        const linksHtml = (m.status === 'success' && wallet && !wallet.startsWith('0xTEST')) ? `
+        const linksHtml = (m.status === 'success' && wallet && !wallet.startsWith('0xTEST') && m.level >= 3) ? `
           <div style="display:flex; gap:8px; flex-basis:100%; padding-left:2px; margin-top:2px;">
-            <a href="https://opensea.io/${wallet}?search[collections][0]=${CONTRACT}" target="_blank" rel="noopener" style="font-size:10px; color:var(--wine); text-decoration:none; font-weight:600;">🌊 OpenSea</a>
+            <a href="https://opensea.io/assets/matic/${CONTRACT}/${m.level}" target="_blank" rel="noopener" style="font-size:10px; color:var(--wine); text-decoration:none; font-weight:600;">🌊 OpenSea</a>
             <a href="https://polygonscan.com/token/${CONTRACT}?a=${wallet}" target="_blank" rel="noopener" style="font-size:10px; color:var(--wine); text-decoration:none; font-weight:600;">🔍 PolygonScan</a>
           </div>` : '';
         return `<div style="background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:10px 14px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
