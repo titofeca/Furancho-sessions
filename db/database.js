@@ -619,22 +619,38 @@ function rejectMint(id) {
 
 
 function openSession(walletAddress) {
-  const existing = db.prepare(`SELECT id FROM sessions WHERE wallet_address = ? AND exit_time IS NULL ORDER BY entry_time DESC LIMIT 1`).get(walletAddress);
-  if (!existing) {
-    const now = new Date();
-    const madridTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
-    const yyyy = madridTime.getFullYear();
-    const mm = String(madridTime.getMonth() + 1).padStart(2, '0');
-    const dd = String(madridTime.getDate()).padStart(2, '0');
-    const todayMadrid = `${yyyy}-${mm}-${dd}`;
+  const now = new Date();
+  const madridTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+  const yyyy = madridTime.getFullYear();
+  const mm = String(madridTime.getMonth() + 1).padStart(2, '0');
+  const dd = String(madridTime.getDate()).padStart(2, '0');
+  const todayMadrid = `${yyyy}-${mm}-${dd}`;
 
-    // Evitar exploit de acumulación de visitas ilimitadas el mismo día/semana
-    // Se cuenta como visita siempre que no haya otra visita contada en las últimas 168h (7 días)
-    const alreadyVisited = checkRecentVisit(walletAddress, 168);
-    const countedAsVisit = alreadyVisited ? 0 : 1;
-
-    db.prepare(`INSERT INTO sessions (wallet_address, counted_as_visit) VALUES (?, ?)`).run(walletAddress, countedAsVisit);
+  const existing = db.prepare(`SELECT id, entry_time FROM sessions WHERE wallet_address = ? AND exit_time IS NULL ORDER BY entry_time DESC LIMIT 1`).get(walletAddress);
+  
+  if (existing) {
+    // Convertir la fecha de inicio de la sesión existente a fecha local Madrid
+    const entryMadrid = new Date(new Date(existing.entry_time.replace(' ', 'T') + 'Z').toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+    const ey = entryMadrid.getFullYear();
+    const em = String(entryMadrid.getMonth() + 1).padStart(2, '0');
+    const ed = String(entryMadrid.getDate()).padStart(2, '0');
+    const entryMadridDate = `${ey}-${em}-${ed}`;
+    
+    if (entryMadridDate !== todayMadrid) {
+      // Si la sesión es de otro día, la cerramos automáticamente estableciendo exit_time a ahora
+      db.prepare(`UPDATE sessions SET exit_time = datetime('now'), duration_minutes = 60 WHERE id = ?`).run(existing.id);
+      console.log(`[Session] Cerrada sesión huérfana de fecha anterior (${entryMadridDate}) para la wallet ${walletAddress}`);
+    } else {
+      // Ya tiene sesión activa abierta hoy
+      return;
+    }
   }
+
+  // Evitar exploit de acumulación de visitas ilimitadas el mismo día/semana
+  const alreadyVisited = checkRecentVisit(walletAddress, 168);
+  const countedAsVisit = alreadyVisited ? 0 : 1;
+
+  db.prepare(`INSERT INTO sessions (wallet_address, counted_as_visit) VALUES (?, ?)`).run(walletAddress, countedAsVisit);
 }
 
 function closeSession(walletAddress) {
@@ -906,7 +922,18 @@ function getEligibleRaffleParticipants() {
       }
     }
   }
-  if (!event) return []; // sin evento en agenda → nadie es elegible para sorteos en vivo
+  if (!event) {
+    // FALLBACK: Si no hay evento configurado en la agenda para hoy,
+    // consideramos elegibles a todas las personas que tengan sesión activa hoy.
+    const rows = db.prepare(`
+      SELECT DISTINCT wallet_address FROM sessions
+      WHERE (date(entry_time) = ? OR date(entry_time) = date(?, '+1 day'))
+        AND exit_time IS NULL
+    `).all(madridDateStr, madridDateStr);
+    const eligible = new Set();
+    rows.forEach(r => eligible.add(r.wallet_address));
+    return [...eligible];
+  }
 
   // Construir ventana [startMs, endMs] en marco "hora de pared Madrid"
   const [sh, sm] = (event.start_time || '19:00').split(':').map(Number);
@@ -932,6 +959,34 @@ function getEligibleRaffleParticipants() {
     if (entryMs >= startMs && entryMs <= endMs) eligible.add(r.wallet_address);
   });
   return [...eligible];
+}
+
+// Convierte una fecha y hora local de Madrid a una cadena UTC (formato YYYY-MM-DD HH:MM:SS)
+function madridToUTC(madridDateStr, madridTimeStr) {
+  const wallUtc = new Date(`${madridDateStr}T${madridTimeStr}:00Z`);
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Madrid',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false,
+    hourCycle: 'h23'
+  });
+  const parts = formatter.formatToParts(wallUtc);
+  const partMap = {};
+  parts.forEach(p => partMap[p.type] = p.value);
+  
+  const formattedMadrid = new Date(`${partMap.year}-${partMap.month}-${partMap.day}T${partMap.hour}:${partMap.minute}:${partMap.second}Z`);
+  const offsetMs = formattedMadrid.getTime() - wallUtc.getTime();
+  const utcDate = new Date(wallUtc.getTime() - offsetMs);
+  
+  const y = utcDate.getUTCFullYear();
+  const m = String(utcDate.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(utcDate.getUTCDate()).padStart(2, '0');
+  const hh = String(utcDate.getUTCHours()).padStart(2, '0');
+  const mm = String(utcDate.getUTCMinutes()).padStart(2, '0');
+  const ss = String(utcDate.getUTCSeconds()).padStart(2, '0');
+  
+  return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
 }
 
 // Cierre automático de sesiones: ocurre cuando TERMINA el horario del evento de la agenda
@@ -964,23 +1019,44 @@ function autoCloseSessionsAfterEvent() {
   const dayStart = new Date(ey, emo - 1, ed, 0, 0, 0, 0);
   const startMs = dayStart.getTime() + (sh * 60 + sm) * 60000;
   let endMs = dayStart.getTime() + (eh * 60 + em) * 60000;
-  if (endMs <= startMs) endMs += 24 * 60 * 60 * 1000; // cruza medianoche
+  
+  let endDayStr = eventDayStr;
+  if (endMs <= startMs) {
+    endMs += 24 * 60 * 60 * 1000; // cruza medianoche
+    const endDay = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+    const ey_end = endDay.getFullYear();
+    const em_end = String(endDay.getMonth() + 1).padStart(2, '0');
+    const ed_end = String(endDay.getDate()).padStart(2, '0');
+    endDayStr = `${ey_end}-${em_end}-${ed_end}`;
+  }
 
   if (madridNow.getTime() < endMs) return 0; // el evento aún no ha terminado
 
   // Cerrar sesiones abiertas del día del evento (y siguiente por si cruza medianoche)
-  const open = db.prepare(`SELECT id FROM sessions WHERE exit_time IS NULL AND (date(entry_time) = ? OR date(entry_time) = date(?, '+1 day'))`).all(eventDayStr, eventDayStr);
+  const open = db.prepare(`SELECT id, entry_time FROM sessions WHERE exit_time IS NULL AND (date(entry_time) = ? OR date(entry_time) = date(?, '+1 day'))`).all(eventDayStr, eventDayStr);
+  if (open.length === 0) return 0;
+
+  const eh_str = String(eh).padStart(2, '0');
+  const em_str = String(em).padStart(2, '0');
+  const exitTimeUtcStr = madridToUTC(endDayStr, `${eh_str}:${em_str}`);
+
   const stmt = db.prepare(`
     UPDATE sessions
-    SET exit_time = datetime('now'),
+    SET exit_time = ?,
         auto_closed = 1,
-        duration_minutes = CASE WHEN (CAST((julianday('now') - julianday(entry_time)) * 1440 AS INTEGER)) > 720
-          THEN 240
-          ELSE CAST((julianday('now') - julianday(entry_time)) * 1440 AS INTEGER) END
+        duration_minutes = ?
     WHERE id = ?
   `);
-  open.forEach(s => stmt.run(s.id));
-  if (open.length) console.log(`[Auto-checkout fin evento ${event.end_time}] Sesiones cerradas: ${open.length}`);
+
+  open.forEach(s => {
+    const entryDate = new Date(s.entry_time.replace(' ', 'T') + 'Z');
+    const exitDate = new Date(exitTimeUtcStr.replace(' ', 'T') + 'Z');
+    let diffMinutes = Math.floor((exitDate - entryDate) / 60000);
+    if (diffMinutes > 12 * 60 || diffMinutes < 0) diffMinutes = 60;
+    stmt.run(exitTimeUtcStr, diffMinutes, s.id);
+  });
+
+  console.log(`[Auto-checkout fin evento ${event.end_time}] Sesiones cerradas: ${open.length} con exit_time = ${exitTimeUtcStr}`);
   return open.length;
 }
 // Alias retrocompatible
@@ -1002,7 +1078,9 @@ function insertRaffle(prize, winnerWallet, verificationCode, participantWallets 
 function acceptRaffle(raffleId, walletAddress) {
   const raffle = db.prepare(`SELECT winner_wallet, status, target_level, prize FROM raffles WHERE id = ?`).get(raffleId);
   if (!raffle) throw new Error('Sorteo no encontrado');
-  if (raffle.winner_wallet !== walletAddress) throw new Error('No eres el ganador');
+  if (!raffle.winner_wallet || !walletAddress || raffle.winner_wallet.toLowerCase() !== walletAddress.toLowerCase()) {
+    throw new Error('No eres el ganador');
+  }
   if (raffle.status !== 'pending_acceptance') throw new Error('Este sorteo ya no está activo');
   db.prepare(`UPDATE raffles SET status = 'accepted', accepted_at = datetime('now') WHERE id = ?`).run(raffleId);
   return raffle;

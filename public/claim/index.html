@@ -3409,6 +3409,9 @@
         if (remaining <= 0) {
           clearInterval(_acceptCountdownInterval);
           hideAcceptBanner();
+          const modal = document.getElementById('raffle-modal');
+          if (modal) { modal.style.display = 'none'; document.body.style.overflow = ''; }
+          showToast('⚠️ El tiempo de aceptación ha terminado.');
           if (modalCount) modalCount.textContent = '';
           renderPrizes();
         }
@@ -4025,7 +4028,7 @@
       // Asegurar que el modal está abierto (puede que el cliente no viera raffle_start)
       if (modal) { modal.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
 
-      if (data.winnerWallet === myWallet) {
+      if (myWallet && data.winnerWallet && data.winnerWallet.toLowerCase() === myWallet.toLowerCase()) {
         const titleEl = document.getElementById('raffle-winner-title');
         if (titleEl) titleEl.textContent = _winnerTitles[Math.floor(Math.random()*_winnerTitles.length)];
         document.getElementById('raffle-winner').style.display = 'block';
@@ -4127,6 +4130,9 @@
 
       evtSource.addEventListener('raffle_timeout', () => {
         hideAcceptBanner();
+        const modal = document.getElementById('raffle-modal');
+        if (modal) { modal.style.display = 'none'; document.body.style.overflow = ''; }
+        showToast('⚠️ El tiempo para reclamar el premio ha expirado.');
         const statusText = document.getElementById('raffle-status-text');
         const dot = document.getElementById('raffle-live-dot');
         if (statusText) statusText.textContent = 'El bombo ya quiere sonar...';
@@ -4137,6 +4143,9 @@
 
       evtSource.addEventListener('raffle_rejected', () => {
         hideAcceptBanner();
+        const modal = document.getElementById('raffle-modal');
+        if (modal) { modal.style.display = 'none'; document.body.style.overflow = ''; }
+        showToast('❌ El sorteo ha sido cancelado o rechazado.');
         const statusText = document.getElementById('raffle-status-text');
         const dot = document.getElementById('raffle-live-dot');
         if (statusText) statusText.textContent = 'El bombo ya quiere sonar...';

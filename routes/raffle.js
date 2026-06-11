@@ -793,3 +793,24 @@ router.delete('/admin/weekly/:week', requireAuth, (req, res) => {
   }
 });
 
+// Comprobación periódica en segundo plano de sorteos expirados (cada 5 segundos)
+setInterval(() => {
+  try {
+    const { db, rejectRaffle } = require('../db/database');
+    const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const expired = db.prepare(`
+      SELECT id, prize, winner_wallet FROM raffles 
+      WHERE status = 'pending_acceptance' AND acceptance_deadline <= ?
+    `).all(nowStr);
+    
+    expired.forEach(r => {
+      rejectRaffle(r.id, 'Tiempo de aceptación agotado');
+      console.log(`[Raffle] Sorteo ${r.id} expirado automáticamente. Premio: ${r.prize}. Ganador: ${r.winner_wallet}`);
+      broadcast('raffle_timeout', { raffleId: r.id, prize: r.prize });
+      if (activeRaffle?.raffleId === r.id) activeRaffle = null;
+    });
+  } catch (e) {
+    console.error('Error en autocheck de expiración de sorteos:', e);
+  }
+}, 5000);
+

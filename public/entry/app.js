@@ -291,7 +291,7 @@ function connectRaffle() {
     const data = JSON.parse(e.data);
     const myWallet = localStorage.getItem('furancho_wallet_address');
     document.getElementById('raffle-roulette').style.display = 'none';
-    if (data.winnerWallet === myWallet) {
+    if (myWallet && data.winnerWallet && data.winnerWallet.toLowerCase() === myWallet.toLowerCase()) {
       const titleEl = document.getElementById('entry-winner-title');
       if (titleEl) titleEl.textContent = _entryWinnerTitles[Math.floor(Math.random()*_entryWinnerTitles.length)];
       document.getElementById('raffle-winner').style.display = 'block';
@@ -312,6 +312,21 @@ function connectRaffle() {
       if (mEl) mEl.innerHTML = `El premio de <strong>${data.prize}</strong> fue para otro. ${msg}`;
       if (navigator.vibrate) navigator.vibrate([150]);
     }
+  });
+  evtSource.addEventListener('raffle_timeout', () => {
+    const modal = document.getElementById('raffle-modal');
+    if (modal) modal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+  });
+  evtSource.addEventListener('raffle_rejected', () => {
+    const modal = document.getElementById('raffle-modal');
+    if (modal) modal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+  });
+  evtSource.addEventListener('raffle_accepted', () => {
+    const modal = document.getElementById('raffle-modal');
+    if (modal) modal.style.display = 'none';
+    document.body.style.overflow = 'auto';
   });
   evtSource.onerror = () => {
     evtSource.close();
