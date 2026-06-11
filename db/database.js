@@ -71,6 +71,8 @@ try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN participant_level INTEGE
 try { db.exec(`ALTER TABLE raffles ADD COLUMN participant_level INTEGER`); } catch (_) {}
 // Número de serie del mint dentro de su nivel (1 = primero en alcanzar ese nivel)
 try { db.exec(`ALTER TABLE mints ADD COLUMN mint_serial INTEGER`); } catch (_) {}
+try { db.exec(`ALTER TABLE mints ADD COLUMN mint_cost_matic REAL`); } catch (_) {}
+try { db.exec(`ALTER TABLE mints ADD COLUMN mint_source TEXT DEFAULT 'auto'`); } catch (_) {}
 // Rellenar seriales históricos para mints existentes sin serial
 try {
   [1,2,3,4].forEach(lvl => {
@@ -458,7 +460,26 @@ function getStats() {
     SELECT level, COUNT(*) as count FROM mints WHERE status != 'failed' GROUP BY level ORDER BY level
   `).all();
 
-  return { total: total.count, byLevel, recent, byDate, totalVisits, visitsByDay, uniqueVisitors, mintsByLevel };
+  // Mints en blockchain real (status='success' con crossmint_action_id real o admin-direct)
+  const realMintsCount = db.prepare(`
+    SELECT COUNT(*) as c FROM mints WHERE status = 'success'
+  `).get()?.c || 0;
+
+  // Coste total de minteo en MATIC
+  const totalMintCost = db.prepare(`
+    SELECT COALESCE(SUM(mint_cost_matic), 0) as total FROM mints WHERE status = 'success' AND mint_cost_matic IS NOT NULL
+  `).get()?.total || 0;
+
+  // Historial reciente con coste
+  const recentWithCost = db.prepare(`
+    SELECT level, level_name,
+           substr(wallet_address, 1, 6) || '...' || substr(wallet_address, -6) as wallet_masked,
+           wallet_address, minted_at, status, mint_cost_matic, mint_source
+    FROM mints ORDER BY minted_at DESC LIMIT 50
+  `).all();
+
+  return { total: total.count, totalMints: total.count, realMints: realMintsCount, totalMintCost,
+           byLevel, recent: recentWithCost, byDate, totalVisits, visitsByDay, uniqueVisitors, mintsByLevel };
 }
 
 function getHolders(levelFilter) {

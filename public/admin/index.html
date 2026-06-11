@@ -1340,6 +1340,10 @@
             <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700; margin-bottom:4px;">En blockchain real</div>
             <div id="nft-real-count" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:#4ade80;">—</div>
           </div>
+          <div style="background:var(--surface); border-radius:14px; padding:14px; text-align:center; border:1px solid var(--border); grid-column:span 2;">
+            <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700; margin-bottom:4px;">💸 Gasto total en minteo</div>
+            <div id="nft-cost-total" style="font-size:22px; font-weight:900; font-family:'Playfair Display',serif; color:var(--gold);">—</div>
+          </div>
         </div>
 
         <!-- Info del contrato -->
@@ -2012,6 +2016,7 @@
         </div>
         <p style="font-size:12px; color:var(--text-muted); margin:0 0 12px; line-height:1.5;">Asigna directamente un nivel a una wallet sin necesidad de visitas ni blockchain. Útil para premios, staff, tests o el propio organizador.</p>
         <input type="text" class="input-field" id="manual-mint-wallet" placeholder="0x... wallet del destinatario" style="font-size:13px; margin-bottom:8px;" />
+        <input type="number" class="input-field" id="manual-mint-cost" placeholder="Coste en MATIC (opcional, ej: 0.05)" step="0.001" min="0" style="font-size:13px; margin-bottom:10px;" />
         <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:12px;">
           <button onclick="manualMint(1)" style="padding:9px 4px; border-radius:10px; border:1.5px solid rgba(42,21,9,0.15); background:transparent; color:var(--text-muted); font-family:'Outfit',sans-serif; font-size:11px; font-weight:700; cursor:pointer;">🫂<br>Nv1</button>
           <button onclick="manualMint(2)" style="padding:9px 4px; border-radius:10px; border:1.5px solid rgba(42,21,9,0.15); background:transparent; color:var(--text-muted); font-family:'Outfit',sans-serif; font-size:11px; font-weight:700; cursor:pointer;">🥂<br>Nv2</button>
@@ -2769,8 +2774,13 @@
         // Contadores
         const totalEl = document.getElementById('nft-total-count');
         const realEl = document.getElementById('nft-real-count');
-        if (totalEl) totalEl.textContent = data.totalMints ?? '—';
-        if (realEl) realEl.textContent = data.realMints ?? data.totalMints ?? '—';
+        const costEl = document.getElementById('nft-cost-total');
+        if (totalEl) totalEl.textContent = data.totalMints ?? data.total ?? '—';
+        if (realEl) realEl.textContent = data.realMints ?? data.total ?? '—';
+        if (costEl) {
+          const cost = data.totalMintCost;
+          costEl.textContent = (cost != null && cost > 0) ? `${Number(cost).toFixed(4)} MATIC` : '0 MATIC';
+        }
       } catch(e) {}
     }
   }
@@ -2792,10 +2802,13 @@
         const col = lvlColor[m.level] || '#888';
         const sc = statusColor[m.status] || '#888';
         const sl = statusLabel[m.status] || m.status;
-        return `<div style="background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:10px 14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        const costBadge = m.mint_cost_matic ? `<span style="font-size:10px; color:var(--gold); font-weight:600; flex-shrink:0;">💸 ${Number(m.mint_cost_matic).toFixed(4)} MATIC</span>` : '';
+        const sourceBadge = m.mint_source === 'admin-manual' ? `<span style="font-size:9px; color:var(--text-muted); background:rgba(42,21,9,0.06); border-radius:6px; padding:2px 6px; flex-shrink:0;">manual</span>` : '';
+        return `<div style="background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:10px 14px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
           <span style="background:${col}22; color:${col}; border:1px solid ${col}44; border-radius:100px; padding:3px 10px; font-size:10px; font-weight:700; white-space:nowrap; flex-shrink:0;">Nv${m.level}</span>
-          <span style="font-family:monospace; font-size:11px; color:var(--text-muted); flex:1;">${m.wallet_masked}</span>
+          <span style="font-family:monospace; font-size:11px; color:var(--text-muted); flex:1; min-width:0;">${m.wallet_masked}</span>
           <span style="font-size:11px; color:${sc}; font-weight:600; white-space:nowrap;">${sl}</span>
+          ${costBadge}${sourceBadge}
           <span style="font-size:10px; color:var(--text-muted); flex-shrink:0;">${m.minted_at ? m.minted_at.slice(0,16) : '—'}</span>
         </div>`;
       }).join('');
@@ -2853,24 +2866,34 @@
     const wallet = document.getElementById('manual-mint-wallet')?.value.trim();
     if (!wallet) return showToast('Introduce la wallet primero', true);
     const levelNames = { 1:'O Cautivo', 2:'O Cunqueiro', 3:'O Larpeiro', 4:'O Presidente' };
+    const costInput = document.getElementById('manual-mint-cost')?.value.trim();
+    const mintCostMatic = costInput ? parseFloat(costInput) : null;
     if (!confirm(`¿Mintear Nivel ${level} (${levelNames[level]}) para\n${wallet}?`)) return;
     try {
       const res = await fetch('/api/admin/mint-direct', {
         method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress: wallet, level })
+        body: JSON.stringify({ walletAddress: wallet, level, mintCostMatic })
       });
       const data = await res.json();
       const resultEl = document.getElementById('manual-mint-result');
       if (data.success) {
-        resultEl.innerHTML = `✅ Nivel ${level} (${levelNames[level]}) asignado a <strong>${wallet.slice(0,10)}...</strong>`;
+        const costStr = mintCostMatic ? ` · ${mintCostMatic} MATIC` : '';
+        resultEl.style.background = 'rgba(74,222,128,0.08)';
+        resultEl.style.borderColor = 'rgba(74,222,128,0.3)';
+        resultEl.style.color = '#4ade80';
+        resultEl.innerHTML = `✅ Nivel ${level} (${levelNames[level]}) asignado a <strong>${wallet.slice(0,10)}...</strong>${costStr}`;
         resultEl.style.display = 'block';
         showToast(`✅ Mint Nv${level} realizado`);
-        loadPendingMints();
+        // Limpiar campos
+        document.getElementById('manual-mint-wallet').value = '';
+        if (document.getElementById('manual-mint-cost')) document.getElementById('manual-mint-cost').value = '';
+        // Refrescar historial + contadores
+        loadNftsPage();
       } else {
         resultEl.style.background = 'rgba(239,68,68,0.08)';
         resultEl.style.borderColor = 'rgba(239,68,68,0.3)';
         resultEl.style.color = '#ef4444';
-        resultEl.innerHTML = `❌ Error: ${data.error}`;
+        resultEl.innerHTML = `❌ ${data.error}`;
         resultEl.style.display = 'block';
       }
     } catch(e) { showToast('Error de conexión', true); }
