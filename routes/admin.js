@@ -412,48 +412,48 @@ router.get('/funnel', requireAuth, (req, res) => {
     `).all();
 
     const gapRow = db.prepare(`
-      WITH user_visits AS (
+      WITH unique_visits AS (
         SELECT DISTINCT wallet_address, date(entry_time) as visit_date
         FROM sessions
-      )
-      SELECT AVG(gap) as avg_gap FROM (
+      ),
+      ranked_visits AS (
+        SELECT wallet_address, visit_date,
+               ROW_NUMBER() OVER (PARTITION BY wallet_address ORDER BY visit_date ASC) as rn
+        FROM unique_visits
+      ),
+      gaps AS (
         SELECT wallet_address,
-          CAST(julianday(second_visit) - julianday(first_visit) AS INTEGER) as gap
-        FROM (
-          SELECT wallet_address,
-            MIN(visit_date) as first_visit,
-            (SELECT MIN(uv2.visit_date) FROM user_visits uv2 
-             WHERE uv2.wallet_address = uv.wallet_address 
-               AND uv2.visit_date > MIN(uv.visit_date)) as second_visit
-          FROM user_visits uv
-          GROUP BY wallet_address
-          HAVING COUNT(*) >= 2
-        ) WHERE second_visit IS NOT NULL
+               CAST(julianday(MAX(CASE WHEN rn = 2 THEN visit_date END)) - julianday(MAX(CASE WHEN rn = 1 THEN visit_date END)) AS INTEGER) as gap
+        FROM ranked_visits
+        WHERE rn <= 2
+        GROUP BY wallet_address
+        HAVING COUNT(*) >= 2
       )
+      SELECT AVG(gap) as avg_gap FROM gaps
     `).get();
 
     const retornoRow = db.prepare(`
-      WITH user_visits AS (
+      WITH unique_visits AS (
         SELECT DISTINCT wallet_address, date(entry_time) as visit_date
         FROM sessions
+      ),
+      ranked_visits AS (
+        SELECT wallet_address, visit_date,
+               ROW_NUMBER() OVER (PARTITION BY wallet_address ORDER BY visit_date ASC) as rn
+        FROM unique_visits
+      ),
+      gaps AS (
+        SELECT wallet_address,
+               CAST(julianday(MAX(CASE WHEN rn = 2 THEN visit_date END)) - julianday(MAX(CASE WHEN rn = 1 THEN visit_date END)) AS INTEGER) as gap
+        FROM ranked_visits
+        WHERE rn <= 2
+        GROUP BY wallet_address
+        HAVING COUNT(*) >= 2
       )
       SELECT
-        COUNT(DISTINCT wallet_address) as total_with_2plus,
-        COUNT(DISTINCT CASE WHEN gap <= 30 THEN wallet_address END) as returned_30d
-      FROM (
-        SELECT wallet_address,
-          CAST(julianday(second_visit) - julianday(first_visit) AS INTEGER) as gap
-        FROM (
-          SELECT wallet_address,
-            MIN(visit_date) as first_visit,
-            (SELECT MIN(uv2.visit_date) FROM user_visits uv2 
-             WHERE uv2.wallet_address = uv.wallet_address 
-               AND uv2.visit_date > MIN(uv.visit_date)) as second_visit
-          FROM user_visits uv
-          GROUP BY wallet_address
-          HAVING COUNT(*) >= 2
-        ) WHERE second_visit IS NOT NULL
-      )
+        COUNT(*) as total_with_2plus,
+        COUNT(CASE WHEN gap <= 30 THEN 1 END) as returned_30d
+      FROM gaps
     `).get();
 
     const total2plus = retornoRow?.total_with_2plus || 0;
