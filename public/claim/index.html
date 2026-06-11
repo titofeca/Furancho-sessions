@@ -2799,6 +2799,20 @@
 
         if (!upcoming.length) { banner.style.display = 'none'; return; }
 
+        // ¿Ha fichado entrada esta noche dentro de la ventana del evento? Solo entonces se ve.
+        let checkedInTonight = false;
+        if (userWalletAddress) {
+          try {
+            const elig = await fetch(`/api/raffle/eligible-check?wallet=${userWalletAddress}`).then(r => r.json());
+            checkedInTonight = !!elig.hasSessionToday;
+          } catch(_) {}
+        }
+
+        if (!checkedInTonight) {
+          banner.style.display = 'none';
+          return;
+        }
+
         const next = upcoming[0];
         const [h, m] = next.scheduled_time.split(':').map(Number);
         const diff = (h * 60 + m) - nowMins;
@@ -3619,7 +3633,13 @@
       if (wins.length) {
         if (statusEl) statusEl.textContent = `🏆 ¡Has ganado ${wins.length === 1 ? 'un premio' : wins.length + ' premios'} esta noche!`;
       } else {
-        if (statusEl) statusEl.textContent = doneTonight > 0 ? `${doneTonight} sorteo${doneTonight!==1?'s':''} esta noche` : 'O bombo xa quere soar...';
+        if (statusEl) {
+          if (!hasEntry) {
+            statusEl.textContent = 'Escanea o QR de entrada para participar';
+          } else {
+            statusEl.textContent = doneTonight > 0 ? `${doneTonight} sorteo${doneTonight!==1?'s':''} esta noche` : 'O bombo xa quere soar...';
+          }
+        }
       }
 
       section.style.display = 'block';
