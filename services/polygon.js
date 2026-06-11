@@ -49,11 +49,16 @@ async function mintNFT({ walletAddress, level, levelName }) {
   const tx = await contract.mint(walletAddress, tokenId, 1);
   const receipt = await tx.wait();
 
-  console.log(`[Polygon] ✅ TX confirmada: ${receipt.hash}`);
+  const gasUsed = receipt.gasUsed || 0n;
+  const gasPrice = receipt.gasPrice || tx.gasPrice || 0n;
+  const costMatic = parseFloat(ethers.formatEther(gasUsed * gasPrice));
+
+  console.log(`[Polygon] ✅ TX confirmada: ${receipt.hash} — coste: ${costMatic.toFixed(6)} MATIC`);
   return {
     success: true,
     txHash: receipt.hash,
     walletAddress,
+    costMatic,
     demo: false
   };
 }
@@ -92,7 +97,7 @@ async function startQueueWorker() {
           levelName: nextMint.level_name
         });
 
-        updateMintStatus(nextMint.id, 'success', result.walletAddress, result.txHash);
+        updateMintStatus(nextMint.id, 'success', result.walletAddress, result.txHash, result.costMatic || null);
         console.log(`[QueueWorker] ✅ Minteo ID ${nextMint.id} exitoso. Tx: ${result.txHash}`);
       } catch (err) {
         console.error(`[QueueWorker] ❌ Error en minteo ID ${nextMint.id}:`, err.message);

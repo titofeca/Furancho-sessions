@@ -326,8 +326,10 @@ function insertMint({ email, level, levelName, walletAddress, crossmintActionId,
   return result.lastInsertRowid;
 }
 
-function updateMintStatus(id, status, walletAddress, txHash = null) {
-  if (txHash) {
+function updateMintStatus(id, status, walletAddress, txHash = null, costMatic = null) {
+  if (txHash && costMatic != null) {
+    db.prepare(`UPDATE mints SET status = ?, wallet_address = ?, crossmint_action_id = ?, mint_cost_matic = ? WHERE id = ?`).run(status, walletAddress, txHash, costMatic, id);
+  } else if (txHash) {
     db.prepare(`UPDATE mints SET status = ?, wallet_address = ?, crossmint_action_id = ? WHERE id = ?`).run(status, walletAddress, txHash, id);
   } else {
     db.prepare(`UPDATE mints SET status = ?, wallet_address = ? WHERE id = ?`).run(status, walletAddress, id);
