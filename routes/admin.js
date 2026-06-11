@@ -387,7 +387,12 @@ router.get('/funnel', requireAuth, (req, res) => {
     const noshow = db.prepare(`
       SELECT e.event_date, e.title,
         (SELECT COUNT(*) FROM rsvps WHERE event_id=e.id) as rsvp_count,
-        (SELECT COUNT(DISTINCT wallet_address) FROM sessions WHERE date(entry_time)=e.event_date) as actual_count
+        (SELECT COUNT(DISTINCT r.wallet_address) 
+         FROM rsvps r 
+         JOIN sessions s ON r.wallet_address = s.wallet_address
+         WHERE r.event_id = e.id 
+           AND (date(s.entry_time) = e.event_date OR date(s.entry_time) = date(e.event_date, '+1 day'))
+        ) as actual_count
       FROM events e WHERE e.active=1 ORDER BY e.event_date DESC LIMIT 6
     `).all();
 
@@ -407,51 +412,47 @@ router.get('/funnel', requireAuth, (req, res) => {
     `).all();
 
     const gapRow = db.prepare(`
+      WITH user_visits AS (
+        SELECT DISTINCT wallet_address, date(entry_time) as visit_date
+        FROM sessions
+      )
       SELECT AVG(gap) as avg_gap FROM (
         SELECT wallet_address,
-          CAST(julianday(nth_visit) - julianday(first_visit) AS INTEGER) as gap
+          CAST(julianday(second_visit) - julianday(first_visit) AS INTEGER) as gap
         FROM (
-          SELECT s.wallet_address,
-            first_visit,
-            (SELECT entry_time FROM sessions s2 
-             WHERE s2.wallet_address = s.wallet_address 
-               AND s2.counted_as_visit = 1 
-               AND s2.entry_time > first_visit 
-             ORDER BY s2.entry_time ASC LIMIT 1) as nth_visit
-          FROM (
-            SELECT wallet_address, MIN(entry_time) as first_visit
-            FROM sessions
-            WHERE counted_as_visit = 1
-            GROUP BY wallet_address
-            HAVING COUNT(*) >= 2
-          ) s
-        ) WHERE nth_visit IS NOT NULL
+          SELECT wallet_address,
+            MIN(visit_date) as first_visit,
+            (SELECT MIN(uv2.visit_date) FROM user_visits uv2 
+             WHERE uv2.wallet_address = uv.wallet_address 
+               AND uv2.visit_date > MIN(uv.visit_date)) as second_visit
+          FROM user_visits uv
+          GROUP BY wallet_address
+          HAVING COUNT(*) >= 2
+        ) WHERE second_visit IS NOT NULL
       )
     `).get();
 
     const retornoRow = db.prepare(`
+      WITH user_visits AS (
+        SELECT DISTINCT wallet_address, date(entry_time) as visit_date
+        FROM sessions
+      )
       SELECT
         COUNT(DISTINCT wallet_address) as total_with_2plus,
         COUNT(DISTINCT CASE WHEN gap <= 30 THEN wallet_address END) as returned_30d
       FROM (
         SELECT wallet_address,
-          CAST(julianday(nth_visit) - julianday(first_visit) AS INTEGER) as gap
+          CAST(julianday(second_visit) - julianday(first_visit) AS INTEGER) as gap
         FROM (
-          SELECT s.wallet_address,
-            first_visit,
-            (SELECT entry_time FROM sessions s2 
-             WHERE s2.wallet_address = s.wallet_address 
-               AND s2.counted_as_visit = 1 
-               AND s2.entry_time > first_visit 
-             ORDER BY s2.entry_time ASC LIMIT 1) as nth_visit
-          FROM (
-            SELECT wallet_address, MIN(entry_time) as first_visit
-            FROM sessions
-            WHERE counted_as_visit = 1
-            GROUP BY wallet_address
-            HAVING COUNT(*) >= 2
-          ) s
-        ) WHERE nth_visit IS NOT NULL
+          SELECT wallet_address,
+            MIN(visit_date) as first_visit,
+            (SELECT MIN(uv2.visit_date) FROM user_visits uv2 
+             WHERE uv2.wallet_address = uv.wallet_address 
+               AND uv2.visit_date > MIN(uv.visit_date)) as second_visit
+          FROM user_visits uv
+          GROUP BY wallet_address
+          HAVING COUNT(*) >= 2
+        ) WHERE second_visit IS NOT NULL
       )
     `).get();
 
@@ -650,7 +651,12 @@ router.get('/report-data', requireAuth, (req, res) => {
     const noshow = db.prepare(`
       SELECT e.event_date, e.title,
         (SELECT COUNT(*) FROM rsvps WHERE event_id=e.id) as rsvp_count,
-        (SELECT COUNT(DISTINCT wallet_address) FROM sessions WHERE date(entry_time)=e.event_date) as actual_count
+        (SELECT COUNT(DISTINCT r.wallet_address) 
+         FROM rsvps r 
+         JOIN sessions s ON r.wallet_address = s.wallet_address
+         WHERE r.event_id = e.id 
+           AND (date(s.entry_time) = e.event_date OR date(s.entry_time) = date(e.event_date, '+1 day'))
+        ) as actual_count
       FROM events e WHERE e.active=1 ORDER BY e.event_date DESC LIMIT 6
     `).all();
 
