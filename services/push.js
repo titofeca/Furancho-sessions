@@ -52,4 +52,26 @@ async function sendPushToWallet(walletAddress, title, body, data = {}) {
   );
 }
 
-module.exports = { sendPushToAll, sendPushToWallet, VAPID_PUBLIC };
+// Envía push solo a un conjunto concreto de wallets (p.ej. los que ficharon entrada esta noche)
+async function sendPushToWallets(walletAddresses, title, body, data = {}) {
+  if (!VAPID_PUBLIC || !VAPID_PRIVATE) return;
+  const set = new Set((walletAddresses || []).map(w => w.toLowerCase()));
+  if (!set.size) return;
+  const subscriptions = getAllPushSubscriptions().filter(sub => sub.wallet_address && set.has(sub.wallet_address.toLowerCase()));
+  if (!subscriptions.length) return;
+  const payload = JSON.stringify({ title, body, ...data });
+  await Promise.allSettled(
+    subscriptions.map(sub =>
+      webpush.sendNotification(
+        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+        payload
+      ).catch(err => {
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          deletePushSubscription(sub.endpoint);
+        }
+      })
+    )
+  );
+}
+
+module.exports = { sendPushToAll, sendPushToWallet, sendPushToWallets, VAPID_PUBLIC };

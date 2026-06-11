@@ -1975,7 +1975,7 @@
             <span style="font-size:26px;">🎁</span>
             <div style="flex:1;">
               <p style="font-family:'Playfair Display',serif; font-size:17px; font-weight:900; color:var(--wine); margin:0 0 1px;">Premios de esta noche</p>
-              <p style="font-size:11px; color:var(--text-muted); margin:0;">Estás en el bombo — esto es lo que puedes ganar</p>
+              <p id="tonight-prizes-sub" style="font-size:11px; color:var(--text-muted); margin:0;">Estás en el bombo — esto es lo que puedes ganar</p>
             </div>
             <div id="tonight-live-dot" style="display:none; width:8px; height:8px; background:#22c55e; border-radius:50%; flex-shrink:0; box-shadow:0 0 6px #22c55e; animation:pulse 1.5s infinite;"></div>
           </div>
@@ -2488,9 +2488,10 @@
         return;
       }
 
-      // Mostrar la dirección en el claim
+      // Mostrar la dirección en el claim (el elemento ya no existe tras quitar el formulario manual)
       const masked = userWalletAddress.substring(0, 8) + '...' + userWalletAddress.substring(userWalletAddress.length - 8);
-      document.getElementById('wallet-address-display').textContent = `ID de tu móvil: ${masked}`;
+      const walletDisplay = document.getElementById('wallet-address-display');
+      if (walletDisplay) walletDisplay.textContent = `ID de tu móvil: ${masked}`;
 
       // Comprobar historial del usuario para redirigir/subir de nivel automáticamente si escanea un QR repetido
       await checkUserHistoryAndAdjustLevel();
@@ -3454,12 +3455,35 @@
     }
 
 
-    // Carga y muestra los premios programados de esta noche en el perfil y en el modal
+    // Carga y muestra los premios programados de esta noche.
+    // Los premios reales SOLO se revelan a quien ya fichó entrada con el QR esta noche.
+    // Antes de fichar se muestra un teaser temático, sin desvelar los premios.
     async function loadTonightPrizes() {
       const today = new Date().toISOString().slice(0, 10);
       let scheduled = [];
       try { scheduled = await fetch(`/api/raffle/scheduled?date=${today}`).then(r => r.json()); } catch(_) {}
       if (!scheduled.length) return;
+
+      // ¿Ha fichado entrada esta noche dentro de la ventana del evento? Solo entonces se ven.
+      let checkedInTonight = false;
+      if (userWalletAddress) {
+        try {
+          const elig = await fetch(`/api/raffle/eligible-check?wallet=${userWalletAddress}`).then(r => r.json());
+          checkedInTonight = !!elig.hasSessionToday;
+        } catch(_) {}
+      }
+
+      // Teaser sin desvelar premios — solo cuántos se preparan para esta noche
+      const n = scheduled.length;
+      const teaserHtml = `
+        <div style="text-align:center; padding:8px 4px;">
+          <div style="font-size:14px; font-weight:700; color:var(--wine); line-height:1.5;">
+            🤫 ${n} ${n === 1 ? 'premio' : 'premios'} preparándose para esta noche…
+          </div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:6px; line-height:1.5;">
+            Ficha tu entrada con el QR al llegar y se desvelan, ho 🍷
+          </div>
+        </div>`;
 
       const statusColors = { pending: { bg: 'rgba(196,151,58,0.1)', border: 'rgba(196,151,58,0.3)', dot: '#f59e0b' }, launched: { bg: 'rgba(74,222,128,0.08)', border: 'rgba(74,222,128,0.25)', dot: '#22c55e' } };
 
@@ -3476,25 +3500,28 @@
 
       const itemsHtml = scheduled.map(renderItem).join('');
 
-      // Tarjeta en el perfil (después de fichar)
+      // Tarjeta en el perfil: premios reales solo si fichó; si no, teaser.
       const card = document.getElementById('tonight-prizes-card');
       const listEl = document.getElementById('tonight-prizes-list');
       const liveDot = document.getElementById('tonight-live-dot');
+      const subEl = document.getElementById('tonight-prizes-sub');
       if (card && listEl) {
-        listEl.innerHTML = itemsHtml;
+        listEl.innerHTML = checkedInTonight ? itemsHtml : teaserHtml;
         card.style.display = 'block';
-        const hasLive = scheduled.some(s => s.status === 'launched');
+        const hasLive = checkedInTonight && scheduled.some(s => s.status === 'launched');
         if (liveDot) liveDot.style.display = hasLive ? 'block' : 'none';
+        if (subEl) subEl.textContent = checkedInTonight
+          ? 'Estás en el bombo — esto es lo que puedes ganar'
+          : 'Ficha tu entrada con el QR para desvelarlos';
       }
 
-      // Tarjeta en screen-claim (antes de fichar)
+      // Tarjeta en screen-claim (antes de fichar): siempre teaser, nunca los premios.
       const claimCard = document.getElementById('claim-tonight-prizes');
       const claimList = document.getElementById('claim-tonight-list');
       if (claimCard && claimList) {
-        claimList.innerHTML = itemsHtml;
+        claimList.innerHTML = teaserHtml;
         claimCard.style.display = 'block';
       }
-
     }
 
     async function renderPrizes() {

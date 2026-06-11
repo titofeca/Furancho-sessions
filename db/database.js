@@ -1192,20 +1192,25 @@ function getEventSessions(dateFilter) {
 }
 
 function getSessionDates() {
-  // Todos los eventos de la agenda activos, con el conteo de sesiones de ese día
+  // Unión de: fechas de la agenda activa + fechas con sesiones reales.
+  // Así aparecen TODAS las noches con visitas aunque no tengan (o ya no tengan)
+  // un evento en la agenda, sin perder los eventos futuros aún sin visitas.
   return db.prepare(`
     SELECT
-      e.event_date as day,
+      d.day as day,
       COUNT(CASE
         WHEN s.entry_time IS NOT NULL
-          AND NOT (e.event_date = '2026-06-04' AND time(s.entry_time) < '17:30:00')
+          AND NOT (d.day = '2026-06-04' AND time(s.entry_time) < '17:30:00')
         THEN 1
       END) as count
-    FROM events e
-    LEFT JOIN sessions s ON date(s.entry_time) = e.event_date
-    WHERE e.active = 1
-    GROUP BY e.event_date
-    ORDER BY e.event_date DESC
+    FROM (
+      SELECT event_date AS day FROM events WHERE active = 1
+      UNION
+      SELECT date(entry_time) AS day FROM sessions WHERE entry_time IS NOT NULL
+    ) d
+    LEFT JOIN sessions s ON date(s.entry_time) = d.day
+    GROUP BY d.day
+    ORDER BY d.day DESC
     LIMIT 60
   `).all();
 }

@@ -19,10 +19,11 @@ const {
   getPendingApprovalMints,
   approveMint,
   rejectMint,
-  getVisitCount
+  getVisitCount,
+  getEligibleRaffleParticipants
 } = require('../db/database');
 const { DEMO_MODE } = require('../services/polygon');
-const { sendPushToAll, sendPushToWallet } = require('../services/push');
+const { sendPushToAll, sendPushToWallet, sendPushToWallets } = require('../services/push');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'furancho2024';
 // ⚠️  IMPORTANTE: TOKEN_SECRET debe estar en Railway como variable de entorno.
@@ -121,11 +122,19 @@ router.get('/inbox', (req, res) => {
       const known = db.prepare(`SELECT 1 FROM sessions WHERE wallet_address = ? LIMIT 1`).get(wallet);
       verifiedWallet = known ? wallet : '';
     }
+    // ¿Está esta wallet fichada en local ahora mismo? → recibe también los mensajes 'checkedin'
+    let isCheckedIn = false;
+    if (verifiedWallet) {
+      isCheckedIn = getEligibleRaffleParticipants()
+        .some(w => w.toLowerCase() === verifiedWallet.toLowerCase());
+    }
     const messages = db.prepare(`
       SELECT id, subject, body, sent_at FROM messages
-      WHERE level_filter = 'all' OR level_filter = ? OR (LOWER(level_filter) = LOWER(?) AND ? != '')
+      WHERE level_filter = 'all' OR level_filter = ?
+        OR (LOWER(level_filter) = LOWER(?) AND ? != '')
+        OR (level_filter = 'checkedin' AND ?)
       ORDER BY sent_at DESC LIMIT 30
-    `).all(level.toString(), verifiedWallet, verifiedWallet);
+    `).all(level.toString(), verifiedWallet, verifiedWallet, isCheckedIn ? 1 : 0);
     const ids = messages.map(m => m.id);
     const reactions = ids.length ? getReactionsForMessages(ids) : {};
     res.json(messages.map(m => ({
@@ -191,7 +200,9 @@ router.post('/send-message', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'Asunto y cuerpo son obligatorios' });
   }
 
-  const wallets = getWalletsByLevel(levelFilter);
+  // 'checkedin' = solo clientes que ficharon entrada esta noche dentro de la ventana del evento
+  const checkedInOnly = levelFilter === 'checkedin';
+  const wallets = checkedInOnly ? getEligibleRaffleParticipants() : getWalletsByLevel(levelFilter);
 
   // Guardar mensaje en DB
   const messageId = insertMessage({
@@ -201,10 +212,12 @@ router.post('/send-message', requireAuth, async (req, res) => {
     recipientCount: wallets.length
   });
 
-  console.log(`[MESSAGE] Mensaje publicado. Destinatarios estimados: ${wallets.length}`);
+  console.log(`[MESSAGE] Mensaje publicado. Destinatarios estimados: ${wallets.length}${checkedInOnly ? ' (solo fichados en local)' : ''}`);
 
   // Push a móviles con pantalla apagada
-  if (levelFilter && levelFilter.startsWith('0x')) {
+  if (checkedInOnly) {
+    sendPushToWallets(wallets, `📢 ${subject}`, body, { url: '/claim' });
+  } else if (levelFilter && levelFilter.startsWith('0x')) {
     sendPushToWallet(levelFilter, `✉️ Mensaje privado: ${subject}`, body, { url: '/claim' });
   } else {
     sendPushToAll(`📢 ${subject}`, body, { url: '/claim' });

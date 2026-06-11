@@ -1380,6 +1380,7 @@
           <label class="form-label">Destinatarios</label>
           <select class="input-field" id="msg-level" onchange="toggleMsgWalletInput()">
             <option value="all">Todos los holders</option>
+            <option value="checkedin">🟢 Solo fichados en local (esta noche)</option>
             <option value="1">Nivel 1 — Cautivo</option>
             <option value="2">Nivel 2 — O Cunqueiro</option>
             <option value="3">Nivel 3 — O Larpeiro</option>
@@ -5030,13 +5031,20 @@
     try {
       const data = await fetch('/api/admin/event-sessions', { headers: authHeaders() }).then(r => r.json());
       const sel = document.getElementById('hourly-date-select');
-      const dates = (data.dates || []).filter(d => d.count > 0);
+      // Todas las fechas de la agenda (la lista crece sola al añadir eventos).
+      // Las que aún no tienen fichajes salen marcadas como "programado".
+      const dates = data.dates || [];
       sel.innerHTML = '<option value="">Selecciona un evento...</option>' +
         dates.map(d => {
           const label = new Date(d.day + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
-          return `<option value="${d.day}">${label} (${d.count} visitas)</option>`;
+          const suffix = d.count > 0 ? `(${d.count} visitas)` : '(programado)';
+          return `<option value="${d.day}">${label} ${suffix}</option>`;
         }).join('');
-      if (dates.length) loadHourlyChart(dates[0].day);
+      // Auto-cargar la fecha más reciente que ya tenga datos; si ninguna los tiene,
+      // la más reciente de la agenda (gráfica vacía hasta que haya fichajes).
+      const withData = dates.find(d => d.count > 0);
+      const initial = withData || dates[0];
+      if (initial) { sel.value = initial.day; loadHourlyChart(initial.day); }
     } catch(e) {}
   }
 
