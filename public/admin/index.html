@@ -2769,7 +2769,7 @@
         const addr = data.contractAddress || '—';
         contractEl.textContent = addr;
         if (linkEl && addr !== '—') {
-          linkEl.href = `https://polygonscan.com/address/${addr}`;
+          linkEl.href = `https://polygonscan.com/token/${addr}#balances`;
         }
         // Contadores
         const totalEl = document.getElementById('nft-total-count');
@@ -2802,14 +2802,22 @@
         const col = lvlColor[m.level] || '#888';
         const sc = statusColor[m.status] || '#888';
         const sl = statusLabel[m.status] || m.status;
+        const CONTRACT = '0x30118E36F1E3681ac5B9D048659Bc22733c78913';
         const costBadge = m.mint_cost_matic ? `<span style="font-size:10px; color:var(--gold); font-weight:600; flex-shrink:0;">💸 ${Number(m.mint_cost_matic).toFixed(4)} MATIC</span>` : '';
         const sourceBadge = m.mint_source === 'admin-manual' ? `<span style="font-size:9px; color:var(--text-muted); background:rgba(42,21,9,0.06); border-radius:6px; padding:2px 6px; flex-shrink:0;">manual</span>` : '';
+        const wallet = m.wallet_address || '';
+        const linksHtml = (m.status === 'success' && wallet && !wallet.startsWith('0xTEST')) ? `
+          <div style="display:flex; gap:8px; flex-basis:100%; padding-left:2px; margin-top:2px;">
+            <a href="https://opensea.io/${wallet}?search[collections][0]=${CONTRACT}" target="_blank" rel="noopener" style="font-size:10px; color:var(--wine); text-decoration:none; font-weight:600;">🌊 OpenSea</a>
+            <a href="https://polygonscan.com/token/${CONTRACT}?a=${wallet}" target="_blank" rel="noopener" style="font-size:10px; color:var(--wine); text-decoration:none; font-weight:600;">🔍 PolygonScan</a>
+          </div>` : '';
         return `<div style="background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:10px 14px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
           <span style="background:${col}22; color:${col}; border:1px solid ${col}44; border-radius:100px; padding:3px 10px; font-size:10px; font-weight:700; white-space:nowrap; flex-shrink:0;">Nv${m.level}</span>
           <span style="font-family:monospace; font-size:11px; color:var(--text-muted); flex:1; min-width:0;">${m.wallet_masked}</span>
           <span style="font-size:11px; color:${sc}; font-weight:600; white-space:nowrap;">${sl}</span>
           ${costBadge}${sourceBadge}
           <span style="font-size:10px; color:var(--text-muted); flex-shrink:0;">${m.minted_at ? m.minted_at.slice(0,16) : '—'}</span>
+          ${linksHtml}
         </div>`;
       }).join('');
     } catch (e) {
