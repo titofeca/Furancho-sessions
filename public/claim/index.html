@@ -1999,14 +1999,18 @@
           <p style="font-size:11px; color:var(--text-muted); margin-top:8px;">Enseña este código al staff para que te den lo tuyo.</p>
         </div>
 
-        <!-- Premios de esta noche — visible directamente en el perfil -->
-        <div id="tonight-prizes-card" style="display:none; margin-bottom:10px; background:linear-gradient(135deg,rgba(196,151,58,0.08),rgba(139,25,24,0.04)); border:1.5px solid rgba(196,151,58,0.35); border-radius:16px; padding:12px 14px;">
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-            <span style="font-size:18px;">🎁</span>
-            <p style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.2px; color:var(--gold); margin:0;">Premios de esta noche</p>
-            <div id="tonight-live-dot" style="display:none; width:7px; height:7px; background:#22c55e; border-radius:50%; margin-left:auto; box-shadow:0 0 6px #22c55e; animation:pulse 1.5s infinite;"></div>
+        <!-- Premios de esta noche — visible directamente en el perfil tras fichar -->
+        <div id="tonight-prizes-card" style="display:none; margin-bottom:16px; background:linear-gradient(135deg,rgba(196,151,58,0.12),rgba(139,25,24,0.06)); border:2px solid rgba(196,151,58,0.5); border-radius:20px; padding:16px; position:relative; overflow:hidden;">
+          <div style="position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--wine),var(--gold),var(--wine));"></div>
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+            <span style="font-size:26px;">🎁</span>
+            <div style="flex:1;">
+              <p style="font-family:'Playfair Display',serif; font-size:17px; font-weight:900; color:var(--wine); margin:0 0 1px;">Premios de esta noche</p>
+              <p style="font-size:11px; color:var(--text-muted); margin:0;">Estás en el bombo — esto es lo que puedes ganar</p>
+            </div>
+            <div id="tonight-live-dot" style="display:none; width:8px; height:8px; background:#22c55e; border-radius:50%; flex-shrink:0; box-shadow:0 0 6px #22c55e; animation:pulse 1.5s infinite;"></div>
           </div>
-          <div id="tonight-prizes-list" style="display:flex; flex-direction:column; gap:5px;"></div>
+          <div id="tonight-prizes-list" style="display:flex; flex-direction:column; gap:7px;"></div>
         </div>
 
         <!-- Countdown próximo sorteo -->
@@ -3491,12 +3495,12 @@
 
       const renderItem = (s) => {
         const c = statusColors[s.status] || statusColors.pending;
-        const label = s.status === 'launched' ? 'Realizado' : 'Pendiente';
-        return `<div style="display:flex; align-items:center; gap:10px; padding:8px 10px; background:${c.bg}; border:1px solid ${c.border}; border-radius:10px;">
-          <div style="width:8px; height:8px; border-radius:50%; background:${c.dot}; flex-shrink:0;"></div>
-          <span style="font-size:12px; font-weight:700; color:var(--wine); flex-shrink:0; width:38px;">${s.scheduled_time || '—'}</span>
-          <span style="font-size:13px; color:var(--text); flex:1; font-weight:600;">🎁 ${s.prize}</span>
-          <span style="font-size:10px; color:var(--text-muted); flex-shrink:0;">${label}</span>
+        const done = s.status === 'launched';
+        return `<div style="display:flex; align-items:center; gap:10px; padding:10px 12px; background:${c.bg}; border:1px solid ${c.border}; border-radius:12px; ${done ? 'opacity:0.55;' : ''}">
+          <div style="width:9px; height:9px; border-radius:50%; background:${c.dot}; flex-shrink:0;"></div>
+          <span style="font-size:13px; font-weight:800; color:var(--wine); flex-shrink:0; width:40px;">${s.scheduled_time || '—'}</span>
+          <span style="font-size:14px; color:var(--text); flex:1; font-weight:600; ${done ? 'text-decoration:line-through;' : ''}">🎁 ${s.prize}</span>
+          ${done ? `<span style="font-size:10px; color:#16a34a; font-weight:700; background:rgba(74,222,128,0.12); padding:2px 7px; border-radius:20px; flex-shrink:0;">✓ Hecho</span>` : ''}
         </div>`;
       };
 
@@ -3521,13 +3525,6 @@
         claimCard.style.display = 'block';
       }
 
-      // Sección en el modal
-      const modalSection = document.getElementById('modal-tonight-prizes');
-      const modalList = document.getElementById('modal-tonight-list');
-      if (modalSection && modalList) {
-        modalList.innerHTML = itemsHtml;
-        modalSection.style.display = 'block';
-      }
     }
 
     async function renderPrizes() {
@@ -3570,21 +3567,8 @@
       const todayEvent = events.find(ev => ev.event_date === today);
       const nextEvent  = !todayEvent ? events.find(ev => ev.event_date > today) : null;
 
-      // Bloque de sorteos programados para mostrar en cualquier estado
-      const scheduleHTML = scheduled.length ? `
-        <div style="margin-top:12px; border-top:1px solid rgba(42,21,9,0.07); padding-top:12px;">
-          <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 8px;">Sorteos de esta noche</p>
-          ${scheduled.map(s => {
-            const isLaunched = s.status === 'launched';
-            const badge = isLaunched ? `<span style="font-size:10px; color:#16a34a; font-weight:700; background:rgba(74,222,128,0.1); padding:2px 6px; border-radius:4px; margin-left:auto;">Realizado</span>` : '';
-            return `
-            <div style="display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid rgba(42,21,9,0.05);">
-              <span style="font-size:12px; font-weight:700; color:${isLaunched ? 'var(--text-muted)' : 'var(--wine)'}; width:42px; flex-shrink:0;">${s.scheduled_time}</span>
-              <span style="font-size:14px; color:${isLaunched ? 'var(--text-muted)' : 'var(--text)'}; flex:1; text-decoration:${isLaunched ? 'line-through' : 'none'};">🎁 ${s.prize}</span>
-              ${badge}
-            </div>`;
-          }).join('')}
-        </div>` : '';
+      // Los premios de esta noche se muestran en la tarjeta del perfil (tonight-prizes-card), no en el modal
+      const scheduleHTML = '';
 
       // ── ESTADO: sin entrada fichada y sin historial anterior ──
       if (!hasEntry && !history.length) {
@@ -5367,12 +5351,6 @@
       <span style="font-size:44px; display:block; margin-bottom:10px;">🎁</span>
       <span style="background:rgba(196,151,58,0.12); color:var(--gold); font-size:11px; font-weight:700; padding:4px 12px; border-radius:100px; text-transform:uppercase; letter-spacing:1.5px; display:inline-block; margin-bottom:10px;">Sorteos do Furancho</span>
       <h2 style="font-family:'Playfair Display',serif; font-size:24px; font-weight:900; color:var(--wine); margin:0 0 16px 0;">Sorteos y Premios</h2>
-
-      <!-- Premios de esta noche (en el modal también) -->
-      <div id="modal-tonight-prizes" style="display:none; margin-bottom:16px; text-align:left;">
-        <p style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.2px; color:var(--gold); margin:0 0 8px;">🎁 Premios de esta noche</p>
-        <div id="modal-tonight-list" style="display:flex; flex-direction:column; gap:6px;"></div>
-      </div>
 
       <!-- Reglas del Sorteo -->
       <div style="background:rgba(139,25,24,0.03); border:1.5px dashed rgba(139,25,24,0.18); border-radius:16px; padding:16px; margin-bottom:20px; text-align:left;">
