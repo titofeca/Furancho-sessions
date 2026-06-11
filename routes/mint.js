@@ -27,7 +27,9 @@ const LEVEL_NAMES = {
 // POST /api/mint/entry — abre sesión y cuenta la visita en el momento de entrada
 router.post('/entry', mintLimiter, async (req, res) => {
   const { walletAddress } = req.body;
-  if (!walletAddress) return res.status(400).json({ error: 'Falta walletAddress' });
+  if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
+    return res.status(400).json({ error: 'Dirección de wallet no válida' });
+  }
 
   try {
     const { getVisitCount, checkRecentVisit, openSession } = require('../db/database');
