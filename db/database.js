@@ -294,6 +294,7 @@ db.exec(`
 `);
 
 // Migraciones seguras
+try { db.exec(`ALTER TABLE rsvps ADD COLUMN allergens TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE sessions ADD COLUMN exit_points INTEGER DEFAULT 0`); } catch (_) {}
 // Marca si la salida fue por auto-cierre de las 23:00 (1) o salida manual del cliente (0).
 // Para sorteos: una salida manual saca del bombo; el auto-cierre NO (seguía dentro al acabar el evento).
@@ -351,9 +352,7 @@ function insertVisit(walletAddress, email, ipAddress) {
 
 
 function checkRecentVisit(walletAddress, hours = 12) {
-  // Solo sessions (tabla visits es legacy). Comprueba si ya hay visita contada
-  // en el mismo DÍA de evento (Madrid), no en las últimas N horas.
-  // Esto evita que dos eventos en días distintos de la misma semana se bloqueen mutuamente.
+  if (!walletAddress) return false;
   const now = new Date();
   const madridStr = now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' });
   const madridDate = new Date(madridStr);
@@ -365,18 +364,29 @@ function checkRecentVisit(walletAddress, hours = 12) {
   // Si se llama con el cooldown de 168h (entrada de la semana) comprueba el día actual
   // Si se llama con otras horas (cooldown corto) mantiene el comportamiento por horas
   if (hours >= 24) {
-    const row = db.prepare(`
+    const rows = db.prepare(`
       SELECT entry_time FROM sessions
-      WHERE wallet_address = ?
-        AND date(entry_time, '+1 hour') = ?
+      WHERE LOWER(wallet_address) = LOWER(?)
         AND counted_as_visit = 1
-      LIMIT 1
-    `).get(walletAddress, todayMadrid);
-    return !!row;
+    `).all(walletAddress);
+
+    for (const r of rows) {
+      const entryDate = new Date(r.entry_time.replace(' ', 'T') + 'Z');
+      const entryMadridStr = entryDate.toLocaleString('en-US', { timeZone: 'Europe/Madrid' });
+      const emDate = new Date(entryMadridStr);
+      const ey = emDate.getFullYear();
+      const em = String(emDate.getMonth() + 1).padStart(2, '0');
+      const ed = String(emDate.getDate()).padStart(2, '0');
+      const entryMadridDate = `${ey}-${em}-${ed}`;
+      if (entryMadridDate === todayMadrid) {
+        return true;
+      }
+    }
+    return false;
   }
   const row = db.prepare(`
     SELECT entry_time FROM sessions
-    WHERE wallet_address = ?
+    WHERE LOWER(wallet_address) = LOWER(?)
       AND entry_time >= datetime('now', '-${hours} hours')
       AND counted_as_visit = 1
     LIMIT 1
@@ -386,9 +396,8 @@ function checkRecentVisit(walletAddress, hours = 12) {
 
 
 function getVisitCount(walletAddress) {
-  // Solo sessions (sistema actual). La tabla visits es legacy y ya no se inserta en ella.
-  // Sumarla causaba doble conteo para usuarios con datos en ambas tablas.
-  const row = db.prepare(`SELECT COUNT(*) as count FROM sessions WHERE wallet_address = ? AND counted_as_visit = 1`).get(walletAddress);
+  if (!walletAddress) return 0;
+  const row = db.prepare(`SELECT COUNT(*) as count FROM sessions WHERE LOWER(wallet_address) = LOWER(?) AND counted_as_visit = 1`).get(walletAddress);
   return row ? row.count : 0;
 }
 
@@ -574,9 +583,10 @@ function getMessages() {
 }
 
 function getClaimedLevels(walletAddress) {
+  if (!walletAddress) return [];
   return db.prepare(`
     SELECT level FROM mints 
-    WHERE wallet_address = ? AND status = 'success'
+    WHERE LOWER(wallet_address) = LOWER(?) AND status = 'success'
   `).all(walletAddress).map(r => r.level);
 }
 
@@ -585,12 +595,12 @@ function checkDuplicate(walletAddress, email, level) {
   if (email) {
     row = db.prepare(`
       SELECT id FROM mints
-      WHERE (wallet_address = ? OR email = ?) AND level = ? AND status = 'success'
+      WHERE (LOWER(wallet_address) = LOWER(?) OR LOWER(email) = LOWER(?)) AND level = ? AND status = 'success'
     `).get(walletAddress, email.toLowerCase().trim(), level);
   } else {
     row = db.prepare(`
       SELECT id FROM mints
-      WHERE wallet_address = ? AND level = ? AND status = 'success'
+      WHERE LOWER(wallet_address) = LOWER(?) AND level = ? AND status = 'success'
     `).get(walletAddress, level);
   }
   return !!row;
@@ -598,7 +608,8 @@ function checkDuplicate(walletAddress, email, level) {
 
 // Limpia mints bloqueados (pending/failed) para un wallet+level concreto — permite reintentar
 function clearStaleMint(walletAddress, level) {
-  db.prepare(`DELETE FROM mints WHERE wallet_address = ? AND level = ? AND status IN ('pending', 'failed', 'pending_approval')`).run(walletAddress, level);
+  if (!walletAddress) return;
+  db.prepare(`DELETE FROM mints WHERE LOWER(wallet_address) = LOWER(?) AND level = ? AND status IN ('pending', 'failed', 'pending_approval')`).run(walletAddress, level);
 }
 
 function getPendingApprovalMints() {
@@ -619,6 +630,7 @@ function rejectMint(id) {
 
 
 function openSession(walletAddress) {
+  if (!walletAddress) return;
   const now = new Date();
   const madridTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
   const yyyy = madridTime.getFullYear();
@@ -626,7 +638,7 @@ function openSession(walletAddress) {
   const dd = String(madridTime.getDate()).padStart(2, '0');
   const todayMadrid = `${yyyy}-${mm}-${dd}`;
 
-  const existing = db.prepare(`SELECT id, entry_time FROM sessions WHERE wallet_address = ? AND exit_time IS NULL ORDER BY entry_time DESC LIMIT 1`).get(walletAddress);
+  const existing = db.prepare(`SELECT id, entry_time FROM sessions WHERE LOWER(wallet_address) = LOWER(?) AND exit_time IS NULL ORDER BY entry_time DESC LIMIT 1`).get(walletAddress);
   
   if (existing) {
     // Convertir la fecha de inicio de la sesión existente a fecha local Madrid
@@ -654,10 +666,11 @@ function openSession(walletAddress) {
 }
 
 function closeSession(walletAddress) {
+  if (!walletAddress) return;
   // Solo registra la salida y duración — counted_as_visit ya fue fijado en openSession (en la entrada)
   const session = db.prepare(`
     SELECT id, entry_time FROM sessions
-    WHERE wallet_address = ? AND exit_time IS NULL
+    WHERE LOWER(wallet_address) = LOWER(?) AND exit_time IS NULL
     ORDER BY entry_time DESC LIMIT 1
   `).get(walletAddress);
 
@@ -690,22 +703,46 @@ function deletePushSubscription(endpoint) {
 }
 
 function getEvents() {
-  return db.prepare(`
+  const events = db.prepare(`
     SELECT e.*, COUNT(r.id) as rsvp_count
     FROM events e LEFT JOIN rsvps r ON e.id = r.event_id
     WHERE e.active = 1
     GROUP BY e.id
     ORDER BY e.event_date ASC
   `).all();
+
+  events.forEach(ev => {
+    const rsvps = db.prepare(`SELECT allergens FROM rsvps WHERE event_id = ?`).all(ev.id);
+    const summary = {};
+    let eatAllCount = 0;
+    rsvps.forEach(r => {
+      if (!r.allergens || r.allergens.trim() === '' || r.allergens === 'ninguno' || r.allergens === 'tododo') {
+        eatAllCount++;
+      } else {
+        const list = r.allergens.split(',').map(x => x.trim()).filter(Boolean);
+        if (list.length === 0) {
+          eatAllCount++;
+        } else {
+          list.forEach(a => {
+            summary[a] = (summary[a] || 0) + 1;
+          });
+        }
+      }
+    });
+    ev.allergens_summary = summary;
+    ev.eat_all_count = eatAllCount;
+  });
+
+  return events;
 }
 
-function toggleRsvp(eventId, walletAddress) {
-  const existing = db.prepare(`SELECT id FROM rsvps WHERE event_id=? AND wallet_address=?`).get(eventId, walletAddress);
+function toggleRsvp(eventId, walletAddress, allergens = null) {
+  const existing = db.prepare(`SELECT id FROM rsvps WHERE LOWER(wallet_address) = LOWER(?) AND event_id = ?`).get(walletAddress, eventId);
   if (existing) {
-    db.prepare(`DELETE FROM rsvps WHERE event_id=? AND wallet_address=?`).run(eventId, walletAddress);
+    db.prepare(`DELETE FROM rsvps WHERE id = ?`).run(existing.id);
     return false; // cancelado
   } else {
-    db.prepare(`INSERT INTO rsvps (event_id, wallet_address) VALUES (?,?)`).run(eventId, walletAddress);
+    db.prepare(`INSERT INTO rsvps (event_id, wallet_address, allergens) VALUES (?,?,?)`).run(eventId, walletAddress, allergens);
     return true; // apuntado
   }
 }
@@ -1111,27 +1148,30 @@ function getRaffleHistory() {
 }
 
 function getMyWins(walletAddress) {
+  if (!walletAddress) return [];
   return db.prepare(`
     SELECT id, prize, verification_code, created_at, collected, collected_at, status, target_level,
            prize_details, prize_image, establishment
-    FROM raffles WHERE winner_wallet = ? AND status IN ('accepted','collected')
+    FROM raffles WHERE LOWER(winner_wallet) = LOWER(?) AND status IN ('accepted','collected')
     ORDER BY created_at DESC LIMIT 20
   `).all(walletAddress);
 }
 
 function getRaffleParticipation(walletAddress) {
+  if (!walletAddress) return [];
+  const lowerWallet = walletAddress.toLowerCase();
   return db.prepare(`
     SELECT r.id, r.prize, r.status, r.created_at, r.collected, r.collected_at, r.rejection_note, r.acceptance_deadline,
-           CASE WHEN r.winner_wallet = ? THEN 1 ELSE 0 END as is_winner,
-           CASE WHEN r.winner_wallet = ? THEN r.verification_code ELSE NULL END as verification_code,
-           CASE WHEN r.winner_wallet = ? THEN r.prize_details ELSE NULL END as prize_details,
-           CASE WHEN r.winner_wallet = ? THEN r.prize_image ELSE NULL END as prize_image,
-           CASE WHEN r.winner_wallet = ? THEN r.establishment ELSE NULL END as establishment
+           CASE WHEN LOWER(r.winner_wallet) = ? THEN 1 ELSE 0 END as is_winner,
+           CASE WHEN LOWER(r.winner_wallet) = ? THEN r.verification_code ELSE NULL END as verification_code,
+           CASE WHEN LOWER(r.winner_wallet) = ? THEN r.prize_details ELSE NULL END as prize_details,
+           CASE WHEN LOWER(r.winner_wallet) = ? THEN r.prize_image ELSE NULL END as prize_image,
+           CASE WHEN LOWER(r.winner_wallet) = ? THEN r.establishment ELSE NULL END as establishment
     FROM raffles r
-    WHERE r.id IN (SELECT raffle_id FROM raffle_participants WHERE wallet_address = ?)
-       OR r.winner_wallet = ?
+    WHERE r.id IN (SELECT raffle_id FROM raffle_participants WHERE LOWER(wallet_address) = ?)
+       OR LOWER(r.winner_wallet) = ?
     ORDER BY r.created_at DESC LIMIT 30
-  `).all(walletAddress, walletAddress, walletAddress, walletAddress, walletAddress, walletAddress, walletAddress);
+  `).all(lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet);
 }
 
 function getRaffleById(id) {
@@ -1313,7 +1353,8 @@ function createRedemption(walletAddress, code) {
 }
 
 function getRedemptions(walletAddress) {
-  return db.prepare(`SELECT * FROM redemptions WHERE wallet_address = ? ORDER BY created_at DESC`).all(walletAddress);
+  if (!walletAddress) return [];
+  return db.prepare(`SELECT * FROM redemptions WHERE LOWER(wallet_address) = LOWER(?) ORDER BY created_at DESC`).all(walletAddress);
 }
 
 function getAllRedemptions() {
@@ -1411,9 +1452,10 @@ function claimWeeklyRaffle(walletAddress, weekStr) {
 }
 
 function getWeeklyRaffleStatus(walletAddress, weekStr) {
+  if (!walletAddress) return { claimed: false, totalParticipants: 0, isConfigured: false };
   const raffle = db.prepare(`SELECT * FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
   
-  const claim = db.prepare(`SELECT id FROM weekly_claims WHERE wallet_address = ? AND claimed_week = ?`).get(walletAddress, weekStr);
+  const claim = db.prepare(`SELECT id FROM weekly_claims WHERE LOWER(wallet_address) = LOWER(?) AND claimed_week = ?`).get(walletAddress, weekStr);
   const totalParticipants = db.prepare(`SELECT COUNT(*) as count FROM weekly_claims WHERE claimed_week = ?`).get(weekStr)?.count || 0;
 
   const isWinner = raffle && raffle.winner_wallet && 

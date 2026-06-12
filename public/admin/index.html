@@ -4737,11 +4737,38 @@
       const rsvpEl = document.getElementById('rsvp-content');
       rsvpEl.innerHTML = events.map(ev => {
         const d = new Date(ev.event_date + 'T00:00:00');
+        
+        let allergensHtml = '';
+        if (ev.allergens_summary && Object.keys(ev.allergens_summary).length > 0) {
+          const labelsMap = {
+            'gluten': '🌾 Gluten',
+            'lacteos': '🥛 Lácteos',
+            'huevos': '🥚 Huevos',
+            'pescado': '🐟 Pescado',
+            'frutos_secos': '🥜 F. Secos',
+            'sulfitos': '🍷 Sulfitos'
+          };
+          allergensHtml = Object.entries(ev.allergens_summary).map(([key, count]) => {
+            const label = labelsMap[key] || key;
+            return `<span style="display:inline-block; font-size:11px; background:#f8717118; border:1px solid #f8717140; color:#b91c1c; font-weight:600; padding:2px 6px; border-radius:6px; margin:2px 4px 2px 0;">${label}: <strong>${count}</strong></span>`;
+          }).join(' ');
+        }
+        
+        let eatAllHtml = '';
+        if (ev.eat_all_count > 0) {
+          eatAllHtml = `<span style="display:inline-block; font-size:11px; background:#4ade8018; border:1px solid #4ade8040; color:#15803d; font-weight:600; padding:2px 6px; border-radius:6px; margin:2px 0;">😋 Todo: <strong>${ev.eat_all_count}</strong></span>`;
+        }
+
         return `<div style="padding:10px 0; border-bottom:1px solid rgba(42,21,9,0.06);">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <p style="font-size:14px; font-weight:600; color:var(--text);">Jueves ${d.getDate()} ${months[d.getMonth()]}</p>
             <span style="background:var(--wine); color:#fff; font-size:12px; font-weight:700; border-radius:100px; padding:3px 10px;">${ev.rsvp_count} confirmados</span>
           </div>
+          ${(allergensHtml || eatAllHtml) ? `
+          <div style="display:flex; flex-wrap:wrap; gap:4px; align-items:center; margin-top:6px;">
+            ${allergensHtml}
+            ${eatAllHtml}
+          </div>` : ''}
         </div>`;
       }).join('') || '<p>No hay eventos.</p>';
 

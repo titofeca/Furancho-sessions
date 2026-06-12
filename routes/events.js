@@ -24,11 +24,12 @@ router.get('/', (req, res) => {
 
 // POST /api/events/rsvp — apuntarse o desapuntarse a un evento
 router.post('/rsvp', rsvpLimiter, (req, res) => {
-  const { eventId, walletAddress } = req.body;
+  const { eventId, walletAddress, allergens } = req.body;
   if (!eventId || !walletAddress) return res.status(400).json({ error: 'Faltan datos' });
   if (!/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) return res.status(400).json({ error: 'Wallet no válida' });
   try {
-    const attending = toggleRsvp(parseInt(eventId), walletAddress);
+    const { toggleRsvp } = require('../db/database');
+    const attending = toggleRsvp(parseInt(eventId), walletAddress, allergens || null);
     res.json({ success: true, attending });
   } catch (e) {
     res.status(500).json({ error: e.message });

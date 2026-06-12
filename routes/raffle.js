@@ -66,7 +66,8 @@ function broadcast(event, data, targetWallet = null) {
 // Envía evento SSE SOLO a los clientes cuya wallet está en la lista de elegibles
 function broadcastToEligible(event, data, walletSet) {
   const dead = [];
-  clients.filter(c => c.walletAddress && walletSet.has(c.walletAddress)).forEach(client => {
+  const lowercaseWalletSet = new Set([...walletSet].map(w => w.toLowerCase()));
+  clients.filter(c => c.walletAddress && lowercaseWalletSet.has(c.walletAddress.toLowerCase())).forEach(client => {
     try {
       client.res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
       if (typeof client.res.flush === 'function') client.res.flush();
@@ -99,7 +100,8 @@ router.get('/stream', (req, res) => {
 
   // Si hay un sorteo activo y esta wallet es elegible → enviar estado inmediatamente
   // (cubre el caso de clientes que abren la app tarde)
-  if (activeRaffle && walletAddress && activeRaffle.eligibleWallets.has(walletAddress)) {
+  const hasEligible = activeRaffle && walletAddress && [...activeRaffle.eligibleWallets].some(w => w.toLowerCase() === walletAddress.toLowerCase());
+  if (hasEligible) {
     try {
       if (activeRaffle.phase === 'start') {
         res.write(`event: raffle_start\ndata: ${JSON.stringify({
@@ -333,8 +335,8 @@ router.get('/eligible-check', (req, res) => {
   try {
     const { db } = require('../db/database');
     // Misma lógica única: elegible = fichó entrada dentro de la ventana de un evento de la agenda
-    const eligibleSet = new Set(getEligibleRaffleParticipants());
-    const isEligible = eligibleSet.has(wallet);
+    const eligibleSet = new Set(getEligibleRaffleParticipants().map(w => w.toLowerCase()));
+    const isEligible = eligibleSet.has(wallet.toLowerCase());
     const rafflesDone = db.prepare(
       `SELECT COUNT(*) as count FROM raffles WHERE date(created_at) = date('now')`
     ).get()?.count || 0;

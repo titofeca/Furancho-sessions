@@ -74,7 +74,7 @@ router.post('/exit', mintLimiter, (req, res) => {
 
   try {
     const { closeSession, db } = require('../db/database');
-    const activeSession = db.prepare(`SELECT id FROM sessions WHERE wallet_address = ? AND exit_time IS NULL LIMIT 1`).get(walletAddress);
+    const activeSession = db.prepare(`SELECT id FROM sessions WHERE LOWER(wallet_address) = LOWER(?) AND exit_time IS NULL LIMIT 1`).get(walletAddress);
     if (!activeSession) {
       _exitLocks.delete(walletAddress.toLowerCase());
       return res.json({ success: true, action: 'no_session' });
@@ -274,12 +274,12 @@ router.get('/history', (req, res) => {
     const { getClaimedLevels, getVisitCount, db } = require('../db/database');
     const levels = getClaimedLevels(wallet);
     const visitCount = getVisitCount(wallet);
-    const activeSession = db.prepare(`SELECT id FROM sessions WHERE wallet_address = ? AND exit_time IS NULL LIMIT 1`).get(wallet);
-    const pendingApproval = db.prepare(`SELECT level, level_name FROM mints WHERE wallet_address = ? AND status = 'pending_approval' ORDER BY level DESC LIMIT 1`).get(wallet);
+    const activeSession = db.prepare(`SELECT id FROM sessions WHERE LOWER(wallet_address) = LOWER(?) AND exit_time IS NULL LIMIT 1`).get(wallet);
+    const pendingApproval = db.prepare(`SELECT level, level_name FROM mints WHERE LOWER(wallet_address) = LOWER(?) AND status = 'pending_approval' ORDER BY level DESC LIMIT 1`).get(wallet);
     // Número de serie por nivel (cuántos obtuvieron ese nivel antes que esta wallet)
     const serialsByLevel = {};
     levels.forEach(lvl => {
-      const row = db.prepare(`SELECT mint_serial FROM mints WHERE wallet_address = ? AND level = ? AND status != 'failed' LIMIT 1`).get(wallet, lvl);
+      const row = db.prepare(`SELECT mint_serial FROM mints WHERE LOWER(wallet_address) = LOWER(?) AND level = ? AND status != 'failed' LIMIT 1`).get(wallet, lvl);
       if (row?.mint_serial) serialsByLevel[lvl] = row.mint_serial;
     });
     res.json({ levels, visitCount, hasActiveSession: !!activeSession, pendingApproval: pendingApproval || null, serialsByLevel });

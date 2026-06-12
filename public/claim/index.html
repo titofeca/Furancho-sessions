@@ -1876,6 +1876,16 @@
           </div>
         </div>
 
+        <!-- Botones Fichar (Entrada / Salida) -->
+        <div id="fichar-container" style="margin-bottom: 20px;">
+          <button id="fichar-btn-entry" onclick="startClientScanner()" style="width:100%; padding:14px; background:linear-gradient(135deg,#16a34a,#15803d); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 16px rgba(22,163,74,0.3);">
+            📷 Fichar Entrada (Escanear QR)
+          </button>
+          <button id="fichar-btn-exit" onclick="marcharDoFurancho()" style="width:100%; padding:14px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; display:none; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 16px rgba(139,25,24,0.3);">
+            🚪 Registrar Salida (Marchar)
+          </button>
+        </div>
+
         <!-- Hint siguiente nivel -->
         <p id="profile-progress-hint" style="font-size:12px; color:var(--text-muted); margin:0 0 16px; line-height:1.5;"></p>
 
@@ -2468,6 +2478,8 @@
     let userWalletAddress = localStorage.getItem('furancho_wallet_address');
     let userWalletPrivateKey = localStorage.getItem('furancho_wallet_private_key');
     let userClaimedLevels = [];
+    let _globalEvents = [];
+    let _globalMyRsvps = [];
     const walletPreexistente = !!userWalletAddress; // true si ya había visitado antes
 
     // Guardar fecha de creación si ya tiene wallet pero nunca se guardó
@@ -2542,8 +2554,8 @@
           body: JSON.stringify({ walletAddress: userWalletAddress })
         });
         const data = await res.json();
-        document.getElementById('marcho-footer').style.display = 'none';
-        document.getElementById('session-active-badge').style.display = 'none';
+        userHasActiveSession = false;
+        updateFicharButtons();
         const saidaTexts = [
           '¡Hasta luego! No tardes en volver, ho.',
           'Vete con el viento, que ya sabemos que vuelves, rapaz.',
@@ -2596,10 +2608,7 @@
         }
         // Mostrar/ocultar botón Marcho según sesión activa
         userHasActiveSession = !!data.hasActiveSession;
-        if (data.hasActiveSession) {
-          document.getElementById('marcho-footer').style.display = 'block';
-          document.getElementById('session-active-badge').style.display = 'block';
-        }
+        updateFicharButtons();
 
         // Cliente recurrente — siempre va al perfil directamente
         if (walletPreexistente || userVisitCount > 0 || userClaimedLevels.length > 0) {
@@ -2941,6 +2950,7 @@
       updateMsgFab(); // mostrar FAB inmediatamente (vacío hasta que cargue)
       refreshInbox(); // primera carga
 
+      updateFicharButtons();
       showScreen('screen-profile');
       renderPrizes();
       loadTonightPrizes();
@@ -3058,6 +3068,8 @@
           fetch(`/api/events/my-rsvps?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => []),
           fetch(`/api/events/vip/my-reservations?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => [])
         ]);
+        _globalEvents = events;
+        _globalMyRsvps = myRsvps;
         // Cargar tapas de todos los eventos en paralelo
         const tapasMap = {};
         await Promise.all(events.map(ev =>
@@ -3313,6 +3325,13 @@
 
     async function toggleRsvpBtn(eventId, btn) {
       const attending = btn.dataset.attending === 'true';
+      if (!attending) {
+        // Apuntarse: abrimos selector de alérgenos
+        openAllergensModal(eventId, btn);
+        return;
+      }
+      
+      // Desapuntarse: proceso directo de cancelación
       btn.disabled = true;
       try {
         const res = await fetch('/api/events/rsvp', {
@@ -3326,11 +3345,51 @@
         btn.style.background = data.attending ? 'var(--wine)' : 'transparent';
         btn.style.color = data.attending ? '#fff' : 'var(--text-muted)';
         btn.style.borderColor = data.attending ? 'var(--wine)' : 'rgba(42,21,9,0.15)';
-        // Recargar la agenda para actualizar el contador de asistentes al instante
         loadAgenda();
       } catch(e) {}
       btn.disabled = false;
     }
+
+    async function setRsvpFromMsg(eventId, attend, btn) {
+      if (!userWalletAddress) {
+        showToast('⚠️ Primero debes estar registrado, rapaz.');
+        return;
+      }
+      
+      const currentlyAttending = _globalMyRsvps.includes(eventId);
+      if (attend) {
+        if (currentlyAttending) {
+          showToast('✅ Ya estás apuntado, rapaz.');
+          return;
+        }
+        // Apuntarse: abrimos el selector de alérgenos
+        openAllergensModal(eventId, null, (isAttending) => {
+          openMsgPanel(); // Refrescar el panel para actualizar los botones
+        });
+      } else {
+        if (!currentlyAttending) {
+          showToast('✅ Confirmado que no vienes.');
+          return;
+        }
+        // Desapuntarse: cancelación directa
+        btn.disabled = true;
+        try {
+          const res = await fetch('/api/events/rsvp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ eventId, walletAddress: userWalletAddress })
+          });
+          const data = await res.json();
+          showToast('😔 Entendido, ¡otra vez será, ho!');
+          await loadAgenda();
+          openMsgPanel();
+        } catch(e) {
+          showToast('😬 Error de conexión al actualizar.');
+        }
+        btn.disabled = false;
+      }
+    }
+    window.setRsvpFromMsg = setRsvpFromMsg;
 
     function updateJourney(visitCount, claimedLevels, currentLevel) {
       const thresholds = [1, 2, 4, 12];
@@ -4645,6 +4704,60 @@
         ${e}${count > 0 ? `<span style="font-size:11px; font-weight:700; color:${active ? 'var(--wine)' : 'var(--text-muted)'};">${count}</span>` : ''}
       </button>`;
     }).join('');
+
+    // Detectar si el mensaje trata sobre asistir, tapas, apuntarse, etc.
+    const textToSearch = (m.subject + ' ' + m.body).toLowerCase();
+    const isAttendingQuestion = textToSearch.includes('vendrás') || 
+                                textToSearch.includes('vienes') || 
+                                textToSearch.includes('apunto') || 
+                                textToSearch.includes('asistir') || 
+                                textToSearch.includes('sesión') || 
+                                textToSearch.includes('tapas') ||
+                                textToSearch.includes('sesion') ||
+                                textToSearch.includes('vendras');
+    
+    let rsvpWidget = '';
+    if (isAttendingQuestion && _globalEvents && _globalEvents.length > 0) {
+      const today = new Date(new Date().toDateString());
+      const nextEvent = _globalEvents.find(ev => new Date(ev.event_date + 'T00:00:00') >= today);
+      if (nextEvent) {
+        const eventId = nextEvent.id;
+        const attending = _globalMyRsvps.includes(eventId);
+        const formattedDate = new Date(nextEvent.event_date + 'T00:00:00').toLocaleDateString('es-ES', {
+          weekday: 'short', day: 'numeric', month: 'short'
+        });
+        
+        rsvpWidget = `
+          <div style="margin: 12px 0; padding: 12px; background: rgba(139,25,24,0.05); border: 1px solid rgba(139,25,24,0.12); border-radius: 12px; text-align: left;">
+            <p style="font-size: 12px; font-weight: 700; color: var(--wine); margin: 0 0 6px 0; font-family: 'Playfair Display', serif;">
+              🍷 ¿Te apuntas a la próxima sesión?
+            </p>
+            <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 10px 0; font-weight: 300;">
+              ${nextEvent.title} (${formattedDate})
+            </p>
+            <div style="display: flex; gap: 8px;">
+              <button onclick="event.stopPropagation(); setRsvpFromMsg(${eventId}, true, this)" style="
+                flex: 1; padding: 8px 12px; border-radius: 50px; font-size: 11px; font-weight: 700; cursor: pointer;
+                border: 1.5px solid ${attending ? 'var(--wine)' : 'rgba(42,21,9,0.15)'};
+                background: ${attending ? 'var(--wine)' : 'transparent'};
+                color: ${attending ? '#fff' : 'var(--text-muted)'};
+                font-family: 'Outfit', sans-serif;">
+                👍 Sí, me apunto
+              </button>
+              <button onclick="event.stopPropagation(); setRsvpFromMsg(${eventId}, false, this)" style="
+                flex: 1; padding: 8px 12px; border-radius: 50px; font-size: 11px; font-weight: 700; cursor: pointer;
+                border: 1.5px solid ${!attending && _globalMyRsvps.length > 0 ? 'var(--wine)' : 'rgba(42,21,9,0.15)'};
+                background: ${!attending && _globalMyRsvps.length > 0 ? 'rgba(139,25,24,0.05)' : 'transparent'};
+                color: ${!attending && _globalMyRsvps.length > 0 ? 'var(--wine)' : 'var(--text-muted)'};
+                font-family: 'Outfit', sans-serif;">
+                👎 No podré ir
+              </button>
+            </div>
+          </div>
+        `;
+      }
+    }
+
     return `<div style="background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:14px; padding:14px 16px; position:relative; overflow:hidden;">
       ${wasUnread ? '<div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--wine),var(--gold));"></div>' : ''}
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
@@ -4652,6 +4765,7 @@
         <p style="font-size:10px; color:var(--text-muted);">${new Date(m.sent_at).toLocaleDateString('es-ES')}</p>
       </div>
       <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin-bottom:10px;">${m.body}</p>
+      ${rsvpWidget}
       <div style="display:flex; gap:6px; flex-wrap:wrap;">${reactionBar}</div>
     </div>`;
   }
@@ -5085,11 +5199,12 @@
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && userWalletAddress) {
         const now = Date.now();
-        // Debounce: solo refrescar si han pasado al menos 30 segundos desde el último refresh
-        if (now - _lastVisibilityRefresh > 30000) {
+        // Debounce: solo refrescar si han pasado al menos 5 segundos desde el último refresh
+        if (now - _lastVisibilityRefresh > 5000) {
           _lastVisibilityRefresh = now;
           // Refrescar silenciosamente en segundo plano (sin toast ni indicadores)
           Promise.all([
+            typeof checkUserHistoryAndAdjustLevel === 'function' ? checkUserHistoryAndAdjustLevel() : Promise.resolve(),
             typeof loadWeeklyRaffle === 'function' ? loadWeeklyRaffle() : Promise.resolve(),
             typeof renderPrizes === 'function' ? renderPrizes() : Promise.resolve(),
             typeof loadAgenda === 'function' ? loadAgenda() : Promise.resolve()
@@ -5143,6 +5258,210 @@
       }, 600);
     }
   }
+
+  // ==================== SCANNER DE CLIENTES (IN-APP) ====================
+  let clientHtml5QrScanner = null;
+
+  function updateFicharButtons() {
+    const entryBtn = document.getElementById('fichar-btn-entry');
+    const exitBtn = document.getElementById('fichar-btn-exit');
+    const activeBadge = document.getElementById('session-active-badge');
+    const footer = document.getElementById('marcho-footer');
+    if (userHasActiveSession) {
+      if (entryBtn) entryBtn.style.display = 'none';
+      if (exitBtn) exitBtn.style.display = 'flex';
+      if (activeBadge) activeBadge.style.display = 'block';
+      if (footer) footer.style.display = 'block';
+    } else {
+      if (entryBtn) entryBtn.style.display = 'flex';
+      if (exitBtn) exitBtn.style.display = 'none';
+      if (activeBadge) activeBadge.style.display = 'none';
+      if (footer) footer.style.display = 'none';
+    }
+  }
+
+  function startClientScanner() {
+    if (!userWalletAddress) {
+      showToast('⚠️ No se encontró dirección de billetera. Regístrate primero, ho.');
+      return;
+    }
+    const modal = document.getElementById('client-scanner-modal');
+    const statusEl = document.getElementById('client-scanner-status');
+    modal.style.display = 'flex';
+    statusEl.textContent = 'Cargando cámara...';
+    
+    try {
+      if (clientHtml5QrScanner) { try { clientHtml5QrScanner.stop(); } catch(e){} }
+      clientHtml5QrScanner = new Html5Qrcode('client-scanner-reader');
+      const config = { fps: 10, qrbox: { width: 200, height: 200 }, aspectRatio: 1.0 };
+      clientHtml5QrScanner.start(
+        { facingMode: 'environment' },
+        config,
+        async (decodedText) => {
+          // Detener escaneo temporalmente para procesar
+          try { await clientHtml5QrScanner.stop(); } catch(e){}
+          statusEl.textContent = 'Procesando fichaje...';
+          
+          const isExit = decodedText.includes('action=exit');
+          const url = isExit ? '/api/mint/exit' : '/api/mint/entry';
+          
+          try {
+            const res = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ walletAddress: userWalletAddress })
+            });
+            const data = await res.json();
+            
+            if (res.ok) {
+              modal.style.display = 'none';
+              if (isExit) {
+                userHasActiveSession = false;
+                updateFicharButtons();
+                const exitTexts = [
+                  '¡Hasta luego! No tardes en volver, ho.',
+                  'Vete con el viento, rapaz.',
+                  '¡Hasta el próximo Furancho, ho!',
+                  'Cuidado con la puerta al salir.'
+                ];
+                showToast('🚪 ' + exitTexts[Math.floor(Math.random() * exitTexts.length)]);
+              } else {
+                userHasActiveSession = true;
+                updateFicharButtons();
+                if (data.isNew) {
+                  showToast('🎉 ¡Bienvenido a Furancho Sessions! Primera visita registrada.');
+                } else if (data.alreadyCounted) {
+                  showToast('✅ ¡Ya estabas fichado de hoy! Disfruta la noche, ho.');
+                } else {
+                  showToast(`🍷 ¡Fichado! Entrada registrada. Visita #${data.visitCount}`);
+                }
+              }
+              // Refrescar perfil
+              setTimeout(async () => {
+                const refreshed = await fetch(`/api/mint/history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => null);
+                if (refreshed) {
+                  userVisitCount = refreshed.visitCount || userVisitCount;
+                  userClaimedLevels = refreshed.levels || userClaimedLevels;
+                  showProfileScreen(userVisitCount, userClaimedLevels);
+                }
+              }, 500);
+            } else {
+              statusEl.textContent = '❌ Error: ' + (data.error || 'fichaje denegado');
+              setTimeout(startClientScanner, 2000); // reintentar tras 2s
+            }
+          } catch (err) {
+            statusEl.textContent = '❌ Error de red al fichar.';
+            setTimeout(startClientScanner, 2000);
+          }
+        },
+        (errorMessage) => {
+          // Ignorar errores de lectura continua
+        }
+      ).then(() => {
+        statusEl.textContent = 'Apunta al código QR';
+      }).catch((err) => {
+        statusEl.textContent = 'Permiso denegado o sin cámara trasera.';
+      });
+    } catch (e) {
+      statusEl.textContent = 'Error al iniciar la cámara.';
+    }
+  }
+
+  function stopClientScanner() {
+    const modal = document.getElementById('client-scanner-modal');
+    modal.style.display = 'none';
+    if (clientHtml5QrScanner) {
+      try { clientHtml5QrScanner.stop(); } catch(e){}
+    }
+  }
+
+  let _activeRsvpEventId = null;
+  let _activeRsvpBtn = null;
+  let _activeRsvpCallback = null;
+
+  function openAllergensModal(eventId, btn, callback = null) {
+    _activeRsvpEventId = eventId;
+    _activeRsvpBtn = btn;
+    _activeRsvpCallback = callback;
+    
+    const checkboxes = document.querySelectorAll('input[name="allergen-chk"]');
+    checkboxes.forEach(c => c.checked = false);
+
+    const modal = document.getElementById('allergens-modal');
+    const inner = document.getElementById('allergens-modal-inner');
+    modal.style.display = 'flex';
+    requestAnimationFrame(() => {
+      inner.style.transform = 'translateY(0)';
+    });
+  }
+
+  function closeAllergensModal() {
+    const modal = document.getElementById('allergens-modal');
+    const inner = document.getElementById('allergens-modal-inner');
+    inner.style.transform = 'translateY(100%)';
+    setTimeout(() => {
+      modal.style.display = 'none';
+    }, 250);
+  }
+
+  async function executeRsvp(eventId, allergensText) {
+    try {
+      const res = await fetch('/api/events/rsvp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, walletAddress: userWalletAddress, allergens: allergensText })
+      });
+      const data = await res.json();
+      
+      if (_activeRsvpBtn) {
+        _activeRsvpBtn.dataset.attending = data.attending;
+        _activeRsvpBtn.textContent = data.attending ? '✓ Apuntado' : 'Me apunto';
+        _activeRsvpBtn.style.background = data.attending ? 'var(--wine)' : 'transparent';
+        _activeRsvpBtn.style.color = data.attending ? '#fff' : 'var(--text-muted)';
+        _activeRsvpBtn.style.borderColor = data.attending ? 'var(--wine)' : 'rgba(42,21,9,0.15)';
+      }
+      
+      if (data.attending) {
+        showToast(allergensText && allergensText !== 'tododo' ? '🎉 ¡Apuntado! Registramos tus alérgenos para la cocina.' : '🎉 ¡Apuntado con éxito! ¡Como y bebo de todo! 😋');
+      } else {
+        showToast('😔 Desapuntado de la sesión.');
+      }
+
+      await loadAgenda();
+      if (_activeRsvpCallback) {
+        _activeRsvpCallback(data.attending);
+      }
+    } catch(e) {
+      showToast('😬 Error de conexión al registrar asistencia.');
+    }
+  }
+
+  async function submitAllergensRsvp() {
+    const checked = Array.from(document.querySelectorAll('input[name="allergen-chk"]:checked')).map(c => c.value);
+    if (checked.length === 0) {
+      showToast('⚠️ Si comes de todo, pulsa el botón gris de abajo.');
+      return;
+    }
+    const confirmBtn = document.getElementById('allergens-confirm-btn');
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Apuntando...';
+    
+    await executeRsvp(_activeRsvpEventId, checked.join(','));
+    
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = 'Confirmar y apuntarse';
+    closeAllergensModal();
+  }
+
+  async function submitEatAllRsvp() {
+    await executeRsvp(_activeRsvpEventId, 'tododo');
+    closeAllergensModal();
+  }
+
+  window.openAllergensModal = openAllergensModal;
+  window.closeAllergensModal = closeAllergensModal;
+  window.submitAllergensRsvp = submitAllergensRsvp;
+  window.submitEatAllRsvp = submitEatAllRsvp;
 
   </script>
 
@@ -5445,6 +5764,72 @@
         style="width:100%; padding:16px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; box-shadow:0 4px 10px rgba(139,25,24,0.3);">
         Volver al perfil
       </button>
+    </div>
+  <!-- ==================== CLIENT SCANNER OVERLAY ==================== -->
+  <div id="client-scanner-modal" style="display:none; position:fixed; inset:0; z-index:2200; background:rgba(242,237,227,0.98); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); flex-direction:column; align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
+    <div style="width:100%; max-width:360px; text-align:center; display:flex; flex-direction:column; gap:20px; box-sizing:border-box;">
+      <h2 style="font-family:'Playfair Display',serif; font-size:24px; color:var(--wine); font-weight:900; margin:0;">Fichar Entrada</h2>
+      <p style="font-size:14px; color:var(--text-muted); margin:0;">Apunta con la cámara al código QR del establecimiento</p>
+      
+      <div id="client-scanner-reader" style="width:100%; max-width:280px; margin:0 auto; border-radius:18px; overflow:hidden; border:2.5px solid var(--wine); background:#000;"></div>
+      
+      <div id="client-scanner-status" style="font-size:13px; font-weight:700; color:var(--wine); min-height:18px; margin:4px 0;"></div>
+      
+      <button onclick="stopClientScanner()" class="btn btn-ghost" style="margin-top:10px; border-radius:50px; padding:14px; width:100%; background:none; border:1.5px solid rgba(42,21,9,0.12); color:var(--text-muted); font-weight:700; cursor:pointer;">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL ALÉRGENOS ==================== -->
+  <div id="allergens-modal" style="display:none; position:fixed; inset:0; z-index:2000; background:rgba(24,12,5,0.65); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); align-items:flex-end; justify-content:center;" onclick="if(event.target===this)closeAllergensModal()">
+    <div id="allergens-modal-inner" style="width:100%; max-width:480px; background:#F2EDE3; border-radius:24px 24px 0 0; padding:0 20px 40px; box-shadow:0 -8px 40px rgba(0,0,0,0.25); box-sizing:border-box; max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch; transform:translateY(100%); transition:transform 0.3s cubic-bezier(.32,.72,0,1); display:flex; flex-direction:column;">
+      
+      <!-- Handle -->
+      <div style="padding:14px 0 8px; position:sticky; top:0; background:#F2EDE3; z-index:1;">
+        <div style="width:36px; height:4px; background:rgba(42,21,9,0.15); border-radius:100px; margin:0 auto;"></div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h2 style="font-family:'Playfair Display',serif; font-size:22px; font-weight:900; color:var(--wine); margin:0;">🍽️ Alérgenos / Alergias</h2>
+        <button onclick="closeAllergensModal()" style="background:rgba(42,21,9,0.06); border:none; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; color:var(--text-muted); cursor:pointer;">×</button>
+      </div>
+
+      <p style="font-size:14px; color:var(--text-muted); margin:0 0 20px; line-height:1.5;">¿Tienes alguna alergia o intolerancia alimentaria? Indícalo para que prepare la <strong>mise en place</strong> a tu medida 🍷</p>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:24px;">
+        <!-- Gluten -->
+        <label style="display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid rgba(42,21,9,0.08); border-radius:14px; padding:12px 14px; cursor:pointer; transition:all 0.2s;">
+          <input type="checkbox" name="allergen-chk" value="gluten" style="accent-color:var(--wine); width:18px; height:18px;">
+          <span style="font-size:14px; font-weight:600; color:var(--text);">🌾 Gluten</span>
+        </label>
+        <!-- Lácteos -->
+        <label style="display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid rgba(42,21,9,0.08); border-radius:14px; padding:12px 14px; cursor:pointer; transition:all 0.2s;">
+          <input type="checkbox" name="allergen-chk" value="lacteos" style="accent-color:var(--wine); width:18px; height:18px;">
+          <span style="font-size:14px; font-weight:600; color:var(--text);">🥛 Lácteos</span>
+        </label>
+        <!-- Huevos -->
+        <label style="display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid rgba(42,21,9,0.08); border-radius:14px; padding:12px 14px; cursor:pointer; transition:all 0.2s;">
+          <input type="checkbox" name="allergen-chk" value="huevos" style="accent-color:var(--wine); width:18px; height:18px;">
+          <span style="font-size:14px; font-weight:600; color:var(--text);">🥚 Huevos</span>
+        </label>
+        <!-- Pescado -->
+        <label style="display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid rgba(42,21,9,0.08); border-radius:14px; padding:12px 14px; cursor:pointer; transition:all 0.2s;">
+          <input type="checkbox" name="allergen-chk" value="pescado" style="accent-color:var(--wine); width:18px; height:18px;">
+          <span style="font-size:14px; font-weight:600; color:var(--text);">🐟 Pescado</span>
+        </label>
+        <!-- Frutos Secos -->
+        <label style="display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid rgba(42,21,9,0.08); border-radius:14px; padding:12px 14px; cursor:pointer; transition:all 0.2s;">
+          <input type="checkbox" name="allergen-chk" value="frutos_secos" style="accent-color:var(--wine); width:18px; height:18px;">
+          <span style="font-size:14px; font-weight:600; color:var(--text);">🥜 Frutos Secos</span>
+        </label>
+        <!-- Sulfitos -->
+        <label style="display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid rgba(42,21,9,0.08); border-radius:14px; padding:12px 14px; cursor:pointer; transition:all 0.2s;">
+          <input type="checkbox" name="allergen-chk" value="sulfitos" style="accent-color:var(--wine); width:18px; height:18px;">
+          <span style="font-size:14px; font-weight:600; color:var(--text);">🍷 Sulfitos</span>
+        </label>
+      </div>
+
+      <button id="allergens-confirm-btn" onclick="submitAllergensRsvp()" style="width:100%; padding:15px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; box-shadow:0 4px 10px rgba(139,25,24,0.3); margin-bottom:12px;">Confirmar y apuntarse</button>
+      <button onclick="submitEatAllRsvp()" style="width:100%; padding:14px; background:rgba(42,21,9,0.06); border:1.5px solid rgba(42,21,9,0.12); color:var(--text); border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer; transition:all 0.2s;">¡Como y bebo de todo! 😋</button>
     </div>
   </div>
 

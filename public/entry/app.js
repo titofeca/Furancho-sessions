@@ -5,6 +5,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Mostrar pantalla de onboarding — el usuario elige si es nuevo o ya tiene cuenta
     document.getElementById('screen-loading').style.display = 'none';
     document.getElementById('screen-onboarding').style.display = 'flex';
+    
+    // Detectar si no es modo standalone (corre en navegador común Safari/Chrome)
+    const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+    if (!isStandalone) {
+      const warningEl = document.getElementById('pwa-browser-warning');
+      if (warningEl) warningEl.style.display = 'block';
+    }
+    
     buildEntryRestoreInputs();
     return;
   }
@@ -265,6 +273,7 @@ function showError(msg) {
 
 // ==================== SSE LIVE RAFFLES ====================
 const _entryWinnerTitles = ['¡TE CAYÓ EL PREMIO, NENO!','¡TE TOCÓ, CAMPEÓN!','¡ESTÁS DE SUERTE, HO!','¡VAYA POTRA, TRONCO!'];
+const _entryLoserEmojis = ['😤', '😢', '🥺', '😭', '💔', '🙈'];
 const _entryLoserTitles = [
   '❌ No te ha tocado esta vez',
   '❌ El premio fue para otro furancheiro',
