@@ -457,8 +457,8 @@ router.get('/funnel', requireAuth, (req, res) => {
     `).get();
 
     const total2plus = retornoRow?.total_with_2plus || 0;
-    const returned30d = retornoRow?.returned_30d || 0;
-    const retorno_30d_pct = total2plus > 0 ? Math.round(returned30d / total2plus * 100) : 0;
+    const returned_30d = retornoRow?.returned_30d || 0;
+    const retorno_30d_pct = total2plus > 0 ? Math.round(returned_30d / total2plus * 100) : 0;
 
     res.json({
       funnel,
