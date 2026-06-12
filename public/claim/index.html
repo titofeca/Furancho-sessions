@@ -5282,7 +5282,7 @@
     }
   }
 
-  function startClientScanner() {
+  async function startClientScanner() {
     if (!userWalletAddress) {
       showToast('⚠️ No se encontró dirección de billetera. Regístrate primero, ho.');
       return;
@@ -5295,77 +5295,99 @@
     try {
       if (clientHtml5QrScanner) { try { clientHtml5QrScanner.stop(); } catch(e){} }
       clientHtml5QrScanner = new Html5Qrcode('client-scanner-reader');
-      const config = { fps: 10, qrbox: { width: 200, height: 200 }, aspectRatio: 1.0 };
-      clientHtml5QrScanner.start(
-        { facingMode: 'environment' },
-        config,
-        async (decodedText) => {
-          // Detener escaneo temporalmente para procesar
-          try { await clientHtml5QrScanner.stop(); } catch(e){}
-          statusEl.textContent = 'Procesando fichaje...';
+      const config = { fps: 10, qrbox: { width: 220, height: 220 } };
+      
+      const successCallback = async (decodedText) => {
+        try { await clientHtml5QrScanner.stop(); } catch(e){}
+        statusEl.textContent = 'Procesando fichaje...';
+        
+        const isExit = decodedText.includes('action=exit');
+        const url = isExit ? '/api/mint/exit' : '/api/mint/entry';
+        
+        try {
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ walletAddress: userWalletAddress })
+          });
+          const data = await res.json();
           
-          const isExit = decodedText.includes('action=exit');
-          const url = isExit ? '/api/mint/exit' : '/api/mint/entry';
-          
-          try {
-            const res = await fetch(url, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ walletAddress: userWalletAddress })
-            });
-            const data = await res.json();
-            
-            if (res.ok) {
-              modal.style.display = 'none';
-              if (isExit) {
-                userHasActiveSession = false;
-                updateFicharButtons();
-                const exitTexts = [
-                  '¡Hasta luego! No tardes en volver, ho.',
-                  'Vete con el viento, rapaz.',
-                  '¡Hasta el próximo Furancho, ho!',
-                  'Cuidado con la puerta al salir.'
-                ];
-                showToast('🚪 ' + exitTexts[Math.floor(Math.random() * exitTexts.length)]);
-              } else {
-                userHasActiveSession = true;
-                updateFicharButtons();
-                if (data.isNew) {
-                  showToast('🎉 ¡Bienvenido a Furancho Sessions! Primera visita registrada.');
-                } else if (data.alreadyCounted) {
-                  showToast('✅ ¡Ya estabas fichado de hoy! Disfruta la noche, ho.');
-                } else {
-                  showToast(`🍷 ¡Fichado! Entrada registrada. Visita #${data.visitCount}`);
-                }
-              }
-              // Refrescar perfil
-              setTimeout(async () => {
-                const refreshed = await fetch(`/api/mint/history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => null);
-                if (refreshed) {
-                  userVisitCount = refreshed.visitCount || userVisitCount;
-                  userClaimedLevels = refreshed.levels || userClaimedLevels;
-                  showProfileScreen(userVisitCount, userClaimedLevels);
-                }
-              }, 500);
+          if (res.ok) {
+            modal.style.display = 'none';
+            if (isExit) {
+              userHasActiveSession = false;
+              updateFicharButtons();
+              const exitTexts = [
+                '¡Hasta luego! No tardes en volver, ho.',
+                'Vete con el viento, rapaz.',
+                '¡Hasta el próximo Furancho, ho!',
+                'Cuidado con la puerta al salir.'
+              ];
+              showToast('🚪 ' + exitTexts[Math.floor(Math.random() * exitTexts.length)]);
             } else {
-              statusEl.textContent = '❌ Error: ' + (data.error || 'fichaje denegado');
-              setTimeout(startClientScanner, 2000); // reintentar tras 2s
+              userHasActiveSession = true;
+              updateFicharButtons();
+              if (data.isNew) {
+                showToast('🎉 ¡Bienvenido a Furancho Sessions! Primera visita registrada.');
+              } else if (data.alreadyCounted) {
+                showToast('✅ ¡Ya estabas fichado de hoy! Disfruta la noche, ho.');
+              } else {
+                showToast(`🍷 ¡Fichado! Entrada registrada. Visita #${data.visitCount}`);
+              }
             }
-          } catch (err) {
-            statusEl.textContent = '❌ Error de red al fichar.';
-            setTimeout(startClientScanner, 2000);
+            setTimeout(async () => {
+              const refreshed = await fetch(`/api/mint/history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => null);
+              if (refreshed) {
+                userVisitCount = refreshed.visitCount || userVisitCount;
+                userClaimedLevels = refreshed.levels || userClaimedLevels;
+                showProfileScreen(userVisitCount, userClaimedLevels);
+              }
+            }, 500);
+          } else {
+            statusEl.textContent = '❌ Error: ' + (data.error || 'fichaje denegado');
+            setTimeout(startClientScanner, 2500);
           }
-        },
-        (errorMessage) => {
-          // Ignorar errores de lectura continua
+        } catch (err) {
+          statusEl.textContent = '❌ Error de red al fichar.';
+          setTimeout(startClientScanner, 2500);
         }
-      ).then(() => {
-        statusEl.textContent = 'Apunta al código QR';
-      }).catch((err) => {
-        statusEl.textContent = 'Permiso denegado o sin cámara trasera.';
-      });
-    } catch (e) {
-      statusEl.textContent = 'Error al iniciar la cámara.';
+      };
+      
+      const errorCallback = (errorMessage) => {
+        // Silencioso para frames sin QR
+      };
+
+      // Enumeración de cámaras para seleccionar la trasera y evitar OverconstrainedError en Android
+      try {
+        const devices = await Html5Qrcode.getCameras();
+        if (devices && devices.length > 0) {
+          let cameraId = devices[0].id;
+          const backCamera = devices.find(d => {
+            const label = (d.label || '').toLowerCase();
+            return label.includes('back') || label.includes('rear') || label.includes('trasera') || label.includes('environment');
+          });
+          if (backCamera) {
+            cameraId = backCamera.id;
+          } else if (devices.length > 1) {
+            // El último suele ser la cámara trasera principal
+            cameraId = devices[devices.length - 1].id;
+          }
+          
+          await clientHtml5QrScanner.start(cameraId, config, successCallback, errorCallback);
+          statusEl.textContent = 'Apunta al código QR';
+          return;
+        }
+      } catch (e) {
+        console.warn("Fallo enumerando cámaras, usando facingMode directo:", e);
+      }
+
+      // Fallback a facingMode directo
+      await clientHtml5QrScanner.start({ facingMode: 'environment' }, config, successCallback, errorCallback);
+      statusEl.textContent = 'Apunta al código QR';
+      
+    } catch (err) {
+      console.error(err);
+      statusEl.innerHTML = `<span style="color:#ef4444; font-weight:700;">Error: ${err.message || err}</span><br><span style="font-size:11px; color:var(--text-muted); display:block; margin-top:5px;">Asegúrate de permitir el uso de cámara, usar un navegador compatible (Chrome/Safari) y que el sitio esté en HTTPS.</span>`;
     }
   }
 
