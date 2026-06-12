@@ -396,22 +396,22 @@ function getStats() {
   // Total: wallets únicas con mint O con sesión
   const total = db.prepare(`
     SELECT COUNT(*) as count FROM (
-      SELECT wallet_address FROM mints WHERE status != 'failed'
+      SELECT LOWER(wallet_address) FROM mints WHERE status != 'failed'
       UNION
-      SELECT wallet_address FROM sessions
+      SELECT LOWER(wallet_address) FROM sessions
     )
   `).get();
 
   // Nivel efectivo: mint confirma el nivel; sesión sin mint = Nv1 implícito
   const byLevel = db.prepare(`
     SELECT level, level_name, COUNT(*) as count FROM (
-      SELECT wallet_address, MAX(level) as level, MAX(level_name) as level_name
-      FROM mints WHERE status != 'failed' GROUP BY wallet_address
+      SELECT LOWER(wallet_address) as wallet_address, MAX(level) as level, MAX(level_name) as level_name
+      FROM mints WHERE status != 'failed' GROUP BY LOWER(wallet_address)
       UNION ALL
-      SELECT wallet_address, 1 as level, 'Cautivo' as level_name
+      SELECT LOWER(wallet_address) as wallet_address, 1 as level, 'Cautivo' as level_name
       FROM sessions
-      WHERE wallet_address NOT IN (SELECT wallet_address FROM mints WHERE status != 'failed')
-      GROUP BY wallet_address
+      WHERE LOWER(wallet_address) NOT IN (SELECT LOWER(wallet_address) FROM mints WHERE status != 'failed')
+      GROUP BY LOWER(wallet_address)
     ) GROUP BY level ORDER BY level
   `).all();
   const recent = db.prepare(`
@@ -429,20 +429,20 @@ function getStats() {
   // Visitas totales = sessions counted_as_visit=1 UNION legacy visits (evita doble conteo)
   const totalVisits = db.prepare(`
     SELECT COUNT(*) as count FROM (
-      SELECT wallet_address, date(entry_time) as day FROM sessions WHERE counted_as_visit = 1
+      SELECT LOWER(wallet_address) as wallet_address, date(entry_time) as day FROM sessions WHERE counted_as_visit = 1
       UNION
-      SELECT wallet_address, date(visited_at) as day FROM visits
-      WHERE wallet_address NOT IN (SELECT DISTINCT wallet_address FROM sessions WHERE counted_as_visit = 1)
+      SELECT LOWER(wallet_address) as wallet_address, date(visited_at) as day FROM visits
+      WHERE LOWER(wallet_address) NOT IN (SELECT DISTINCT LOWER(wallet_address) FROM sessions WHERE counted_as_visit = 1)
     )
   `).get()?.count || 0;
 
   // Visitas por día (últimos 30 días con al menos 1 visita) — misma lógica UNION
   const visitsByDay = db.prepare(`
     SELECT day, COUNT(*) as count FROM (
-      SELECT wallet_address, date(entry_time) as day FROM sessions WHERE counted_as_visit = 1
+      SELECT LOWER(wallet_address) as wallet_address, date(entry_time) as day FROM sessions WHERE counted_as_visit = 1
       UNION
-      SELECT wallet_address, date(visited_at) as day FROM visits
-      WHERE wallet_address NOT IN (SELECT DISTINCT wallet_address FROM sessions WHERE counted_as_visit = 1)
+      SELECT LOWER(wallet_address) as wallet_address, date(visited_at) as day FROM visits
+      WHERE LOWER(wallet_address) NOT IN (SELECT DISTINCT LOWER(wallet_address) FROM sessions WHERE counted_as_visit = 1)
     )
     GROUP BY day ORDER BY day DESC LIMIT 30
   `).all();
@@ -450,10 +450,10 @@ function getStats() {
   // Total wallets únicas que han visitado (con o sin NFT)
   const uniqueVisitors = db.prepare(`
     SELECT COUNT(DISTINCT wallet_address) as count FROM (
-      SELECT wallet_address FROM sessions WHERE counted_as_visit = 1
+      SELECT LOWER(wallet_address) as wallet_address FROM sessions WHERE counted_as_visit = 1
       UNION
-      SELECT wallet_address FROM visits
-      WHERE wallet_address NOT IN (SELECT DISTINCT wallet_address FROM sessions WHERE counted_as_visit = 1)
+      SELECT LOWER(wallet_address) as wallet_address FROM visits
+      WHERE LOWER(wallet_address) NOT IN (SELECT DISTINCT LOWER(wallet_address) FROM sessions WHERE counted_as_visit = 1)
     )
   `).get()?.count || 0;
 

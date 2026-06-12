@@ -282,22 +282,22 @@ router.get('/peak-hours', requireAuth, (req, res) => {
 
     const hourCounts = safeDate
       ? db.prepare(`
-          SELECT hour, COUNT(*) as sessions, COUNT(DISTINCT wallet_address) as unique_users
+          SELECT hour, COUNT(*) as sessions, COUNT(DISTINCT LOWER(wallet_address)) as unique_users
           FROM (
-            SELECT wallet_address, CAST(strftime('%H', entry_time, ${TZ_OFFSET}) AS INTEGER) as hour
+            SELECT LOWER(wallet_address) as wallet_address, CAST(strftime('%H', entry_time, ${TZ_OFFSET}) AS INTEGER) as hour
             FROM sessions WHERE entry_time IS NOT NULL AND date(entry_time) = ?
             UNION ALL
-            SELECT wallet_address, CAST(strftime('%H', exit_time, ${TZ_OFFSET}) AS INTEGER) as hour
+            SELECT LOWER(wallet_address) as wallet_address, CAST(strftime('%H', exit_time, ${TZ_OFFSET}) AS INTEGER) as hour
             FROM sessions WHERE exit_time IS NOT NULL AND date(exit_time) = ?
           ) GROUP BY hour ORDER BY hour
         `).all(safeDate, safeDate)
       : db.prepare(`
-          SELECT hour, COUNT(*) as sessions, COUNT(DISTINCT wallet_address) as unique_users
+          SELECT hour, COUNT(*) as sessions, COUNT(DISTINCT LOWER(wallet_address)) as unique_users
           FROM (
-            SELECT wallet_address, CAST(strftime('%H', entry_time, ${TZ_OFFSET}) AS INTEGER) as hour
+            SELECT LOWER(wallet_address) as wallet_address, CAST(strftime('%H', entry_time, ${TZ_OFFSET}) AS INTEGER) as hour
             FROM sessions WHERE entry_time IS NOT NULL AND ${dateWhere}
             UNION ALL
-            SELECT wallet_address, CAST(strftime('%H', exit_time, ${TZ_OFFSET}) AS INTEGER) as hour
+            SELECT LOWER(wallet_address) as wallet_address, CAST(strftime('%H', exit_time, ${TZ_OFFSET}) AS INTEGER) as hour
             FROM sessions WHERE exit_time IS NOT NULL AND ${dateWhere}
           ) GROUP BY hour ORDER BY hour
         `).all();
@@ -312,7 +312,7 @@ router.get('/peak-hours', requireAuth, (req, res) => {
 
     const byWeekday = date ? [] : db.prepare(`
       SELECT CAST(strftime('%w', entry_time, ${TZ_OFFSET}) AS INTEGER) as weekday,
-             COUNT(*) as sessions, COUNT(DISTINCT wallet_address) as unique_users
+             COUNT(*) as sessions, COUNT(DISTINCT LOWER(wallet_address)) as unique_users
       FROM sessions WHERE entry_time IS NOT NULL AND ${dateWhere}
       GROUP BY weekday ORDER BY weekday
     `).all();
@@ -321,7 +321,7 @@ router.get('/peak-hours', requireAuth, (req, res) => {
 
     const totals = db.prepare(`
       SELECT COUNT(*) as total_sessions,
-             COUNT(DISTINCT wallet_address) as total_users,
+             COUNT(DISTINCT LOWER(wallet_address)) as total_users,
              ROUND(AVG(CASE WHEN duration_minutes > 0 AND duration_minutes < 300 THEN duration_minutes END), 0) as avg_duration,
              COUNT(CASE WHEN exit_time IS NULL THEN 1 END) as open_now
       FROM sessions WHERE ${dateWhere}
@@ -332,13 +332,13 @@ router.get('/peak-hours', requireAuth, (req, res) => {
       SELECT COUNT(*) as count FROM (
         SELECT wallet_address FROM sessions
         WHERE counted_as_visit = 1 AND ${dateWhere.replace(/entry_time/g, 'entry_time')}
-        GROUP BY wallet_address HAVING COUNT(*) >= 3
+        GROUP BY LOWER(wallet_address) HAVING COUNT(*) >= 3
       )
     `).get();
 
     // Timeline por día para totales (o datos del día seleccionado por hora ya en hourCounts)
     const timeline = !date ? db.prepare(`
-      SELECT date(entry_time) as day, COUNT(*) as sessions, COUNT(DISTINCT wallet_address) as unique_users
+      SELECT date(entry_time) as day, COUNT(*) as sessions, COUNT(DISTINCT LOWER(wallet_address)) as unique_users
       FROM sessions WHERE entry_time IS NOT NULL AND ${dateWhere}
       GROUP BY day ORDER BY day DESC LIMIT 20
     `).all() : [];
