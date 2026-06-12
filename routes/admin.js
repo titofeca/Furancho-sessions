@@ -910,66 +910,6 @@ router.post('/test-raffle/cleanup', requireAuth, (req, res) => {
 });
 
 
-router.get('/debug-metrics-raw', (req, res) => {
-  if (req.query.pw !== process.env.ADMIN_PASSWORD) {
-    return res.status(401).json({ error: 'unauthorized' });
-  }
-  try {
-    const { db } = require('../db/database');
-    const totalSessions = db.prepare("SELECT COUNT(*) as count FROM sessions").get()?.count || 0;
-    const sessionsSample = db.prepare("SELECT id, wallet_address, entry_time, exit_time FROM sessions ORDER BY entry_time DESC LIMIT 20").all();
-    const uniqueVisitsSample = db.prepare("SELECT DISTINCT wallet_address, date(entry_time) as visit_date FROM sessions LIMIT 20").all();
-    const multiVisitsCounts = db.prepare(`
-      SELECT wallet_address, COUNT(DISTINCT date(entry_time)) as distinct_days 
-      FROM sessions 
-      GROUP BY wallet_address 
-      ORDER BY distinct_days DESC LIMIT 20
-    `).all();
-    
-    // Check original / updated queries
-    const originalGapRowResult = db.prepare(`
-      WITH unique_visits AS (
-        SELECT DISTINCT wallet_address, date(entry_time) as visit_date
-        FROM sessions
-      ),
-      ranked_visits AS (
-        SELECT wallet_address, visit_date,
-               ROW_NUMBER() OVER (PARTITION BY wallet_address ORDER BY visit_date ASC) as rn
-        FROM unique_visits
-      ),
-      gaps AS (
-        SELECT wallet_address,
-               CAST(julianday(MAX(CASE WHEN rn = 2 THEN visit_date END)) - julianday(MAX(CASE WHEN rn = 1 THEN visit_date END)) AS INTEGER) as gap
-        FROM ranked_visits
-        WHERE rn <= 2
-        GROUP BY wallet_address
-        HAVING COUNT(*) >= 2
-      )
-      SELECT AVG(gap) as avg_gap FROM gaps
-    `).get();
-
-    const rsvpsList = db.prepare(`
-      SELECT r.event_id, e.event_date, r.wallet_address,
-             (SELECT COUNT(*) FROM sessions s WHERE LOWER(s.wallet_address) = LOWER(r.wallet_address)) as total_sessions,
-             (SELECT COUNT(*) FROM sessions s WHERE LOWER(s.wallet_address) = LOWER(r.wallet_address) AND date(s.entry_time) = e.event_date) as entry_on_date
-      FROM rsvps r
-      JOIN events e ON r.event_id = e.id
-      ORDER BY e.event_date DESC
-    `).all();
-
-    return res.json({
-      totalSessions,
-      sessionsSample,
-      uniqueVisitsSample,
-      multiVisitsCounts,
-      originalGapRowResult,
-      rsvpsList
-    });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
 module.exports = router;
 module.exports.requireAuth = requireAuth;
 module.exports.verifyAdminToken = verifyToken;
