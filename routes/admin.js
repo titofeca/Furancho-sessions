@@ -948,12 +948,22 @@ router.get('/debug-metrics-raw', (req, res) => {
       SELECT AVG(gap) as avg_gap FROM gaps
     `).get();
 
+    const rsvpsList = db.prepare(`
+      SELECT r.event_id, e.event_date, r.wallet_address,
+             (SELECT COUNT(*) FROM sessions s WHERE LOWER(s.wallet_address) = LOWER(r.wallet_address)) as total_sessions,
+             (SELECT COUNT(*) FROM sessions s WHERE LOWER(s.wallet_address) = LOWER(r.wallet_address) AND date(s.entry_time) = e.event_date) as entry_on_date
+      FROM rsvps r
+      JOIN events e ON r.event_id = e.id
+      ORDER BY e.event_date DESC
+    `).all();
+
     return res.json({
       totalSessions,
       sessionsSample,
       uniqueVisitsSample,
       multiVisitsCounts,
-      originalGapRowResult
+      originalGapRowResult,
+      rsvpsList
     });
   } catch (e) {
     return res.status(500).json({ error: e.message });
