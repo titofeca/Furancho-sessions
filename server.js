@@ -128,10 +128,13 @@ app.use((err, req, res, next) => {
 
 // Auto-checkout al terminar el horario del evento (definido en la agenda) — comprueba cada minuto.
 // La función sólo cierra sesiones cuando la hora de cierre del evento ya ha pasado.
+// También re-evalúa las sesiones abiertas al activarse la ventana del evento: quien fichó
+// demasiado pronto y sigue dentro recupera su visita (1 por semana).
 function scheduleAutoCheckout() {
   setInterval(() => {
     try {
-      const { autoCloseSessionsAfterEvent } = require('./db/database');
+      const { autoCloseSessionsAfterEvent, countPendingVisitsDuringEvent } = require('./db/database');
+      countPendingVisitsDuringEvent();
       autoCloseSessionsAfterEvent();
     } catch (_) {}
   }, 60 * 1000); // cada minuto

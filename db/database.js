@@ -656,10 +656,9 @@ function openSession(walletAddress) {
   }
 
   // La visita SOLO cuenta si hay evento en la agenda y la entrada cae dentro de su
-  // ventana horaria (con 60 min de margen antes de la apertura para los que llegan pronto).
+  // ventana horaria (con margen antes de la apertura para los que llegan pronto).
   const win = getActiveEventWindow();
-  const EARLY_MARGIN_MS = 60 * 60 * 1000;
-  const inEventWindow = !!win && win.nowMs >= (win.startMs - EARLY_MARGIN_MS) && win.nowMs <= win.endMs;
+  const inEventWindow = !!win && win.nowMs >= (win.startMs - EVENT_EARLY_MARGIN_MS) && win.nowMs <= win.endMs;
 
   // Evitar exploit de acumulación: máximo una visita contada por semana natural
   const alreadyVisitedThisWeek = checkRecentVisit(walletAddress, 168);
@@ -937,6 +936,10 @@ function _madridWallMs(dateStr) {
   return new Date(new Date(dateStr.replace(' ', 'T') + 'Z').toLocaleString('en-US', { timeZone: 'Europe/Madrid' })).getTime();
 }
 
+// Margen antes de la apertura del evento en el que la entrada ya cuenta (visita Y sorteos).
+// Mismo valor para ambos: si la visita suma, el cliente también está en el bombo.
+const EVENT_EARLY_MARGIN_MS = 60 * 60 * 1000;
+
 // Ventana del evento activo aplicable "ahora": el de hoy, o el de ayer si cruza medianoche.
 // Devuelve { event, eventDayStr, startMs, endMs, nowMs } en marco "hora de pared Madrid", o null si no hay evento.
 function getActiveEventWindow() {
@@ -996,7 +999,7 @@ function getEligibleRaffleParticipants() {
     return [...eligible];
   }
 
-  const { eventDayStr, startMs, endMs } = win;
+  const { eventDayStr, endMs } = win;
 
   // Candidatos: sesiones que fichan el día del evento o el siguiente (por si cruza medianoche).
   // Elegible = sigue DENTRO ahora mismo (exit_time IS NULL). Cualquier salida —manual o el
@@ -1010,9 +1013,41 @@ function getEligibleRaffleParticipants() {
   const eligible = new Set();
   rows.forEach(r => {
     const entryMs = _madridWallMs(r.entry_time);
-    if (entryMs >= startMs && entryMs <= endMs) eligible.add(r.wallet_address);
+    // En el bombo = fichó el día del evento (aunque llegara pronto) y sigue dentro.
+    // Sin límite inferior: si la visita cuenta (o se re-marca al abrir la ventana),
+    // también participa — coherencia total entre "visita" y "bombo". Solo se excluye
+    // a quien ficha DESPUÉS del cierre del evento. La salida (manual o auto-cierre)
+    // sigue sacando del bombo, y la ventana de aceptación de 10 min cubre al ausente.
+    if (entryMs <= endMs) eligible.add(r.wallet_address);
   });
   return [...eligible];
+}
+
+// Re-evalúa las sesiones abiertas cuando la ventana del evento (con margen) está activa:
+// quien fichó demasiado pronto (o antes de que el evento existiera en la agenda) y sigue
+// dentro recupera su visita. Se ejecuta cada minuto desde server.js.
+function countPendingVisitsDuringEvent() {
+  const win = getActiveEventWindow();
+  if (!win) return 0;
+  if (win.nowMs < (win.startMs - EVENT_EARLY_MARGIN_MS) || win.nowMs > win.endMs) return 0;
+
+  const open = db.prepare(`
+    SELECT id, wallet_address FROM sessions
+    WHERE exit_time IS NULL AND counted_as_visit = 0
+      AND (date(entry_time) = ? OR date(entry_time) = date(?, '+1 day'))
+  `).all(win.eventDayStr, win.eventDayStr);
+
+  let fixed = 0;
+  const stmt = db.prepare(`UPDATE sessions SET counted_as_visit = 1 WHERE id = ?`);
+  open.forEach(s => {
+    // Respetar la regla de 1 visita por semana (la propia sesión no cuenta: está a 0)
+    if (!checkRecentVisit(s.wallet_address, 168)) {
+      stmt.run(s.id);
+      fixed++;
+    }
+  });
+  if (fixed > 0) console.log(`[Session] ${fixed} sesión(es) abiertas re-marcadas como visita al activarse la ventana del evento`);
+  return fixed;
 }
 
 // Convierte una fecha y hora local de Madrid a una cadena UTC (formato YYYY-MM-DD HH:MM:SS)
@@ -1461,6 +1496,7 @@ module.exports = {
   forfeitExpiredWeeklyRaffles,
   getWeeklyRaffleTargetWeek,
   getActiveEventWindow,
+  countPendingVisitsDuringEvent,
   WEEKLY_DEFAULT_RULES
 };
 
