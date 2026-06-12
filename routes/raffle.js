@@ -201,18 +201,18 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
   };
 
   // Solo enviar SSE a los elegibles (quienes ficharon entrada hoy)
-  broadcastToEligible('raffle_start', { duration: 15, prize: displayPrize, raffleId, type }, eligibleSet);
+  broadcastToEligible('raffle_start', { duration: 10, prize: displayPrize, raffleId, type }, eligibleSet);
   sendPushToAll('🎰 ¡Sorteo en Furancho!', `¡Abre la app ahora!`, { url: '/claim' });
 
   setTimeout(() => {
-    const resultData = { winnerWallet, verificationCode, prize, raffleId, acceptWindow: 180, type,
+    const resultData = { winnerWallet, verificationCode, prize, raffleId, acceptWindow: 600, type,
       prizeDetails: prizeDetails || null, prizeImage: prizeImage || null, establishment: establishment || null };
     broadcastToEligible('raffle_result', resultData, eligibleSet);
     // Actualizar estado activo con resultado
     if (activeRaffle?.raffleId === raffleId) {
-      activeRaffle = { ...activeRaffle, phase: 'result', winnerWallet, verificationCode, acceptWindow: 180, resultAt: Date.now() };
+      activeRaffle = { ...activeRaffle, phase: 'result', winnerWallet, verificationCode, acceptWindow: 600, resultAt: Date.now() };
     }
-  }, 15000);
+  }, 10000);
 
   setTimeout(() => {
     try {
@@ -226,7 +226,7 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
     } catch (e) { console.error('[Raffle] Error en auto-rechazo:', e.message); }
     // Limpiar estado activo
     if (activeRaffle?.raffleId === raffleId) activeRaffle = null;
-  }, 195000);
+  }, 610000);
 
   return { raffleId, winnerWallet, verificationCode, participants: eligibleWallets.length };
 }
