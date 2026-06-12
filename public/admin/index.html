@@ -1909,6 +1909,7 @@
             </div>
 
             <p id="weekly-drawn-at" style="font-size:11px; color:var(--text-muted); margin:0 0 8px;"></p>
+            <p id="weekly-confirmed-at" style="font-size:11px; font-weight:700; margin:0 0 8px; display:none;"></p>
             <p id="weekly-collected-at" style="font-size:11px; color:#4ade80; font-weight:700; margin:0 0 10px; display:none;">✅ Premio entregado</p>
             <p id="weekly-forfeited-at" style="font-size:11px; color:var(--text-muted); font-weight:700; margin:0 0 10px; display:none;">⌛ Premio dado por perdido</p>
 
@@ -3899,6 +3900,23 @@
           drawnAtEl.textContent = `Sorteado el: ${when}`;
         }
 
+        // Estado de confirmación del ganador (debe confirmar antes de las 23:00 de la noche del sorteo)
+        const confirmedEl = document.getElementById('weekly-confirmed-at');
+        if (confirmedEl) {
+          if (data.confirmedAt) {
+            confirmedEl.textContent = `🔑 Confirmado por el ganador el ${new Date(data.confirmedAt.replace(' ', 'T') + 'Z').toLocaleString('es-ES')}`;
+            confirmedEl.style.color = '#4ade80';
+            confirmedEl.style.display = 'block';
+          } else if (data.status === 'completed' && data.confirmDeadline && !data.collectedAt) {
+            const dl = new Date(data.confirmDeadline.replace(' ', 'T') + 'Z');
+            confirmedEl.textContent = `⏰ Pendiente de confirmación — tiene hasta las ${dl.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })} o se pierde`;
+            confirmedEl.style.color = 'var(--gold)';
+            confirmedEl.style.display = 'block';
+          } else {
+            confirmedEl.style.display = 'none';
+          }
+        }
+
         const collectedEl = document.getElementById('weekly-collected-at');
         const collectBtn = document.getElementById('weekly-collect-btn');
         const forfeitedEl = document.getElementById('weekly-forfeited-at');
@@ -3992,7 +4010,7 @@
     if (r.status === 'completed') {
       statusBadge = `<span style="font-size:9.5px; font-weight:700; border-radius:4px; padding:2px 6px; text-transform:uppercase; background:rgba(196,151,58,0.12); color:var(--gold); font-family:'Outfit',sans-serif;">${r.collectedAt ? 'Entregado' : 'Finalizado'}</span>`;
     } else if (r.status === 'forfeited') {
-      statusBadge = `<span style="font-size:9.5px; font-weight:700; border-radius:4px; padding:2px 6px; text-transform:uppercase; background:rgba(42,21,9,0.08); color:var(--text-muted); font-family:'Outfit',sans-serif;">⌛ No recogido</span>`;
+      statusBadge = `<span style="font-size:9.5px; font-weight:700; border-radius:4px; padding:2px 6px; text-transform:uppercase; background:rgba(42,21,9,0.08); color:var(--text-muted); font-family:'Outfit',sans-serif;">⌛ Perdido</span>`;
     } else {
       statusBadge = `<span style="font-size:9.5px; font-weight:700; border-radius:4px; padding:2px 6px; text-transform:uppercase; background:rgba(74,222,128,0.12); color:#4ade80; font-family:'Outfit',sans-serif;">Activo</span>`;
     }

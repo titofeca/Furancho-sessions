@@ -104,8 +104,11 @@ router.get('/stream', (req, res) => {
   if (hasEligible) {
     try {
       if (activeRaffle.phase === 'start') {
+        // Duración restante real de la animación (10s totales) para que todos los
+        // clientes vean el resultado a la vez
+        const elapsed = Math.floor((Date.now() - activeRaffle.startedAt) / 1000);
         res.write(`event: raffle_start\ndata: ${JSON.stringify({
-          duration: 15, prize: activeRaffle.displayPrize, raffleId: activeRaffle.raffleId, type: activeRaffle.type
+          duration: Math.max(1, 10 - elapsed), prize: activeRaffle.displayPrize, raffleId: activeRaffle.raffleId, type: activeRaffle.type
         })}\n\n`);
       } else if (activeRaffle.phase === 'result') {
         res.write(`event: raffle_result\ndata: ${JSON.stringify({
@@ -352,6 +355,7 @@ router.get('/my-wins', (req, res) => {
 });
 
 // GET /api/raffle/my-history?wallet=0x... — todos los sorteos en que participé
+// Incluye los resultados de La Chave Semanal (ganados, entregados y perdidos)
 router.get('/my-history', (req, res) => {
   const { wallet } = req.query;
   if (!wallet) return res.status(400).json({ error: 'Falta wallet' });
@@ -360,16 +364,72 @@ router.get('/my-history', (req, res) => {
     const { db, rejectRaffle } = require('../db/database');
     const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
     const expired = db.prepare(`
-      SELECT id, prize FROM raffles 
+      SELECT id, prize FROM raffles
       WHERE status = 'pending_acceptance' AND acceptance_deadline <= ?
     `).all(nowStr);
-    
+
     expired.forEach(r => {
       rejectRaffle(r.id, 'Tiempo de aceptación agotado');
       broadcast('raffle_timeout', { raffleId: r.id, prize: r.prize });
     });
 
-    res.json(getRaffleParticipation(wallet));
+    const history = getRaffleParticipation(wallet);
+
+    // Chave Semanal: resultados resueltos en los que participé o gané.
+    // Los pendientes de confirmar NO se incluyen — esa fase vive en la tarjeta semanal.
+    const lowerWallet = wallet.toLowerCase();
+    const weeklyRows = db.prepare(`
+      SELECT w.* FROM weekly_raffles w
+      WHERE w.status IN ('completed', 'forfeited') AND w.drawn_at IS NOT NULL
+        AND (
+          LOWER(COALESCE(w.winner_wallet, '')) = ?
+          OR EXISTS (SELECT 1 FROM weekly_claims c WHERE c.claimed_week = w.claimed_week AND LOWER(c.wallet_address) = ?)
+        )
+      ORDER BY w.drawn_at DESC LIMIT 15
+    `).all(lowerWallet, lowerWallet);
+
+    const weeklyMapped = weeklyRows
+      .filter(w => {
+        const isWinner = w.winner_wallet && w.winner_wallet.toLowerCase() === lowerWallet;
+        // Ganador aún en plazo de confirmación → fuera del historial (lo gestiona la tarjeta)
+        if (isWinner && w.status === 'completed' && !w.confirmed_at && !w.collected_at && w.confirm_deadline) {
+          return new Date(w.confirm_deadline.replace(' ', 'T') + 'Z').getTime() <= Date.now();
+        }
+        return true;
+      })
+      .map(w => {
+        const isWinner = w.winner_wallet && w.winner_wallet.toLowerCase() === lowerWallet;
+        let status;
+        if (isWinner) {
+          if (w.collected_at) status = 'collected';
+          else if (w.status === 'forfeited') status = 'rejected';
+          else status = 'accepted';
+        } else {
+          status = 'rejected';
+        }
+        const codeUnlocked = w.confirmed_at || w.collected_at || !w.confirm_deadline;
+        return {
+          id: 'weekly-' + w.claimed_week,
+          is_weekly: 1,
+          prize: `🔑 Chave Semanal · ${w.prize}`,
+          status,
+          created_at: w.drawn_at,
+          collected: w.collected_at ? 1 : 0,
+          collected_at: w.collected_at,
+          rejection_note: null,
+          acceptance_deadline: null,
+          is_winner: isWinner ? 1 : 0,
+          verification_code: isWinner && codeUnlocked ? w.verification_code : null,
+          prize_details: null,
+          prize_image: null,
+          establishment: null
+        };
+      });
+
+    const merged = [...history, ...weeklyMapped]
+      .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+
+    res.json(merged);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -606,6 +666,18 @@ const claimLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Ventana de participación de La Chave: domingo 21:00 → miércoles 21:00 (hora Madrid).
+// Misma regla que muestra el cliente — validada también aquí para cerrar el hueco.
+function isWeeklyClaimWindowOpen() {
+  const madrid = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+  const day = madrid.getDay(); // 0=Dom..6=Sab
+  const hours = madrid.getHours();
+  if (day === 1 || day === 2) return true;
+  if (day === 0) return hours >= 21;
+  if (day === 3) return hours < 21;
+  return false;
+}
+
 // POST /api/raffle/weekly/claim
 router.post('/weekly/claim', claimLimiter, (req, res) => {
   const { walletAddress } = req.body;
@@ -614,6 +686,9 @@ router.post('/weekly/claim', claimLimiter, (req, res) => {
   // Validar formato wallet — no se acepta week del cliente, siempre usamos la semana actual del servidor
   if (!/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
     return res.status(400).json({ error: 'Dirección de wallet no válida, ho.' });
+  }
+  if (!isWeeklyClaimWindowOpen()) {
+    return res.status(400).json({ error: 'El boleto solo se puede trincar de domingo 21:00 a miércoles 21:00, ho. ¡Estate atento!' });
   }
   const weekStr = getWeeklyRaffleTargetWeek(); // <-- siempre server-side, ignoramos req.body.week
   try {
@@ -639,23 +714,46 @@ router.post('/weekly/claim', claimLimiter, (req, res) => {
   }
 });
 
+// POST /api/raffle/weekly/confirm — el ganador confirma el premio antes de las 23:00
+router.post('/weekly/confirm', claimLimiter, (req, res) => {
+  const { walletAddress, week } = req.body;
+  if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
+    return res.status(400).json({ error: 'Dirección de wallet no válida, ho.' });
+  }
+  const weekStr = week || getWeeklyRaffleTargetWeek();
+  try {
+    const { confirmWeeklyRaffle } = require('../db/database');
+    const raffle = confirmWeeklyRaffle(walletAddress, weekStr);
+    res.json({
+      success: true,
+      week: weekStr,
+      prize: raffle.prize,
+      verificationCode: raffle.verification_code
+    });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 // GET /api/admin/weekly/status (ADMIN)
 router.get('/admin/weekly/status', requireAuth, (req, res) => {
   const weekStr = req.query.week || getWeeklyRaffleTargetWeek();
   try {
-    const { db } = require('../db/database');
+    const { db, WEEKLY_DEFAULT_RULES } = require('../db/database');
     const raffle = db.prepare(`SELECT * FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
     const totalParticipants = db.prepare(`SELECT COUNT(*) as count FROM weekly_claims WHERE claimed_week = ?`).get(weekStr)?.count || 0;
     res.json({
       week: weekStr,
       prize: raffle ? raffle.prize : null,
-      rules: raffle ? (raffle.rules || 'Trinca tu participación una vez por semana antes de que empiecen los eventos. ¡Se sorteará un regalo de la hostia!') : 'Trinca tu participación una vez por semana antes de que empiecen los eventos. ¡Se sorteará un regalo de la hostia!',
+      rules: raffle ? (raffle.rules || WEEKLY_DEFAULT_RULES) : WEEKLY_DEFAULT_RULES,
       status: raffle ? raffle.status : 'active',
       winnerWallet: raffle ? raffle.winner_wallet : null,
       verificationCode: raffle ? raffle.verification_code : null,
       collectedAt: raffle ? raffle.collected_at : null,
       forfeitedAt: raffle ? raffle.forfeited_at : null,
       drawnAt: raffle ? raffle.drawn_at : null,
+      confirmDeadline: raffle ? raffle.confirm_deadline : null,
+      confirmedAt: raffle ? raffle.confirmed_at : null,
       totalParticipants,
       isConfigured: !!raffle
     });
@@ -703,7 +801,8 @@ router.post('/admin/weekly/config', requireAuth, (req, res) => {
   if (!prize) return res.status(400).json({ error: 'Falta el nombre del premio' });
   const weekStr = week || getWeeklyRaffleTargetWeek();
   try {
-    updateWeeklyPrize(weekStr, prize, rules || 'Trinca tu participación una vez por semana antes de que empiecen los eventos. ¡Se sorteará un regalo de la hostia!');
+    const { WEEKLY_DEFAULT_RULES } = require('../db/database');
+    updateWeeklyPrize(weekStr, prize, rules || WEEKLY_DEFAULT_RULES);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -720,16 +819,17 @@ router.post('/admin/weekly/draw', requireAuth, (req, res) => {
     // Enviar Push a todos informando del ganador de la Chave Semanal
     const { sendPushToAll } = require('../services/push');
     sendPushToAll(
-      `🔑 ¡Sorteo Semanal Realizado!`,
-      `El ganador de la Chave Semanal (${result.prize}) es la wallet ${result.winnerWallet.slice(0, 6)}...${result.winnerWallet.slice(-4)}. ¡Enhorabuena, ho!`,
+      `🔑 ¡Chave Semanal sorteada!`,
+      `Ya hay ganador de ${result.prize}. Abre la app: si te tocó, tienes hasta las 23:00 de hoy para confirmar, ho.`,
       { url: '/claim' }
     );
 
-    // SSE: Notificar en tiempo real al ganador específico (si está conectado)
+    // SSE: Notificar en tiempo real al ganador específico (si está conectado).
+    // El código NO se envía: se revela al confirmar el premio.
     broadcast('weekly_draw_result', {
       winnerWallet: result.winnerWallet,
       prize: result.prize,
-      verificationCode: result.verificationCode,
+      confirmDeadline: result.confirmDeadline,
       week: weekStr
     }, result.winnerWallet);
 
@@ -763,6 +863,8 @@ router.get('/admin/weekly/list', requireAuth, (req, res) => {
         verificationCode: r.verification_code,
         collectedAt: r.collected_at,
         forfeitedAt: r.forfeited_at,
+        confirmDeadline: r.confirm_deadline,
+        confirmedAt: r.confirmed_at,
         totalParticipants: count
       };
     });
@@ -794,6 +896,52 @@ router.delete('/admin/weekly/:week', requireAuth, (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// ── RECUPERACIÓN TRAS REINICIO ───────────────────────────────────────────────
+// Si el servidor se reinicia con un sorteo en ventana de aceptación, se reconstruye
+// el estado desde la BD para que el ganador no pierda el premio ni el modal se quede colgado.
+// Los timers no hacen falta re-armarlos: el sweeper de 5s rechaza al vencer el deadline.
+(function recoverPendingRaffles() {
+  try {
+    const { db } = require('../db/database');
+    const pending = db.prepare(`
+      SELECT * FROM raffles WHERE status = 'pending_acceptance' ORDER BY created_at DESC
+    `).all();
+    if (!pending.length) return;
+
+    const now = Date.now();
+    const alive = pending.find(r => {
+      if (!r.acceptance_deadline) return false;
+      return new Date(r.acceptance_deadline.replace(' ', 'T') + 'Z').getTime() > now;
+    });
+    if (!alive) return; // los expirados los limpia el sweeper
+
+    const participants = db.prepare(`SELECT wallet_address FROM raffle_participants WHERE raffle_id = ?`)
+      .all(alive.id).map(x => x.wallet_address);
+    const deadlineMs = new Date(alive.acceptance_deadline.replace(' ', 'T') + 'Z').getTime();
+    const remaining = Math.max(1, Math.floor((deadlineMs - now) / 1000));
+
+    activeRaffle = {
+      raffleId: alive.id,
+      prize: alive.prize,
+      displayPrize: alive.hide_name ? 'Sorpresa 🎁' : alive.prize,
+      type: alive.type || 'night',
+      phase: 'result',
+      eligibleWallets: new Set(participants),
+      prizeDetails: alive.prize_details || null,
+      prizeImage: alive.prize_image || null,
+      establishment: alive.establishment || null,
+      winnerWallet: alive.winner_wallet,
+      verificationCode: alive.verification_code,
+      acceptWindow: remaining,
+      resultAt: now,
+      startedAt: now
+    };
+    console.log(`[Raffle] ♻️ Estado recuperado tras reinicio: sorteo #${alive.id} "${alive.prize}" con ${remaining}s de ventana restante`);
+  } catch (e) {
+    console.error('[Raffle] Error recuperando sorteos pendientes:', e.message);
+  }
+})();
 
 // Comprobación periódica en segundo plano de sorteos expirados (cada 5 segundos)
 setInterval(() => {

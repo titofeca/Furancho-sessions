@@ -12,6 +12,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- ethers: generación de wallet EN el dispositivo (la clave privada no viaja por la red) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js" defer></script>
   <style>
     @keyframes pulse {
       from { opacity: 0.6; }
@@ -2509,13 +2511,42 @@
       loadAdminMessages();
     }
 
+    // Genera la wallet EN el dispositivo con ethers (la clave privada nunca sale del móvil).
+    // Devuelve null si ethers no cargó — en ese caso se usa el endpoint del servidor.
+    function generateWalletLocally() {
+      try {
+        if (typeof ethers === 'undefined' || !ethers.Wallet?.createRandom) return null;
+        const w = ethers.Wallet.createRandom();
+        if (!w?.address || !w?.privateKey) return null;
+        return { address: w.address, privateKey: w.privateKey, mnemonic: w.mnemonic?.phrase || null };
+      } catch (e) { return null; }
+    }
+
+    // Recupera la wallet desde las 12 palabras EN el dispositivo. Null si ethers no está.
+    function recoverWalletLocally(phrase) {
+      try {
+        if (typeof ethers === 'undefined' || !ethers.Wallet?.fromPhrase) return null;
+        const w = ethers.Wallet.fromPhrase(phrase);
+        if (!w?.address || !w?.privateKey) return null;
+        return { address: w.address, privateKey: w.privateKey };
+      } catch (e) {
+        // Frase con formato válido pero incorrecta → propagar como error de validación
+        if (phrase && phrase.trim().split(/\s+/).length === 12) return { error: 'Frase de recuperación no válida. Comprueba que las palabras son correctas.' };
+        return null;
+      }
+    }
+
     // Crear cuenta nueva desde onboarding
     async function startNewAccount() {
       const btn = document.querySelector('#screen-onboarding .btn-primary');
       if (btn) { btn.disabled = true; btn.textContent = 'Creando cuenta...'; }
       try {
-        const res = await fetch('/api/mint/create-wallet', { method: 'POST' });
-        const data = await res.json();
+        // 1º intento: generar en el dispositivo; fallback: servidor
+        let data = generateWalletLocally();
+        if (!data) {
+          const res = await fetch('/api/mint/create-wallet', { method: 'POST' });
+          data = await res.json();
+        }
         if (data.address && data.privateKey) {
           userWalletAddress = data.address;
           userWalletPrivateKey = data.privateKey;
@@ -2966,8 +2997,10 @@
         setTimeout(() => showToast('✅ ¡Cuenta recuperada con QR! Bienvenido de vuelta, ho.'), 600);
       }
 
-      // Pedir permiso de notificaciones push (con delay para no interrumpir)
-      setTimeout(requestPushPermission, 3000);
+      // Notificaciones push: si ya hay permiso, re-suscribir en silencio.
+      // Si no, ofrecerlas en un momento con contexto (tras fichar entrada) en vez de
+      // disparar el diálogo nativo a ciegas — ver maybeOfferPush().
+      setTimeout(maybeOfferPush, 1500);
 
       // Auto-registrar salida en background solo si viene de QR con ?checkout=true o ?level=X
       const urlParams = new URLSearchParams(window.location.search);
@@ -3056,10 +3089,10 @@
     initWallet();
 
     function getEventBaseline(eventId) {
+      // Determinista por evento: todos los clientes ven el MISMO número en todo momento
       const baselines = [11, 7, 14, 9, 13, 6, 12, 8];
       const base = baselines[(eventId - 1) % baselines.length] || 8;
-      // Variación aleatoria por sesión: ±2, fija durante la sesión
-      const seed = (eventId * 37 + Math.floor(Date.now() / 3600000)) % 5;
+      const seed = (eventId * 37) % 5;
       return base + seed;
     }
 
@@ -3499,7 +3532,7 @@
         });
         if (res.ok) {
           const data = await res.json();
-          btn.textContent = '✅ ¡Premio reclamado! Amosa o código ao staff';
+          btn.textContent = '✅ ¡Premio trincado! Enséñale el código al staff, ho';
           btn.style.background = 'linear-gradient(135deg,#4ade80,#16a34a)';
           document.getElementById('accept-countdown-wrap').style.display = 'none';
           if (_acceptCountdownInterval) clearInterval(_acceptCountdownInterval);
@@ -3519,11 +3552,11 @@
           }
         } else {
           btn.disabled = false;
-          btn.textContent = '¡É PARA MIN! Reclamar premio 🎉';
+          btn.textContent = '¡Es mío, ho! Trincar premio 🎉';
         }
       } catch(e) {
         btn.disabled = false;
-        btn.textContent = '¡Soy yo! Reclamar premio 🎉';
+        btn.textContent = '¡Es mío, ho! Trincar premio 🎉';
       }
     }
 
@@ -3621,8 +3654,9 @@
       const doneTonight  = eligibility.rafflesDoneTonight || 0;
       const remaining    = scheduled.filter(s => s.status === 'pending').length || Math.max(0, 2 - doneTonight);
 
-      // Auto-restaurar banner de aceptación si el ganador refrescó
-      const pendingRaffle = history.find(r => r.is_winner === 1 && r.status === 'pending_acceptance');
+      // Auto-restaurar banner de aceptación si el ganador refrescó (solo sorteos de la noche,
+      // la Chave Semanal tiene su propio flujo de confirmación en la tarjeta semanal)
+      const pendingRaffle = history.find(r => r.is_winner === 1 && r.status === 'pending_acceptance' && !r.is_weekly);
       if (pendingRaffle && pendingRaffle.acceptance_deadline) {
         const deadlineDate = new Date(pendingRaffle.acceptance_deadline.replace(' ', 'T') + 'Z');
         const diffSecs = Math.max(0, Math.floor((deadlineDate - new Date()) / 1000));
@@ -3645,8 +3679,8 @@
         stateEl.innerHTML = `
           <div style="background:rgba(42,21,9,0.04); border:1px dashed rgba(42,21,9,0.15); border-radius:16px; padding:16px; text-align:center;">
             <div style="font-size:28px; margin-bottom:8px;">🚪</div>
-            <p style="font-size:13px; font-weight:700; color:var(--text); margin:0 0 4px;">Escanea o QR de entrada para participar</p>
-            <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0;">Escanea el QR de entrada al llegar y entrarás automáticamente en todos los sorteos de la noche.</p>
+            <p style="font-size:13px; font-weight:700; color:var(--text); margin:0 0 4px;">Escanea el QR de entrada para participar</p>
+            <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0;">Ficha al llegar y entras automáticamente en todos los sorteos de la noche, ho.</p>
             ${todayEvent ? `<div style="margin-top:12px; padding:10px 12px; background:rgba(139,25,24,0.06); border-radius:12px;">
               <p style="font-size:11px; font-weight:700; color:var(--wine); margin:0 0 2px;">🎉 Esta noche: ${todayEvent.title}</p>
             </div>` : ''}
@@ -3654,7 +3688,7 @@
             ${scheduleHTML}
           </div>`;
         section.style.display = 'none';
-        if (statusEl) statusEl.textContent = 'Escanea o QR de entrada para participar';
+        if (statusEl) statusEl.textContent = 'Escanea el QR de entrada para participar';
         return;
       }
 
@@ -3665,25 +3699,25 @@
             <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
               <div style="width:32px; height:32px; border-radius:50%; background:rgba(74,222,128,0.15); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">✅</div>
               <div>
-                <p style="font-size:13px; font-weight:700; color:#4ade80; margin:0 0 2px;">Estás no bombo, campión</p>
-                <p style="font-size:11px; color:var(--text-muted); margin:0;">Participas en todos os sorteos desta noite. Sen facer nada.</p>
+                <p style="font-size:13px; font-weight:700; color:#4ade80; margin:0 0 2px;">Estás en el bombo, campeón</p>
+                <p style="font-size:11px; color:var(--text-muted); margin:0;">Participas en todos los sorteos de esta noche sin mover un dedo, ho.</p>
               </div>
             </div>
             ${remaining > 0 ? `
             <div style="border-top:1px solid rgba(42,21,9,0.06); padding-top:10px; display:flex; align-items:center; gap:10px;">
               <span style="font-size:20px;">🎰</span>
               <div>
-                <p style="font-size:12px; font-weight:700; color:var(--text); margin:0 0 1px;">${remaining} sorteo${remaining !== 1 ? 's' : ''} aínda por vir esta noite</p>
-                <p style="font-size:11px; color:var(--text-muted); margin:0;">Ten o móbil á man — cando empiece, a pantalla vaiche poñer o corazón a cen.</p>
+                <p style="font-size:12px; font-weight:700; color:var(--text); margin:0 0 1px;">Queda${remaining !== 1 ? 'n' : ''} ${remaining} sorteo${remaining !== 1 ? 's' : ''} por caer esta noche</p>
+                <p style="font-size:11px; color:var(--text-muted); margin:0;">Ten el móvil a mano — cuando empiece, la pantalla te pone el corazón a cien, neno.</p>
               </div>
             </div>` : `
             <div style="border-top:1px solid rgba(42,21,9,0.06); padding-top:10px;">
-              <p style="font-size:11px; color:var(--text-muted); text-align:center; margin:0;">Xa remataron os sorteos desta noite. O próximo Furancho, outra oportunidade. 🍷</p>
+              <p style="font-size:11px; color:var(--text-muted); text-align:center; margin:0;">Se acabaron los sorteos por hoy, rapaz. El próximo Furancho, otra oportunidad. 🍷</p>
             </div>`}
             ${scheduleHTML}
           </div>`;
         section.style.display = 'none';
-        if (statusEl) statusEl.textContent = remaining > 0 ? `No bombo · ${remaining} sorteo${remaining!==1?'s':''} por vir` : 'Sorteos rematados, ata o próximo';
+        if (statusEl) statusEl.textContent = remaining > 0 ? `En el bombo · queda${remaining!==1?'n':''} ${remaining}` : 'Sorteos acabados — hasta el próximo, ho';
         return;
       }
 
@@ -3704,8 +3738,8 @@
         stateEl.innerHTML = `
           <div style="background:rgba(42,21,9,0.04); border:1px dashed rgba(42,21,9,0.15); border-radius:16px; padding:16px; text-align:center; margin-bottom:10px;">
             <div style="font-size:28px; margin-bottom:8px;">🚪</div>
-            <p style="font-size:13px; font-weight:700; color:var(--text); margin:0 0 4px;">Escanea o QR e métete no bombo</p>
-            <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0;">Se entras hoxe, participas nos sorteos que quedan desta noite. Sen facer nada máis.</p>
+            <p style="font-size:13px; font-weight:700; color:var(--text); margin:0 0 4px;">Escanea el QR y métete en el bombo</p>
+            <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0;">Si fichas hoy, entras en los sorteos que quedan de esta noche. Sin hacer nada más, neno.</p>
           </div>
           ${scheduleHTML}`;
       }
@@ -3716,9 +3750,9 @@
       } else {
         if (statusEl) {
           if (!hasEntry) {
-            statusEl.textContent = 'Escanea o QR de entrada para participar';
+            statusEl.textContent = 'Escanea el QR de entrada para participar';
           } else {
-            statusEl.textContent = doneTonight > 0 ? `${doneTonight} sorteo${doneTonight!==1?'s':''} esta noche` : 'O bombo xa quere soar...';
+            statusEl.textContent = doneTonight > 0 ? `${doneTonight} sorteo${doneTonight!==1?'s':''} esta noche` : 'El bombo ya quiere sonar...';
           }
         }
       }
@@ -4096,6 +4130,14 @@
         document.getElementById('raffle-code').textContent = data.verificationCode;
         document.getElementById('raffle-loser').style.display = 'none';
 
+        // Restaurar elementos compartidos con el modal de la Chave Semanal
+        const codeLabelReset = document.querySelector('.raffle-code-label');
+        if (codeLabelReset) codeLabelReset.textContent = 'Tu código';
+        const chaveWrap = document.getElementById('chave-confirm-wrap');
+        if (chaveWrap) chaveWrap.remove();
+        const nightAcceptBtn = document.getElementById('modal-accept-btn');
+        if (nightAcceptBtn) nightAcceptBtn.style.display = '';
+
         const isLocal = data.type === 'local';
         const prizeImgWrap = document.getElementById('raffle-prize-image-wrap');
         const prizeImg = document.getElementById('raffle-prize-image');
@@ -4227,20 +4269,26 @@
 
       // ── CHAVE SEMANAL: sorteo realizado ──────────────────────────────────────
 
-      // Ganador de la Chave Semanal: notificación especial en pantalla
+      // Ganador de la Chave Semanal: debe CONFIRMAR antes de las 23:00 — el código se revela al confirmar
       evtSource.addEventListener('weekly_draw_result', (e) => {
         const data = JSON.parse(e.data);
         // Este evento solo llega a quien es el ganador (el servidor lo filtra por wallet)
         launchParticles();
         if (navigator.vibrate) navigator.vibrate([100,50,100,50,200,100,500]);
 
-        // Mostrar banner visible en perfil
+        let deadlineStr = '23:00';
+        if (data.confirmDeadline) {
+          const dMs = new Date(data.confirmDeadline.replace(' ', 'T') + 'Z').getTime();
+          deadlineStr = new Date(dMs).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Banner visible en perfil con aviso del plazo
         showProfileBanner(
-          `🔑 <strong>¡Carallo, ho! ¡Ganaste la Chave Semanal!</strong><br>Premio: <strong>${data.prize}</strong><br>Tu código: <strong style="font-family:monospace; font-size:16px; letter-spacing:2px;">${data.verificationCode}</strong>. Muéstraselo al staff para recoger tu premio. ¡A disfrutalo, rapaz!`,
+          `🔑 <strong>¡Carallo, ho! ¡Ganaste la Chave Semanal!</strong><br>Premio: <strong>${data.prize}</strong><br>⏰ Confirma que es para ti <strong>antes de las ${deadlineStr}</strong> o el premio se pierde.`,
           'gold'
         );
 
-        // Modal de ganador (reutilizamos el de sorteos)
+        // Modal de ganador (reutilizamos el de sorteos) con botón de confirmación
         const modal = document.getElementById('raffle-modal');
         if (modal) {
           document.getElementById('raffle-roulette').style.display = 'none';
@@ -4249,30 +4297,32 @@
           document.getElementById('raffle-prize-text').textContent = `🔑 Chave Semanal — ${data.prize}`;
 
           const titleEl = document.getElementById('raffle-winner-title');
-          if (titleEl) titleEl.textContent = '🔑 ¡GAÑACHES A CHAVE, HO!';
+          if (titleEl) titleEl.textContent = '🔑 ¡GANASTE LA CHAVE, HO!';
 
           document.getElementById('raffle-winner-prize').textContent = data.prize;
 
-          // Mostrar el código real — el cliente lo enseña al staff
+          // El código aún no se enseña — primero hay que confirmar
           const codeEl = document.getElementById('raffle-code');
-          if (codeEl) codeEl.textContent = data.verificationCode || '—';
-
-          // Cambiar etiqueta para dejar claro de qué premio se trata
+          if (codeEl) codeEl.textContent = '🔒';
           const codeLabelEl = document.querySelector('.raffle-code-label');
-          if (codeLabelEl) codeLabelEl.textContent = '🔑 Premio Chave do Furancho';
+          if (codeLabelEl) codeLabelEl.textContent = `🔑 Confirma antes de las ${deadlineStr} para ver tu código`;
 
-          // Mostrar el premio debajo del código en el recuadro
+          // Botón confirmar dentro del recuadro del ganador
           const winnerBoxEl = document.querySelector('.raffle-winner-box');
           if (winnerBoxEl) {
-            let prizeLine = winnerBoxEl.querySelector('#chave-prize-line');
-            if (!prizeLine) {
-              prizeLine = document.createElement('p');
-              prizeLine.id = 'chave-prize-line';
-              prizeLine.style.cssText = 'margin:6px 0 0; font-size:13px; font-weight:700; color:var(--gold); letter-spacing:0.5px;';
-              winnerBoxEl.appendChild(prizeLine);
+            let confirmWrap = winnerBoxEl.querySelector('#chave-confirm-wrap');
+            if (!confirmWrap) {
+              confirmWrap = document.createElement('div');
+              confirmWrap.id = 'chave-confirm-wrap';
+              confirmWrap.style.cssText = 'margin:10px 0 0;';
+              winnerBoxEl.appendChild(confirmWrap);
             }
-            prizeLine.textContent = data.prize;
+            confirmWrap.innerHTML = `<button onclick="confirmWeeklyPrize(this)" style="width:100%; padding:13px; background:linear-gradient(135deg,#4ade80,#16a34a); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:800; cursor:pointer; box-shadow:0 4px 14px rgba(22,163,74,0.35);">🔑 ¡Es mío, ho! Confirmar premio</button>`;
           }
+
+          // Ocultar el botón de aceptar de sorteos nocturnos si existe (no aplica a la Chave)
+          const nightAcceptBtn = document.getElementById('modal-accept-btn');
+          if (nightAcceptBtn) nightAcceptBtn.style.display = 'none';
 
           document.getElementById('raffle-particles').innerHTML = '';
           modal.style.display = 'flex';
@@ -4280,8 +4330,21 @@
           launchParticles();
         }
 
-        // Recargar la tarjeta semanal para mostrar "¡Te tocó!"
+        // Recargar la tarjeta semanal para mostrar el estado de confirmación
         setTimeout(loadWeeklyRaffle, 1500);
+      });
+
+      // El plazo de confirmación venció sin confirmar: premio perdido (solo llega al ganador)
+      evtSource.addEventListener('weekly_forfeited', (e) => {
+        const data = JSON.parse(e.data);
+        const modal = document.getElementById('raffle-modal');
+        if (modal) { modal.style.display = 'none'; document.body.style.overflow = 'auto'; }
+        showProfileBanner(
+          `⌛ <strong>La Chave se escapó, ho.</strong> No confirmaste <strong>${data.prize}</strong> antes de las 23:00 y el premio se dio por perdido. Quedó en tu historial — ¡la próxima no se te escape, rapaz!`,
+          'red'
+        );
+        setTimeout(loadWeeklyRaffle, 800);
+        renderPrizes();
       });
 
       // Sorteo semanal cerrado: notificar a todos los demás
@@ -4381,6 +4444,43 @@
       if (Notification.permission === 'denied') return;
       const permission = await Notification.requestPermission();
       if (permission === 'granted') subscribePush();
+    }
+
+    // Ofrece las notificaciones en un momento con valor: con la entrada fichada y
+    // justo antes de los sorteos. Tarjeta propia con botones — el diálogo nativo
+    // solo se dispara si el usuario dice que sí (más probabilidad de aceptar).
+    function maybeOfferPush() {
+      if (!('Notification' in window) || !('PushManager' in window)) return;
+      if (Notification.permission === 'granted') { subscribePush(); return; }
+      if (Notification.permission === 'denied') return;
+      if (!userHasActiveSession) return; // sin fichar aún no aporta — esperar al fichaje
+      if (localStorage.getItem('furancho_push_offer_dismissed') === '1') return;
+      if (document.getElementById('push-offer-card')) return;
+
+      const card = document.createElement('div');
+      card.id = 'push-offer-card';
+      card.style.cssText = 'background:rgba(196,151,58,0.08); border:1.5px solid rgba(196,151,58,0.35); border-radius:16px; padding:14px 16px; margin-bottom:16px;';
+      card.innerHTML = `
+        <p style="font-size:13.5px; font-weight:700; color:var(--text); margin:0 0 4px;">🔔 ¿Te avisamos cuando empiece el sorteo?</p>
+        <p style="font-size:12px; color:var(--text-muted); margin:0 0 10px; line-height:1.5;">Aunque tengas el móvil en el bolsillo, te suena y no te pierdes el bombo, ho.</p>
+        <div style="display:flex; gap:8px;">
+          <button onclick="acceptPushOffer()" style="flex:1; padding:10px; background:linear-gradient(135deg,var(--wine),#6B1212); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:13px; font-weight:700; cursor:pointer;">¡Sí, avísame!</button>
+          <button onclick="dismissPushOffer()" style="flex:0 0 auto; padding:10px 16px; background:transparent; color:var(--text-muted); border:1.5px solid rgba(42,21,9,0.15); border-radius:50px; font-family:'Outfit',sans-serif; font-size:13px; font-weight:600; cursor:pointer;">Ahora no</button>
+        </div>`;
+      const content = document.querySelector('#screen-profile .content');
+      if (content) content.insertBefore(card, content.firstChild);
+    }
+
+    function acceptPushOffer() {
+      const card = document.getElementById('push-offer-card');
+      if (card) card.remove();
+      requestPushPermission();
+    }
+
+    function dismissPushOffer() {
+      localStorage.setItem('furancho_push_offer_dismissed', '1');
+      const card = document.getElementById('push-offer-card');
+      if (card) card.remove();
     }
 
   // ==================== RECUPERACIÓN DE CUENTA ====================
@@ -4578,12 +4678,16 @@
     errorEl.style.display = 'none';
 
     try {
-      const res = await fetch('/api/mint/recover-from-phrase', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phrase: words.join(' ') })
-      });
-      const data = await res.json();
+      // 1º intento: recuperar en el dispositivo (la frase no viaja por la red); fallback: servidor
+      let data = recoverWalletLocally(words.join(' '));
+      if (!data) {
+        const res = await fetch('/api/mint/recover-from-phrase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phrase: words.join(' ') })
+        });
+        data = await res.json();
+      }
       if (data.address) {
         localStorage.setItem('furancho_wallet_address', data.address);
         localStorage.setItem('furancho_wallet_private_key', data.privateKey);
@@ -4930,18 +5034,19 @@
     const codeWrap = document.getElementById('chave-modal-code-wrap');
     const codeEl = document.getElementById('chave-modal-code');
 
+    const CHAVE_DEFAULT_RULES = 'El domingo a las 21:00 se abre el bombo semanal y puedes trincar tu boleto hasta el miércoles a las 21:00, que es cuando se sortea. Si te toca, confirma en la app antes de las 23:00 de esa misma noche o el premio se pierde, carallo. El código se enseña al staff para recoger el premio. ¡Mucha suerte, ho!';
+
     if (!data) {
       // Sin datos cargados aún
-      if (prizeEl) prizeEl.textContent = '🤫 Premio aínda en segredo — o xefe anda matinando, ho…';
-      if (rulesEl) rulesEl.textContent = 'O domingo ás 21:00 abre o sorteo semanal. Durante a semana podes trincar o teu boleto dende aquí. O venres sortéase e o ganador ten ata o final do seguinte evento para vir recoller o premio. ¡Moita sorte, ho!';
+      if (prizeEl) prizeEl.textContent = '🤫 Premio aún en secreto — el jefe anda maquinando, ho…';
+      if (rulesEl) rulesEl.textContent = CHAVE_DEFAULT_RULES;
       if (codeWrap) codeWrap.style.display = 'none';
     } else {
       const isWinner = data.winnerWallet && userWalletAddress && data.winnerWallet.toLowerCase() === userWalletAddress.toLowerCase();
 
-      if (prizeEl) prizeEl.textContent = data.prize || '🤫 Premio aínda en segredo — o xefe anda matinando, ho…';
+      if (prizeEl) prizeEl.textContent = data.prize || '🤫 Premio aún en secreto — el jefe anda maquinando, ho…';
 
-      if (rulesEl) rulesEl.textContent = data.rules ||
-        'O domingo ás 21:00 abre o sorteo semanal. Durante a semana podes trincar o teu boleto dende aquí. O venres sortéase e o ganador ten ata o final do seguinte evento para vir recoller o premio. ¡Moita sorte, ho!';
+      if (rulesEl) rulesEl.textContent = data.rules || CHAVE_DEFAULT_RULES;
 
       if (codeWrap && codeEl) {
         if (isWinner && data.status === 'completed' && data.verificationCode) {
@@ -4988,11 +5093,39 @@
 
       // 1. Verificar si el usuario actual es el ganador del sorteo
       const isWinner = data.winnerWallet && data.winnerWallet.toLowerCase() === userWalletAddress.toLowerCase();
-      
-      if (isWinner && data.status === 'completed') {
-        // Mostrar código de verificación para el ganador (independientemente del día/hora)
+
+      // 1a. Ganador pendiente de CONFIRMAR (antes de las 23:00 de la noche del sorteo)
+      if (isWinner && data.status === 'completed' && !data.confirmedAt && data.confirmDeadline) {
+        const deadlineMs = new Date(data.confirmDeadline.replace(' ', 'T') + 'Z').getTime();
+        if (Date.now() < deadlineMs) {
+          btn.style.display = 'none';
+          const deadlineStr = new Date(deadlineMs).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+          prizeText.innerHTML = `🏆 <strong>¡Te tocó la Chave, ho!</strong> ${data.prize}`;
+          if (rulesText) {
+            rulesText.innerHTML = `<div style="margin-top:10px; background:rgba(196,151,58,0.1); border:1.5px solid var(--gold); border-radius:12px; padding:12px; text-align:center;">
+              <p style="font-size:13px; color:var(--text); margin:0 0 10px; line-height:1.5;">⏰ Confirma que es para ti <strong>antes de las ${deadlineStr}</strong> o el premio se pierde, carallo.</p>
+              <button id="weekly-confirm-btn" onclick="confirmWeeklyPrize(this)" style="width:100%; padding:13px; background:linear-gradient(135deg,var(--wine),#6B1212); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 4px 14px rgba(139,25,24,0.35);">
+                🔑 ¡Es mío, ho! Confirmar premio
+              </button>
+            </div>`;
+          }
+          return;
+        }
+        // Plazo vencido y el servidor aún no lo barrió → mostrar como perdido
         btn.style.display = 'none';
-        prizeText.innerHTML = `🏆 <strong>¡Tenche tocado, ho!</strong> ${data.prize}`;
+        prizeText.innerHTML = `🏆 <strong>Ganaste la Chave:</strong> ${data.prize}`;
+        if (rulesText) {
+          rulesText.innerHTML = `<div style="margin-top:10px; background:rgba(42,21,9,0.05); border:1.5px dashed rgba(42,21,9,0.2); border-radius:10px; padding:12px; text-align:center;">
+            <p style="font-size:13px; color:var(--text-muted); margin:0; line-height:1.5;">⌛ <strong>No confirmaste antes de las 23:00.</strong><br>El premio se dio por perdido, ho. ¡La próxima no se te escape!</p>
+          </div>`;
+        }
+        return;
+      }
+
+      if (isWinner && data.status === 'completed') {
+        // Ganador confirmado: mostrar código de verificación (independientemente del día/hora)
+        btn.style.display = 'none';
+        prizeText.innerHTML = `🏆 <strong>¡Te tocó la Chave, ho!</strong> ${data.prize}`;
         if (rulesText) {
           rulesText.innerHTML = `<div style="margin-top:10px; background:rgba(139,25,24,0.06); border:1.5px dashed rgba(139,25,24,0.25); border-radius:10px; padding:12px; text-align:center;">
             <p style="font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); margin:0 0 4px;">🔑 Tu código del premio</p>
@@ -5003,13 +5136,13 @@
         return;
       }
 
-      // 1b. Ganador de un premio que se dio por perdido (no recogido a tiempo) — queda como constancia
+      // 1b. Ganador de un premio que se dio por perdido (no confirmado/recogido a tiempo)
       if (isWinner && data.status === 'forfeited') {
         btn.style.display = 'none';
         prizeText.innerHTML = `🏆 <strong>Ganaste la Chave:</strong> ${data.prize}`;
         if (rulesText) {
           rulesText.innerHTML = `<div style="margin-top:10px; background:rgba(42,21,9,0.05); border:1.5px dashed rgba(42,21,9,0.2); border-radius:10px; padding:12px; text-align:center;">
-            <p style="font-size:13px; color:var(--text-muted); margin:0; line-height:1.5;">⌛ <strong>Premio no recogido a tiempo.</strong><br>Quedó registrado en tu historial como recuerdo. ¡La próxima no se te escape, ho! 🍷</p>
+            <p style="font-size:13px; color:var(--text-muted); margin:0; line-height:1.5;">⌛ <strong>Premio dado por perdido</strong> — no se confirmó antes de las 23:00.<br>Quedó en tu historial como recuerdo. ¡La próxima no se te escape, ho! 🍷</p>
           </div>`;
         }
         return;
@@ -5020,7 +5153,7 @@
         btn.style.display = 'none';
         prizeText.innerHTML = `🍀 <strong style="color:var(--wine);">Chave do Furancho</strong>`;
         if (rulesText) {
-          rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:13px; line-height:1.5;">😢 <strong>Esta semana non foi, ho.</strong> O domingo a las 21:00 sale el siguiente. ¡A por él!</span>`;
+          rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:13px; line-height:1.5;">😢 <strong>Esta semana no tocó, ho.</strong> El domingo a las 21:00 se abre el siguiente. ¡A por él, rapaz!</span>`;
         }
         return;
       }
@@ -5066,11 +5199,44 @@
         btn.style.display = 'none';
         prizeText.innerHTML = `🔑 <strong style="color:var(--wine);">Chave do Furancho</strong>`;
         if (rulesText) {
-          rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:13px; line-height:1.5;">⏳ O domingo ás 21:00 abre el siguiente sorteo. ¡Estate atento, ho!</span>`;
+          rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:13px; line-height:1.5;">⏳ El domingo a las 21:00 se abre el siguiente bombo. ¡Estate al loro, ho!</span>`;
         }
       }
     } catch (e) {
       console.error('Error al cargar sorteo semanal:', e);
+    }
+  }
+
+  // El ganador de la Chave confirma el premio (antes de las 23:00 de la noche del sorteo)
+  async function confirmWeeklyPrize(btn) {
+    if (!userWalletAddress) return;
+    if (btn) { btn.disabled = true; btn.textContent = 'Confirmando...'; }
+    try {
+      const res = await fetch('/api/raffle/weekly/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: userWalletAddress })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        // Cerrar el modal del sorteo si estaba abierto
+        const modal = document.getElementById('raffle-modal');
+        if (modal) { modal.style.display = 'none'; document.body.style.overflow = 'auto'; }
+        launchParticles();
+        if (navigator.vibrate) navigator.vibrate([100,50,100,50,400]);
+        showProfileBanner(
+          `🔑 <strong>¡Premio confirmado, ho!</strong> ${data.prize}<br>Tu código: <strong style="font-family:monospace; font-size:16px; letter-spacing:2px;">${data.verificationCode}</strong><br>Enséñaselo al staff en el local para trincarlo. ¡A disfrutarlo, rapaz!`,
+          'gold'
+        );
+        loadWeeklyRaffle();
+      } else {
+        showProfileBanner('❌ ' + (data.error || 'No se pudo confirmar. Inténtalo de nuevo, ho.'), 'red');
+        if (btn) { btn.disabled = false; btn.textContent = '🔑 ¡Es mío, ho! Confirmar premio'; }
+        loadWeeklyRaffle();
+      }
+    } catch (e) {
+      showProfileBanner('📡 <strong>Error de red.</strong> Comprueba tu conexión e inténtalo de nuevo.', 'red');
+      if (btn) { btn.disabled = false; btn.textContent = '🔑 ¡Es mío, ho! Confirmar premio'; }
     }
   }
 
@@ -5329,10 +5495,12 @@
               updateFicharButtons();
               if (data.isNew) {
                 showToast('🎉 ¡Bienvenido a Furancho Sessions! Primera visita registrada.');
-              } else if (data.alreadyCounted) {
-                showToast('✅ ¡Ya estabas fichado de hoy! Disfruta la noche, ho.');
-              } else {
+              } else if (data.counted) {
                 showToast(`🍷 ¡Fichado! Entrada registrada. Visita #${data.visitCount}`);
+              } else if (data.hasEventNow === false) {
+                showToast('🍷 Entrada registrada — hoy no hay sesión en la agenda, así que la visita no suma, ho.');
+              } else {
+                showToast('✅ ¡Fichado! La visita de esta semana ya estaba contada — disfruta la noche, ho.');
               }
             }
             setTimeout(async () => {

@@ -1,18 +1,31 @@
 document.addEventListener('DOMContentLoaded', async () => {
   let walletAddress = localStorage.getItem('furancho_wallet_address');
 
+  // Restauración por URL (?restore=0x...): el QR personal de recuperación también
+  // sirve para fichar entrada directamente sin pasar por el onboarding
+  if (!walletAddress) {
+    const restoreParam = new URLSearchParams(window.location.search).get('restore');
+    if (restoreParam && /^0x[a-fA-F0-9]{40}$/.test(restoreParam)) {
+      walletAddress = restoreParam;
+      localStorage.setItem('furancho_wallet_address', walletAddress);
+      if (!localStorage.getItem('furancho_account_created_at')) {
+        localStorage.setItem('furancho_account_created_at', new Date().toISOString());
+      }
+    }
+  }
+
   if (!walletAddress) {
     // Mostrar pantalla de onboarding — el usuario elige si es nuevo o ya tiene cuenta
     document.getElementById('screen-loading').style.display = 'none';
     document.getElementById('screen-onboarding').style.display = 'flex';
-    
+
     // Detectar si no es modo standalone (corre en navegador común Safari/Chrome)
     const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
     if (!isStandalone) {
       const warningEl = document.getElementById('pwa-browser-warning');
       if (warningEl) warningEl.style.display = 'block';
     }
-    
+
     buildEntryRestoreInputs();
     return;
   }
@@ -87,18 +100,28 @@ async function doEntry(walletAddress) {
     }
     launchConfetti();
 
-    let selected;
+    // Pie del mensaje según si la visita contó (evento en agenda + 1ª de la semana)
+    let footer;
     if (data.isNew) {
+      footer = '<small style="color:var(--gold); font-weight:700;">¡Esta ya cuenta como tu 1ª visita!</small>';
+    } else if (data.counted) {
+      footer = `<small style="color:var(--wine); font-weight:700;">¡Ya llevas ${data.visitCount} visita${data.visitCount !== 1 ? 's' : ''} registrada${data.visitCount !== 1 ? 's' : ''}!</small>`;
+    } else if (data.hasEventNow === false) {
+      footer = '<small style="color:var(--wine); font-weight:700;">Hoy no hay sesión en la agenda — la visita no suma, pero la leria nadie te la quita, ho. 🍷</small>';
+    } else {
+      footer = `<small style="color:var(--wine); font-weight:700;">La visita de esta semana ya estaba contada (llevas ${data.visitCount}) — hoy entra como bis, rapaz. 😜</small>`;
+    }
+
+    let selected;
+    if (data.isNew || !data.visitCount) {
+      // Nuevo de verdad, o primera vez sin evento en agenda (0 visitas): mensaje de estreno
       selected = NEW_WELCOME_MESSAGES[Math.floor(Math.random() * NEW_WELCOME_MESSAGES.length)];
-      document.getElementById('icon-container').innerText = selected.icon;
-      document.getElementById('title-container').innerText = selected.title;
-      document.getElementById('msg-container').innerHTML = `${selected.msg}<br><br><small style="color:var(--gold); font-weight:700;">¡Esta ya cuenta como tu 1ª visita!</small>`;
     } else {
       selected = RETURNING_WELCOME_MESSAGES[Math.floor(Math.random() * RETURNING_WELCOME_MESSAGES.length)];
-      document.getElementById('icon-container').innerText = selected.icon;
-      document.getElementById('title-container').innerText = selected.title;
-      document.getElementById('msg-container').innerHTML = `${selected.msg}<br><br><small style="color:var(--wine); font-weight:700;">¡Ya llevas ${data.visitCount} visita${data.visitCount !== 1 ? 's' : ''} registrada${data.visitCount !== 1 ? 's' : ''}!</small>`;
     }
+    document.getElementById('icon-container').innerText = selected.icon;
+    document.getElementById('title-container').innerText = selected.title;
+    document.getElementById('msg-container').innerHTML = `${selected.msg}<br><br>${footer}`;
 
   } catch (e) {
     showError('Error al registrar entrada. Inténtalo de nuevo.');
@@ -127,12 +150,39 @@ function launchConfetti() {
 }
 
 
+// Genera la wallet EN el dispositivo con ethers (la clave privada no viaja por la red).
+// Devuelve null si ethers no cargó — en ese caso se usa el endpoint del servidor.
+function generateWalletLocally() {
+  try {
+    if (typeof ethers === 'undefined' || !ethers.Wallet?.createRandom) return null;
+    const w = ethers.Wallet.createRandom();
+    if (!w?.address || !w?.privateKey) return null;
+    return { address: w.address, privateKey: w.privateKey, mnemonic: w.mnemonic?.phrase || null };
+  } catch (e) { return null; }
+}
+
+function recoverWalletLocally(phrase) {
+  try {
+    if (typeof ethers === 'undefined' || !ethers.Wallet?.fromPhrase) return null;
+    const w = ethers.Wallet.fromPhrase(phrase);
+    if (!w?.address || !w?.privateKey) return null;
+    return { address: w.address, privateKey: w.privateKey };
+  } catch (e) {
+    if (phrase && phrase.trim().split(/\s+/).length === 12) return { error: 'Frase de recuperación no válida. Comprueba que las palabras son correctas.' };
+    return null;
+  }
+}
+
 async function onboardingNew() {
   const btn = document.getElementById('onboarding-new-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Creando cuenta...'; }
   try {
-    const res = await fetch('/api/mint/create-wallet', { method: 'POST' });
-    const data = await res.json();
+    // 1º intento: generar en el dispositivo; fallback: servidor
+    let data = generateWalletLocally();
+    if (!data) {
+      const res = await fetch('/api/mint/create-wallet', { method: 'POST' });
+      data = await res.json();
+    }
     if (!data.address) throw new Error('Sin dirección');
     localStorage.setItem('furancho_wallet_address', data.address);
     localStorage.setItem('furancho_wallet_private_key', data.privateKey);
@@ -193,12 +243,16 @@ async function submitEntryRestore() {
   errorEl.style.display = 'none';
 
   try {
-    const res = await fetch('/api/mint/recover-from-phrase', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phrase: words.join(' ') })
-    });
-    const data = await res.json();
+    // 1º intento: recuperar en el dispositivo (la frase no viaja por la red); fallback: servidor
+    let data = recoverWalletLocally(words.join(' '));
+    if (!data) {
+      const res = await fetch('/api/mint/recover-from-phrase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phrase: words.join(' ') })
+      });
+      data = await res.json();
+    }
     if (data.address) {
       localStorage.setItem('furancho_wallet_address', data.address);
       localStorage.setItem('furancho_wallet_private_key', data.privateKey);

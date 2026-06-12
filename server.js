@@ -138,11 +138,13 @@ function scheduleAutoCheckout() {
 }
 scheduleAutoCheckout();
 
-// ─── SORTEO SEMANAL AUTOMÁTICO (Miércoles 20:00 hora Madrid) ──────────────────
-// Lógica: cada miércoles a las 20:00 comprueba si hay evento el jueves siguiente.
+// ─── SORTEO SEMANAL AUTOMÁTICO (Miércoles 21:00 hora Madrid) ──────────────────
+// Lógica: cada miércoles a las 21:00 comprueba si hay evento el jueves siguiente.
 //   - Si hay evento el jueves → lanza el sorteo semanal automáticamente.
 //   - Si no hay evento → no hace nada (sin sorteo esa semana).
 //   - Si el sorteo ya fue realizado (status='completed') → no lo repite.
+// El ganador debe CONFIRMAR en la app antes de las 23:00 de esa misma noche;
+// si no confirma, el premio se da por perdido automáticamente (ver sweeper más abajo).
 function scheduleWeeklyRaffle() {
   setInterval(() => {
     // Hora actual en zona Madrid (UTC+1/UTC+2)
@@ -194,22 +196,23 @@ function scheduleWeeklyRaffle() {
 
       // Realizar el sorteo
       const result = drawWeeklyRaffle(weekStr);
-      console.log(`[WeeklyRaffle] ✅ Ganador automático semana ${weekStr}: ${result.winnerWallet} | Premio: ${result.prize} | Código: ${result.verificationCode}`);
+      console.log(`[WeeklyRaffle] ✅ Ganador automático semana ${weekStr}: ${result.winnerWallet} | Premio: ${result.prize} | Confirmar antes de: ${result.confirmDeadline}`);
 
       // Push a todos
       const { sendPushToAll } = require('./services/push');
       sendPushToAll(
-        '🔑 ¡Chave Semanal Sorteada!',
-        `El ganador de ${result.prize} ya tiene su código. ¡Pásate esta semana por el Furancho!`,
+        '🔑 ¡Chave Semanal sorteada!',
+        `Ya hay ganador de ${result.prize}. Abre la app: si te tocó, confirma antes de las 23:00 de hoy o el premio se pierde, ho.`,
         { url: '/claim' }
       );
 
-      // SSE: notificar al ganador (si está conectado) y a todos los demás
+      // SSE: notificar al ganador (si está conectado) y a todos los demás.
+      // El código NO se envía: se revela al confirmar en la app.
       const { broadcast } = require('./routes/raffle');
       broadcast('weekly_draw_result', {
         winnerWallet: result.winnerWallet,
         prize: result.prize,
-        verificationCode: result.verificationCode,
+        confirmDeadline: result.confirmDeadline,
         week: weekStr
       }, result.winnerWallet);
 
@@ -226,6 +229,31 @@ function scheduleWeeklyRaffle() {
   }, 60 * 1000); // comprueba cada minuto
 }
 scheduleWeeklyRaffle();
+
+// ─── AUTO-PÉRDIDA DE LA CHAVE (sin confirmar antes de las 23:00) ──────────────
+// Cada minuto: si el ganador no confirmó dentro del plazo, el premio queda como
+// 'forfeited' — visible en los listados del admin y en el historial del cliente.
+function scheduleWeeklyForfeitSweep() {
+  setInterval(() => {
+    try {
+      const { forfeitExpiredWeeklyRaffles } = require('./db/database');
+      const expired = forfeitExpiredWeeklyRaffles();
+      if (!expired.length) return;
+      const { broadcast } = require('./routes/raffle');
+      expired.forEach(r => {
+        console.log(`[WeeklyRaffle] ⌛ Premio de ${r.claimed_week} (${r.prize}) dado por perdido — el ganador no confirmó a tiempo`);
+        if (r.winner_wallet) {
+          broadcast('weekly_forfeited', { prize: r.prize, week: r.claimed_week }, r.winner_wallet);
+        }
+        // Refrescar la tarjeta semanal de todos los clientes conectados
+        broadcast('weekly_draw_closed', { prize: r.prize, week: r.claimed_week });
+      });
+    } catch (e) {
+      console.error('[WeeklyRaffle] Error en auto-pérdida:', e.message);
+    }
+  }, 60 * 1000);
+}
+scheduleWeeklyForfeitSweep();
 
 // ─── PUSH "¿CUÁNDO VUELVES?" — 6 días sin visita + evento mañana ─────────────
 // Se ejecuta cada minuto pero solo dispara una vez al día a las 18:00 hora Madrid.

@@ -19,86 +19,6 @@ db.exec('PRAGMA journal_mode = WAL');
 db.exec('PRAGMA foreign_keys = ON');
 db.exec('PRAGMA busy_timeout = 5000');
 
-// Migraciones seguras
-// Solo un evento hasta ahora → nadie puede tener nivel 2 legítimamente; bajar a nivel 1
-try {
-  const downgraded = db.prepare(`UPDATE mints SET level = 1 WHERE level = 2`).run();
-  if (downgraded.changes > 0) console.log(`[DB] Migración: ${downgraded.changes} mints bajados de Nv2 → Nv1`);
-} catch (_) {}
-
-// Wallets con mint nivel 4 son de prueba → dejar solo 1 visita contada (la más antigua)
-try {
-  const fixed = db.prepare(`
-    UPDATE sessions SET counted_as_visit = 0
-    WHERE counted_as_visit = 1
-      AND wallet_address IN (SELECT DISTINCT wallet_address FROM mints WHERE level = 4)
-      AND id NOT IN (
-        SELECT MIN(id) FROM sessions
-        WHERE counted_as_visit = 1
-          AND wallet_address IN (SELECT DISTINCT wallet_address FROM mints WHERE level = 4)
-        GROUP BY wallet_address
-      )
-  `).run();
-  if (fixed.changes > 0) console.log(`[DB] Migración: ${fixed.changes} visitas extra de wallets Nv4 puestas a 0`);
-} catch (_) {}
-
-try { db.exec(`ALTER TABLE events ADD COLUMN vip_max INTEGER DEFAULT 15`); } catch (_) {}
-// Ventana horaria del evento (hora Madrid) — define cuándo un fichaje cuenta como elegible para sorteos en vivo
-try { db.exec(`ALTER TABLE events ADD COLUMN start_time TEXT DEFAULT '19:00'`); } catch (_) {}
-try { db.exec(`ALTER TABLE events ADD COLUMN end_time TEXT DEFAULT '23:59'`); } catch (_) {}
-try { db.exec(`ALTER TABLE raffles ADD COLUMN collected INTEGER DEFAULT 0`); } catch (_) {}
-try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_at TEXT`); } catch (_) {}
-try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_by TEXT`); } catch (_) {}
-try { db.exec(`ALTER TABLE raffles ADD COLUMN status TEXT DEFAULT 'pending_acceptance'`); } catch (_) {}
-try { db.exec(`ALTER TABLE raffles ADD COLUMN acceptance_deadline TEXT`); } catch (_) {}
-try { db.exec(`ALTER TABLE raffles ADD COLUMN accepted_at TEXT`); } catch (_) {}
-try { db.exec(`ALTER TABLE raffles ADD COLUMN rejected_at TEXT`); } catch (_) {}
-try { db.exec(`ALTER TABLE raffles ADD COLUMN rejection_note TEXT`); } catch (_) {}
-try { db.exec(`ALTER TABLE raffles ADD COLUMN target_level INTEGER`); } catch (_) {}
-try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN target_level INTEGER`); } catch (_) {}
-try { db.exec(`ALTER TABLE raffles ADD COLUMN prize_details TEXT`); } catch (_) {}
-try { db.exec(`ALTER TABLE raffles ADD COLUMN prize_image TEXT`); } catch (_) {}
-try { db.exec(`ALTER TABLE raffles ADD COLUMN establishment TEXT`); } catch (_) {}
-try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN prize_details TEXT`); } catch (_) {}
-try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN prize_image TEXT`); } catch (_) {}
-try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN establishment TEXT`); } catch (_) {}
-// type: 'night' | 'local' | 'chave'  — hide_name: mostrar "Sorpresa" en cliente hasta lanzar
-try { db.exec(`ALTER TABLE raffles ADD COLUMN type TEXT DEFAULT 'night'`); } catch (_) {}
-try { db.exec(`ALTER TABLE raffles ADD COLUMN hide_name INTEGER DEFAULT 0`); } catch (_) {}
-try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN type TEXT DEFAULT 'night'`); } catch (_) {}
-try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN hide_name INTEGER DEFAULT 0`); } catch (_) {}
-try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN participant_level INTEGER`); } catch (_) {}
-try { db.exec(`ALTER TABLE raffles ADD COLUMN participant_level INTEGER`); } catch (_) {}
-// Número de serie del mint dentro de su nivel (1 = primero en alcanzar ese nivel)
-try { db.exec(`ALTER TABLE mints ADD COLUMN mint_serial INTEGER`); } catch (_) {}
-try { db.exec(`ALTER TABLE mints ADD COLUMN mint_cost_matic REAL`); } catch (_) {}
-try { db.exec(`ALTER TABLE mints ADD COLUMN mint_source TEXT DEFAULT 'auto'`); } catch (_) {}
-// Rellenar seriales históricos para mints existentes sin serial
-try {
-  [1,2,3,4].forEach(lvl => {
-    const existing = db.prepare(`SELECT COUNT(*) as c FROM mints WHERE level = ? AND mint_serial IS NOT NULL AND status != 'failed'`).get(lvl).c;
-    const rows = db.prepare(`SELECT id FROM mints WHERE level = ? AND mint_serial IS NULL AND status != 'failed' ORDER BY minted_at ASC`).all(lvl);
-    rows.forEach((r, i) => db.prepare(`UPDATE mints SET mint_serial = ? WHERE id = ?`).run(existing + i + 1, r.id));
-  });
-} catch (_) {}
-// Migración: corregir sesiones que quedaron con counted_as_visit=0 por falta de evento registrado.
-// Se marcan como visita si no había otra visita contada del mismo wallet en las 168h anteriores.
-try {
-  const uncounted = db.prepare(`SELECT id, wallet_address, entry_time FROM sessions WHERE counted_as_visit = 0 ORDER BY entry_time ASC`).all();
-  let fixed = 0;
-  uncounted.forEach(s => {
-    const prior = db.prepare(`
-      SELECT id FROM sessions
-      WHERE wallet_address = ? AND counted_as_visit = 1
-        AND entry_time < ? AND entry_time > datetime(?, '-168 hours')
-    `).get(s.wallet_address, s.entry_time, s.entry_time);
-    if (!prior) {
-      db.prepare(`UPDATE sessions SET counted_as_visit = 1 WHERE id = ?`).run(s.id);
-      fixed++;
-    }
-  });
-  if (fixed > 0) console.log(`[DB] Migración: ${fixed} sesiones retroactivamente marcadas como visita`);
-} catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS prize_presets (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, active INTEGER DEFAULT 1, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS raffle_participants (raffle_id INTEGER NOT NULL, wallet_address TEXT NOT NULL, PRIMARY KEY (raffle_id, wallet_address))`); } catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS scheduled_raffles (id INTEGER PRIMARY KEY AUTOINCREMENT, event_date TEXT NOT NULL, scheduled_time TEXT NOT NULL, prize TEXT NOT NULL, status TEXT DEFAULT 'pending', raffle_id INTEGER, target_level INTEGER, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
@@ -155,6 +75,13 @@ try {
 // Premio dado por perdido (no recogido a tiempo): queda registrado pero no como entregado
 try {
   db.exec(`ALTER TABLE weekly_raffles ADD COLUMN forfeited_at TEXT`);
+} catch (_) {}
+// Confirmación del ganador: tras el sorteo del miércoles 21:00 debe confirmar antes de las 23:00
+try {
+  db.exec(`ALTER TABLE weekly_raffles ADD COLUMN confirm_deadline TEXT`);
+} catch (_) {}
+try {
+  db.exec(`ALTER TABLE weekly_raffles ADD COLUMN confirmed_at TEXT`);
 } catch (_) {}
 // Limpiar reservas VIP huérfanas (apuntan a eventos que ya no existen)
 try {
@@ -293,6 +220,75 @@ db.exec(`
   );
 `);
 
+// Migraciones de columnas y datos — DEBEN ir tras los CREATE TABLE para que
+// también se apliquen en bases de datos nuevas (antes corrían antes y fallaban en silencio).
+// Migraciones seguras
+// Solo un evento hasta ahora → nadie puede tener nivel 2 legítimamente; bajar a nivel 1
+try {
+  const downgraded = db.prepare(`UPDATE mints SET level = 1 WHERE level = 2`).run();
+  if (downgraded.changes > 0) console.log(`[DB] Migración: ${downgraded.changes} mints bajados de Nv2 → Nv1`);
+} catch (_) {}
+
+// Wallets con mint nivel 4 son de prueba → dejar solo 1 visita contada (la más antigua)
+try {
+  const fixed = db.prepare(`
+    UPDATE sessions SET counted_as_visit = 0
+    WHERE counted_as_visit = 1
+      AND wallet_address IN (SELECT DISTINCT wallet_address FROM mints WHERE level = 4)
+      AND id NOT IN (
+        SELECT MIN(id) FROM sessions
+        WHERE counted_as_visit = 1
+          AND wallet_address IN (SELECT DISTINCT wallet_address FROM mints WHERE level = 4)
+        GROUP BY wallet_address
+      )
+  `).run();
+  if (fixed.changes > 0) console.log(`[DB] Migración: ${fixed.changes} visitas extra de wallets Nv4 puestas a 0`);
+} catch (_) {}
+
+try { db.exec(`ALTER TABLE events ADD COLUMN vip_max INTEGER DEFAULT 15`); } catch (_) {}
+// Ventana horaria del evento (hora Madrid) — define cuándo un fichaje cuenta como elegible para sorteos en vivo
+try { db.exec(`ALTER TABLE events ADD COLUMN start_time TEXT DEFAULT '19:00'`); } catch (_) {}
+try { db.exec(`ALTER TABLE events ADD COLUMN end_time TEXT DEFAULT '23:59'`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN collected INTEGER DEFAULT 0`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_at TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_by TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN status TEXT DEFAULT 'pending_acceptance'`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN acceptance_deadline TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN accepted_at TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN rejected_at TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN rejection_note TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN target_level INTEGER`); } catch (_) {}
+try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN target_level INTEGER`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN prize_details TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN prize_image TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN establishment TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN prize_details TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN prize_image TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN establishment TEXT`); } catch (_) {}
+// type: 'night' | 'local' | 'chave'  — hide_name: mostrar "Sorpresa" en cliente hasta lanzar
+try { db.exec(`ALTER TABLE raffles ADD COLUMN type TEXT DEFAULT 'night'`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN hide_name INTEGER DEFAULT 0`); } catch (_) {}
+try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN type TEXT DEFAULT 'night'`); } catch (_) {}
+try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN hide_name INTEGER DEFAULT 0`); } catch (_) {}
+try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN participant_level INTEGER`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN participant_level INTEGER`); } catch (_) {}
+// Número de serie del mint dentro de su nivel (1 = primero en alcanzar ese nivel)
+try { db.exec(`ALTER TABLE mints ADD COLUMN mint_serial INTEGER`); } catch (_) {}
+try { db.exec(`ALTER TABLE mints ADD COLUMN mint_cost_matic REAL`); } catch (_) {}
+try { db.exec(`ALTER TABLE mints ADD COLUMN mint_source TEXT DEFAULT 'auto'`); } catch (_) {}
+// Rellenar seriales históricos para mints existentes sin serial
+try {
+  [1,2,3,4].forEach(lvl => {
+    const existing = db.prepare(`SELECT COUNT(*) as c FROM mints WHERE level = ? AND mint_serial IS NOT NULL AND status != 'failed'`).get(lvl).c;
+    const rows = db.prepare(`SELECT id FROM mints WHERE level = ? AND mint_serial IS NULL AND status != 'failed' ORDER BY minted_at ASC`).all(lvl);
+    rows.forEach((r, i) => db.prepare(`UPDATE mints SET mint_serial = ? WHERE id = ?`).run(existing + i + 1, r.id));
+  });
+} catch (_) {}
+// NOTA: aquí existía una migración que re-marcaba retroactivamente como visita las sesiones
+// con counted_as_visit=0 (fix histórico, ya aplicado en producción). Se eliminó porque con la
+// regla actual (la visita solo cuenta si hay evento en la agenda y máximo 1 por semana) ese
+// backfill desharía la política en cada arranque del servidor.
+
 // Migraciones seguras
 try { db.exec(`ALTER TABLE rsvps ADD COLUMN allergens TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE sessions ADD COLUMN exit_points INTEGER DEFAULT 0`); } catch (_) {}
@@ -341,6 +337,10 @@ function getNextPendingMint() {
   return db.prepare(`SELECT * FROM mints WHERE status = 'pending' ORDER BY id ASC LIMIT 1`).get();
 }
 
+// Reglas por defecto de La Chave Semanal (texto único para cliente y admin).
+// Declarado antes de module.exports para evitar TDZ al requerir el módulo.
+const WEEKLY_DEFAULT_RULES = 'Trinca tu boleto durante la semana, ho. El miércoles a las 21:00 sale el ganador: si te toca, confirma en la app antes de las 23:00 de esa misma noche o el premio se pierde, carallo. El código se enseña al staff para recoger el premio.';
+
 function insertVisit(walletAddress, email, ipAddress) {
   const stmt = db.prepare(`
     INSERT INTO visits (wallet_address, email, ip_address)
@@ -351,36 +351,33 @@ function insertVisit(walletAddress, email, ipAddress) {
 
 
 
+// Semana ISO (lunes-domingo) en hora Madrid para una fecha dada — formato 'YYYY-Www'
+function _madridISOWeek(d) {
+  const madrid = new Date(d.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+  const tempDate = new Date(Date.UTC(madrid.getFullYear(), madrid.getMonth(), madrid.getDate()));
+  tempDate.setUTCDate(tempDate.getUTCDate() + 4 - (tempDate.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(tempDate.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((tempDate - yearStart) / 86400000) + 1) / 7);
+  return `${tempDate.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+}
+
 function checkRecentVisit(walletAddress, hours = 12) {
   if (!walletAddress) return false;
-  const now = new Date();
-  const madridStr = now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' });
-  const madridDate = new Date(madridStr);
-  const yyyy = madridDate.getFullYear();
-  const mm = String(madridDate.getMonth() + 1).padStart(2, '0');
-  const dd = String(madridDate.getDate()).padStart(2, '0');
-  const todayMadrid = `${yyyy}-${mm}-${dd}`;
 
-  // Si se llama con el cooldown de 168h (entrada de la semana) comprueba el día actual
-  // Si se llama con otras horas (cooldown corto) mantiene el comportamiento por horas
+  // Cooldown semanal (>=24h): la visita cuenta UNA vez por semana natural (lunes-domingo, Madrid)
+  // Cooldown corto (<24h): mantiene el comportamiento por horas
   if (hours >= 24) {
+    const currentWeek = _madridISOWeek(new Date());
     const rows = db.prepare(`
       SELECT entry_time FROM sessions
       WHERE LOWER(wallet_address) = LOWER(?)
         AND counted_as_visit = 1
+        AND entry_time >= datetime('now', '-9 days')
     `).all(walletAddress);
 
     for (const r of rows) {
       const entryDate = new Date(r.entry_time.replace(' ', 'T') + 'Z');
-      const entryMadridStr = entryDate.toLocaleString('en-US', { timeZone: 'Europe/Madrid' });
-      const emDate = new Date(entryMadridStr);
-      const ey = emDate.getFullYear();
-      const em = String(emDate.getMonth() + 1).padStart(2, '0');
-      const ed = String(emDate.getDate()).padStart(2, '0');
-      const entryMadridDate = `${ey}-${em}-${ed}`;
-      if (entryMadridDate === todayMadrid) {
-        return true;
-      }
+      if (_madridISOWeek(entryDate) === currentWeek) return true;
     }
     return false;
   }
@@ -630,7 +627,7 @@ function rejectMint(id) {
 
 
 function openSession(walletAddress) {
-  if (!walletAddress) return;
+  if (!walletAddress) return { opened: false, counted: false };
   const now = new Date();
   const madridTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
   const yyyy = madridTime.getFullYear();
@@ -638,8 +635,8 @@ function openSession(walletAddress) {
   const dd = String(madridTime.getDate()).padStart(2, '0');
   const todayMadrid = `${yyyy}-${mm}-${dd}`;
 
-  const existing = db.prepare(`SELECT id, entry_time FROM sessions WHERE LOWER(wallet_address) = LOWER(?) AND exit_time IS NULL ORDER BY entry_time DESC LIMIT 1`).get(walletAddress);
-  
+  const existing = db.prepare(`SELECT id, entry_time, counted_as_visit FROM sessions WHERE LOWER(wallet_address) = LOWER(?) AND exit_time IS NULL ORDER BY entry_time DESC LIMIT 1`).get(walletAddress);
+
   if (existing) {
     // Convertir la fecha de inicio de la sesión existente a fecha local Madrid
     const entryMadrid = new Date(new Date(existing.entry_time.replace(' ', 'T') + 'Z').toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
@@ -647,22 +644,29 @@ function openSession(walletAddress) {
     const em = String(entryMadrid.getMonth() + 1).padStart(2, '0');
     const ed = String(entryMadrid.getDate()).padStart(2, '0');
     const entryMadridDate = `${ey}-${em}-${ed}`;
-    
+
     if (entryMadridDate !== todayMadrid) {
       // Si la sesión es de otro día, la cerramos automáticamente estableciendo exit_time a ahora
       db.prepare(`UPDATE sessions SET exit_time = datetime('now'), duration_minutes = 60 WHERE id = ?`).run(existing.id);
       console.log(`[Session] Cerrada sesión huérfana de fecha anterior (${entryMadridDate}) para la wallet ${walletAddress}`);
     } else {
       // Ya tiene sesión activa abierta hoy
-      return;
+      return { opened: false, counted: !!existing.counted_as_visit, alreadyOpen: true };
     }
   }
 
-  // Evitar exploit de acumulación de visitas ilimitadas el mismo día/semana
-  const alreadyVisited = checkRecentVisit(walletAddress, 168);
-  const countedAsVisit = alreadyVisited ? 0 : 1;
+  // La visita SOLO cuenta si hay evento en la agenda y la entrada cae dentro de su
+  // ventana horaria (con 60 min de margen antes de la apertura para los que llegan pronto).
+  const win = getActiveEventWindow();
+  const EARLY_MARGIN_MS = 60 * 60 * 1000;
+  const inEventWindow = !!win && win.nowMs >= (win.startMs - EARLY_MARGIN_MS) && win.nowMs <= win.endMs;
+
+  // Evitar exploit de acumulación: máximo una visita contada por semana natural
+  const alreadyVisitedThisWeek = checkRecentVisit(walletAddress, 168);
+  const countedAsVisit = (inEventWindow && !alreadyVisitedThisWeek) ? 1 : 0;
 
   db.prepare(`INSERT INTO sessions (wallet_address, counted_as_visit) VALUES (?, ?)`).run(walletAddress, countedAsVisit);
+  return { opened: true, counted: countedAsVisit === 1, hasEventNow: inEventWindow, alreadyVisitedThisWeek };
 }
 
 function closeSession(walletAddress) {
@@ -933,6 +937,41 @@ function _madridWallMs(dateStr) {
   return new Date(new Date(dateStr.replace(' ', 'T') + 'Z').toLocaleString('en-US', { timeZone: 'Europe/Madrid' })).getTime();
 }
 
+// Ventana del evento activo aplicable "ahora": el de hoy, o el de ayer si cruza medianoche.
+// Devuelve { event, eventDayStr, startMs, endMs, nowMs } en marco "hora de pared Madrid", o null si no hay evento.
+function getActiveEventWindow() {
+  const now = new Date();
+  const madridNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+  const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const madridDateStr = fmt(madridNow);
+
+  let event = getEventForMadridDate(madridDateStr);
+  let eventDayStr = madridDateStr;
+  if (!event) {
+    // ¿Hay un evento de ayer cuya ventana cruza medianoche y sigue activa ahora?
+    const yest = new Date(madridNow); yest.setDate(yest.getDate() - 1);
+    const yEvent = getEventForMadridDate(fmt(yest));
+    if (yEvent) {
+      const [ysh, ysm] = (yEvent.start_time || '19:00').split(':').map(Number);
+      const [yeh, yem] = (yEvent.end_time || '23:59').split(':').map(Number);
+      if ((yeh * 60 + yem) <= (ysh * 60 + ysm)) { // cruza medianoche
+        event = yEvent; eventDayStr = fmt(yest);
+      }
+    }
+  }
+  if (!event) return null;
+
+  const [sh, sm] = (event.start_time || '19:00').split(':').map(Number);
+  const [eh, em] = (event.end_time || '23:59').split(':').map(Number);
+  const [ey, emo, ed] = eventDayStr.split('-').map(Number);
+  const dayStart = new Date(ey, emo - 1, ed, 0, 0, 0, 0);
+  const startMs = dayStart.getTime() + (sh * 60 + sm) * 60000;
+  let endMs = dayStart.getTime() + (eh * 60 + em) * 60000;
+  if (endMs <= startMs) endMs += 24 * 60 * 60 * 1000; // ventana cruza medianoche
+
+  return { event, eventDayStr, startMs, endMs, nowMs: madridNow.getTime() };
+}
+
 function getEligibleRaffleParticipants() {
   // Elegibles para sorteos en vivo: SOLO los que ficharon entrada DENTRO de la ventana
   // horaria de un evento de la agenda ese día. Si no hay evento hoy, nadie es elegible.
@@ -943,23 +982,8 @@ function getEligibleRaffleParticipants() {
   const dd = String(madridNow.getDate()).padStart(2, '0');
   const madridDateStr = `${yyyy}-${mm}-${dd}`;
 
-  // Buscar evento de hoy; si el evento cruza medianoche, también puede ser el de ayer
-  let event = getEventForMadridDate(madridDateStr);
-  let eventDayStr = madridDateStr;
-  if (!event) {
-    // ¿Hay un evento de ayer cuya ventana cruza medianoche y sigue activa ahora?
-    const yest = new Date(madridNow); yest.setDate(yest.getDate() - 1);
-    const yestStr = `${yest.getFullYear()}-${String(yest.getMonth() + 1).padStart(2, '0')}-${String(yest.getDate()).padStart(2, '0')}`;
-    const yEvent = getEventForMadridDate(yestStr);
-    if (yEvent) {
-      const [ysh, ysm] = (yEvent.start_time || '19:00').split(':').map(Number);
-      const [yeh, yem] = (yEvent.end_time || '23:59').split(':').map(Number);
-      if ((yeh * 60 + yem) <= (ysh * 60 + ysm)) { // cruza medianoche
-        event = yEvent; eventDayStr = yestStr;
-      }
-    }
-  }
-  if (!event) {
+  const win = getActiveEventWindow();
+  if (!win) {
     // FALLBACK: Si no hay evento configurado en la agenda para hoy,
     // consideramos elegibles a todas las personas que tengan sesión activa hoy.
     const rows = db.prepare(`
@@ -972,14 +996,7 @@ function getEligibleRaffleParticipants() {
     return [...eligible];
   }
 
-  // Construir ventana [startMs, endMs] en marco "hora de pared Madrid"
-  const [sh, sm] = (event.start_time || '19:00').split(':').map(Number);
-  const [eh, em] = (event.end_time || '23:59').split(':').map(Number);
-  const [ey, emo, ed] = eventDayStr.split('-').map(Number);
-  const dayStart = new Date(ey, emo - 1, ed, 0, 0, 0, 0);
-  const startMs = dayStart.getTime() + (sh * 60 + sm) * 60000;
-  let endMs = dayStart.getTime() + (eh * 60 + em) * 60000;
-  if (endMs <= startMs) endMs += 24 * 60 * 60 * 1000; // ventana cruza medianoche
+  const { eventDayStr, startMs, endMs } = win;
 
   // Candidatos: sesiones que fichan el día del evento o el siguiente (por si cruza medianoche).
   // Elegible = sigue DENTRO ahora mismo (exit_time IS NULL). Cualquier salida —manual o el
@@ -1100,7 +1117,9 @@ function autoCloseSessionsAfterEvent() {
 const autoCloseSessionsAt23 = autoCloseSessionsAfterEvent;
 
 function insertRaffle(prize, winnerWallet, verificationCode, participantWallets = [], targetLevel = null, prizeDetails = null, prizeImage = null, establishment = null, type = 'night', hideName = 0, participantLevel = null) {
-  const deadline = new Date(Date.now() + 195000).toISOString().replace('T', ' ').slice(0, 19);
+  // Plazo de aceptación: 10s de animación + 600s de ventana de aceptación (debe coincidir
+  // con acceptWindow en doLaunch — el sweeper de expiración usa este deadline)
+  const deadline = new Date(Date.now() + 610000).toISOString().replace('T', ' ').slice(0, 19);
   const id = db.prepare(`
     INSERT INTO raffles (prize, winner_wallet, verification_code, status, acceptance_deadline, target_level, prize_details, prize_image, establishment, type, hide_name, participant_level)
     VALUES (?, ?, ?, 'pending_acceptance', ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1438,7 +1457,11 @@ module.exports = {
   drawWeeklyRaffle,
   collectWeeklyRaffle,
   forfeitWeeklyRaffle,
-  getWeeklyRaffleTargetWeek
+  confirmWeeklyRaffle,
+  forfeitExpiredWeeklyRaffles,
+  getWeeklyRaffleTargetWeek,
+  getActiveEventWindow,
+  WEEKLY_DEFAULT_RULES
 };
 
 function claimWeeklyRaffle(walletAddress, weekStr) {
@@ -1455,20 +1478,26 @@ function getWeeklyRaffleStatus(walletAddress, weekStr) {
   const claim = db.prepare(`SELECT id FROM weekly_claims WHERE LOWER(wallet_address) = LOWER(?) AND claimed_week = ?`).get(walletAddress, weekStr);
   const totalParticipants = db.prepare(`SELECT COUNT(*) as count FROM weekly_claims WHERE claimed_week = ?`).get(weekStr)?.count || 0;
 
-  const isWinner = raffle && raffle.winner_wallet && 
+  const isWinner = raffle && raffle.winner_wallet &&
     raffle.winner_wallet.toLowerCase() === walletAddress.toLowerCase();
+
+  // El código solo se revela al ganador una vez confirmado (o si es un sorteo
+  // antiguo sin plazo de confirmación, o ya entregado)
+  const codeUnlocked = raffle && (raffle.confirmed_at || raffle.collected_at || !raffle.confirm_deadline);
 
   return {
     claimed: !!claim,
     prize: raffle ? raffle.prize : null,
-    rules: raffle ? (raffle.rules || 'Trinca tu participación una vez por semana antes de que empiecen los eventos. ¡Se sorteará un regalo de la hostia!') : 'Trinca tu participación una vez por semana antes de que empiecen los eventos. ¡Se sorteará un regalo de la hostia!',
+    rules: raffle ? (raffle.rules || WEEKLY_DEFAULT_RULES) : WEEKLY_DEFAULT_RULES,
     winnerWallet: raffle ? raffle.winner_wallet : null,
-    // Solo el ganador ve su propio código — los demás reciben null
-    verificationCode: isWinner ? (raffle.verification_code || null) : null,
+    // Solo el ganador ve su propio código — y solo tras confirmar
+    verificationCode: isWinner && codeUnlocked ? (raffle.verification_code || null) : null,
     status: raffle ? raffle.status : 'active',
     drawnAt: raffle ? raffle.drawn_at : null,
     collectedAt: raffle ? raffle.collected_at : null,
     forfeitedAt: raffle ? raffle.forfeited_at : null,
+    confirmDeadline: raffle ? raffle.confirm_deadline : null,
+    confirmedAt: raffle ? raffle.confirmed_at : null,
     totalParticipants,
     isConfigured: !!raffle
   };
@@ -1507,17 +1536,60 @@ function drawWeeklyRaffle(weekStr) {
   let code = 'CHAVE-';
   for (let i = 0; i < 4; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
 
+  // Plazo de confirmación: esa misma noche a las 23:00 Madrid.
+  // Si el sorteo se lanza ya pasadas las 22:30 (p. ej. tirada manual del admin), dar 2h de margen.
+  const madridNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+  const todayMadridStr = `${madridNow.getFullYear()}-${String(madridNow.getMonth() + 1).padStart(2, '0')}-${String(madridNow.getDate()).padStart(2, '0')}`;
+  let confirmDeadline = madridToUTC(todayMadridStr, '23:00');
+  if (new Date(confirmDeadline.replace(' ', 'T') + 'Z').getTime() - Date.now() < 30 * 60000) {
+    confirmDeadline = new Date(Date.now() + 2 * 3600 * 1000).toISOString().replace('T', ' ').slice(0, 19);
+  }
+
   db.prepare(`
     UPDATE weekly_raffles
-    SET winner_wallet = ?, drawn_at = datetime('now'), status = 'completed', verification_code = ?
+    SET winner_wallet = ?, drawn_at = datetime('now'), status = 'completed', verification_code = ?,
+        confirm_deadline = ?, confirmed_at = NULL
     WHERE claimed_week = ?
-  `).run(winnerWallet, code, weekStr);
+  `).run(winnerWallet, code, confirmDeadline, weekStr);
 
   return {
     winnerWallet,
     prize: raffle.prize,
-    verificationCode: code
+    verificationCode: code,
+    confirmDeadline
   };
+}
+
+// El ganador confirma que ha visto el premio (antes de las 23:00 de la noche del sorteo)
+function confirmWeeklyRaffle(walletAddress, weekStr) {
+  const raffle = db.prepare(`SELECT * FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
+  if (!raffle) throw new Error('Sorteo no encontrado');
+  if (!raffle.winner_wallet || raffle.winner_wallet.toLowerCase() !== walletAddress.toLowerCase()) {
+    throw new Error('No eres el ganador de esta semana');
+  }
+  if (raffle.status === 'forfeited') throw new Error('El plazo de confirmación terminó y el premio se dio por perdido');
+  if (raffle.status !== 'completed') throw new Error('El sorteo no está pendiente de confirmación');
+  if (raffle.confirmed_at) return raffle; // idempotente — ya confirmado
+  if (raffle.confirm_deadline) {
+    const deadlineMs = new Date(raffle.confirm_deadline.replace(' ', 'T') + 'Z').getTime();
+    if (Date.now() > deadlineMs) throw new Error('El plazo de confirmación ha terminado');
+  }
+  db.prepare(`UPDATE weekly_raffles SET confirmed_at = datetime('now') WHERE claimed_week = ?`).run(weekStr);
+  return db.prepare(`SELECT * FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
+}
+
+// Da por perdidos los premios semanales cuyo plazo de confirmación expiró sin confirmar.
+// Devuelve la lista de sorteos forfeit para poder notificar.
+function forfeitExpiredWeeklyRaffles() {
+  const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const expired = db.prepare(`
+    SELECT claimed_week, prize, winner_wallet FROM weekly_raffles
+    WHERE status = 'completed' AND confirmed_at IS NULL AND collected_at IS NULL
+      AND confirm_deadline IS NOT NULL AND confirm_deadline <= ?
+  `).all(nowStr);
+  const stmt = db.prepare(`UPDATE weekly_raffles SET status = 'forfeited', forfeited_at = datetime('now') WHERE claimed_week = ?`);
+  expired.forEach(r => stmt.run(r.claimed_week));
+  return expired;
 }
 
 function collectWeeklyRaffle(weekStr) {

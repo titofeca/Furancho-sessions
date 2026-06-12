@@ -204,16 +204,21 @@
           document.getElementById('entry-title').textContent = '¡Bienvenido a la cofradía, rapaz!';
           document.getElementById('entry-msg').textContent = 'Primera visita registrada. Pasa, busca sitio y pídete una cunca de tinto. ¡Que empiece la esmorga!';
           badge.textContent = '🍷 Visita 1 — ¡la primera siempre mola más!';
-        } else if (data.alreadyCounted) {
-          document.getElementById('entry-icon').textContent = '✅';
-          document.getElementById('entry-title').textContent = '¡Ya estás fichado, ho!';
-          document.getElementById('entry-msg').textContent = 'Tu entrada ya estaba registrada. ¡Disfruta la noche, rapaz!';
-          badge.textContent = `🍷 ${data.visitCount} visita${data.visitCount !== 1 ? 's' : ''} acumulada${data.visitCount !== 1 ? 's' : ''}`;
-        } else {
+        } else if (data.counted) {
           document.getElementById('entry-icon').textContent = '🍷';
           document.getElementById('entry-title').textContent = '¡Fichado, neno!';
           document.getElementById('entry-msg').textContent = 'Entrada registrada. Pasa y disfruta — ¡el vino está fresco!';
           badge.textContent = `🍷 Visita ${data.visitCount} — ¡sigue sumando, rapaz!`;
+        } else if (data.hasEventNow === false) {
+          document.getElementById('entry-icon').textContent = '🍷';
+          document.getElementById('entry-title').textContent = '¡Fichado, ho!';
+          document.getElementById('entry-msg').textContent = 'Hoy no hay sesión en la agenda, así que la visita no suma. Pero la leria nadie te la quita, rapaz.';
+          badge.textContent = `🍷 ${data.visitCount} visita${data.visitCount !== 1 ? 's' : ''} acumulada${data.visitCount !== 1 ? 's' : ''}`;
+        } else {
+          document.getElementById('entry-icon').textContent = '✅';
+          document.getElementById('entry-title').textContent = '¡Ya estás fichado, ho!';
+          document.getElementById('entry-msg').textContent = 'La visita de esta semana ya estaba contada — hoy entra como bis. ¡Disfruta la noche, rapaz!';
+          badge.textContent = `🍷 ${data.visitCount} visita${data.visitCount !== 1 ? 's' : ''} acumulada${data.visitCount !== 1 ? 's' : ''}`;
         }
         badge.style.display = 'block';
         show('state-entry');

@@ -32,22 +32,24 @@ router.post('/entry', mintLimiter, async (req, res) => {
   }
 
   try {
-    const { getVisitCount, checkRecentVisit, openSession } = require('../db/database');
-    const alreadyVisitedThisWeek = checkRecentVisit(walletAddress, 168);
+    const { getVisitCount, openSession } = require('../db/database');
 
-    // Abrir sesión — se marca como visita en openSession si hai evento hoxe
-    openSession(walletAddress);
+    // Abrir sesión — openSession decide si cuenta como visita:
+    // solo si hay evento en la agenda ahora Y no hay otra visita contada esta semana
+    const result = openSession(walletAddress);
 
-    // Visit count post-entrada (xa inclúe a visita de hoxe se hai evento)
+    // Visit count post-entrada (ya incluye la visita de hoy si contó)
     const visitCount = getVisitCount(walletAddress);
 
     return res.json({
       success: true,
       action: 'entry',
-      isNew: visitCount === 1 && !alreadyVisitedThisWeek,
+      isNew: visitCount === 1 && result.counted,
       visitCount,
-      alreadyCounted: alreadyVisitedThisWeek,
-      message: visitCount === 1 && !alreadyVisitedThisWeek
+      counted: !!result.counted,
+      hasEventNow: result.hasEventNow !== false,
+      alreadyCounted: !!result.alreadyVisitedThisWeek || !!result.alreadyOpen,
+      message: visitCount === 1 && result.counted
         ? '¡Benvido a Furancho Sessions!'
         : `¡Benvido de volta! Levas ${visitCount} visita${visitCount !== 1 ? 's' : ''}.`
     });
@@ -157,8 +159,8 @@ router.post('/', mintLimiter, async (req, res) => {
     const hasActiveSession = !!activeSession;
 
     if (!level && !hasActiveSession && checkRecentVisit(walletAddress, 168)) {
-      return res.status(429).json({ 
-        error: 'Solo puedes escanear el código y acumular visita una vez cada 7 días.',
+      return res.status(429).json({
+        error: 'Solo puedes acumular una visita por semana, ho. Vuelve la semana que viene.',
         action: 'cooldown'
       });
     }
