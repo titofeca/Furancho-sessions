@@ -1310,9 +1310,8 @@ function getEventSessions(dateFilter) {
 }
 
 function getSessionDates() {
-  // Unión de: fechas de la agenda activa + fechas con sesiones reales.
-  // Así aparecen TODAS las noches con visitas aunque no tengan (o ya no tengan)
-  // un evento en la agenda, sin perder los eventos futuros aún sin visitas.
+  // Retorna únicamente las fechas registradas en la agenda de eventos activa (events table con active = 1)
+  // y cuenta las visitas registradas para cada fecha del evento.
   return db.prepare(`
     SELECT
       d.day as day,
@@ -1323,8 +1322,6 @@ function getSessionDates() {
       END) as count
     FROM (
       SELECT event_date AS day FROM events WHERE active = 1
-      UNION
-      SELECT date(entry_time) AS day FROM sessions WHERE entry_time IS NOT NULL
     ) d
     LEFT JOIN sessions s ON date(s.entry_time) = d.day
     GROUP BY d.day
