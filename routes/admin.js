@@ -356,13 +356,13 @@ router.get('/funnel', requireAuth, (req, res) => {
 
     const levelRows = db.prepare(`
       SELECT level, COUNT(*) as count FROM (
-        SELECT wallet_address, MAX(level) as level
-        FROM mints WHERE status != 'failed' GROUP BY wallet_address
+        SELECT LOWER(wallet_address) as wallet_address, MAX(level) as level
+        FROM mints WHERE status != 'failed' GROUP BY LOWER(wallet_address)
         UNION ALL
-        SELECT wallet_address, 1 as level
+        SELECT LOWER(wallet_address) as wallet_address, 1 as level
         FROM sessions
-        WHERE wallet_address NOT IN (SELECT wallet_address FROM mints WHERE status != 'failed')
-        GROUP BY wallet_address
+        WHERE LOWER(wallet_address) NOT IN (SELECT LOWER(wallet_address) FROM mints WHERE status != 'failed')
+        GROUP BY LOWER(wallet_address)
       ) GROUP BY level
     `).all();
     const levelMap = {};
@@ -387,9 +387,9 @@ router.get('/funnel', requireAuth, (req, res) => {
     const noshow = db.prepare(`
       SELECT e.event_date, e.title,
         (SELECT COUNT(*) FROM rsvps WHERE event_id=e.id) as rsvp_count,
-        (SELECT COUNT(DISTINCT r.wallet_address) 
+        (SELECT COUNT(DISTINCT LOWER(r.wallet_address)) 
          FROM rsvps r 
-         JOIN sessions s ON r.wallet_address = s.wallet_address
+         JOIN sessions s ON LOWER(r.wallet_address) = LOWER(s.wallet_address)
          WHERE r.event_id = e.id 
            AND (date(s.entry_time) = e.event_date OR date(s.entry_time) = date(e.event_date, '+1 day'))
         ) as actual_count
@@ -399,12 +399,12 @@ router.get('/funnel', requireAuth, (req, res) => {
     const newByEvent = db.prepare(`
       SELECT join_date as event_date, COUNT(*) as new_clients
       FROM (
-        SELECT wallet_address, date(MIN(first_time)) as join_date
+        SELECT wallet, date(MIN(first_time)) as join_date
         FROM (
-          SELECT wallet_address, MIN(entry_time) as first_time FROM sessions GROUP BY wallet_address
+          SELECT LOWER(wallet_address) as wallet, MIN(entry_time) as first_time FROM sessions GROUP BY LOWER(wallet_address)
           UNION ALL
-          SELECT wallet_address, MIN(minted_at) as first_time FROM mints WHERE status != 'failed' GROUP BY wallet_address
-        ) GROUP BY wallet_address
+          SELECT LOWER(wallet_address) as wallet, MIN(minted_at) as first_time FROM mints WHERE status != 'failed' GROUP BY LOWER(wallet_address)
+        ) GROUP BY wallet
       )
       GROUP BY join_date
       HAVING join_date IN (SELECT event_date FROM events)
@@ -413,7 +413,7 @@ router.get('/funnel', requireAuth, (req, res) => {
 
     const gapRow = db.prepare(`
       WITH unique_visits AS (
-        SELECT DISTINCT wallet_address, date(entry_time) as visit_date
+        SELECT DISTINCT LOWER(wallet_address) as wallet_address, date(entry_time) as visit_date
         FROM sessions
       ),
       ranked_visits AS (
@@ -434,7 +434,7 @@ router.get('/funnel', requireAuth, (req, res) => {
 
     const retornoRow = db.prepare(`
       WITH unique_visits AS (
-        SELECT DISTINCT wallet_address, date(entry_time) as visit_date
+        SELECT DISTINCT LOWER(wallet_address) as wallet_address, date(entry_time) as visit_date
         FROM sessions
       ),
       ranked_visits AS (
@@ -482,9 +482,9 @@ router.get('/segments', requireAuth, (req, res) => {
     const nuevos = db.prepare(`
       SELECT substr(wallet_address,1,6)||'...'||substr(wallet_address,-4) as wallet_masked,
         MIN(entry_time) as primera_visita,
-        (SELECT SUM(p.points) FROM points p WHERE p.wallet_address=s.wallet_address) as puntos
+        (SELECT SUM(p.points) FROM points p WHERE LOWER(p.wallet_address)=LOWER(s.wallet_address)) as puntos
       FROM sessions s WHERE counted_as_visit=1
-      GROUP BY wallet_address
+      GROUP BY LOWER(wallet_address)
       HAVING julianday('now') - julianday(MIN(entry_time)) < 45
       ORDER BY primera_visita DESC
     `).all();
@@ -492,31 +492,31 @@ router.get('/segments', requireAuth, (req, res) => {
     const habituales = db.prepare(`
       SELECT substr(s.wallet_address,1,6)||'...'||substr(s.wallet_address,-4) as wallet_masked,
         COUNT(*) as total_visits,
-        (SELECT MAX(m.level) FROM mints m WHERE m.wallet_address=s.wallet_address AND m.status='success') as nivel,
-        (SELECT SUM(p.points) FROM points p WHERE p.wallet_address=s.wallet_address) as puntos
+        (SELECT MAX(m.level) FROM mints m WHERE LOWER(m.wallet_address)=LOWER(s.wallet_address) AND m.status='success') as nivel,
+        (SELECT SUM(p.points) FROM points p WHERE LOWER(p.wallet_address)=LOWER(s.wallet_address)) as puntos
       FROM sessions s WHERE counted_as_visit=1
-      GROUP BY wallet_address HAVING COUNT(*) >= 3
+      GROUP BY LOWER(s.wallet_address) HAVING COUNT(*) >= 3
       ORDER BY total_visits DESC
     `).all();
 
     const vip_candidatos = db.prepare(`
       SELECT substr(s.wallet_address,1,6)||'...'||substr(s.wallet_address,-4) as wallet_masked,
-        (SELECT MAX(m.level) FROM mints m WHERE m.wallet_address=s.wallet_address AND m.status='success') as nivel,
+        (SELECT MAX(m.level) FROM mints m WHERE LOWER(m.wallet_address)=LOWER(s.wallet_address) AND m.status='success') as nivel,
         COUNT(*) as visitas,
         MAX(entry_time) as ultima_visita
       FROM sessions s WHERE counted_as_visit=1
-      GROUP BY s.wallet_address
-      HAVING COUNT(*) >= 2 AND (SELECT MAX(m.level) FROM mints m WHERE m.wallet_address=s.wallet_address AND m.status='success') >= 2
-      ORDER BY (SELECT MAX(m.level) FROM mints m WHERE m.wallet_address=s.wallet_address AND m.status='success') DESC, COUNT(*) DESC
+      GROUP BY LOWER(s.wallet_address)
+      HAVING COUNT(*) >= 2 AND (SELECT MAX(m.level) FROM mints m WHERE LOWER(m.wallet_address)=LOWER(s.wallet_address) AND m.status='success') >= 2
+      ORDER BY (SELECT MAX(m.level) FROM mints m WHERE LOWER(m.wallet_address)=LOWER(s.wallet_address) AND m.status='success') DESC, COUNT(*) DESC
     `).all();
 
     const inactivos = db.prepare(`
       SELECT substr(s.wallet_address,1,6)||'...'||substr(s.wallet_address,-4) as wallet_masked,
         CAST(julianday('now') - julianday(MAX(entry_time)) AS INTEGER) as dias_sin_visita,
-        (SELECT MAX(m.level) FROM mints m WHERE m.wallet_address=s.wallet_address AND m.status='success') as nivel,
+        (SELECT MAX(m.level) FROM mints m WHERE LOWER(m.wallet_address)=LOWER(s.wallet_address) AND m.status='success') as nivel,
         COUNT(*) as total_visits
       FROM sessions s WHERE counted_as_visit=1
-      GROUP BY s.wallet_address
+      GROUP BY LOWER(s.wallet_address)
       HAVING CAST(julianday('now') - julianday(MAX(entry_time)) AS INTEGER) > 45 AND COUNT(*) >= 1
       ORDER BY dias_sin_visita DESC
     `).all();
@@ -643,7 +643,7 @@ router.get('/report-data', requireAuth, (req, res) => {
 
     const stats = getStats();
 
-    const levelRows = db.prepare(`SELECT level, COUNT(DISTINCT wallet_address) as count FROM mints WHERE status='success' GROUP BY level`).all();
+    const levelRows = db.prepare(`SELECT level, COUNT(DISTINCT LOWER(wallet_address)) as count FROM mints WHERE status='success' GROUP BY level`).all();
     const levelMap = {};
     levelRows.forEach(r => { levelMap[r.level] = r.count; });
     const nv1 = levelMap[1] || 0, nv2 = levelMap[2] || 0, nv3 = levelMap[3] || 0, nv4 = levelMap[4] || 0;
@@ -651,9 +651,9 @@ router.get('/report-data', requireAuth, (req, res) => {
     const noshow = db.prepare(`
       SELECT e.event_date, e.title,
         (SELECT COUNT(*) FROM rsvps WHERE event_id=e.id) as rsvp_count,
-        (SELECT COUNT(DISTINCT r.wallet_address) 
+        (SELECT COUNT(DISTINCT LOWER(r.wallet_address)) 
          FROM rsvps r 
-         JOIN sessions s ON r.wallet_address = s.wallet_address
+         JOIN sessions s ON LOWER(r.wallet_address) = LOWER(s.wallet_address)
          WHERE r.event_id = e.id 
            AND (date(s.entry_time) = e.event_date OR date(s.entry_time) = date(e.event_date, '+1 day'))
         ) as actual_count
@@ -662,12 +662,12 @@ router.get('/report-data', requireAuth, (req, res) => {
 
     const topPoints = db.prepare(`
       SELECT wallet_address, substr(wallet_address,1,6)||'...'||substr(wallet_address,-4) as wallet_masked, SUM(points) as total_points
-      FROM points GROUP BY wallet_address ORDER BY total_points DESC LIMIT 8
+      FROM points GROUP BY LOWER(wallet_address) ORDER BY total_points DESC LIMIT 8
     `).all();
 
     const segCounts = {
-      nuevos_count: db.prepare(`SELECT COUNT(DISTINCT wallet_address) as c FROM sessions WHERE counted_as_visit=1 GROUP BY wallet_address HAVING julianday('now') - julianday(MIN(entry_time)) < 45`).all().length,
-      cerca_premio_count: db.prepare(`SELECT COUNT(*) as c FROM (SELECT wallet_address FROM points GROUP BY wallet_address HAVING SUM(points) BETWEEN 240 AND 299)`).get()?.c || 0
+      nuevos_count: db.prepare(`SELECT COUNT(DISTINCT LOWER(wallet_address)) as c FROM sessions WHERE counted_as_visit=1 GROUP BY LOWER(wallet_address) HAVING julianday('now') - julianday(MIN(entry_time)) < 45`).all().length,
+      cerca_premio_count: db.prepare(`SELECT COUNT(*) as c FROM (SELECT LOWER(wallet_address) FROM points GROUP BY LOWER(wallet_address) HAVING SUM(points) BETWEEN 240 AND 299)`).get()?.c || 0
     };
 
     let hourly = null;
