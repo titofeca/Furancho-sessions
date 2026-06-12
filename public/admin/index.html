@@ -1394,11 +1394,14 @@
         </div>
         <div class="form-group">
           <label class="form-label">Título del anuncio</label>
-          <input type="text" class="input-field" id="msg-subject" placeholder="Ej: ¡Próximo Furancho Sessions el viernes!" />
+          <input type="text" class="input-field" id="msg-subject" oninput="checkMessageRSVP()" placeholder="Ej: ¡Próximo Furancho Sessions el viernes!" />
         </div>
         <div class="form-group">
           <label class="form-label">Mensaje</label>
-          <textarea class="input-field" id="msg-body" placeholder="Ej: El sorteo de esta noche empieza a las 22h. ¡Que nadie se vaya sin el móvil, neno! 🍷"></textarea>
+          <textarea class="input-field" id="msg-body" oninput="checkMessageRSVP()" placeholder="Ej: El sorteo de esta noche empieza a las 22h. ¡Que nadie se vaya sin el móvil, neno! 🍷"></textarea>
+        </div>
+        <div id="rsvp-detection-status" style="margin-top: 8px; margin-bottom: 14px; font-size: 13px; font-weight: 500; background:rgba(42,21,9,0.03); border:1.5px solid rgba(42,21,9,0.08); border-radius:12px; padding:10px 14px; line-height:1.45; color:var(--text-muted); transition: all 0.2s ease;">
+          <span style="color:#7f8c8d; font-weight:900;">⚪ Mensaje estándar (RSVP Inactivo)</span>. Si quieres que el cliente pueda apuntarse y elegir alérgenos desde este mensaje, incluye palabras como <strong>vienes, vendrás, apunto, sesión o tapas</strong>.
         </div>
         <button class="btn-primary btn-send" id="send-btn" onclick="sendMessage()" style="width: 100%;">
           📢 Publicar anuncio
@@ -3031,6 +3034,28 @@
   }
 
   // ==================== MESSAGES ====================
+  function checkMessageRSVP() {
+    const subject = (document.getElementById('msg-subject')?.value || '').toLowerCase();
+    const body = (document.getElementById('msg-body')?.value || '').toLowerCase();
+    const text = subject + ' ' + body;
+    const keywords = ['vienes', 'vendrás', 'apunto', 'asistir', 'sesión', 'tapas', 'sesion', 'vendras'];
+    const matches = keywords.filter(kw => text.includes(kw));
+    const statusEl = document.getElementById('rsvp-detection-status');
+    if (!statusEl) return;
+    
+    if (matches.length > 0) {
+      statusEl.innerHTML = `<span style="color:#2ecc71; font-weight:900;">🟢 Botón RSVP Activo</span>. Los clientes verán la confirmación de asistencia en el mensaje porque incluye las palabras clave: <strong>${matches.join(', ')}</strong>.`;
+      statusEl.style.borderColor = 'rgba(46,204,113,0.3)';
+      statusEl.style.background = 'rgba(46,204,113,0.05)';
+      statusEl.style.color = 'var(--text)';
+    } else {
+      statusEl.innerHTML = `<span style="color:#7f8c8d; font-weight:900;">⚪ Mensaje estándar (RSVP Inactivo)</span>. Si quieres que el cliente pueda apuntarse y elegir alérgenos desde este mensaje, incluye palabras como <strong>vienes, vendrás, apunto, sesión o tapas</strong>.`;
+      statusEl.style.borderColor = 'rgba(42,21,9,0.08)';
+      statusEl.style.background = 'rgba(42,21,9,0.03)';
+      statusEl.style.color = 'var(--text-muted)';
+    }
+  }
+
   async function sendMessage() {
     const subject = document.getElementById('msg-subject').value.trim();
     const body = document.getElementById('msg-body').value.trim();
@@ -3070,6 +3095,7 @@
         resultDiv.textContent = `✓ Anuncio publicado con éxito en las pantallas móviles de los holders.`;
         document.getElementById('msg-subject').value = '';
         document.getElementById('msg-body').value = '';
+        checkMessageRSVP();
         loadMessages();
         showToast(`Mensaje publicado para los holders`);
       } else {
