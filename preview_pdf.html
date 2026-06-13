@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vista Previa de Comprobante PDF</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background-color: #E2DDD3;
+      font-family: 'Outfit', sans-serif;
+      margin: 0;
+      padding: 40px 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    /* Contenedor que simula la página A4 del PDF */
+    .pdf-page {
+      background-color: #F2EDE3;
+      width: 595px; /* Proporciones exactas de A4 */
+      height: 842px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      border: 1px solid #d3cbbd;
+    }
+
+    /* Cabecera color vino */
+    .pdf-header {
+      background-color: #8B1918;
+      height: 120px;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-bottom: 4px solid #C4973A;
+    }
+
+    .pdf-header img {
+      height: 92px;
+      margin-top: 5px;
+    }
+
+    /* Contenido principal */
+    .pdf-body {
+      padding: 30px 40px;
+      text-align: center;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .tagline {
+      color: #7A6A5A;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+
+    .congrats {
+      color: #8B1918;
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      margin: 0 0 18px 0;
+    }
+
+    /* Contenedor de la foto del local */
+    .prize-image-container {
+      background: #FFFFFF;
+      border: 1.5px solid #C4973A;
+      border-radius: 12px;
+      padding: 6px;
+      width: 110px;
+      height: 110px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.04);
+    }
+
+    .prize-image-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+
+    .establishment {
+      color: #7A6A5A;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin: 0 0 4px 0;
+    }
+
+    .prize-title {
+      color: #1C0E06;
+      font-size: 28px;
+      font-weight: 900;
+      margin: 0 0 10px 0;
+      line-height: 1.2;
+    }
+
+    .prize-details {
+      color: #8B1918;
+      font-size: 12px;
+      font-style: italic;
+      margin: 0 0 20px 0;
+      max-width: 440px;
+      line-height: 1.5;
+    }
+
+    .divider {
+      width: 100%;
+      border: none;
+      height: 0.8px;
+      background-color: #C4973A;
+      margin-bottom: 20px;
+    }
+
+    .verification-label {
+      color: #7A6A5A;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+    }
+
+    /* Caja del código */
+    .code-box {
+      background-color: #FFFFFF;
+      border: 1.5px solid #C4973A;
+      border-radius: 10px;
+      width: 140px;
+      padding: 8px 10px;
+      color: #8B1918;
+      font-size: 32px;
+      font-weight: 900;
+      letter-spacing: 8px;
+      text-indent: 8px; /* Centra el texto con letter-spacing */
+      margin-bottom: 24px;
+    }
+
+    .date-text {
+      color: #7A6A5A;
+      font-size: 9px;
+      margin-bottom: 6px;
+    }
+
+    .status-badge {
+      color: #8B1918; /* Cambiar a #22c55e si está entregado */
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Pie de página color vino */
+    .pdf-footer {
+      background-color: #8B1918;
+      height: 42px;
+      border-top: 4px solid #C4973A;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-sizing: border-box;
+    }
+
+    .pdf-footer p {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 8px;
+      letter-spacing: 1px;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Representación exacta del PDF en A4 -->
+  <div class="pdf-page">
+    
+    <!-- Banda Superior -->
+    <div class="pdf-header">
+      <img src="assets/logo.png" alt="Furancho Sessions Logo">
+    </div>
+
+    <!-- Cuerpo -->
+    <div class="pdf-body">
+      <div class="tagline">FURANCHO SESSIONS</div>
+      <h2 class="congrats">¡PARABÉNS, GAÑADOR!</h2>
+
+      <!-- Imagen del Premio/Local -->
+      <div class="prize-image-container">
+        <img src="assets/nft_nivel3_larpeiro.jpg" alt="Premio">
+      </div>
+
+      <!-- Datos del Local y Premio -->
+      <div class="establishment">O TABERNEIRO</div>
+      <h1 class="prize-title">Botella de Ribeiro</h1>
+      <p class="prize-details">Cena para dos personas con botella de Albariño y ración de pulpo</p>
+
+      <div class="divider"></div>
+
+      <!-- Verificación -->
+      <div class="verification-label">CÓDIGO DE VERIFICACIÓN</div>
+      <div class="code-box">LB2V</div>
+
+      <!-- Metadatos de Pie -->
+      <div class="date-text">Sorteo del 2026-06-02  ·  Furancho Sessions 2026</div>
+      <div class="status-badge">Pendiente de recoger</div>
+    </div>
+
+    <!-- Banda Inferior -->
+    <div class="pdf-footer">
+      <p>furancho.sessions  ·  O Bo Viño, A Boa Compaña</p>
+    </div>
+
+  </div>
+
+</body>
+</html>

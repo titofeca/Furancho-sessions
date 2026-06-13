@@ -3564,7 +3564,7 @@
           const pdfBtn = document.getElementById('raffle-pdf-btn');
           const raffleId = window._currentRaffleId || _acceptRaffleId;
           if (pdfBtn && raffleId && window._currentRaffleType === 'local') {
-            pdfBtn.href = `/api/raffle/voucher/${raffleId}?wallet=${encodeURIComponent(userWalletAddress)}`;
+            pdfBtn.href = `/api/pdf/premio/${raffleId}?wallet=${encodeURIComponent(userWalletAddress)}`;
             pdfBtn.style.display = 'inline-block';
           }
 
@@ -3856,7 +3856,7 @@
         // Botón descargar bono (solo premios de local colaborador aceptados/recogidos)
         const showBonoBtn = won && ['accepted','collected'].includes(r.status) && r.prize_image;
         const bonoBtn = showBonoBtn
-          ? `<a href="/api/raffle/voucher/${r.id}?wallet=${encodeURIComponent(userWalletAddress)}" target="_blank"
+          ? `<a href="/api/pdf/premio/${r.id}?wallet=${encodeURIComponent(userWalletAddress)}" target="_blank"
               style="display:inline-block; margin-top:8px; padding:7px 16px; background:rgba(196,151,58,0.1); border:1.5px solid var(--gold); color:var(--gold); border-radius:50px; font-size:12px; font-weight:700; text-decoration:none;">
               📄 Descargar bono
             </a>`

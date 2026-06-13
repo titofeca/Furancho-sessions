@@ -324,6 +324,13 @@ router.get('/premio/:id', async (req, res) => {
 
     if (!raffle) return res.status(404).send('Premio no encontrado o no aceptado todavía');
 
+    // Validación de seguridad: debe proveerse la wallet del ganador
+    const { wallet } = req.query;
+    if (!wallet) return res.status(400).send('Falta la dirección de la wallet');
+    if (raffle.winner_wallet.toLowerCase() !== wallet.toLowerCase()) {
+      return res.status(403).send('Acceso denegado');
+    }
+
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="Furancho_Premio_${raffle.id}.pdf"`);
 
@@ -347,9 +354,9 @@ router.get('/premio/:id', async (req, res) => {
     doc.fillColor(MUTED).fontSize(9).font('Helvetica')
        .text('FURANCHO SESSIONS', 0, 130, { align: 'center', characterSpacing: 3 });
 
-    // ── 🎉 GANADOR ───────────────────────────────────────────────────────────────
+    // ── ¡PARABÉNS, GAÑADOR! ──────────────────────────────────────────────────────
     doc.fillColor(WINE).fontSize(13).font('Helvetica-Bold')
-       .text('🎉 ¡PARABÉNS, GAÑADOR!', 0, 150, { align: 'center', characterSpacing: 1, width: W });
+       .text('¡PARABÉNS, GAÑADOR!', 0, 150, { align: 'center', characterSpacing: 1, width: W });
 
     // ── Imagen del establecimiento (si existe) ───────────────────────────────────
     let y = 178;
@@ -407,7 +414,7 @@ router.get('/premio/:id', async (req, res) => {
     y += 20;
 
     // ── Estado ───────────────────────────────────────────────────────────────────
-    const estadoTxt = raffle.status === 'collected' ? '✅ Premio entregado' : '⏳ Pendiente de recoger';
+    const estadoTxt = raffle.status === 'collected' ? 'Premio entregado' : 'Pendiente de recoger';
     const estadoColor = raffle.status === 'collected' ? '#22c55e' : WINE;
     doc.fillColor(estadoColor).fontSize(10).font('Helvetica-Bold')
        .text(estadoTxt, 0, y, { align: 'center', width: W });
