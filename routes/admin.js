@@ -382,11 +382,13 @@ router.get('/funnel', requireAuth, (req, res) => {
     const nv2 = c2 + nv3;
     const nv1 = c1 + nv2;
 
+    // pct_of_total = % sobre la base Nv1 (total de clientes únicos)
+    // pct_prev     = % sobre el nivel inmediatamente anterior (para info adicional)
     const funnel = [
-      { level: 1, name: 'Nv1 — Cautivo', count: nv1, pct_prev: 100 },
-      { level: 2, name: 'Nv2 — Cunqueiro', count: nv2, pct_prev: nv1 > 0 ? Math.round(nv2 / nv1 * 100) : 0 },
-      { level: 3, name: 'Nv3 — Larpeiro', count: nv3, pct_prev: nv2 > 0 ? Math.round(nv3 / nv2 * 100) : 0 },
-      { level: 4, name: 'Nv4 — Presidente', count: nv4, pct_prev: nv3 > 0 ? Math.round(nv4 / nv3 * 100) : 0 }
+      { level: 1, name: 'Nv1 — Cautivo',        count: nv1, pct_prev: 100,                                                      pct_of_total: 100 },
+      { level: 2, name: 'Nv2 — Cunqueiro',       count: nv2, pct_prev: nv1 > 0 ? Math.round(nv2 / nv1 * 100) : 0,              pct_of_total: nv1 > 0 ? Math.round(nv2 / nv1 * 100) : 0 },
+      { level: 3, name: 'Nv3 — Larpeiro',        count: nv3, pct_prev: nv2 > 0 ? Math.round(nv3 / nv2 * 100) : 0,              pct_of_total: nv1 > 0 ? Math.round(nv3 / nv1 * 100) : 0 },
+      { level: 4, name: 'Nv4 — Presidente',      count: nv4, pct_prev: nv3 > 0 ? Math.round(nv4 / nv3 * 100) : 0,              pct_of_total: nv1 > 0 ? Math.round(nv4 / nv1 * 100) : 0 }
     ];
 
     const noshow = db.prepare(`
@@ -437,6 +439,7 @@ router.get('/funnel', requireAuth, (req, res) => {
       SELECT AVG(gap) as avg_gap FROM gaps
     `).get();
 
+    // Retorno real: de TODOS los clientes únicos, cuántos volvieron en <=30 días desde su 1ª visita
     const retornoRow = db.prepare(`
       WITH unique_visits AS (
         SELECT DISTINCT LOWER(wallet_address) as wallet_address, date(entry_time) as visit_date
@@ -447,7 +450,10 @@ router.get('/funnel', requireAuth, (req, res) => {
                ROW_NUMBER() OVER (PARTITION BY wallet_address ORDER BY visit_date ASC) as rn
         FROM unique_visits
       ),
-      gaps AS (
+      all_wallets AS (
+        SELECT DISTINCT wallet_address FROM unique_visits
+      ),
+      second_visits AS (
         SELECT wallet_address,
                CAST(julianday(MAX(CASE WHEN rn = 2 THEN visit_date END)) - julianday(MAX(CASE WHEN rn = 1 THEN visit_date END)) AS INTEGER) as gap
         FROM ranked_visits
@@ -456,14 +462,81 @@ router.get('/funnel', requireAuth, (req, res) => {
         HAVING COUNT(*) >= 2
       )
       SELECT
+        (SELECT COUNT(*) FROM all_wallets) as total_unique_wallets,
         COUNT(*) as total_with_2plus,
         COUNT(CASE WHEN gap <= 30 THEN 1 END) as returned_30d
-      FROM gaps
+      FROM second_visits
     `).get();
 
+    const total_unique_wallets = retornoRow?.total_unique_wallets || 0;
     const total2plus = retornoRow?.total_with_2plus || 0;
     const returned_30d = retornoRow?.returned_30d || 0;
-    const retorno_30d_pct = total2plus > 0 ? Math.round(returned_30d / total2plus * 100) : 0;
+    // % correcto: de todos los clientes, cuántos volvieron en 30 días
+    const retorno_30d_pct = total_unique_wallets > 0 ? Math.round(returned_30d / total_unique_wallets * 100) : 0;
+
+    // --- NUEVOS KPIs DE VALOR ---
+
+    // 1. Media de visitas por cliente
+    const avgVisitsRow = db.prepare(`
+      SELECT AVG(visit_count) as avg_visits, MAX(visit_count) as max_visits
+      FROM (
+        SELECT LOWER(wallet_address) as w, COUNT(DISTINCT date(entry_time)) as visit_count
+        FROM sessions WHERE counted_as_visit = 1 GROUP BY w
+      )
+    `).get();
+
+    // 2. Tasa de fidelización: % clientes con 3+ visitas (habituales reales)
+    const loyaltyRow = db.prepare(`
+      SELECT
+        COUNT(*) as total,
+        COUNT(CASE WHEN visit_count >= 3 THEN 1 END) as loyal,
+        COUNT(CASE WHEN visit_count = 1 THEN 1 END) as one_timers
+      FROM (
+        SELECT LOWER(wallet_address) as w, COUNT(DISTINCT date(entry_time)) as visit_count
+        FROM sessions WHERE counted_as_visit = 1 GROUP BY w
+      )
+    `).get();
+
+    // 3. Clientes en zona de riesgo (última visita hace 30-45 días — aún rescatables)
+    const churnRiskRow = db.prepare(`
+      SELECT COUNT(*) as churn_risk
+      FROM (
+        SELECT LOWER(wallet_address) as w, MAX(entry_time) as last_visit
+        FROM sessions WHERE counted_as_visit = 1 GROUP BY w
+      )
+      WHERE CAST(julianday('now') - julianday(last_visit) AS INTEGER) BETWEEN 30 AND 45
+    `).get();
+
+    // 4. Tasa de upgrade: % de clientes que escalaron de Nv1 a Nv2 o superior
+    const upgradeRow = db.prepare(`
+      SELECT COUNT(*) as upgraded
+      FROM mints WHERE status != 'failed' AND level >= 2
+      GROUP BY LOWER(wallet_address) HAVING COUNT(*) >= 1
+    `).get();
+
+    // 5. Evento más concurrido (por sesiones únicas de wallet ese día)
+    const bestEventRow = db.prepare(`
+      SELECT e.title, e.event_date,
+        COUNT(DISTINCT LOWER(s.wallet_address)) as attendees
+      FROM events e
+      JOIN sessions s ON date(s.entry_time) = e.event_date AND s.counted_as_visit = 1
+      GROUP BY e.id ORDER BY attendees DESC LIMIT 1
+    `).get();
+
+    // 6. Crecimiento: nuevos clientes este mes vs mes anterior
+    const growthRow = db.prepare(`
+      SELECT
+        COUNT(CASE WHEN strftime('%Y-%m', first_visit) = strftime('%Y-%m', 'now') THEN 1 END) as this_month,
+        COUNT(CASE WHEN strftime('%Y-%m', first_visit) = strftime('%Y-%m', date('now', '-1 month')) THEN 1 END) as last_month
+      FROM (
+        SELECT LOWER(wallet_address) as w, MIN(entry_time) as first_visit
+        FROM sessions WHERE counted_as_visit = 1 GROUP BY w
+      )
+    `).get();
+
+    const growth_pct = growthRow?.last_month > 0
+      ? Math.round((growthRow.this_month - growthRow.last_month) / growthRow.last_month * 100)
+      : null;
 
     res.json({
       funnel,
@@ -472,7 +545,21 @@ router.get('/funnel', requireAuth, (req, res) => {
       avg_gap: gapRow?.avg_gap ? Math.round(gapRow.avg_gap) : null,
       retorno_30d_pct,
       returned_30d,
-      total_with_2plus: total2plus
+      total_unique_wallets,
+      total_with_2plus: total2plus,
+      // Nuevos KPIs
+      avg_visits_per_client: avgVisitsRow?.avg_visits ? Math.round(avgVisitsRow.avg_visits * 10) / 10 : null,
+      max_visits_client: avgVisitsRow?.max_visits || null,
+      loyalty_pct: loyaltyRow?.total > 0 ? Math.round(loyaltyRow.loyal / loyaltyRow.total * 100) : 0,
+      loyal_count: loyaltyRow?.loyal || 0,
+      one_timer_pct: loyaltyRow?.total > 0 ? Math.round(loyaltyRow.one_timers / loyaltyRow.total * 100) : 0,
+      churn_risk_count: churnRiskRow?.churn_risk || 0,
+      upgrade_count: upgradeRow?.upgraded || 0,
+      upgrade_pct: total_unique_wallets > 0 ? Math.round((upgradeRow?.upgraded || 0) / total_unique_wallets * 100) : 0,
+      best_event: bestEventRow || null,
+      growth_this_month: growthRow?.this_month || 0,
+      growth_last_month: growthRow?.last_month || 0,
+      growth_pct
     });
   } catch (e) {
     res.status(500).json({ error: e.message });

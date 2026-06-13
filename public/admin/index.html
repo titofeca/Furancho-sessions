@@ -1783,7 +1783,7 @@
 
           <!-- Ganador + aceptación -->
           <div id="raffle-winner-box" style="display:none; margin-top:20px;">
-            <p style="font-size:10px; text-transform:uppercase; letter-spacing:2px; color:#4ade80; margin-bottom:4px;">Ganador seleccionado</p>
+            <p style="font-size:10px; text-transform:uppercase; letter-spacing:2px; color:#15803d; margin-bottom:4px;">Ganador seleccionado</p>
             <p class="raffle-winner-code" id="raffle-winner-code">----</p>
 
             <!-- Countdown de aceptación -->
@@ -1796,8 +1796,8 @@
             </div>
 
             <!-- Aceptado -->
-            <div id="accepted-banner" style="display:none; background:rgba(74,222,128,0.08); border:1px solid rgba(74,222,128,0.3); border-radius:14px; padding:12px 16px; margin-bottom:12px; text-align:center;">
-              <p style="color:#4ade80; font-weight:700; font-size:14px;">✅ ¡Premio aceptado por el ganador!</p>
+            <div id="accepted-banner" style="display:none; background:rgba(196,151,58,0.15); border:1.5px solid #C4973A; border-radius:14px; padding:12px 16px; margin-bottom:12px; text-align:center;">
+              <p style="color:#7A5A00; font-weight:700; font-size:14px;">✅ ¡Premio aceptado por el ganador!</p>
               <p style="font-size:11px; color:var(--text-muted); margin-top:4px;">Entrega el premio y confirma a continuación.</p>
             </div>
 
@@ -1861,10 +1861,10 @@
           <button onclick="saveWeeklyRaffleConfig()" style="background:var(--wine); color:#fff; border:none; border-radius:12px; padding:12px 18px; font-size:13px; font-weight:700; cursor:pointer; width:100%; font-family:'Outfit',sans-serif;">💾 Guardar Premio y Operativa</button>
 
           <!-- Panel de confirmación: lo que está guardado actualmente -->
-          <div id="weekly-saved-summary" style="display:none; margin-top:12px; background:rgba(74,222,128,0.06); border:1.5px solid rgba(74,222,128,0.25); border-radius:12px; padding:12px 14px;">
+          <div id="weekly-saved-summary" style="display:none; margin-top:12px; background:rgba(196,151,58,0.12); border:1.5px solid #C4973A; border-radius:12px; padding:12px 14px;">
             <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
               <span style="font-size:13px;">✅</span>
-              <span style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#4ade80;">Configuración guardada</span>
+              <span style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#7A5A00;">Configuración guardada</span>
               <span id="weekly-saved-ts" style="font-size:10px; color:var(--text-muted); margin-left:auto;"></span>
             </div>
             <div style="display:flex; flex-direction:column; gap:6px;">
@@ -1914,7 +1914,7 @@
 
             <p id="weekly-drawn-at" style="font-size:11px; color:var(--text-muted); margin:0 0 8px;"></p>
             <p id="weekly-confirmed-at" style="font-size:11px; font-weight:700; margin:0 0 8px; display:none;"></p>
-            <p id="weekly-collected-at" style="font-size:11px; color:#4ade80; font-weight:700; margin:0 0 10px; display:none;">✅ Premio entregado</p>
+            <p id="weekly-collected-at" style="font-size:11px; color:#15803d; font-weight:700; margin:0 0 10px; display:none;">✅ Premio entregado</p>
             <p id="weekly-forfeited-at" style="font-size:11px; color:var(--text-muted); font-weight:700; margin:0 0 10px; display:none;">⌛ Premio dado por perdido</p>
 
             <button id="weekly-collect-btn" onclick="collectWeeklyPrize()" style="background:linear-gradient(135deg,#4ade80,#16a34a); color:#fff; border:none; border-radius:10px; padding:10px 16px; font-size:13px; font-weight:700; cursor:pointer; width:100%; font-family:'Outfit',sans-serif; margin-bottom:8px;">
@@ -2039,7 +2039,7 @@
           <button onclick="manualMint(3)" style="padding:9px 4px; border-radius:10px; border:1.5px solid rgba(42,21,9,0.15); background:transparent; color:var(--text-muted); font-family:'Outfit',sans-serif; font-size:11px; font-weight:700; cursor:pointer;">🌿<br>Nv3</button>
           <button onclick="manualMint(4)" style="padding:9px 4px; border-radius:10px; border:1.5px solid rgba(196,151,58,0.5); background:rgba(196,151,58,0.08); color:var(--gold); font-family:'Outfit',sans-serif; font-size:11px; font-weight:700; cursor:pointer;">👑<br>Nv4</button>
         </div>
-        <div id="manual-mint-result" style="display:none; background:rgba(74,222,128,0.08); border:1px solid rgba(74,222,128,0.3); border-radius:12px; padding:12px; font-size:13px; color:#4ade80;"></div>
+        <div id="manual-mint-result" style="display:none; background:rgba(196,151,58,0.12); border:1.5px solid #C4973A; border-radius:12px; padding:12px; font-size:13px; color:#7A5A00; font-weight:600;"></div>
       </div>
 
       <!-- Historial de mints -->
@@ -2950,7 +2950,7 @@
         const costStr = mintCostMatic ? ` · ${mintCostMatic} MATIC` : '';
         resultEl.style.background = 'rgba(74,222,128,0.08)';
         resultEl.style.borderColor = 'rgba(74,222,128,0.3)';
-        resultEl.style.color = '#4ade80';
+        resultEl.style.color = '#15803d';
         resultEl.innerHTML = `✅ Nivel ${level} (${levelNames[level]}) asignado a <strong>${wallet.slice(0,10)}...</strong>${costStr}`;
         resultEl.style.display = 'block';
         showToast(`✅ Mint Nv${level} realizado`);
@@ -3804,7 +3804,7 @@
       const typeColor = { night:'var(--wine)', local:'var(--gold)', chave:'var(--gold)' };
       const renderRow = (r) => {
         const statusIcon = r.status === 'collected' ? '✅' : r.status === 'rejected' ? '✕' : r.status === 'accepted' ? '🏆' : '⏳';
-        const statusColor = r.status === 'collected' ? '#4ade80' : r.status === 'rejected' ? 'var(--text-muted)' : r.status === 'accepted' ? 'var(--gold)' : 'var(--text-muted)';
+        const statusColor = r.status === 'collected' ? '#15803d' : r.status === 'rejected' ? 'var(--text-muted)' : r.status === 'accepted' ? 'var(--gold)' : 'var(--text-muted)';
         const canCollect = r.status === 'accepted';
         const canPdf = (r.status === 'accepted' || r.status === 'collected') && r.type === 'local';
         const when = new Date(r.created_at).toLocaleString('es-ES', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
@@ -3825,7 +3825,7 @@
             <div style="text-align:right; flex-shrink:0; display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
               <span style="font-family:monospace; font-size:13px; font-weight:900; letter-spacing:2px; color:${statusColor};">${r.status !== 'rejected' ? r.verification_code : '—'}</span>
               ${canCollect ? `<button onclick="collectHistoric(${r.id}, this)"
-                style="padding:5px 10px; background:rgba(74,222,128,0.12); border:1px solid rgba(74,222,128,0.3); border-radius:8px; font-size:11px; font-weight:700; color:#4ade80; cursor:pointer; font-family:'Outfit',sans-serif;">
+                style="padding:5px 10px; background:rgba(196,151,58,0.15); border:1px solid #C4973A; border-radius:8px; font-size:11px; font-weight:700; color:#7A5A00; cursor:pointer; font-family:'Outfit',sans-serif;">
                 Entregar ✓</button>` : ''}
               ${canPdf ? `<a href="/api/pdf/premio/${r.id}?wallet=${encodeURIComponent(r.winner_wallet)}" target="_blank"
                 style="padding:5px 10px; background:rgba(196,151,58,0.12); border:1px solid rgba(196,151,58,0.3); border-radius:8px; font-size:11px; font-weight:700; color:var(--gold); cursor:pointer; text-decoration:none; font-family:'Outfit',sans-serif;">
@@ -3962,7 +3962,7 @@
         if (confirmedEl) {
           if (data.confirmedAt) {
             confirmedEl.textContent = `🔑 Confirmado por el ganador el ${new Date(data.confirmedAt.replace(' ', 'T') + 'Z').toLocaleString('es-ES')}`;
-            confirmedEl.style.color = '#4ade80';
+            confirmedEl.style.color = '#15803d';
             confirmedEl.style.display = 'block';
           } else if (data.status === 'completed' && data.confirmDeadline && !data.collectedAt) {
             const dl = new Date(data.confirmDeadline.replace(' ', 'T') + 'Z');
@@ -4069,7 +4069,7 @@
     } else if (r.status === 'forfeited') {
       statusBadge = `<span style="font-size:9.5px; font-weight:700; border-radius:4px; padding:2px 6px; text-transform:uppercase; background:rgba(42,21,9,0.08); color:var(--text-muted); font-family:'Outfit',sans-serif;">⌛ Perdido</span>`;
     } else {
-      statusBadge = `<span style="font-size:9.5px; font-weight:700; border-radius:4px; padding:2px 6px; text-transform:uppercase; background:rgba(74,222,128,0.12); color:#4ade80; font-family:'Outfit',sans-serif;">Activo</span>`;
+      statusBadge = `<span style="font-size:9.5px; font-weight:700; border-radius:4px; padding:2px 6px; text-transform:uppercase; background:rgba(196,151,58,0.15); color:#7A5A00; font-family:'Outfit',sans-serif;">Activo</span>`;
     }
 
     const winnerHtml = r.winnerWallet 
@@ -4321,10 +4321,12 @@
       const thursdayEvent = events.find(e => e.event_date === thursdayStr);
 
       if (thursdayEvent) {
-        badge.style.background = 'rgba(74,222,128,0.08)';
-        badge.style.borderColor = 'rgba(74,222,128,0.3)';
-        badgeText.style.color = '#4ade80';
-        badgeText.innerHTML = `<strong>Sorteo automático activado</strong> — El <strong>${drawLabel} a las 20:00</strong> se sorteará automáticamente. Hay evento el jueves: <strong>${thursdayEvent.title}</strong>.`;
+        badge.style.background = 'rgba(196,151,58,0.18)';
+        badge.style.borderColor = '#C4973A';
+        badge.style.borderWidth = '1.5px';
+        badgeText.style.color = '#7A5A00';
+        badgeText.style.fontWeight = '500';
+        badgeText.innerHTML = `✅ <strong>Sorteo automático activado</strong> — El <strong>${drawLabel} a las 20:00</strong> se sorteará automáticamente. Hay evento el jueves: <strong>${thursdayEvent.title}</strong>.`;
       } else {
         badge.style.background = 'rgba(42,21,9,0.04)';
         badge.style.borderColor = 'rgba(42,21,9,0.1)';
@@ -4455,7 +4457,7 @@
             ${ev.description ? `<div style="font-size:11px; color:var(--text-muted); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${ev.description}</div>` : ''}
           </div>
           <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0;">
-            <span style="font-size:10px; font-weight:700; padding:3px 8px; border-radius:100px; ${isActive ? 'background:rgba(74,222,128,0.12); color:#4ade80;' : 'background:rgba(255,255,255,0.06); color:var(--text-muted);'}">${isActive ? 'activo' : 'oculto'}</span>
+            <span style="font-size:10px; font-weight:700; padding:3px 8px; border-radius:100px; ${isActive ? 'background:rgba(196,151,58,0.15); color:#7A5A00;' : 'background:rgba(255,255,255,0.06); color:var(--text-muted);'}">${isActive ? 'activo' : 'oculto'}</span>
             <span style="font-size:11px; color:var(--text-muted);">👤 ${ev.rsvp_count || 0}</span>
           </div>
         </div>`;
@@ -5020,12 +5022,19 @@
     noshow.forEach(n => { totalRsvp += (n.rsvp_count || 0); totalActual += (n.actual_count || 0); });
     const aparicionRate = totalRsvp > 0 ? Math.round(totalActual / totalRsvp * 100) : null;
 
+    const growthIcon = funnelData.growth_pct == null ? '' :
+      funnelData.growth_pct > 0 ? `<span style="color:#15803d;font-size:11px;font-weight:700;">▲ +${funnelData.growth_pct}%</span>` :
+      funnelData.growth_pct < 0 ? `<span style="color:#b91c1c;font-size:11px;font-weight:700;">▼ ${funnelData.growth_pct}%</span>` :
+      `<span style="color:var(--text-muted);font-size:11px;">= sin cambio</span>`;
+
+    const churnColor = funnelData.churn_risk_count > 10 ? '#b91c1c' : funnelData.churn_risk_count > 5 ? '#C4973A' : '#15803d';
+
     const grid = document.getElementById('kpi-grid');
     grid.innerHTML = `
       <div class="analytics-kpi">
         <div class="kpi-value" style="color:var(--wine);">${funnelData.retorno_30d_pct != null ? funnelData.retorno_30d_pct + '%' : '—'}</div>
         <div class="kpi-label">Retorno 30 días</div>
-        <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">${funnelData.returned_30d || 0} de ${funnelData.total_with_2plus || 0} vuelven</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">${funnelData.returned_30d || 0} de ${funnelData.total_unique_wallets || funnelData.total_with_2plus || 0} clientes vuelven</div>
       </div>
       <div class="analytics-kpi">
         <div class="kpi-value" style="color:var(--gold);">${funnelData.avg_gap != null ? funnelData.avg_gap + 'd' : '—'}</div>
@@ -5033,12 +5042,12 @@
         <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">días promedio</div>
       </div>
       <div class="analytics-kpi">
-        <div class="kpi-value" style="color:#4ade80;">${aparicionRate != null ? aparicionRate + '%' : '—'}</div>
+        <div class="kpi-value" style="color:#15803d;">${aparicionRate != null ? aparicionRate + '%' : '—'}</div>
         <div class="kpi-label">Tasa de aparición</div>
         <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">${totalActual} de ${totalRsvp} con ganas aparecieron</div>
       </div>
       <div class="analytics-kpi">
-        <div class="kpi-value" style="color:#4ade80;">${segmentsData.counts?.nuevos_count ?? '—'}</div>
+        <div class="kpi-value" style="color:#15803d;">${segmentsData.counts?.nuevos_count ?? '—'}</div>
         <div class="kpi-label">Activos &lt;45d</div>
         <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">clientes recientes</div>
       </div>
@@ -5047,6 +5056,48 @@
         <div class="kpi-label">Inactivos &gt;45d</div>
         <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">sin visita reciente</div>
       </div>
+
+      <!-- SEPARADOR: Indicadores de Valor -->
+      <div style="grid-column:1/-1; margin:8px 0 4px; border-top:1px solid var(--border); padding-top:12px;">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--text-muted);">📊 Indicadores de valor</div>
+      </div>
+
+      <div class="analytics-kpi">
+        <div class="kpi-value" style="color:var(--wine);">${funnelData.loyalty_pct ?? '—'}%</div>
+        <div class="kpi-label">Clientes fieles</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">${funnelData.loyal_count} con 3+ visitas · ${funnelData.one_timer_pct}% solo vinieron 1 vez</div>
+      </div>
+      <div class="analytics-kpi">
+        <div class="kpi-value" style="color:var(--gold);">${funnelData.avg_visits_per_client ?? '—'}</div>
+        <div class="kpi-label">Visitas / cliente</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">media · récord: ${funnelData.max_visits_client ?? '—'} visitas</div>
+      </div>
+      <div class="analytics-kpi">
+        <div class="kpi-value" style="color:${churnColor};">${funnelData.churn_risk_count ?? '—'}</div>
+        <div class="kpi-label">En riesgo de fuga</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">30-45 días sin aparecer</div>
+      </div>
+      <div class="analytics-kpi">
+        <div class="kpi-value" style="color:#15803d;">${funnelData.upgrade_pct ?? '—'}%</div>
+        <div class="kpi-label">Escalaron de nivel</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">${funnelData.upgrade_count} clientes llegaron a Nv2+</div>
+      </div>
+      <div class="analytics-kpi">
+        <div class="kpi-value" style="color:var(--wine);">${funnelData.growth_this_month ?? '—'}</div>
+        <div class="kpi-label">Nuevos este mes</div>
+        <div style="font-size:10px;margin-top:3px;">${growthIcon} vs mes anterior (${funnelData.growth_last_month ?? 0})</div>
+      </div>
+      ${funnelData.best_event ? `
+      <div class="analytics-kpi" style="grid-column:1/-1; text-align:left; display:flex; align-items:center; gap:12px;">
+        <div>
+          <div style="font-size:22px;font-weight:900;font-family:'Playfair Display',serif;color:var(--gold);">🏆 ${funnelData.best_event.attendees}</div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Mejor evento</div>
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text);">${funnelData.best_event.title}</div>
+          <div style="font-size:11px;color:var(--text-muted);">${new Date(funnelData.best_event.event_date + 'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})} · ${funnelData.best_event.attendees} asistentes únicos</div>
+        </div>
+      </div>` : ''}
     `;
   }
 
@@ -5057,7 +5108,8 @@
 
     const barsHtml = funnel.map((f, i) => {
       const pct = Math.round(f.count / maxCount * 100);
-      const convLabel = i === 0 ? '100% base' : `${f.pct_prev}% del anterior`;
+      // Mostrar siempre % sobre base Nv1 (pct_of_total), nunca % del nivel anterior
+      const convLabel = i === 0 ? '100% base' : `${f.pct_of_total ?? f.pct_prev}% del total`;
       return `<div class="funnel-bar">
         <div class="funnel-bar-label">${f.name}</div>
         <div class="funnel-bar-track">
