@@ -1,7 +1,7 @@
 require('dotenv').config();
 const { ethers } = require('ethers');
 
-const POLYGON_RPC = process.env.POLYGON_RPC_URL || 'https://polygon-rpc.com';
+const POLYGON_RPC = process.env.POLYGON_RPC_URL || 'https://1rpc.io/matic';
 const PRIVATE_KEY = process.env.MINTER_PRIVATE_KEY;
 const CONTRACT_ADDR = process.env.NFT_CONTRACT_ADDRESS;
 const NEW_URI = 'https://furancho-sessions-production.up.railway.app/nft-metadata/{id}';
