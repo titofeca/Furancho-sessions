@@ -45,7 +45,7 @@ const NFT_METADATA = {
   1: {
     name: 'O Cautivo',
     description: 'El primer paso en el Furancho. Llevas una visita y ya sabes lo que es bueno. Bienvenido, neno.',
-    image: `https://ipfs.io/ipfs/bafkreigd4y7hinbsllo57rgshlf2wszzutxh7nrwpzof6vemdvcmqorfim`,
+    image: `${APP_URL}/assets/nft_nivel1_cautivo.jpg`,
     external_url: APP_URL,
     attributes: [
       { trait_type: 'Nivel', value: '1' },
@@ -57,7 +57,7 @@ const NFT_METADATA = {
   2: {
     name: 'O Cunqueiro',
     description: 'Ya llevas dos visitas. Empiezas a conocer el sitio y el sitio empieza a conocerte a ti, ho.',
-    image: `https://ipfs.io/ipfs/bafkreiacmqczigpyjhdv74ksuulpfxl7n3qqojs7jvr7in6bzqzt777xzq`,
+    image: `${APP_URL}/assets/nft_nivel2_cunqueiro.jpg`,
     external_url: APP_URL,
     attributes: [
       { trait_type: 'Nivel', value: '2' },
@@ -69,7 +69,7 @@ const NFT_METADATA = {
   3: {
     name: 'O Larpeiro',
     description: 'Cuatro visitas. Carallo, neno, esto ya no es casualidad. Eres un furancheiro de verdad.',
-    image: `https://ipfs.io/ipfs/bafkreif3cfwvcobdeai7xxzs4kqii2ecj6fax7euq5q56uxa2dfxg2aqny`,
+    image: `${APP_URL}/assets/nft_nivel3_larpeiro.jpg`,
     external_url: APP_URL,
     attributes: [
       { trait_type: 'Nivel', value: '3' },
@@ -82,7 +82,6 @@ const NFT_METADATA = {
   4: {
     name: 'O Presidente do Furancho',
     description: 'Doce visitas. Malo será que no te conozca ya todo el barrio. Leyenda viva del Furancho, plas.',
-    // El CID IPFS original del Nv4 no resuelve en ningún gateway (504) — se sirve desde la app
     image: `${APP_URL}/assets/nft_nivel4_presidente.jpg`,
     external_url: APP_URL,
     attributes: [
@@ -95,15 +94,27 @@ const NFT_METADATA = {
   }
 };
 
-// Acepta tanto ID decimal (1,2,3,4) como hex zero-padded que usan algunos marketplaces
+// Acepta tanto ID decimal (1,2,3,4) como hex (con/sin 0x, con/sin .json) que usan los marketplaces
 app.get('/nft-metadata/:id', (req, res) => {
-  const raw = req.params.id;
-  const tokenId = raw.length > 10 ? parseInt(raw, 16) : parseInt(raw, 10);
+  let raw = req.params.id.trim();
+  if (raw.toLowerCase().endsWith('.json')) {
+    raw = raw.slice(0, -5);
+  }
+  let tokenId;
+  if (raw.toLowerCase().startsWith('0x')) {
+    tokenId = parseInt(raw, 16);
+  } else if (raw.length > 10) {
+    tokenId = parseInt(raw, 16);
+  } else {
+    tokenId = parseInt(raw, 10);
+  }
+
   const meta = NFT_METADATA[tokenId];
   if (!meta) return res.status(404).json({ error: 'Token no encontrado' });
   res.setHeader('Cache-Control', 'public, max-age=3600');
   res.json(meta);
 });
+
 
 // Archivos estáticos (assets y demás)
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
