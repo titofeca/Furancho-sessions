@@ -751,7 +751,7 @@ function toggleRsvp(eventId, walletAddress, allergens = null) {
 }
 
 function getRsvpStatus(walletAddress) {
-  return db.prepare(`SELECT event_id FROM rsvps WHERE wallet_address=?`).all(walletAddress).map(r => r.event_id);
+  return db.prepare(`SELECT event_id FROM rsvps WHERE LOWER(wallet_address)=LOWER(?)`).all(walletAddress).map(r => r.event_id);
 }
 
 function createEvent({ date, title, description, startTime, endTime }) {
