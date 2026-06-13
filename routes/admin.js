@@ -129,7 +129,7 @@ router.get('/inbox', (req, res) => {
         .some(w => w.toLowerCase() === verifiedWallet.toLowerCase());
     }
     const messages = db.prepare(`
-      SELECT id, subject, body, sent_at FROM messages
+      SELECT id, subject, body, sent_at, rsvp_event_id FROM messages
       WHERE level_filter = 'all' OR level_filter = ?
         OR (LOWER(level_filter) = LOWER(?) AND ? != '')
         OR (level_filter = 'checkedin' AND ?)
@@ -194,11 +194,15 @@ router.get('/multilevel', requireAuth, (req, res) => {
 // POST /api/admin/send-message
 // Body: { subject, body, levelFilter }
 router.post('/send-message', requireAuth, async (req, res) => {
-  const { subject, body, levelFilter } = req.body;
+  const { subject, body, levelFilter, rsvpEventId } = req.body;
 
   if (!subject || !body) {
     return res.status(400).json({ error: 'Asunto y cuerpo son obligatorios' });
   }
+
+  // Evento al que se adjunta el botón "¿te apetece?" (opcional). null = mensaje normal sin botón.
+  const rsvpEvent = rsvpEventId != null && rsvpEventId !== '' && !isNaN(parseInt(rsvpEventId))
+    ? parseInt(rsvpEventId) : null;
 
   // 'checkedin' = solo clientes que ficharon entrada esta noche dentro de la ventana del evento
   const checkedInOnly = levelFilter === 'checkedin';
@@ -209,7 +213,8 @@ router.post('/send-message', requireAuth, async (req, res) => {
     subject,
     body,
     levelFilter: levelFilter || 'all',
-    recipientCount: wallets.length
+    recipientCount: wallets.length,
+    rsvpEventId: rsvpEvent
   });
 
   console.log(`[MESSAGE] Mensaje publicado. Destinatarios estimados: ${wallets.length}${checkedInOnly ? ' (solo fichados en local)' : ''}`);

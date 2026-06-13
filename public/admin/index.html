@@ -1394,14 +1394,18 @@
         </div>
         <div class="form-group">
           <label class="form-label">Título del anuncio</label>
-          <input type="text" class="input-field" id="msg-subject" oninput="checkMessageRSVP()" placeholder="Ej: ¡Próximo Furancho Sessions el viernes!" />
+          <input type="text" class="input-field" id="msg-subject" placeholder="Ej: ¡Próximo Furancho Sessions el viernes!" />
         </div>
         <div class="form-group">
           <label class="form-label">Mensaje</label>
-          <textarea class="input-field" id="msg-body" oninput="checkMessageRSVP()" placeholder="Ej: El sorteo de esta noche empieza a las 22h. ¡Que nadie se vaya sin el móvil, neno! 🍷"></textarea>
+          <textarea class="input-field" id="msg-body" placeholder="Ej: El sorteo de esta noche empieza a las 22h. ¡Que nadie se vaya sin el móvil, neno! 🍷"></textarea>
         </div>
-        <div id="rsvp-detection-status" style="margin-top: 8px; margin-bottom: 14px; font-size: 13px; font-weight: 500; background:rgba(42,21,9,0.03); border:1.5px solid rgba(42,21,9,0.08); border-radius:12px; padding:10px 14px; line-height:1.45; color:var(--text-muted); transition: all 0.2s ease;">
-          <span style="color:#7f8c8d; font-weight:900;">⚪ Mensaje normal (sin botón)</span>. Si quieres que el cliente pueda decir "me apetece" y anotar alérgenos desde el mensaje, incluye palabras como <strong>vienes, vendrás, apunto, sesión o tapas</strong>.
+        <div class="form-group">
+          <label class="form-label">📋 Botón de asistencia</label>
+          <select class="input-field" id="msg-rsvp-event">
+            <option value="">— Sin botón (mensaje normal) —</option>
+          </select>
+          <p style="margin:6px 0 0; font-size:12px; color:var(--text-muted); line-height:1.45;">Si eliges una sesión, el cliente verá en el mensaje el botón <strong>"¿te apetece?"</strong> para esa fecha concreta y podrá anotar sus alérgenos. Sin compromiso, solo para que la cocina calcule.</p>
         </div>
         <button class="btn-primary btn-send" id="send-btn" onclick="sendMessage()" style="width: 100%;">
           📢 Publicar anuncio
@@ -2394,6 +2398,7 @@
       document.body.scrollTop = 0;
     }, 0);
     if (pageId === 'events') loadEventsPage();
+    if (pageId === 'messages') loadMsgRsvpEvents();
     if (pageId === 'dashboard') { loadStats(); loadHourlyChart(); }
     loadVipBadge();
     if (pageId === 'holders') {
@@ -3035,32 +3040,32 @@
   }
 
   // ==================== MESSAGES ====================
-  function checkMessageRSVP() {
-    const subject = (document.getElementById('msg-subject')?.value || '').toLowerCase();
-    const body = (document.getElementById('msg-body')?.value || '').toLowerCase();
-    const text = subject + ' ' + body;
-    const keywords = ['vienes', 'vendrás', 'apunto', 'asistir', 'sesión', 'tapas', 'sesion', 'vendras'];
-    const matches = keywords.filter(kw => text.includes(kw));
-    const statusEl = document.getElementById('rsvp-detection-status');
-    if (!statusEl) return;
-    
-    if (matches.length > 0) {
-      statusEl.innerHTML = `<span style="color:#2ecc71; font-weight:900;">🟢 Botón "me apetece" activo</span>. Los clientes podrán decir si les apetece y anotar sus alérgenos, porque el mensaje incluye: <strong>${matches.join(', ')}</strong>.`;
-      statusEl.style.borderColor = 'rgba(46,204,113,0.3)';
-      statusEl.style.background = 'rgba(46,204,113,0.05)';
-      statusEl.style.color = 'var(--text)';
-    } else {
-      statusEl.innerHTML = `<span style="color:#7f8c8d; font-weight:900;">⚪ Mensaje normal (sin botón)</span>. Si quieres que el cliente pueda decir "me apetece" y anotar alérgenos desde el mensaje, incluye palabras como <strong>vienes, vendrás, apunto, sesión o tapas</strong>.`;
-      statusEl.style.borderColor = 'rgba(42,21,9,0.08)';
-      statusEl.style.background = 'rgba(42,21,9,0.03)';
-      statusEl.style.color = 'var(--text-muted)';
-    }
+  // Rellena el desplegable "Botón de asistencia" con las próximas sesiones de la agenda.
+  // Elegir una sesión adjunta el botón "¿te apetece?" a ESE evento (F2); "sin botón" = mensaje normal (F3).
+  async function loadMsgRsvpEvents() {
+    const sel = document.getElementById('msg-rsvp-event');
+    if (!sel) return;
+    try {
+      const events = await fetch('/api/events').then(r => r.json());
+      const today = new Date(new Date().toDateString());
+      const upcoming = events
+        .filter(ev => new Date(ev.event_date + 'T00:00:00') >= today)
+        .sort((a, b) => a.event_date.localeCompare(b.event_date));
+      const current = sel.value;
+      sel.innerHTML = '<option value="">— Sin botón (mensaje normal) —</option>' +
+        upcoming.map(ev => {
+          const d = new Date(ev.event_date + 'T00:00:00').toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long' });
+          return `<option value="${ev.id}">${ev.title} · ${d}</option>`;
+        }).join('');
+      if (current) sel.value = current;
+    } catch (e) { /* sin red: se queda solo "— Sin botón —" */ }
   }
 
   async function sendMessage() {
     const subject = document.getElementById('msg-subject').value.trim();
     const body = document.getElementById('msg-body').value.trim();
     let levelFilter = document.getElementById('msg-level').value;
+    const rsvpEventId = document.getElementById('msg-rsvp-event')?.value || '';
     const resultDiv = document.getElementById('send-result');
     const btn = document.getElementById('send-btn');
 
@@ -3087,7 +3092,7 @@
       const res = await fetch('/api/admin/send-message', {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ subject, body, levelFilter })
+        body: JSON.stringify({ subject, body, levelFilter, rsvpEventId })
       });
       const data = await res.json();
 
@@ -3096,7 +3101,7 @@
         resultDiv.textContent = `✓ Anuncio publicado con éxito en las pantallas móviles de los holders.`;
         document.getElementById('msg-subject').value = '';
         document.getElementById('msg-body').value = '';
-        checkMessageRSVP();
+        document.getElementById('msg-rsvp-event').value = '';
         loadMessages();
         showToast(`Mensaje publicado para los holders`);
       } else {

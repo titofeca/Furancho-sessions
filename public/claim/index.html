@@ -4821,21 +4821,10 @@
       </button>`;
     }).join('');
 
-    // Detectar si el mensaje trata sobre asistir, tapas, apuntarse, etc.
-    const textToSearch = (m.subject + ' ' + m.body).toLowerCase();
-    const isAttendingQuestion = textToSearch.includes('vendrás') || 
-                                textToSearch.includes('vienes') || 
-                                textToSearch.includes('apunto') || 
-                                textToSearch.includes('asistir') || 
-                                textToSearch.includes('sesión') || 
-                                textToSearch.includes('tapas') ||
-                                textToSearch.includes('sesion') ||
-                                textToSearch.includes('vendras');
-    
+    // El botón "¿te apetece?" se adjunta explícitamente desde el admin a una sesión concreta (m.rsvp_event_id).
     let rsvpWidget = '';
-    if (isAttendingQuestion && _globalEvents && _globalEvents.length > 0) {
-      const today = new Date(new Date().toDateString());
-      const nextEvent = _globalEvents.find(ev => new Date(ev.event_date + 'T00:00:00') >= today);
+    if (m.rsvp_event_id && _globalEvents && _globalEvents.length > 0) {
+      const nextEvent = _globalEvents.find(ev => ev.id === Number(m.rsvp_event_id));
       if (nextEvent) {
         const eventId = nextEvent.id;
         const attending = _globalMyRsvps.includes(eventId);
@@ -4846,7 +4835,7 @@
         rsvpWidget = `
           <div style="margin: 12px 0; padding: 12px; background: rgba(139,25,24,0.05); border: 1px solid rgba(139,25,24,0.12); border-radius: 12px; text-align: left;">
             <p style="font-size: 12px; font-weight: 700; color: var(--wine); margin: 0 0 6px 0; font-family: 'Playfair Display', serif;">
-              🍷 ¿Te apetece la próxima sesión?
+              🍷 ¿Te apetece esta sesión?
             </p>
             <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 10px 0; font-weight: 300;">
               ${nextEvent.title} (${formattedDate}) · sin compromiso, es pa que la cocina calcule

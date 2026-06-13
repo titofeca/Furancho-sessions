@@ -291,6 +291,8 @@ try {
 
 // Migraciones seguras
 try { db.exec(`ALTER TABLE rsvps ADD COLUMN allergens TEXT`); } catch (_) {}
+// Evento al que un mensaje adjunta el botón "¿te apetece?" (null = sin botón). Sustituye la detección por palabras clave.
+try { db.exec(`ALTER TABLE messages ADD COLUMN rsvp_event_id INTEGER`); } catch (_) {}
 try { db.exec(`ALTER TABLE sessions ADD COLUMN exit_points INTEGER DEFAULT 0`); } catch (_) {}
 // Marca si la salida fue por auto-cierre de las 23:00 (1) o salida manual del cliente (0).
 // Para sorteos: una salida manual saca del bombo; el auto-cierre NO (seguía dentro al acabar el evento).
@@ -567,12 +569,12 @@ function getWalletsByLevel(levelFilter) {
     .map(r => r.wallet_address);
 }
 
-function insertMessage({ subject, body, levelFilter, recipientCount }) {
+function insertMessage({ subject, body, levelFilter, recipientCount, rsvpEventId = null }) {
   const stmt = db.prepare(`
-    INSERT INTO messages (subject, body, level_filter, recipient_count)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO messages (subject, body, level_filter, recipient_count, rsvp_event_id)
+    VALUES (?, ?, ?, ?, ?)
   `);
-  return stmt.run(subject, body, levelFilter, recipientCount).lastInsertRowid;
+  return stmt.run(subject, body, levelFilter, recipientCount, rsvpEventId).lastInsertRowid;
 }
 
 function getMessages() {
