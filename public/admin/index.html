@@ -1139,7 +1139,7 @@
           <div class="analytics-kpi-grid" id="kpi-grid">
             <div class="analytics-kpi"><div class="kpi-value" style="color:var(--wine);">—</div><div class="kpi-label">Retorno 30d</div></div>
             <div class="analytics-kpi"><div class="kpi-value" style="color:var(--gold);">—</div><div class="kpi-label">Días entre visitas</div></div>
-            <div class="analytics-kpi"><div class="kpi-value" style="color:#ef4444;">—</div><div class="kpi-label">No-show rate</div></div>
+            <div class="analytics-kpi"><div class="kpi-value" style="color:#4ade80;">—</div><div class="kpi-label">Tasa de aparición</div></div>
             <div class="analytics-kpi"><div class="kpi-value" style="color:#4ade80;">—</div><div class="kpi-label">Activos &lt;45d</div></div>
             <div class="analytics-kpi"><div class="kpi-value" style="color:var(--gold);">—</div><div class="kpi-label">Inactivos &gt;45d</div></div>
           </div>
@@ -1171,9 +1171,9 @@
           </div>
         </div>
 
-        <!-- SECCIÓN 5: ASISTENCIA vs RSVP (No-Show) -->
+        <!-- SECCIÓN 5: GANAS vs APARICIÓN REAL -->
         <div class="glass-card" style="margin-bottom:20px;">
-          <div class="card-title" style="margin-bottom:16px;">📋 Asistencia vs RSVP (No-Show)</div>
+          <div class="card-title" style="margin-bottom:16px;">📋 Ganas vs aparición real</div>
           <div id="noshow-table-wrap">
             <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Cargando...</div>
           </div>
@@ -1401,7 +1401,7 @@
           <textarea class="input-field" id="msg-body" oninput="checkMessageRSVP()" placeholder="Ej: El sorteo de esta noche empieza a las 22h. ¡Que nadie se vaya sin el móvil, neno! 🍷"></textarea>
         </div>
         <div id="rsvp-detection-status" style="margin-top: 8px; margin-bottom: 14px; font-size: 13px; font-weight: 500; background:rgba(42,21,9,0.03); border:1.5px solid rgba(42,21,9,0.08); border-radius:12px; padding:10px 14px; line-height:1.45; color:var(--text-muted); transition: all 0.2s ease;">
-          <span style="color:#7f8c8d; font-weight:900;">⚪ Mensaje estándar (RSVP Inactivo)</span>. Si quieres que el cliente pueda apuntarse y elegir alérgenos desde este mensaje, incluye palabras como <strong>vienes, vendrás, apunto, sesión o tapas</strong>.
+          <span style="color:#7f8c8d; font-weight:900;">⚪ Mensaje normal (sin botón)</span>. Si quieres que el cliente pueda decir "me apetece" y anotar alérgenos desde el mensaje, incluye palabras como <strong>vienes, vendrás, apunto, sesión o tapas</strong>.
         </div>
         <button class="btn-primary btn-send" id="send-btn" onclick="sendMessage()" style="width: 100%;">
           📢 Publicar anuncio
@@ -1982,7 +1982,7 @@
 
       <!-- Asistencia por evento -->
       <div class="card" style="margin-bottom:20px;">
-        <h2 style="font-family:'Playfair Display',serif; font-size:18px; font-weight:700; color:var(--text); margin-bottom:16px;">📅 Asistencias Confirmadas</h2>
+        <h2 style="font-family:'Playfair Display',serif; font-size:18px; font-weight:700; color:var(--text); margin-bottom:16px;">📅 Con ganas de caer (orientativo)</h2>
         <div id="rsvp-content" style="color:var(--text-muted); font-size:13px;">Cargando...</div>
       </div>
 
@@ -3045,12 +3045,12 @@
     if (!statusEl) return;
     
     if (matches.length > 0) {
-      statusEl.innerHTML = `<span style="color:#2ecc71; font-weight:900;">🟢 Botón RSVP Activo</span>. Los clientes verán la confirmación de asistencia en el mensaje porque incluye las palabras clave: <strong>${matches.join(', ')}</strong>.`;
+      statusEl.innerHTML = `<span style="color:#2ecc71; font-weight:900;">🟢 Botón "me apetece" activo</span>. Los clientes podrán decir si les apetece y anotar sus alérgenos, porque el mensaje incluye: <strong>${matches.join(', ')}</strong>.`;
       statusEl.style.borderColor = 'rgba(46,204,113,0.3)';
       statusEl.style.background = 'rgba(46,204,113,0.05)';
       statusEl.style.color = 'var(--text)';
     } else {
-      statusEl.innerHTML = `<span style="color:#7f8c8d; font-weight:900;">⚪ Mensaje estándar (RSVP Inactivo)</span>. Si quieres que el cliente pueda apuntarse y elegir alérgenos desde este mensaje, incluye palabras como <strong>vienes, vendrás, apunto, sesión o tapas</strong>.`;
+      statusEl.innerHTML = `<span style="color:#7f8c8d; font-weight:900;">⚪ Mensaje normal (sin botón)</span>. Si quieres que el cliente pueda decir "me apetece" y anotar alérgenos desde el mensaje, incluye palabras como <strong>vienes, vendrás, apunto, sesión o tapas</strong>.`;
       statusEl.style.borderColor = 'rgba(42,21,9,0.08)';
       statusEl.style.background = 'rgba(42,21,9,0.03)';
       statusEl.style.color = 'var(--text-muted)';
@@ -4806,7 +4806,7 @@
         return `<div style="padding:10px 0; border-bottom:1px solid rgba(42,21,9,0.06);">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <p style="font-size:14px; font-weight:600; color:var(--text);">Jueves ${d.getDate()} ${months[d.getMonth()]}</p>
-            <span style="background:var(--wine); color:#fff; font-size:12px; font-weight:700; border-radius:100px; padding:3px 10px;">${ev.rsvp_count} confirmados</span>
+            <span style="background:var(--wine); color:#fff; font-size:12px; font-weight:700; border-radius:100px; padding:3px 10px;">${ev.rsvp_count} con ganas</span>
           </div>
           ${(allergensHtml || eatAllHtml) ? `
           <div style="display:flex; flex-wrap:wrap; gap:4px; align-items:center; margin-top:6px;">
@@ -4976,7 +4976,7 @@
     const noshow = funnelData.noshow || [];
     let totalRsvp = 0, totalActual = 0;
     noshow.forEach(n => { totalRsvp += (n.rsvp_count || 0); totalActual += (n.actual_count || 0); });
-    const noshowRate = totalRsvp > 0 ? Math.round((1 - totalActual / totalRsvp) * 100) : null;
+    const aparicionRate = totalRsvp > 0 ? Math.round(totalActual / totalRsvp * 100) : null;
 
     const grid = document.getElementById('kpi-grid');
     grid.innerHTML = `
@@ -4991,9 +4991,9 @@
         <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">días promedio</div>
       </div>
       <div class="analytics-kpi">
-        <div class="kpi-value" style="color:#ef4444;">${noshowRate != null ? noshowRate + '%' : '—'}</div>
-        <div class="kpi-label">No-show rate</div>
-        <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">${totalRsvp} RSVP vs ${totalActual} asistieron</div>
+        <div class="kpi-value" style="color:#4ade80;">${aparicionRate != null ? aparicionRate + '%' : '—'}</div>
+        <div class="kpi-label">Tasa de aparición</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">${totalActual} de ${totalRsvp} con ganas aparecieron</div>
       </div>
       <div class="analytics-kpi">
         <div class="kpi-value" style="color:#4ade80;">${segmentsData.counts?.nuevos_count ?? '—'}</div>
@@ -5223,24 +5223,21 @@
     }
     const rows = noshow.map(e => {
       const d = new Date(e.event_date + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short' });
-      const noShowN = (e.rsvp_count || 0) - (e.actual_count || 0);
-      const noShowPct = e.rsvp_count > 0 ? Math.round(noShowN / e.rsvp_count * 100) : 0;
-      const colorPct = noShowPct < 20 ? '#4ade80' : noShowPct < 40 ? '#f59e0b' : '#ef4444';
-      const conv = e.rsvp_count > 0 ? Math.round(e.actual_count / e.rsvp_count * 100) : 0;
+      const aparPct = e.rsvp_count > 0 ? Math.round(e.actual_count / e.rsvp_count * 100) : 0;
+      const colorPct = aparPct >= 60 ? '#4ade80' : aparPct >= 40 ? '#f59e0b' : '#ef4444';
       return `<tr>
         <td>${d}</td>
         <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.title || '—'}</td>
         <td style="text-align:center;">${e.rsvp_count || 0}</td>
         <td style="text-align:center;font-weight:700;color:var(--wine);">${e.actual_count || 0}</td>
-        <td style="text-align:center;font-weight:700;color:${colorPct};">${noShowPct}%</td>
-        <td style="text-align:center;color:var(--text-muted);">${conv}%</td>
+        <td style="text-align:center;font-weight:700;color:${colorPct};">${aparPct}%</td>
       </tr>`;
     }).join('');
 
     document.getElementById('noshow-table-wrap').innerHTML = `
       <table class="noshow-table">
         <thead><tr>
-          <th>Fecha</th><th>Evento</th><th>RSVP</th><th>Asistencia</th><th>No-show</th><th>Conversión</th>
+          <th>Fecha</th><th>Evento</th><th>Con ganas</th><th>Aparecieron</th><th>Aparición</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>`;

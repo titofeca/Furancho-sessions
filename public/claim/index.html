@@ -3132,7 +3132,7 @@
 
           const badgesHTML = `
             <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0;">
-              ${attending ? `<span style="font-size:9px; font-weight:700; color:#fff; background:var(--wine); padding:2px 7px; border-radius:100px; line-height:1; display:inline-block; white-space:nowrap;">✓ Apuntado</span>` : ''}
+              ${attending ? `<span style="font-size:9px; font-weight:700; color:#fff; background:var(--wine); padding:2px 7px; border-radius:100px; line-height:1; display:inline-block; white-space:nowrap;">✓ Igual voy</span>` : ''}
               ${myVip && myVip.status !== 'cancelled' ? `<span style="font-size:9px; font-weight:700; color:var(--gold); background:rgba(196,151,58,0.1); border:1px solid rgba(196,151,58,0.25); padding:2px 7px; border-radius:100px; line-height:1; display:inline-block; white-space:nowrap;">⭐ VIP ${myVip.status === 'confirmed' ? 'Ok' : 'Pend.'}</span>` : ''}
             </div>
           `;
@@ -3150,7 +3150,7 @@
                 <div style="flex:1; text-align:left; display:flex; justify-content:space-between; align-items:center; gap:8px;">
                   <div>
                     <p style="font-size:15px; font-weight:600; color:var(--text); margin:0;">${ev.title}</p>
-                    <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0;">👥 ${ev.rsvp_count + baseline} personas apuntadas</p>
+                    <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0;">👥 ${ev.rsvp_count + baseline} con ganas de caer</p>
                   </div>
                   ${badgesHTML}
                 </div>
@@ -3198,7 +3198,7 @@
                   </div>`;
                 })()}
                 <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(42,21,9,0.05); padding-top:12px; margin-top:12px;">
-                  <span style="font-size:13px; color:var(--text-muted);">👥 ${ev.rsvp_count + baseline} confirmados</span>
+                  <span style="font-size:13px; color:var(--text-muted);">👥 ${ev.rsvp_count + baseline} con ganas de caer</span>
                   ${!isPast ? `
                   <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
                     <button onclick="event.stopPropagation(); toggleRsvpBtn(${ev.id}, this)" data-attending="${attending}" style="
@@ -3206,7 +3206,7 @@
                       border:1.5px solid ${attending?'var(--wine)':'rgba(42,21,9,0.15)'};
                       background:${attending?'var(--wine)':'transparent'};
                       color:${attending?'#fff':'var(--text-muted)'};
-                      font-family:'Outfit',sans-serif; white-space:nowrap;">${attending?'✓ Apuntado':'Me apunto'}</button>
+                      font-family:'Outfit',sans-serif; white-space:nowrap;">${attending?'✓ Igual voy':'Me apetece'}</button>
                     <button onclick="event.stopPropagation(); addToCalendar('${ev.title.replace(/'/g, "\\'")}', '${ev.event_date}', '${(ev.description || 'Furancho Sessions: Afterwork con vino y tapas.').replace(/'/g, "\\'").replace(/\n/g, " ")}')" style="
                       padding:9px 16px; border-radius:50px; font-size:13px; font-weight:700; cursor:pointer;
                       border:1.5px solid rgba(42,21,9,0.15); background:transparent;
@@ -3376,7 +3376,7 @@
         });
         const data = await res.json();
         btn.dataset.attending = data.attending;
-        btn.textContent = data.attending ? '✓ Apuntado' : 'Me apunto';
+        btn.textContent = data.attending ? '✓ Igual voy' : 'Me apetece';
         btn.style.background = data.attending ? 'var(--wine)' : 'transparent';
         btn.style.color = data.attending ? '#fff' : 'var(--text-muted)';
         btn.style.borderColor = data.attending ? 'var(--wine)' : 'rgba(42,21,9,0.15)';
@@ -3394,7 +3394,7 @@
       const currentlyAttending = _globalMyRsvps.includes(eventId);
       if (attend) {
         if (currentlyAttending) {
-          showToast('✅ Ya estás apuntado, rapaz.');
+          showToast('✅ Ya está anotado, rapaz — si puedes, te pasas.');
           return;
         }
         // Apuntarse: abrimos el selector de alérgenos
@@ -3403,7 +3403,7 @@
         });
       } else {
         if (!currentlyAttending) {
-          showToast('✅ Confirmado que no vienes.');
+          showToast('✅ Vale, esta no te llama. ¡Otra será, ho!');
           return;
         }
         // Desapuntarse: cancelación directa
@@ -4836,10 +4836,10 @@
         rsvpWidget = `
           <div style="margin: 12px 0; padding: 12px; background: rgba(139,25,24,0.05); border: 1px solid rgba(139,25,24,0.12); border-radius: 12px; text-align: left;">
             <p style="font-size: 12px; font-weight: 700; color: var(--wine); margin: 0 0 6px 0; font-family: 'Playfair Display', serif;">
-              🍷 ¿Te apuntas a la próxima sesión?
+              🍷 ¿Te apetece la próxima sesión?
             </p>
             <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 10px 0; font-weight: 300;">
-              ${nextEvent.title} (${formattedDate})
+              ${nextEvent.title} (${formattedDate}) · sin compromiso, es pa que la cocina calcule
             </p>
             <div style="display: flex; gap: 8px;">
               <button onclick="event.stopPropagation(); setRsvpFromMsg(${eventId}, true, this)" style="
@@ -4848,7 +4848,7 @@
                 background: ${attending ? 'var(--wine)' : 'transparent'};
                 color: ${attending ? '#fff' : 'var(--text-muted)'};
                 font-family: 'Outfit', sans-serif;">
-                👍 Sí, me apunto
+                👍 Igual me paso
               </button>
               <button onclick="event.stopPropagation(); setRsvpFromMsg(${eventId}, false, this)" style="
                 flex: 1; padding: 8px 12px; border-radius: 50px; font-size: 11px; font-weight: 700; cursor: pointer;
@@ -4856,7 +4856,7 @@
                 background: ${!attending && _globalMyRsvps.length > 0 ? 'rgba(139,25,24,0.05)' : 'transparent'};
                 color: ${!attending && _globalMyRsvps.length > 0 ? 'var(--wine)' : 'var(--text-muted)'};
                 font-family: 'Outfit', sans-serif;">
-                👎 No podré ir
+                👎 Esta no
               </button>
             </div>
           </div>
@@ -5609,16 +5609,16 @@
       
       if (_activeRsvpBtn) {
         _activeRsvpBtn.dataset.attending = data.attending;
-        _activeRsvpBtn.textContent = data.attending ? '✓ Apuntado' : 'Me apunto';
+        _activeRsvpBtn.textContent = data.attending ? '✓ Igual voy' : 'Me apetece';
         _activeRsvpBtn.style.background = data.attending ? 'var(--wine)' : 'transparent';
         _activeRsvpBtn.style.color = data.attending ? '#fff' : 'var(--text-muted)';
         _activeRsvpBtn.style.borderColor = data.attending ? 'var(--wine)' : 'rgba(42,21,9,0.15)';
       }
       
       if (data.attending) {
-        showToast(allergensText && allergensText !== 'tododo' ? '🎉 ¡Apuntado! Registramos tus alérgenos para la cocina.' : '🎉 ¡Apuntado con éxito! ¡Como y bebo de todo! 😋');
+        showToast(allergensText && allergensText !== 'tododo' ? '🎉 ¡Anotado! Si te pasas, en la cocina ya saben de tus alergias.' : '🎉 ¡Anotado! Si caes, comes y bebes de todo 😋');
       } else {
-        showToast('😔 Desapuntado de la sesión.');
+        showToast('😔 Te quito de la lista, ho.');
       }
 
       await loadAgenda();
@@ -5638,12 +5638,12 @@
     }
     const confirmBtn = document.getElementById('allergens-confirm-btn');
     confirmBtn.disabled = true;
-    confirmBtn.textContent = 'Apuntando...';
+    confirmBtn.textContent = 'Anotando...';
     
     await executeRsvp(_activeRsvpEventId, checked.join(','));
     
     confirmBtn.disabled = false;
-    confirmBtn.textContent = 'Confirmar y apuntarse';
+    confirmBtn.textContent = 'Anotar mis alergias';
     closeAllergensModal();
   }
 
@@ -6023,7 +6023,7 @@
         </label>
       </div>
 
-      <button id="allergens-confirm-btn" onclick="submitAllergensRsvp()" style="width:100%; padding:15px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; box-shadow:0 4px 10px rgba(139,25,24,0.3); margin-bottom:12px;">Confirmar y apuntarse</button>
+      <button id="allergens-confirm-btn" onclick="submitAllergensRsvp()" style="width:100%; padding:15px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; box-shadow:0 4px 10px rgba(139,25,24,0.3); margin-bottom:12px;">Anotar mis alergias</button>
       <button onclick="submitEatAllRsvp()" style="width:100%; padding:14px; background:rgba(42,21,9,0.06); border:1.5px solid rgba(42,21,9,0.12); color:var(--text); border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer; transition:all 0.2s;">¡Como y bebo de todo! 😋</button>
     </div>
   </div>
