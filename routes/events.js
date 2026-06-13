@@ -13,6 +13,16 @@ const { sendVipRequestEmail } = require('../services/notifications');
 const rsvpLimiter = rateLimit({ windowMs: 5 * 60 * 1000, max: 20, message: { error: 'Demasiadas peticiones. Espéra un momento, ho.' }, standardHeaders: true, legacyHeaders: false });
 const reactLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, message: { error: 'Demasiadas reacciones. Calmía, ho.' }, standardHeaders: true, legacyHeaders: false });
 
+// Alérgenos de declaración obligatoria UE (Reglamento 1169/2011, Anexo II).
+// El RSVP es público: hay que sanear lo que entra para no guardar/pintar texto arbitrario (XSS).
+const VALID_ALLERGENS = ['gluten','crustaceos','huevos','pescado','cacahuetes','soja','lacteos','frutos_secos','apio','mostaza','sesamo','sulfitos','altramuces','moluscos'];
+function sanitizeAllergens(raw) {
+  if (typeof raw !== 'string' || !raw.trim()) return null;
+  if (raw.trim() === 'tododo') return 'tododo';
+  const clean = raw.split(',').map(s => s.trim()).filter(id => VALID_ALLERGENS.includes(id));
+  return clean.length ? clean.join(',') : null;
+}
+
 // GET /api/events — lista de eventos con conteo de asistentes (público)
 router.get('/', (req, res) => {
   try {
@@ -29,7 +39,7 @@ router.post('/rsvp', rsvpLimiter, (req, res) => {
   if (!/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) return res.status(400).json({ error: 'Wallet no válida' });
   try {
     const { toggleRsvp } = require('../db/database');
-    const attending = toggleRsvp(parseInt(eventId), walletAddress, allergens || null);
+    const attending = toggleRsvp(parseInt(eventId), walletAddress, sanitizeAllergens(allergens));
     res.json({ success: true, attending });
   } catch (e) {
     res.status(500).json({ error: e.message });

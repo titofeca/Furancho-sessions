@@ -4643,15 +4643,7 @@
     // Guardar allergens actuales en el picker (reutilizamos initAllergenPicker para el modal)
     const allergenList = (allergens||'').split(',').filter(Boolean);
     // Construir chips de alérgenos seleccionables dentro de la fila
-    const ALLERGEN_MAP = {
-      gluten:{icon:'🌾',name:'Gluten'}, crustaceos:{icon:'🦞',name:'Crustáceos'},
-      huevos:{icon:'🥚',name:'Huevos'}, pescado:{icon:'🐟',name:'Pescado'},
-      cacahuetes:{icon:'🥜',name:'Cacahuetes'}, soja:{icon:'🫘',name:'Soja'},
-      lacteos:{icon:'🥛',name:'Lácteos'}, frutos_secos:{icon:'🌰',name:'Frutos secos'},
-      apio:{icon:'🌿',name:'Apio'}, mostaza:{icon:'🟡',name:'Mostaza'},
-      sesamo:{icon:'🌱',name:'Sésamo'}, sulfitos:{icon:'🍷',name:'Sulfitos'},
-      altramuces:{icon:'🌼',name:'Altramuces'}, moluscos:{icon:'🐚',name:'Moluscos'}
-    };
+    const ALLERGEN_MAP = Object.fromEntries(ALLERGENS.map(a => [a.id, { icon: a.icon, name: a.name }]));
     const allergenChips = Object.entries(ALLERGEN_MAP).map(([id, a]) => {
       const sel = allergenList.includes(id);
       return `<span onclick="this.classList.toggle('ae-sel')" data-id="${id}" class="ae-chip${sel?' ae-sel':''}" style="
@@ -4784,16 +4776,9 @@
         
         let allergensHtml = '';
         if (ev.allergens_summary && Object.keys(ev.allergens_summary).length > 0) {
-          const labelsMap = {
-            'gluten': '🌾 Gluten',
-            'lacteos': '🥛 Lácteos',
-            'huevos': '🥚 Huevos',
-            'pescado': '🐟 Pescado',
-            'frutos_secos': '🥜 F. Secos',
-            'sulfitos': '🍷 Sulfitos'
-          };
-          allergensHtml = Object.entries(ev.allergens_summary).map(([key, count]) => {
-            const label = labelsMap[key] || key;
+          const labelsMap = Object.fromEntries(ALLERGENS.map(a => [a.id, a.icon + ' ' + a.name]));
+          allergensHtml = Object.entries(ev.allergens_summary).filter(([key]) => labelsMap[key]).map(([key, count]) => {
+            const label = labelsMap[key];
             return `<span style="display:inline-block; font-size:11px; background:#f8717118; border:1px solid #f8717140; color:#b91c1c; font-weight:600; padding:2px 6px; border-radius:6px; margin:2px 4px 2px 0;">${label}: <strong>${count}</strong></span>`;
           }).join(' ');
         }

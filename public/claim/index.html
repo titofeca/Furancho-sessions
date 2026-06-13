@@ -2486,6 +2486,24 @@
     let _globalMyRsvps = [];
     const walletPreexistente = !!userWalletAddress; // true si ya había visitado antes
 
+    // Fuente única de alérgenos — los 14 de declaración obligatoria UE (Reglamento 1169/2011, Anexo II)
+    const ALLERGENS = [
+      { id: 'gluten',       icon: '🌾', name: 'Gluten' },
+      { id: 'crustaceos',   icon: '🦞', name: 'Crustáceos' },
+      { id: 'huevos',       icon: '🥚', name: 'Huevos' },
+      { id: 'pescado',      icon: '🐟', name: 'Pescado' },
+      { id: 'cacahuetes',   icon: '🥜', name: 'Cacahuetes' },
+      { id: 'soja',         icon: '🫘', name: 'Soja' },
+      { id: 'lacteos',      icon: '🥛', name: 'Lácteos' },
+      { id: 'frutos_secos', icon: '🌰', name: 'Frutos secos' },
+      { id: 'apio',         icon: '🌿', name: 'Apio' },
+      { id: 'mostaza',      icon: '🟡', name: 'Mostaza' },
+      { id: 'sesamo',       icon: '🌱', name: 'Sésamo' },
+      { id: 'sulfitos',     icon: '🍷', name: 'Sulfitos' },
+      { id: 'altramuces',   icon: '🌼', name: 'Altramuces' },
+      { id: 'moluscos',     icon: '🐚', name: 'Moluscos' }
+    ];
+
     // Guardar fecha de creación si ya tiene wallet pero nunca se guardó
     if (userWalletAddress && !localStorage.getItem('furancho_account_created_at')) {
       localStorage.setItem('furancho_account_created_at', new Date().toISOString());
@@ -3162,15 +3180,7 @@
                 ${(() => {
                   const tapas = tapasMap[ev.id] || [];
                   if (!tapas.length) return '';
-                  const ALLERGENS_CLIENT = {
-                    gluten: {icon:'🌾', name:'Gluten'}, crustaceos: {icon:'🦞', name:'Crustáceos'},
-                    huevos: {icon:'🥚', name:'Huevos'}, pescado: {icon:'🐟', name:'Pescado'},
-                    cacahuetes: {icon:'🥜', name:'Cacahuetes'}, soja: {icon:'🫘', name:'Soja'},
-                    lacteos: {icon:'🥛', name:'Lácteos'}, frutos_secos: {icon:'🌰', name:'Frutos secos'},
-                    apio: {icon:'🌿', name:'Apio'}, mostaza: {icon:'🟡', name:'Mostaza'},
-                    sesamo: {icon:'🌱', name:'Sésamo'}, sulfitos: {icon:'🍷', name:'Sulfitos'},
-                    altramuces: {icon:'🌼', name:'Altramuces'}, moluscos: {icon:'🐚', name:'Moluscos'}
-                  };
+                  const ALLERGENS_CLIENT = Object.fromEntries(ALLERGENS.map(a => [a.id, { icon: a.icon, name: a.name }]));
                   return `<div style="margin:4px 0 16px; background:linear-gradient(135deg,rgba(139,25,24,0.04),rgba(196,151,58,0.04)); border:1.5px solid rgba(196,151,58,0.2); border-radius:14px; padding:14px;">
                     <p style="font-size:10px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; color:var(--gold); margin:0 0 12px;">🍽️ Tapas de la sesión</p>
                     <div style="display:flex; flex-direction:column; gap:12px;">
@@ -5573,11 +5583,22 @@
   let _activeRsvpBtn = null;
   let _activeRsvpCallback = null;
 
+  function populateAllergenGrid() {
+    const grid = document.getElementById('allergen-rsvp-grid');
+    if (!grid || grid.children.length > 0) return;
+    grid.innerHTML = ALLERGENS.map(a => `
+      <label style="display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid rgba(42,21,9,0.08); border-radius:14px; padding:12px 14px; cursor:pointer; transition:all 0.2s;">
+        <input type="checkbox" name="allergen-chk" value="${a.id}" style="accent-color:var(--wine); width:18px; height:18px;">
+        <span style="font-size:14px; font-weight:600; color:var(--text);">${a.icon} ${a.name}</span>
+      </label>`).join('');
+  }
+
   function openAllergensModal(eventId, btn, callback = null) {
     _activeRsvpEventId = eventId;
     _activeRsvpBtn = btn;
     _activeRsvpCallback = callback;
-    
+
+    populateAllergenGrid();
     const checkboxes = document.querySelectorAll('input[name="allergen-chk"]');
     checkboxes.forEach(c => c.checked = false);
 
@@ -5990,38 +6011,8 @@
 
       <p style="font-size:14px; color:var(--text-muted); margin:0 0 20px; line-height:1.5;">¿Tienes alguna alergia o intolerancia alimentaria? Indícalo para que prepare la <strong>mise en place</strong> a tu medida 🍷</p>
 
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:24px;">
-        <!-- Gluten -->
-        <label style="display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid rgba(42,21,9,0.08); border-radius:14px; padding:12px 14px; cursor:pointer; transition:all 0.2s;">
-          <input type="checkbox" name="allergen-chk" value="gluten" style="accent-color:var(--wine); width:18px; height:18px;">
-          <span style="font-size:14px; font-weight:600; color:var(--text);">🌾 Gluten</span>
-        </label>
-        <!-- Lácteos -->
-        <label style="display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid rgba(42,21,9,0.08); border-radius:14px; padding:12px 14px; cursor:pointer; transition:all 0.2s;">
-          <input type="checkbox" name="allergen-chk" value="lacteos" style="accent-color:var(--wine); width:18px; height:18px;">
-          <span style="font-size:14px; font-weight:600; color:var(--text);">🥛 Lácteos</span>
-        </label>
-        <!-- Huevos -->
-        <label style="display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid rgba(42,21,9,0.08); border-radius:14px; padding:12px 14px; cursor:pointer; transition:all 0.2s;">
-          <input type="checkbox" name="allergen-chk" value="huevos" style="accent-color:var(--wine); width:18px; height:18px;">
-          <span style="font-size:14px; font-weight:600; color:var(--text);">🥚 Huevos</span>
-        </label>
-        <!-- Pescado -->
-        <label style="display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid rgba(42,21,9,0.08); border-radius:14px; padding:12px 14px; cursor:pointer; transition:all 0.2s;">
-          <input type="checkbox" name="allergen-chk" value="pescado" style="accent-color:var(--wine); width:18px; height:18px;">
-          <span style="font-size:14px; font-weight:600; color:var(--text);">🐟 Pescado</span>
-        </label>
-        <!-- Frutos Secos -->
-        <label style="display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid rgba(42,21,9,0.08); border-radius:14px; padding:12px 14px; cursor:pointer; transition:all 0.2s;">
-          <input type="checkbox" name="allergen-chk" value="frutos_secos" style="accent-color:var(--wine); width:18px; height:18px;">
-          <span style="font-size:14px; font-weight:600; color:var(--text);">🥜 Frutos Secos</span>
-        </label>
-        <!-- Sulfitos -->
-        <label style="display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid rgba(42,21,9,0.08); border-radius:14px; padding:12px 14px; cursor:pointer; transition:all 0.2s;">
-          <input type="checkbox" name="allergen-chk" value="sulfitos" style="accent-color:var(--wine); width:18px; height:18px;">
-          <span style="font-size:14px; font-weight:600; color:var(--text);">🍷 Sulfitos</span>
-        </label>
-      </div>
+      <!-- Los 14 alérgenos UE se generan desde la fuente única ALLERGENS (populateAllergenGrid) -->
+      <div id="allergen-rsvp-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:24px;"></div>
 
       <button id="allergens-confirm-btn" onclick="submitAllergensRsvp()" style="width:100%; padding:15px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; box-shadow:0 4px 10px rgba(139,25,24,0.3); margin-bottom:12px;">Anotar mis alergias</button>
       <button onclick="submitEatAllRsvp()" style="width:100%; padding:14px; background:rgba(42,21,9,0.06); border:1.5px solid rgba(42,21,9,0.12); color:var(--text); border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer; transition:all 0.2s;">¡Como y bebo de todo! 😋</button>
