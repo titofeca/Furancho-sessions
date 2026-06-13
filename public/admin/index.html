@@ -2006,6 +2006,13 @@
         <p class="page-subtitle">Gestiona los mints de Polygon — aprueba o rechaza antes de que vayan a blockchain</p>
       </div>
 
+      <!-- Saldo de la billetera de minteo (gas Polygon) -->
+      <div class="glass-card" style="margin-bottom:16px;">
+        <div class="card-title" style="margin-bottom:10px;">⛽ Saldo para gas (Polygon)</div>
+        <p style="font-size:12px; color:var(--text-muted); margin:0 0 12px; line-height:1.5;">Es el saldo de la billetera que paga el gas de cada mint. Si baja, recárgale POL para no quedarte sin poder mintear.</p>
+        <div id="minter-balance-box" style="font-size:13px; color:var(--text-muted);">Cargando saldo…</div>
+      </div>
+
       <!-- Pendientes de aprobación -->
       <div class="glass-card" style="margin-bottom:16px;">
         <div class="card-header" style="margin-bottom:12px;">
@@ -2767,7 +2774,52 @@
   }
 
   // ==================== NFTs PAGE ====================
+  async function loadMinterBalance() {
+    const box = document.getElementById('minter-balance-box');
+    if (!box) return;
+    box.textContent = 'Cargando saldo…';
+    try {
+      const info = await fetch('/api/admin/polygon-balance', { headers: authHeaders() }).then(r => r.json());
+      if (info.error) {
+        box.innerHTML = `<span style="color:#ef4444;">No se pudo leer el saldo: ${info.error}</span>`;
+        return;
+      }
+      if (info.demo) {
+        box.innerHTML = '🟡 <strong>Modo demo</strong> — los mints son simulados y no se gasta gas. Cuando configures <code>MINTER_PRIVATE_KEY</code> en Railway, aquí verás el saldo real.';
+        return;
+      }
+      const bal = Number(info.balance) || 0;
+      // Estimación de mints restantes con el coste medio histórico (si lo hay)
+      let estimate = '';
+      try {
+        const stats = await fetch('/api/admin/stats', { headers: authHeaders() }).then(r => r.json());
+        const realMints = stats.realMints || 0;
+        const avg = (stats.totalMintCost && realMints) ? (stats.totalMintCost / realMints) : 0;
+        if (avg > 0) estimate = `≈ ${Math.floor(bal / avg)} mints más`;
+      } catch (e) {}
+      // Gas en Polygon es barato; avisamos por debajo de ~0,3 POL
+      const color = bal >= 1 ? '#22c55e' : bal >= 0.3 ? '#f59e0b' : '#ef4444';
+      const label = bal >= 1 ? '✅ Saldo holgado' : bal >= 0.3 ? '⚠️ Conviene recargar pronto' : '🔴 Saldo bajo — recarga ya';
+      box.innerHTML = `
+        <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:4px;">
+          <span style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:${color};">${bal.toFixed(4)} POL</span>
+          ${estimate ? `<span style="font-size:12px; color:var(--text-muted);">${estimate}</span>` : ''}
+        </div>
+        <div style="font-size:12px; font-weight:700; color:${color}; margin-bottom:12px;">${label}</div>
+        <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">Billetera de minteo (recarga POL en esta dirección):</div>
+        <div style="font-size:11px; font-family:monospace; background:rgba(42,21,9,0.05); padding:9px 11px; border-radius:10px; word-break:break-all;">${info.address || '—'}</div>
+        <div style="margin-top:8px;">
+          <a href="https://polygonscan.com/address/${info.address}" target="_blank" rel="noopener" style="font-size:12px; color:var(--wine); font-weight:600; text-decoration:none;">🔍 Ver en PolygonScan →</a>
+          <button onclick="loadMinterBalance()" style="margin-left:12px; background:rgba(42,21,9,0.06); border:1px solid rgba(42,21,9,0.12); border-radius:8px; padding:4px 10px; font-size:11px; font-weight:700; color:var(--text-muted); cursor:pointer; font-family:'Outfit',sans-serif;">↻ Actualizar</button>
+        </div>
+      `;
+    } catch (e) {
+      box.innerHTML = '<span style="color:#ef4444;">No se pudo leer el saldo (¿servidor o RPC de Polygon caído?).</span>';
+    }
+  }
+
   async function loadNftsPage() {
+    loadMinterBalance();
     await loadNftHistory();
     // Cargar dirección del contrato
     const contractEl = document.getElementById('nft-contract-addr');

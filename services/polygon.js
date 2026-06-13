@@ -63,6 +63,22 @@ async function mintNFT({ walletAddress, level, levelName }) {
   };
 }
 
+// Saldo de la billetera que paga el gas de los mints (POL/MATIC en Polygon).
+// Devuelve { demo, address, balance } — en DEMO_MODE no hay billetera real.
+async function getMinterBalance() {
+  if (DEMO_MODE) {
+    return { demo: true, address: null, balance: null };
+  }
+  const provider = new ethers.JsonRpcProvider(POLYGON_RPC);
+  const wallet = new ethers.Wallet(MINTER_KEY, provider);
+  const balanceWei = await provider.getBalance(wallet.address);
+  return {
+    demo: false,
+    address: wallet.address,
+    balance: parseFloat(ethers.formatEther(balanceWei))
+  };
+}
+
 async function getMintStatus(txHash) {
   if (!txHash || txHash.startsWith('demo_')) {
     return { status: 'success' };
@@ -122,4 +138,4 @@ function notifyQueue() {
 // Iniciar cola al cargar el módulo por si quedaron tareas pendientes de un reinicio previo
 setTimeout(startQueueWorker, 1000);
 
-module.exports = { mintNFT, getMintStatus, DEMO_MODE, notifyQueue };
+module.exports = { mintNFT, getMintStatus, getMinterBalance, DEMO_MODE, notifyQueue };

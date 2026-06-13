@@ -768,6 +768,16 @@ router.get('/inspect-wallet/:address', requireAuth, (req, res) => {
   }
 });
 
+// GET /api/admin/polygon-balance — saldo de la billetera que paga el gas de los mints
+router.get('/polygon-balance', requireAuth, async (_req, res) => {
+  try {
+    const { getMinterBalance } = require('../services/polygon');
+    res.json(await getMinterBalance());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/admin/pending-mints — lista de NFTs esperando aprobación
 router.get('/pending-mints', requireAuth, (_req, res) => {
   try {
