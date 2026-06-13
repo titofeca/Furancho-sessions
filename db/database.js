@@ -756,6 +756,16 @@ function getRsvpStatus(walletAddress) {
   return db.prepare(`SELECT event_id FROM rsvps WHERE LOWER(wallet_address)=LOWER(?)`).all(walletAddress).map(r => r.event_id);
 }
 
+// U1: detalle de los RSVP del cliente (evento + alérgenos), recientes primero — para prefill y edición.
+function getRsvpsDetail(walletAddress) {
+  return db.prepare(`SELECT event_id, allergens FROM rsvps WHERE LOWER(wallet_address)=LOWER(?) ORDER BY id DESC`).all(walletAddress);
+}
+
+// U1: actualiza los alérgenos de un RSVP existente sin desapuntar. Devuelve nº de filas afectadas.
+function setRsvpAllergens(eventId, walletAddress, allergens) {
+  return db.prepare(`UPDATE rsvps SET allergens=? WHERE LOWER(wallet_address)=LOWER(?) AND event_id=?`).run(allergens, walletAddress, eventId).changes;
+}
+
 function createEvent({ date, title, description, startTime, endTime }) {
   return db.prepare(`
     INSERT INTO events (event_date, title, description, start_time, end_time)
@@ -1461,6 +1471,8 @@ module.exports = {
   getEvents,
   toggleRsvp,
   getRsvpStatus,
+  getRsvpsDetail,
+  setRsvpAllergens,
   createVipReservation,
   getVipReservations,
   getVipReservation,

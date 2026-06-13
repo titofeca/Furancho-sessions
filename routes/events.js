@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
-const { getEvents, toggleRsvp, getRsvpStatus,
+const { getEvents, toggleRsvp, getRsvpStatus, getRsvpsDetail, setRsvpAllergens,
         createVipReservation, getVipReservations, getVipReservation,
         getVipCapacity, updateVipStatus, setVipMax,
         getSessionAnalytics,
@@ -52,6 +52,31 @@ router.get('/my-rsvps', (req, res) => {
   if (!wallet) return res.status(400).json({ error: 'Falta wallet' });
   try {
     res.json(getRsvpStatus(wallet));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/events/my-rsvps-detail?wallet=0x... — RSVP del cliente con alérgenos (U1: prefill/edición)
+router.get('/my-rsvps-detail', (req, res) => {
+  const { wallet } = req.query;
+  if (!wallet || !/^0x[a-fA-F0-9]{40}$/i.test(wallet)) return res.status(400).json({ error: 'Wallet no válida' });
+  try {
+    res.json(getRsvpsDetail(wallet));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PUT /api/events/rsvp/allergens — actualiza alérgenos de un RSVP existente sin desapuntar (U1)
+router.put('/rsvp/allergens', rsvpLimiter, (req, res) => {
+  const { eventId, walletAddress, allergens } = req.body;
+  if (!eventId || !walletAddress) return res.status(400).json({ error: 'Faltan datos' });
+  if (!/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) return res.status(400).json({ error: 'Wallet no válida' });
+  try {
+    const changes = setRsvpAllergens(parseInt(eventId), walletAddress, sanitizeAllergens(allergens));
+    if (!changes) return res.status(404).json({ error: 'No estás apuntado a esa sesión' });
+    res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

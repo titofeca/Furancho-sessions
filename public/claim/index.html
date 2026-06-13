@@ -3116,13 +3116,21 @@
 
     async function loadAgenda() {
       try {
-        const [events, myRsvps, myVipReservations] = await Promise.all([
+        const [events, myRsvps, myVipReservations, myRsvpDetail] = await Promise.all([
           fetch('/api/events').then(r => r.json()),
           fetch(`/api/events/my-rsvps?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => []),
-          fetch(`/api/events/vip/my-reservations?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => [])
+          fetch(`/api/events/vip/my-reservations?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => []),
+          fetch(`/api/events/my-rsvps-detail?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => [])
         ]);
         _globalEvents = events;
         _globalMyRsvps = myRsvps;
+        // U1: mapa de alérgenos por evento (editar) y últimos usados (recordar en nuevos RSVP)
+        _myRsvpAllergens = {};
+        _lastAllergens = '';
+        (Array.isArray(myRsvpDetail) ? myRsvpDetail : []).forEach(r => {
+          _myRsvpAllergens[r.event_id] = r.allergens || '';
+          if (!_lastAllergens && r.allergens && r.allergens !== 'tododo') _lastAllergens = r.allergens;
+        });
         // Cargar tapas de todos los eventos en paralelo
         const tapasMap = {};
         await Promise.all(events.map(ev =>
@@ -3217,6 +3225,10 @@
                       background:${attending?'var(--wine)':'transparent'};
                       color:${attending?'#fff':'var(--text-muted)'};
                       font-family:'Outfit',sans-serif; white-space:nowrap;">${attending?'✓ Igual voy':'Me apetece'}</button>
+                    ${attending ? `<button onclick="event.stopPropagation(); editAllergensFromAgenda(${ev.id})" style="
+                      padding:9px 14px; border-radius:50px; font-size:13px; font-weight:700; cursor:pointer;
+                      border:1.5px solid rgba(42,21,9,0.15); background:transparent; color:var(--text-muted);
+                      font-family:'Outfit',sans-serif; white-space:nowrap;">✏️ Alérgenos</button>` : ''}
                     <button onclick="event.stopPropagation(); addToCalendar('${ev.title.replace(/'/g, "\\'")}', '${ev.event_date}', '${(ev.description || 'Furancho Sessions: Afterwork con vino y tapas.').replace(/'/g, "\\'").replace(/\n/g, " ")}')" style="
                       padding:9px 16px; border-radius:50px; font-size:13px; font-weight:700; cursor:pointer;
                       border:1.5px solid rgba(42,21,9,0.15); background:transparent;
@@ -5571,6 +5583,9 @@
   let _activeRsvpEventId = null;
   let _activeRsvpBtn = null;
   let _activeRsvpCallback = null;
+  let _activeRsvpEditMode = false;       // U1: editar alérgenos sin desapuntarse
+  let _myRsvpAllergens = {};             // U1: { eventId: 'gluten,pescado' } para prefill/edición
+  let _lastAllergens = '';               // U1: últimos alérgenos usados, para recordar en nuevos RSVP
 
   function populateAllergenGrid() {
     const grid = document.getElementById('allergen-rsvp-grid');
@@ -5582,14 +5597,24 @@
       </label>`).join('');
   }
 
-  function openAllergensModal(eventId, btn, callback = null) {
+  function openAllergensModal(eventId, btn, callback = null, opts = {}) {
     _activeRsvpEventId = eventId;
     _activeRsvpBtn = btn;
     _activeRsvpCallback = callback;
+    _activeRsvpEditMode = !!opts.edit;
 
     populateAllergenGrid();
     const checkboxes = document.querySelectorAll('input[name="allergen-chk"]');
     checkboxes.forEach(c => c.checked = false);
+
+    // Prefill: al editar, los alérgenos guardados de ese evento; en RSVP nuevo, los últimos usados (recordar).
+    const prefill = _activeRsvpEditMode ? (_myRsvpAllergens[eventId] || '') : (_lastAllergens || '');
+    if (prefill && prefill !== 'tododo') {
+      const ids = prefill.split(',');
+      checkboxes.forEach(c => { if (ids.includes(c.value)) c.checked = true; });
+    }
+    const confirmBtn = document.getElementById('allergens-confirm-btn');
+    if (confirmBtn) confirmBtn.textContent = _activeRsvpEditMode ? 'Actualizar alérgenos' : 'Anotar mis alergias';
 
     const modal = document.getElementById('allergens-modal');
     const inner = document.getElementById('allergens-modal-inner');
@@ -5647,20 +5672,55 @@
       return;
     }
     const confirmBtn = document.getElementById('allergens-confirm-btn');
+    const wasEdit = _activeRsvpEditMode;
     confirmBtn.disabled = true;
-    confirmBtn.textContent = 'Anotando...';
-    
-    await executeRsvp(_activeRsvpEventId, checked.join(','));
-    
+    confirmBtn.textContent = wasEdit ? 'Actualizando...' : 'Anotando...';
+
+    if (wasEdit) {
+      await updateRsvpAllergens(_activeRsvpEventId, checked.join(','));
+    } else {
+      await executeRsvp(_activeRsvpEventId, checked.join(','));
+    }
+
     confirmBtn.disabled = false;
-    confirmBtn.textContent = 'Anotar mis alergias';
+    confirmBtn.textContent = wasEdit ? 'Actualizar alérgenos' : 'Anotar mis alergias';
     closeAllergensModal();
   }
 
   async function submitEatAllRsvp() {
-    await executeRsvp(_activeRsvpEventId, 'tododo');
+    if (_activeRsvpEditMode) {
+      await updateRsvpAllergens(_activeRsvpEventId, 'tododo');
+    } else {
+      await executeRsvp(_activeRsvpEventId, 'tododo');
+    }
     closeAllergensModal();
   }
+
+  // U1: actualiza los alérgenos de un RSVP ya existente, sin desapuntar.
+  async function updateRsvpAllergens(eventId, allergensText) {
+    try {
+      const res = await fetch('/api/events/rsvp/allergens', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, walletAddress: userWalletAddress, allergens: allergensText })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(allergensText && allergensText !== 'tododo' ? '✅ Alérgenos actualizados, ho.' : '✅ Anotado: comes y bebes de todo 😋');
+      } else {
+        showToast(data.error || '😬 No se pudo actualizar.');
+      }
+      await loadAgenda();
+      if (_activeRsvpCallback) _activeRsvpCallback(true);
+    } catch(e) {
+      showToast('😬 Error de conexión al actualizar.');
+    }
+  }
+
+  function editAllergensFromAgenda(eventId) {
+    openAllergensModal(eventId, null, null, { edit: true });
+  }
+  window.editAllergensFromAgenda = editAllergensFromAgenda;
 
   window.openAllergensModal = openAllergensModal;
   window.closeAllergensModal = closeAllergensModal;
