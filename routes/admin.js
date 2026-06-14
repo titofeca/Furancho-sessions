@@ -879,6 +879,17 @@ router.get('/pending-mints', requireAuth, (_req, res) => {
   }
 });
 
+// POST /api/admin/reconcile-mints — fuerza la sincronización de niveles por si alguien saltó una visita
+router.post('/reconcile-mints', requireAuth, (req, res) => {
+  try {
+    const { reconcileMints } = require('../scripts/reconcile_mints');
+    const added = reconcileMints();
+    res.json({ success: true, added, message: `Se han añadido ${added} mints pendientes o exitosos que faltaban.` });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /api/admin/mints/:id/approve — aprueba el mint y lo manda a la cola blockchain
 router.post('/mints/:id/approve', requireAuth, (req, res) => {
   try {

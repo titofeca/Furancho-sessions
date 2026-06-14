@@ -2932,6 +2932,23 @@
     }
   }
 
+  async function reconcileMints() {
+    try {
+      showToast('Sincronizando...');
+      const res = await fetch('/api/admin/reconcile-mints', { method: 'POST', headers: authHeaders() });
+      const data = await res.json();
+      if (data.success) {
+        showToast(data.message);
+        loadPendingMints();
+        loadNftHistory();
+      } else {
+        showToast('Error: ' + data.error, true);
+      }
+    } catch (e) {
+      showToast('Error de conexión', true);
+    }
+  }
+
   async function manualMint(level) {
     const wallet = document.getElementById('manual-mint-wallet')?.value.trim();
     if (!wallet) return showToast('Introduce la wallet primero', true);
