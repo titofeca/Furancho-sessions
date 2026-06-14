@@ -1884,6 +1884,10 @@
                 <span id="weekly-saved-rules" style="font-size:12px; color:var(--text-muted); line-height:1.4;"></span>
               </div>
               <div style="display:flex; gap:8px; align-items:center;">
+                <span style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-muted); width:72px; flex-shrink:0;">Premios</span>
+                <span id="weekly-saved-winners" style="font-size:12px; font-weight:700; color:var(--wine);"></span>
+              </div>
+              <div style="display:flex; gap:8px; align-items:center;">
                 <span style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-muted); width:72px; flex-shrink:0;">Semana</span>
                 <span id="weekly-saved-week" style="font-size:12px; color:var(--text);"></span>
               </div>
@@ -1903,9 +1907,15 @@
           <div id="weekly-date-range-badge" style="background:rgba(196,151,58,0.08); border:1px solid rgba(196,151,58,0.25); border-radius:10px; padding:8px 12px; margin-bottom:12px; font-size:12.5px; color:var(--text); line-height:1.4; text-align:center;"
           >📅 Cargando fechas...</div>
 
-          <div style="display:flex; justify-content:space-between; margin-bottom:12px; font-size:12.5px;">
-            <span style="color:var(--text-muted);">Participantes apuntados:</span>
-            <strong id="weekly-admin-count" style="color:var(--text);">—</strong>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;">
+            <div style="background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.1); border-radius:10px; padding:8px 12px; text-align:center;">
+              <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-muted); margin-bottom:3px;">👥 Apuntados</div>
+              <div style="font-size:20px; font-weight:900; color:var(--text); line-height:1;"><strong id="weekly-admin-count">—</strong></div>
+            </div>
+            <div style="background:rgba(139,25,24,0.05); border:1px solid rgba(139,25,24,0.15); border-radius:10px; padding:8px 12px; text-align:center;">
+              <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-muted); margin-bottom:3px;">🏆 Premios</div>
+              <div style="font-size:20px; font-weight:900; color:var(--wine); line-height:1;"><strong id="weekly-admin-winners-badge">—</strong></div>
+            </div>
           </div>
           
           <div id="weekly-winner-info" style="display:none; background:rgba(196,151,58,0.1); border:1.5px solid var(--gold); border-radius:12px; padding:12px; margin-bottom:14px;">
@@ -3958,6 +3968,16 @@
       countEl.textContent = data.totalParticipants || '0';
       const chaveTop = document.getElementById('chave-eligible-top');
       if (chaveTop) chaveTop.textContent = data.totalParticipants || '0';
+
+      // Actualizar badge de premios configurados
+      const winnersBadge = document.getElementById('weekly-admin-winners-badge');
+      if (winnersBadge) {
+        const wc = parseInt(data.winnersCount) || 1;
+        winnersBadge.textContent = wc;
+        winnersBadge.parentElement.style.background = data.prize
+          ? 'rgba(139,25,24,0.08)'
+          : 'rgba(139,25,24,0.03)';
+      }
       
       if (prizeInput && document.activeElement !== prizeInput) {
         prizeInput.value = data.prize || '';
@@ -3972,7 +3992,7 @@
 
       // Actualizar el panel de confirmación con lo que está en la DB
       if (data.isConfigured && data.prize) {
-        updateWeeklySavedSummary(data.prize, data.rules || '', selectedWeekForBadge || selectEl.value, data.drawnAt ? null : 'db');
+        updateWeeklySavedSummary(data.prize, data.rules || '', selectedWeekForBadge || selectEl.value, data.winnersCount, data.drawnAt ? null : 'db');
       } else {
         const panel = document.getElementById('weekly-saved-summary');
         if (panel) panel.style.display = 'none';
@@ -4122,6 +4142,8 @@
       statusBadge = `<span style="font-size:9.5px; font-weight:700; border-radius:4px; padding:2px 6px; text-transform:uppercase; background:rgba(196,151,58,0.15); color:#7A5A00; font-family:'Outfit',sans-serif;">Activo</span>`;
     }
 
+    const winnerCount = r.winnersCount || 1;
+    const winnerCountHtml = `<span style="font-size:10.5px; font-weight:700; color:var(--wine); background:rgba(139,25,24,0.08); border:1px solid rgba(139,25,24,0.15); border-radius:5px; padding:2px 7px; margin-left:6px;">🏆 ${winnerCount} ${winnerCount === 1 ? 'premio' : 'premios'}</span>`;
     const winnerHtml = r.winnerWallet 
       ? `<div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">🏆 Ganador: <strong style="color:var(--gold); font-family:monospace; font-size:11px;">${r.winnerWallet.substring(0, 6)}...${r.winnerWallet.slice(-4)}</strong></div>`
       : '';
@@ -4133,7 +4155,7 @@
     return `
       <div class="weekly-item" style="background:rgba(196,151,58,0.04); border:1px solid rgba(196,151,58,0.15); border-radius:10px; padding:10px 12px; display:flex; flex-direction:column; gap:4px; margin-bottom:4px;">
         <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-          <strong style="color:var(--text); font-size:12.5px; font-family:'Outfit',sans-serif;">Semana ${r.week} (${dateRangeLabel})</strong>
+          <strong style="color:var(--text); font-size:12.5px; font-family:'Outfit',sans-serif;">Semana ${r.week} (${dateRangeLabel})</strong>${winnerCountHtml}
           ${statusBadge}
         </div>
         <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
@@ -4241,12 +4263,12 @@
           ...authHeaders(),
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ prize, rules, week: selectedWeek })
+        body: JSON.stringify({ prize, rules, week: selectedWeek, winnersCount })
       });
       const data = await res.json();
       if (res.ok && data.success) {
         showToast('✅ Premio y operativa guardados');
-        updateWeeklySavedSummary(prize, rules, selectedWeek);
+        updateWeeklySavedSummary(prize, rules, selectedWeek, winnersCount);
         loadWeeklyRaffleAdmin();
       } else {
         showToast(data.error || 'Error al guardar configuración', true);
@@ -4262,7 +4284,9 @@
     if (!selectEl) return;
     const selectedWeek = selectEl.value;
 
-    if (!confirm(`¿Seguro que quieres realizar el sorteo de La Chave Semanal?\n\nSemana: ${weekRangeLabel(selectedWeek)}\n\nSe elegirá un ganador al azar de entre todos los apuntados.`)) {
+    const winnersCountForDraw = parseInt(document.getElementById('weekly-winners-input')?.value || 1);
+    const winnersLabel = winnersCountForDraw > 1 ? `${winnersCountForDraw} ganadores distintos` : '1 ganador';
+    if (!confirm(`¿Seguro que quieres realizar el sorteo de La Chave Semanal?\n\nSemana: ${weekRangeLabel(selectedWeek)}\nPremios a sortear: ${winnersLabel}\n\nSe elegirán al azar de entre todos los apuntados. Esta acción no se puede deshacer.`)) {
       return;
     }
 
@@ -4378,7 +4402,7 @@
         badge.style.borderWidth = '1.5px';
         badgeText.style.color = '#7A5A00';
         badgeText.style.fontWeight = '500';
-        badgeText.innerHTML = `✅ <strong>Sorteo automático activado</strong> — El <strong>${drawLabel} a las 20:00</strong> se sorteará automáticamente. Hay evento el jueves: <strong>${thursdayEvent.title}</strong>.`;
+        badgeText.innerHTML = `✅ <strong>Sorteo automático activado</strong> — El <strong>${drawLabel} a las 21:00</strong> se sorteará automáticamente. Hay evento el jueves: <strong>${thursdayEvent.title}</strong>.`;
       } else {
         badge.style.background = 'rgba(42,21,9,0.04)';
         badge.style.borderColor = 'rgba(42,21,9,0.1)';
@@ -4390,11 +4414,12 @@
     }
   }
 
-  function updateWeeklySavedSummary(prize, rules, weekStr, source) {
+  function updateWeeklySavedSummary(prize, rules, weekStr, winnersCount, source) {
     const panel = document.getElementById('weekly-saved-summary');
     const prizeEl = document.getElementById('weekly-saved-prize');
     const rulesEl = document.getElementById('weekly-saved-rules');
     const weekEl = document.getElementById('weekly-saved-week');
+    const winnersEl = document.getElementById('weekly-saved-winners');
     const tsEl = document.getElementById('weekly-saved-ts');
     if (!panel || !prizeEl) return;
 
@@ -4403,6 +4428,11 @@
     // Operativa: mostrar completa si es corta, o truncar
     const rulesText = rules || '—';
     rulesEl.textContent = rulesText.length > 100 ? rulesText.slice(0, 97) + '…' : rulesText;
+
+    if (winnersEl) {
+      const count = parseInt(winnersCount) || 1;
+      winnersEl.textContent = `${count} ${count === 1 ? 'premio' : 'premios (ganadores distintos)'}`;
+    }
 
     // Semana en formato legible
     if (weekStr) {

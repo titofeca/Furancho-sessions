@@ -49,9 +49,27 @@ let activeRaffle = null;
 // Envía evento SSE a TODOS los clientes conectados (o solo a uno por wallet)
 function broadcast(event, data, targetWallet = null) {
   const dead = [];
-  const targets = targetWallet
-    ? clients.filter(c => c.walletAddress === targetWallet)
-    : clients;
+  let targets = clients;
+  if (targetWallet) {
+    let lowerTargets = [];
+    if (typeof targetWallet === 'string') {
+      try {
+        const parsed = JSON.parse(targetWallet);
+        if (Array.isArray(parsed)) {
+          lowerTargets = parsed.map(w => w.toLowerCase());
+        } else {
+          lowerTargets = [targetWallet.toLowerCase()];
+        }
+      } catch (e) {
+        lowerTargets = [targetWallet.toLowerCase()];
+      }
+    } else if (Array.isArray(targetWallet)) {
+      lowerTargets = targetWallet.map(w => w.toLowerCase());
+    } else {
+      lowerTargets = [targetWallet.toString().toLowerCase()];
+    }
+    targets = clients.filter(c => c.walletAddress && lowerTargets.includes(c.walletAddress.toLowerCase()));
+  }
   targets.forEach(client => {
     try {
       client.res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
@@ -172,14 +190,25 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
 
   if (eligibleWallets.length === 0) throw new Error('No hay clientes con entrada fichada en el local.');
 
-  // Doble Oportunidad para el ganador de La Chave Semanal
+  // Doble Oportunidad para los ganadores de La Chave Semanal
   try {
     const { db } = require('../db/database');
     const weekStr = getWeeklyRaffleTargetWeek();
     const weeklyWinner = db.prepare(`SELECT winner_wallet FROM weekly_raffles WHERE claimed_week = ? AND status = 'completed'`).get(weekStr)?.winner_wallet;
-    if (weeklyWinner && eligibleWallets.includes(weeklyWinner)) {
-      eligibleWallets.push(weeklyWinner);
-      console.log(`[Raffle] Doble oportunidad para Chave Semanal: ${weeklyWinner.slice(0,6)}...`);
+    if (weeklyWinner) {
+      let weeklyWinners = [];
+      try {
+        weeklyWinners = JSON.parse(weeklyWinner);
+        if (!Array.isArray(weeklyWinners)) weeklyWinners = [weeklyWinner];
+      } catch(e) {
+        weeklyWinners = [weeklyWinner];
+      }
+      weeklyWinners.forEach(w => {
+        if (w && eligibleWallets.includes(w)) {
+          eligibleWallets.push(w);
+          console.log(`[Raffle] Doble oportunidad para Chave Semanal: ${w.slice(0,6)}...`);
+        }
+      });
     }
   } catch (e) {}
 
@@ -390,7 +419,19 @@ router.get('/my-history', (req, res) => {
 
     const weeklyMapped = weeklyRows
       .filter(w => {
-        const isWinner = w.winner_wallet && w.winner_wallet.toLowerCase() === lowerWallet;
+        let isWinner = false;
+        if (w.winner_wallet) {
+          try {
+            const wallets = JSON.parse(w.winner_wallet);
+            if (Array.isArray(wallets)) {
+              isWinner = wallets.some(x => x.toLowerCase() === lowerWallet);
+            } else {
+              isWinner = wallets.toLowerCase() === lowerWallet;
+            }
+          } catch(e) {
+            isWinner = w.winner_wallet.toLowerCase() === lowerWallet;
+          }
+        }
         // Ganador aún en plazo de confirmación → fuera del historial (lo gestiona la tarjeta)
         if (isWinner && w.status === 'completed' && !w.confirmed_at && !w.collected_at && w.confirm_deadline) {
           return new Date(w.confirm_deadline.replace(' ', 'T') + 'Z').getTime() <= Date.now();
@@ -398,7 +439,19 @@ router.get('/my-history', (req, res) => {
         return true;
       })
       .map(w => {
-        const isWinner = w.winner_wallet && w.winner_wallet.toLowerCase() === lowerWallet;
+        let isWinner = false;
+        if (w.winner_wallet) {
+          try {
+            const wallets = JSON.parse(w.winner_wallet);
+            if (Array.isArray(wallets)) {
+              isWinner = wallets.some(x => x.toLowerCase() === lowerWallet);
+            } else {
+              isWinner = wallets.toLowerCase() === lowerWallet;
+            }
+          } catch(e) {
+            isWinner = w.winner_wallet.toLowerCase() === lowerWallet;
+          }
+        }
         let status;
         if (isWinner) {
           if (w.collected_at) status = 'collected';
@@ -883,7 +936,8 @@ router.get('/admin/weekly/list', requireAuth, (req, res) => {
         forfeitedAt: r.forfeited_at,
         confirmDeadline: r.confirm_deadline,
         confirmedAt: r.confirmed_at,
-        totalParticipants: count
+        totalParticipants: count,
+        winnersCount: r.winners_count || 1
       };
     });
     res.json(list);

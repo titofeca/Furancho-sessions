@@ -1650,7 +1650,20 @@ function drawWeeklyRaffle(weekStr) {
 function confirmWeeklyRaffle(walletAddress, weekStr) {
   const raffle = db.prepare(`SELECT * FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
   if (!raffle) throw new Error('Sorteo no encontrado');
-  if (!raffle.winner_wallet || raffle.winner_wallet.toLowerCase() !== walletAddress.toLowerCase()) {
+  let isWinner = false;
+  if (raffle.winner_wallet) {
+    try {
+      const wallets = JSON.parse(raffle.winner_wallet);
+      if (Array.isArray(wallets)) {
+        isWinner = wallets.some(w => w.toLowerCase() === walletAddress.toLowerCase());
+      } else {
+        isWinner = wallets.toLowerCase() === walletAddress.toLowerCase();
+      }
+    } catch (e) {
+      isWinner = raffle.winner_wallet.toLowerCase() === walletAddress.toLowerCase();
+    }
+  }
+  if (!isWinner) {
     throw new Error('No eres el ganador de esta semana');
   }
   if (raffle.status === 'forfeited') throw new Error('El plazo de confirmación terminó y el premio se dio por perdido');

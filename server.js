@@ -153,75 +153,85 @@ function scheduleAutoCheckout() {
 scheduleAutoCheckout();
 
 // ─── SORTEO SEMANAL AUTOMÁTICO (Miércoles 21:00 hora Madrid) ──────────────────
-// Lógica: cada miércoles a las 21:00 comprueba si hay evento el jueves siguiente.
-//   - Si hay evento el jueves → lanza el sorteo semanal automáticamente.
-//   - Si no hay evento → no hace nada (sin sorteo esa semana).
-//   - Si el sorteo ya fue realizado (status='completed') → no lo repite.
+// Lógica: cada minuto, miércoles entre las 21:00 y las 21:04 (ventana robusta):
+//   - Si hay un premio configurado para la semana objetivo → lanza el sorteo.
+//   - Si no hay premio pero hay evento el jueves siguiente → también lanza.
+//   - Si el sorteo ya fue realizado esta semana → no lo repite (flag lastDrawnWeek).
+// La ventana de 5 min permite que un reinicio del servidor no se pierda el disparo.
 // El ganador debe CONFIRMAR en la app antes de las 23:00 de esa misma noche;
 // si no confirma, el premio se da por perdido automáticamente (ver sweeper más abajo).
+let _weeklyLastDrawnWeek = null; // anti double-fire: semana ya sorteada esta sesión
 function scheduleWeeklyRaffle() {
   setInterval(() => {
-    // Hora actual en zona Madrid (UTC+1/UTC+2)
     const now = new Date();
     const madridHour = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
 
-    const isWednesday = madridHour.getDay() === 3;      // 0=Dom..6=Sab → 3=Mié
-    const isDrawTime  = madridHour.getHours() === 21 && madridHour.getMinutes() === 0;
+    const isWednesday = madridHour.getDay() === 3;
+    const h = madridHour.getHours();
+    const m = madridHour.getMinutes();
+    const isDrawWindow = h === 21 && m >= 0 && m <= 4; // ventana 21:00-21:04
 
-    if (!isWednesday || !isDrawTime) return;
-
-    console.log('[WeeklyRaffle] Miércoles 21:00 — comprobando evento del jueves...');
+    if (!isWednesday || !isDrawWindow) return;
 
     try {
       const { db, drawWeeklyRaffle, getWeeklyRaffleTargetWeek } = require('./db/database');
 
-      // Calcular la fecha del jueves siguiente (mañana si hoy es miércoles)
-      const thursday = new Date(madridHour);
-      thursday.setDate(madridHour.getDate() + 1);
-      const thursdayStr = thursday.toISOString().slice(0, 10); // YYYY-MM-DD
+      const weekStr = getWeeklyRaffleTargetWeek(madridHour);
 
-      // Verificar si hay evento grabado para ese jueves
-      const event = db.prepare(
-        `SELECT id, title FROM events WHERE event_date = ? LIMIT 1`
-      ).get(thursdayStr);
+      // Anti double-fire: si ya sorteamos esta semana en esta sesión, skip
+      if (_weeklyLastDrawnWeek === weekStr) return;
 
-      if (!event) {
-        console.log(`[WeeklyRaffle] No hay evento el jueves ${thursdayStr}. Sin sorteo esta semana.`);
+      // Comprobar si ya está en DB como completed/forfeited
+      const existing = db.prepare(`SELECT status, prize, winners_count FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
+      if (existing && (existing.status === 'completed' || existing.status === 'forfeited')) {
+        _weeklyLastDrawnWeek = weekStr;
+        console.log(`[WeeklyRaffle] Sorteo de ${weekStr} ya fue realizado o caducado. Nada que hacer.`);
         return;
       }
 
-      console.log(`[WeeklyRaffle] Evento encontrado el ${thursdayStr}: "${event.title}". Iniciando sorteo semanal...`);
+      // Calcular jueves siguiente para buscar evento
+      const thursday = new Date(madridHour);
+      thursday.setDate(madridHour.getDate() + 1);
+      const thursdayStr = thursday.toISOString().slice(0, 10);
 
-      const weekStr = getWeeklyRaffleTargetWeek(madridHour);
+      const event = db.prepare(`SELECT id, title FROM events WHERE event_date = ? LIMIT 1`).get(thursdayStr);
+      const hasPrize = existing && existing.prize;
 
-      // Comprobar que no se haya sorteado ya esta semana
-      const existing = db.prepare(`SELECT status FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
-      if (existing && existing.status === 'completed') {
-        console.log(`[WeeklyRaffle] Sorteo de ${weekStr} ya fue realizado. Nada que hacer.`);
+      if (!hasPrize && !event) {
+        console.log(`[WeeklyRaffle] Miércoles 21:00 — sin premio configurado ni evento el jueves ${thursdayStr}. Sin sorteo.`);
+        _weeklyLastDrawnWeek = weekStr;
         return;
+      }
+
+      if (hasPrize) {
+        console.log(`[WeeklyRaffle] ⏰ 21:00 — lanzando sorteo "${existing.prize}" (${existing.winners_count || 1} premios) para semana ${weekStr}...`);
+      } else {
+        console.log(`[WeeklyRaffle] ⏰ 21:00 — evento "${event.title}" el jueves. Lanzando sorteo semanal para semana ${weekStr}...`);
       }
 
       // Verificar que hay participantes
       const count = db.prepare(`SELECT COUNT(*) as n FROM weekly_claims WHERE claimed_week = ?`).get(weekStr)?.n || 0;
       if (count === 0) {
         console.log(`[WeeklyRaffle] Semana ${weekStr}: 0 participantes apuntados. Sin sorteo.`);
+        _weeklyLastDrawnWeek = weekStr;
         return;
       }
 
       // Realizar el sorteo
       const result = drawWeeklyRaffle(weekStr);
-      console.log(`[WeeklyRaffle] ✅ Ganador automático semana ${weekStr}: ${result.winnerWallet} | Premio: ${result.prize} | Confirmar antes de: ${result.confirmDeadline}`);
+      _weeklyLastDrawnWeek = weekStr;
+      let winners;
+      try { winners = JSON.parse(result.winnerWallet); } catch(e) { winners = [result.winnerWallet]; }
+      const winCount = winners.length;
+      console.log(`[WeeklyRaffle] ✅ ${winCount} ganador(es) automático(s) semana ${weekStr}: ${result.winnerWallet} | Premio: ${result.prize} | Confirmar antes de: ${result.confirmDeadline}`);
 
-      // Push a todos
       const { sendPushToAll } = require('./services/push');
       sendPushToAll(
         '🔑 ¡Chave Semanal sorteada!',
-        `Ya hay ganador de ${result.prize}. Abre la app: si te tocó, confirma antes de las 23:00 de hoy o el premio se pierde, ho.`,
+        `${winCount > 1 ? `Hay ${winCount} ganadores` : 'Ya hay ganador'} de ${result.prize}. Abre la app: si te tocó, confirma antes de las 23:00 de hoy o el premio se pierde, ho.`,
         { url: '/claim' }
       );
 
-      // SSE: notificar al ganador (si está conectado) y a todos los demás.
-      // El código NO se envía: se revela al confirmar en la app.
       const { broadcast } = require('./routes/raffle');
       broadcast('weekly_draw_result', {
         winnerWallet: result.winnerWallet,
@@ -236,13 +246,13 @@ function scheduleWeeklyRaffle() {
       });
 
     } catch (e) {
-      // Si no hay participantes u otro error, loguear sin crashear
       console.error('[WeeklyRaffle] Error en sorteo automático:', e.message);
     }
 
   }, 60 * 1000); // comprueba cada minuto
 }
 scheduleWeeklyRaffle();
+
 
 // ─── AUTO-PÉRDIDA DE LA CHAVE (sin confirmar antes de las 23:00) ──────────────
 // Cada minuto: si el ganador no confirmó dentro del plazo, el premio queda como
