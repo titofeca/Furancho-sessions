@@ -345,7 +345,7 @@ function getNextPendingMint() {
 
 // Reglas por defecto de La Chave Semanal (texto único para cliente y admin).
 // Declarado antes de module.exports para evitar TDZ al requerir el módulo.
-const WEEKLY_DEFAULT_RULES = 'Trinca tu boleto durante la semana, ho. El miércoles a las 21:00 sale el ganador: si te toca, confirma en la app antes de las 23:00 de esa misma noche o el premio se pierde, carallo. El código se enseña al staff para recoger el premio.';
+const WEEKLY_DEFAULT_RULES = '¡Trinca tu boleto esta semana y participa! Consulta las bases de participación a continuación para ver todos los detalles.';
 
 function insertVisit(walletAddress, email, ipAddress) {
   const stmt = db.prepare(`
