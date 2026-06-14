@@ -57,11 +57,15 @@ try {
       claimed_week TEXT NOT NULL UNIQUE,
       prize TEXT NOT NULL DEFAULT 'Botella de Viño de la Casa',
       rules TEXT DEFAULT 'Trinca tu participación una vez por semana antes de que empiecen los eventos. ¡Se sorteará un regalo de la hostia!',
+      winners_count INTEGER DEFAULT 1,
       winner_wallet TEXT,
       drawn_at TEXT,
       status TEXT DEFAULT 'active'
     )
   `);
+} catch (_) {}
+try {
+  db.exec(`ALTER TABLE weekly_raffles ADD COLUMN winners_count INTEGER DEFAULT 1`);
 } catch (_) {}
 try {
   db.exec(`ALTER TABLE weekly_raffles ADD COLUMN rules TEXT DEFAULT 'Trinca tu participación una vez por semana antes de que empiecen los eventos. ¡Se sorteará un regalo de la hostia!'`);
@@ -1528,11 +1532,28 @@ function getWeeklyRaffleStatus(walletAddress, weekStr) {
   const claim = db.prepare(`SELECT id FROM weekly_claims WHERE LOWER(wallet_address) = LOWER(?) AND claimed_week = ?`).get(walletAddress, weekStr);
   const totalParticipants = db.prepare(`SELECT COUNT(*) as count FROM weekly_claims WHERE claimed_week = ?`).get(weekStr)?.count || 0;
 
-  const isWinner = raffle && raffle.winner_wallet &&
-    raffle.winner_wallet.toLowerCase() === walletAddress.toLowerCase();
+  let isWinner = false;
+  let userCode = null;
+  if (raffle && raffle.winner_wallet) {
+    try {
+      const wallets = JSON.parse(raffle.winner_wallet);
+      const idx = wallets.findIndex(w => w.toLowerCase() === walletAddress.toLowerCase());
+      if (idx !== -1) {
+        isWinner = true;
+        const codes = JSON.parse(raffle.verification_code || "{}");
+        userCode = codes[wallets[idx]];
+      }
+    } catch (e) {
+      // Fallback for old single string format
+      isWinner = raffle.winner_wallet.toLowerCase() === walletAddress.toLowerCase();
+      userCode = raffle.verification_code;
+    }
+  }
 
   // El código solo se revela al ganador una vez confirmado (o si es un sorteo
   // antiguo sin plazo de confirmación, o ya entregado)
+  // Wait, if it's multiple winners, they ALL confirm at once? 
+  // Currently, confirmed_at is just a global timestamp. 
   const codeUnlocked = raffle && (raffle.confirmed_at || raffle.collected_at || !raffle.confirm_deadline);
 
   return {
@@ -1541,7 +1562,7 @@ function getWeeklyRaffleStatus(walletAddress, weekStr) {
     rules: raffle ? (raffle.rules || WEEKLY_DEFAULT_RULES) : WEEKLY_DEFAULT_RULES,
     winnerWallet: raffle ? raffle.winner_wallet : null,
     // Solo el ganador ve su propio código — y solo tras confirmar
-    verificationCode: isWinner && codeUnlocked ? (raffle.verification_code || null) : null,
+    verificationCode: isWinner && codeUnlocked ? (userCode || null) : null,
     status: raffle ? raffle.status : 'active',
     drawnAt: raffle ? raffle.drawn_at : null,
     collectedAt: raffle ? raffle.collected_at : null,
@@ -1553,13 +1574,13 @@ function getWeeklyRaffleStatus(walletAddress, weekStr) {
   };
 }
 
-function updateWeeklyPrize(weekStr, prize, rules) {
+function updateWeeklyPrize(weekStr, prize, rules, winnersCount = 1) {
   db.prepare(`INSERT OR IGNORE INTO weekly_raffles (claimed_week) VALUES (?)`).run(weekStr);
   db.prepare(`
     UPDATE weekly_raffles
-    SET prize = ?, rules = ?
+    SET prize = ?, rules = ?, winners_count = ?
     WHERE claimed_week = ?
-  `).run(prize, rules, weekStr);
+  `).run(prize, rules, winnersCount, weekStr);
 }
 
 function drawWeeklyRaffle(weekStr) {
@@ -1578,13 +1599,25 @@ function drawWeeklyRaffle(weekStr) {
     throw new Error('No hay participantes apuntados para esta semana.');
   }
 
-  const randomIndex = Math.floor(Math.random() * participants.length);
-  const winnerWallet = participants[randomIndex].wallet_address;
+  let winnersCount = raffle.winners_count || 1;
+  const participantsList = participants.map(p => p.wallet_address);
+  if (winnersCount > participantsList.length) winnersCount = participantsList.length;
 
-  // Generar código de verificación tipo 'CHAVE-A3K9'
+  // Pick random winners
+  const winnerWallets = [];
+  const shuffled = participantsList.sort(() => 0.5 - Math.random());
+  for (let i = 0; i < winnersCount; i++) {
+    winnerWallets.push(shuffled[i]);
+  }
+
+  // Generar código de verificación tipo 'CHAVE-A3K9' para cada ganador
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let code = 'CHAVE-';
-  for (let i = 0; i < 4; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+  const verificationCodes = {};
+  for (const wallet of winnerWallets) {
+    let code = 'CHAVE-';
+    for (let i = 0; i < 4; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+    verificationCodes[wallet] = code;
+  }
 
   // Plazo de confirmación: esa misma noche a las 23:00 Madrid.
   // Si el sorteo se lanza ya pasadas las 22:30 (p. ej. tirada manual del admin), dar 2h de margen.
@@ -1595,17 +1628,20 @@ function drawWeeklyRaffle(weekStr) {
     confirmDeadline = new Date(Date.now() + 2 * 3600 * 1000).toISOString().replace('T', ' ').slice(0, 19);
   }
 
+  const winnerWalletStr = JSON.stringify(winnerWallets);
+  const codeStr = JSON.stringify(verificationCodes);
+
   db.prepare(`
     UPDATE weekly_raffles
     SET winner_wallet = ?, drawn_at = datetime('now'), status = 'completed', verification_code = ?,
         confirm_deadline = ?, confirmed_at = NULL
     WHERE claimed_week = ?
-  `).run(winnerWallet, code, confirmDeadline, weekStr);
+  `).run(winnerWalletStr, codeStr, confirmDeadline, weekStr);
 
   return {
-    winnerWallet,
+    winnerWallet: winnerWalletStr,
     prize: raffle.prize,
-    verificationCode: code,
+    verificationCode: codeStr,
     confirmDeadline
   };
 }
@@ -1674,7 +1710,7 @@ function getWeeklyRaffleTargetWeek(d = new Date()) {
     if (hour >= 21) {
       daysToThursday = 4;
     } else {
-      daysToThursday = -3;
+      daysToThursday = 4; // Cambiado: El domingo por la mañana ya apunta al JUEVES SIGUIENTE
     }
   } else if (day === 1) {
     daysToThursday = 3;
@@ -1685,9 +1721,9 @@ function getWeeklyRaffleTargetWeek(d = new Date()) {
   } else if (day === 4) {
     daysToThursday = 0;
   } else if (day === 5) {
-    daysToThursday = -1;
+    daysToThursday = 6; // Cambiado: El viernes ya apunta al JUEVES SIGUIENTE
   } else if (day === 6) {
-    daysToThursday = -2;
+    daysToThursday = 5; // Cambiado: El sábado ya apunta al JUEVES SIGUIENTE
   }
   
   targetThursday.setDate(madridTime.getDate() + daysToThursday);

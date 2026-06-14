@@ -1837,7 +1837,14 @@
 
         <div class="form-group" style="margin-bottom:12px;">
           <label class="form-label" style="font-size:11px; font-weight:700; color:var(--gold); text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:6px;">🎁 Premio de la Semana</label>
-          <input type="text" class="input-field" id="weekly-prize-input" placeholder="Premio (ej: Botella de Viño de la Casa)" style="font-size:14px; margin-bottom:12px; width:100%; box-sizing:border-box;" />
+          <div style="display:flex; gap:12px; margin-bottom:12px;">
+            <div style="flex:1;">
+              <input type="text" class="input-field" id="weekly-prize-input" placeholder="Premio (ej: Botella de Viño de la Casa)" style="font-size:14px; width:100%; box-sizing:border-box; margin:0;" />
+            </div>
+            <div style="width:90px;">
+              <input type="number" class="input-field" id="weekly-winners-input" value="1" min="1" max="50" style="font-size:14px; width:100%; box-sizing:border-box; margin:0;" title="Nº Ganadores" />
+            </div>
+          </div>
           
           <label class="form-label" style="font-size:11px; font-weight:700; color:var(--gold); text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:6px;">📝 Operativa y Reglas</label>
           <textarea class="input-field" id="weekly-rules-input" placeholder="Operativa del sorteo semanal..." style="font-size:13px; font-family:'Outfit',sans-serif; min-height:80px; resize:vertical; margin-bottom:14px; background:rgba(42,21,9,0.05); border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; color:var(--text); width:100%; box-sizing:border-box; padding:10px; outline:none;"></textarea>
@@ -3115,14 +3122,11 @@
     const sel = document.getElementById('msg-rsvp-event');
     if (!sel) return;
     try {
-      const events = await fetch('/api/events').then(r => r.json());
-      const today = new Date(new Date().toDateString());
-      const upcoming = events
-        .filter(ev => new Date(ev.event_date + 'T00:00:00') >= today)
-        .sort((a, b) => a.event_date.localeCompare(b.event_date));
+      const events = await fetch('/api/events/all', { headers: authHeaders() }).then(r => r.json());
+      const sortedEvents = events.sort((a, b) => b.event_date.localeCompare(a.event_date));
       const current = sel.value;
       sel.innerHTML = '<option value="">— Sin botón (mensaje normal) —</option>' +
-        upcoming.map(ev => {
+        sortedEvents.map(ev => {
           const d = new Date(ev.event_date + 'T00:00:00').toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long' });
           return `<option value="${ev.id}">${ev.title} · ${d}</option>`;
         }).join('');
@@ -3911,14 +3915,26 @@
     if (!selectEl || !countEl) return;
 
     if (selectEl.innerHTML.includes('Cargando...') || selectEl.options.length <= 1) {
-      const curWeek = getClientYearWeek();
-      const nextWeek = getClientYearWeek(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
-      const prevWeek = getClientYearWeek(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
-      selectEl.innerHTML = `
-        <option value="${prevWeek}">Semana pasada — ${weekRangeLabel(prevWeek)}</option>
-        <option value="${curWeek}" selected>Esta semana — ${weekRangeLabel(curWeek)}</option>
-        <option value="${nextWeek}">Semana siguiente — ${weekRangeLabel(nextWeek)}</option>
-      `;
+      try {
+        const targetWeekData = await fetch('/api/raffle/admin/weekly/target-week', { headers: authHeaders() }).then(r => r.json());
+        const targetWeek = targetWeekData.week;
+        
+        const allWeeks = await fetch('/api/raffle/admin/weekly/all-weeks', { headers: authHeaders() }).then(r => r.json());
+        
+        // Ensure targetWeek and nextWeek are in the list
+        const nextWeek = getClientYearWeek(new Date(weekToMonday(targetWeek).getTime() + 7 * 24 * 60 * 60 * 1000));
+        const weeksSet = new Set(allWeeks);
+        weeksSet.add(targetWeek);
+        weeksSet.add(nextWeek);
+        
+        const sortedWeeks = Array.from(weeksSet).sort().reverse();
+        
+        selectEl.innerHTML = sortedWeeks.map(w => {
+          let label = weekRangeLabel(w);
+          if (w === targetWeek) label = 'Próximo Sorteo — ' + label;
+          return `<option value="${w}" ${w === targetWeek ? 'selected' : ''}>${label}</option>`;
+        }).join('');
+      } catch (e) { console.error(e); }
     }
 
     // Actualizar badge de fechas bajo el selector
@@ -3949,6 +3965,10 @@
       if (rulesInput && document.activeElement !== rulesInput) {
         rulesInput.value = data.rules || '';
       }
+      const winnersInput = document.getElementById('weekly-winners-input');
+      if (winnersInput && document.activeElement !== winnersInput) {
+        winnersInput.value = data.winnersCount || 1;
+      }
 
       // Actualizar el panel de confirmación con lo que está en la DB
       if (data.isConfigured && data.prize) {
@@ -3963,11 +3983,24 @@
 
       if (data.status === 'completed' || data.status === 'forfeited') {
         if (winnerInfo) winnerInfo.style.display = 'block';
-        if (winnerAddress) winnerAddress.textContent = data.winnerWallet || '—';
-
-        // Mostrar código de verificación
+        if (winnerAddress) {
+          try {
+            const wallets = JSON.parse(data.winnerWallet);
+            const codes = JSON.parse(data.verificationCode || "{}");
+            let html = '';
+            wallets.forEach(w => {
+              html += `<div style="display:flex; justify-content:space-between; margin-bottom:4px; padding-bottom:4px; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-family:monospace; font-size:13px;">${w}</span> <span style="font-weight:bold; color:var(--wine);">${codes[w] || '—'}</span></div>`;
+            });
+            winnerAddress.innerHTML = html;
+          } catch(e) {
+            winnerAddress.textContent = data.winnerWallet || '—';
+          }
+        }
         const codeEl = document.getElementById('weekly-verification-code');
-        if (codeEl) codeEl.textContent = data.verificationCode || '—';
+        if (codeEl) {
+          try { JSON.parse(data.verificationCode); codeEl.style.display = 'none'; }
+          catch(e) { codeEl.textContent = data.verificationCode || '—'; codeEl.style.display = 'block'; }
+        }
 
         if (drawnAtEl) {
           const when = data.drawnAt ? new Date(data.drawnAt).toLocaleString('es-ES') : '—';
@@ -4194,6 +4227,8 @@
     const selectedWeek = selectEl.value;
     const prize = prizeInput.value.trim();
     const rules = rulesInput ? rulesInput.value.trim() : '';
+    const winnersInput = document.getElementById('weekly-winners-input');
+    const winnersCount = winnersInput ? winnersInput.value : 1;
     if (!prize) {
       showToast('Introduce el nombre del premio', true);
       return;

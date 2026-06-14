@@ -755,8 +755,25 @@ router.get('/admin/weekly/status', requireAuth, (req, res) => {
       confirmDeadline: raffle ? raffle.confirm_deadline : null,
       confirmedAt: raffle ? raffle.confirmed_at : null,
       totalParticipants,
-      isConfigured: !!raffle
+      isConfigured: !!raffle,
+      winnersCount: raffle ? (raffle.winners_count || 1) : 1
     });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/weekly/target-week (ADMIN)
+router.get('/admin/weekly/target-week', requireAuth, (req, res) => {
+  res.json({ week: getWeeklyRaffleTargetWeek() });
+});
+
+// GET /api/admin/weekly/all-weeks (ADMIN)
+router.get('/admin/weekly/all-weeks', requireAuth, (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const rows = db.prepare(`SELECT claimed_week FROM weekly_raffles ORDER BY claimed_week DESC`).all();
+    res.json(rows.map(r => r.claimed_week));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -797,12 +814,13 @@ router.post('/admin/weekly/forfeit', requireAuth, (req, res) => {
 
 // POST /api/admin/weekly/config (ADMIN)
 router.post('/admin/weekly/config', requireAuth, (req, res) => {
-  const { prize, rules, week } = req.body;
+  const { prize, rules, week, winnersCount } = req.body;
   if (!prize) return res.status(400).json({ error: 'Falta el nombre del premio' });
   const weekStr = week || getWeeklyRaffleTargetWeek();
   try {
     const { WEEKLY_DEFAULT_RULES } = require('../db/database');
-    updateWeeklyPrize(weekStr, prize, rules || WEEKLY_DEFAULT_RULES);
+    const wCount = winnersCount ? parseInt(winnersCount) : 1;
+    updateWeeklyPrize(weekStr, prize, rules || WEEKLY_DEFAULT_RULES, wCount);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
