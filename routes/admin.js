@@ -180,12 +180,16 @@ router.get('/debug-push', requireAuth, (req, res) => {
     const subsCount = db.prepare("SELECT COUNT(*) as count FROM push_subscriptions").get()?.count || 0;
     const subs = db.prepare("SELECT wallet_address, substr(endpoint, 1, 40) as endpoint_short FROM push_subscriptions LIMIT 100").all();
     const raffles = db.prepare("SELECT * FROM weekly_raffles ORDER BY claimed_week DESC LIMIT 5").all();
+    const scheduledRaffles = db.prepare("SELECT * FROM scheduled_raffles ORDER BY event_date DESC, scheduled_time DESC LIMIT 10").all();
+    const generalRaffles = db.prepare("SELECT * FROM raffles ORDER BY created_at DESC LIMIT 10").all();
     res.json({
       vapidPublic,
       hasVapidPrivate,
       subsCount,
       subs,
-      raffles
+      raffles,
+      scheduledRaffles,
+      generalRaffles
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
