@@ -175,6 +175,15 @@ router.get('/stats', requireAuth, (req, res) => {
 router.get('/debug-push', requireAuth, (req, res) => {
   try {
     const { db } = require('../db/database');
+    const fs = require('fs');
+    const path = require('path');
+    let codeSnippet = 'not found';
+    try {
+      const content = fs.readFileSync(__filename, 'utf8');
+      const snippetIndex = content.indexOf('debug-push');
+      if (snippetIndex !== -1) codeSnippet = content.substring(snippetIndex, snippetIndex + 300);
+    } catch (_) {}
+
     const vapidPublic = process.env.VAPID_PUBLIC_KEY || null;
     const hasVapidPrivate = !!process.env.VAPID_PRIVATE_KEY;
     const subsCount = db.prepare("SELECT COUNT(*) as count FROM push_subscriptions").get()?.count || 0;
@@ -183,6 +192,7 @@ router.get('/debug-push', requireAuth, (req, res) => {
     const scheduledRaffles = db.prepare("SELECT * FROM scheduled_raffles ORDER BY event_date DESC, scheduled_time DESC LIMIT 10").all();
     const generalRaffles = db.prepare("SELECT * FROM raffles ORDER BY created_at DESC LIMIT 10").all();
     res.json({
+      codeSnippet,
       vapidPublic,
       hasVapidPrivate,
       subsCount,
