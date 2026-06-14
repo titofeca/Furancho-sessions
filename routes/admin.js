@@ -171,6 +171,28 @@ router.get('/stats', requireAuth, (req, res) => {
   }
 });
 
+// GET /api/admin/debug-push
+router.get('/debug-push', requireAuth, (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const vapidPublic = process.env.VAPID_PUBLIC_KEY || null;
+    const hasVapidPrivate = !!process.env.VAPID_PRIVATE_KEY;
+    const subsCount = db.prepare("SELECT COUNT(*) as count FROM push_subscriptions").get()?.count || 0;
+    const subs = db.prepare("SELECT wallet_address, substr(endpoint, 1, 40) as endpoint_short FROM push_subscriptions LIMIT 100").all();
+    const raffles = db.prepare("SELECT * FROM weekly_raffles ORDER BY claimed_week DESC LIMIT 5").all();
+    res.json({
+      vapidPublic,
+      hasVapidPrivate,
+      subsCount,
+      subs,
+      raffles
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+
 // GET /api/admin/holders?level=1
 router.get('/holders', requireAuth, (req, res) => {
   try {
