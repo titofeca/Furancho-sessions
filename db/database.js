@@ -222,6 +222,18 @@ db.exec(`
     auth TEXT NOT NULL,
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS push_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT DEFAULT (datetime('now')),
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    target TEXT NOT NULL,
+    success_count INTEGER DEFAULT 0,
+    failure_count INTEGER DEFAULT 0,
+    total_count INTEGER DEFAULT 0,
+    error_message TEXT
+  );
 `);
 
 // Migraciones de columnas y datos — DEBEN ir tras los CREATE TABLE para que

@@ -191,6 +191,12 @@ router.get('/debug-push', requireAuth, (req, res) => {
     const raffles = db.prepare("SELECT * FROM weekly_raffles ORDER BY claimed_week DESC LIMIT 5").all();
     const scheduledRaffles = db.prepare("SELECT * FROM scheduled_raffles ORDER BY event_date DESC, scheduled_time DESC LIMIT 10").all();
     const generalRaffles = db.prepare("SELECT * FROM raffles ORDER BY created_at DESC LIMIT 10").all();
+    
+    let pushLogs = [];
+    try {
+      pushLogs = db.prepare("SELECT * FROM push_logs ORDER BY timestamp DESC LIMIT 50").all();
+    } catch (_) {}
+
     res.json({
       codeSnippet,
       vapidPublic,
@@ -199,7 +205,8 @@ router.get('/debug-push', requireAuth, (req, res) => {
       subs,
       raffles,
       scheduledRaffles,
-      generalRaffles
+      generalRaffles,
+      pushLogs
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
