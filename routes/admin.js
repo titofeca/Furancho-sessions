@@ -679,11 +679,114 @@ router.get('/hourly', requireAuth, (req, res) => {
     const { db } = require('../db/database');
     const date = req.query.date || '';
     if (!date) return res.status(400).json({ error: 'Falta date' });
+
+    const TZ = `'+2 hours'`;
+
+    if (date === 'totales') {
+      // 1. Obtener los días de evento que tienen al menos 1 fichaje registrado
+      const eventDaysRows = db.prepare(`
+        SELECT DISTINCT date(entry_time, ${TZ}) as day
+        FROM sessions
+        WHERE date(entry_time, ${TZ}) IN (SELECT event_date FROM events)
+      `).all();
+      const numEvents = eventDaysRows.length || 1;
+
+      // 2. Entradas por hora sumadas y divididas por numEvents
+      const raw_entries = db.prepare(`
+        SELECT CAST(strftime('%H', entry_time, ${TZ}) AS INTEGER) as hour, COUNT(*) as count
+        FROM sessions
+        WHERE date(entry_time, ${TZ}) IN (SELECT event_date FROM events)
+        GROUP BY hour ORDER BY hour
+      `).all();
+      const entries_by_hour = raw_entries.map(e => ({
+        hour: e.hour,
+        count: Math.round(e.count / numEvents * 10) / 10
+      }));
+
+      // 3. Salidas por hora sumadas y divididas por numEvents
+      const raw_exits = db.prepare(`
+        SELECT CAST(strftime('%H', exit_time, ${TZ}) AS INTEGER) as hour, COUNT(*) as count
+        FROM sessions
+        WHERE exit_time IS NOT NULL AND date(exit_time, ${TZ}) IN (SELECT event_date FROM events)
+        GROUP BY hour ORDER BY hour
+      `).all();
+      const exits_by_hour = raw_exits.map(e => ({
+        hour: e.hour,
+        count: Math.round(e.count / numEvents * 10) / 10
+      }));
+
+      // 4. Aforo promedio dentro por hora
+      const inside_by_hour = [];
+      for (let h = 16; h <= 23; h++) {
+        const row = db.prepare(`
+          SELECT COUNT(*) as count FROM sessions
+          WHERE date(entry_time, ${TZ}) IN (SELECT event_date FROM events)
+            AND CAST(strftime('%H', entry_time, ${TZ}) AS INTEGER) <= ${h}
+            AND (exit_time IS NULL OR CAST(strftime('%H', exit_time, ${TZ}) AS INTEGER) > ${h})
+        `).get();
+        inside_by_hour.push({
+          hour: h,
+          count: Math.round((row?.count || 0) / numEvents * 10) / 10
+        });
+      }
+
+      // Encontrar el aforo máximo real alcanzado en cualquier evento individual (no el promedio del pico, sino el pico absoluto real alcanzado de verdad)
+      let max_inside = 0;
+      for (const dayRow of eventDaysRows) {
+        const dayStr = dayRow.day;
+        const inside_for_day = [];
+        for (let h = 16; h <= 23; h++) {
+          const row = db.prepare(`
+            SELECT COUNT(*) as count FROM sessions
+            WHERE date(entry_time, ${TZ}) = ?
+              AND CAST(strftime('%H', entry_time, ${TZ}) AS INTEGER) <= ${h}
+              AND (exit_time IS NULL OR CAST(strftime('%H', exit_time, ${TZ}) AS INTEGER) > ${h})
+          `).get(dayStr);
+          inside_for_day.push(row?.count || 0);
+        }
+        const dayMax = Math.max(...inside_for_day, 0);
+        if (dayMax > max_inside) max_inside = dayMax;
+      }
+
+      // Estancia media de todos los eventos
+      const durRow = db.prepare(`
+        SELECT ROUND(AVG(duration_minutes), 0) as avg_duration
+        FROM sessions
+        WHERE exit_time IS NOT NULL AND duration_minutes > 0 AND duration_minutes < 300
+          AND date(entry_time, ${TZ}) IN (SELECT event_date FROM events)
+      `).get();
+
+      const peakEntry = entries_by_hour.reduce((a, b) => b.count > (a?.count || 0) ? b : a, null);
+      
+      // Total entradas acumuladas de todos los eventos
+      const total_entries = db.prepare(`
+        SELECT COUNT(*) as count FROM sessions
+        WHERE date(entry_time, ${TZ}) IN (SELECT event_date FROM events)
+      `).get()?.count || 0;
+
+      // Sorteos lanzados (a qué horas se lanzaron sorteos en cualquier evento)
+      const raffle_hours = db.prepare(`
+        SELECT DISTINCT CAST(strftime('%H', created_at, ${TZ}) AS INTEGER) as hour
+        FROM raffles
+        ORDER BY hour
+      `).all();
+
+      return res.json({
+        date: 'totales',
+        entries_by_hour,
+        exits_by_hour,
+        inside_by_hour,
+        avg_duration: durRow?.avg_duration || null,
+        max_inside,
+        peak_hour: peakEntry?.hour || null,
+        total_entries,
+        raffle_hours
+      });
+    }
+
     // Validar formato estricto YYYY-MM-DD (previene SQL injection)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Formato de fecha no válido' });
     const safeDate = date;
-
-    const TZ = `'+2 hours'`;
 
     const entries_by_hour = db.prepare(`
       SELECT CAST(strftime('%H', entry_time, ${TZ}) AS INTEGER) as hour, COUNT(*) as count

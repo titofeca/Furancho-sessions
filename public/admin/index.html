@@ -5282,16 +5282,15 @@
       // Las que aún no tienen fichajes salen marcadas como "programado".
       const dates = data.dates || [];
       sel.innerHTML = '<option value="">Selecciona un evento...</option>' +
+        '<option value="totales">📊 Todos los eventos (Media Histórica)</option>' +
         dates.map(d => {
           const label = new Date(d.day + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
           const suffix = d.count > 0 ? `(${d.count} visitas)` : '(programado)';
           return `<option value="${d.day}">${label} ${suffix}</option>`;
         }).join('');
-      // Auto-cargar la fecha más reciente que ya tenga datos; si ninguna los tiene,
-      // la más reciente de la agenda (gráfica vacía hasta que haya fichajes).
-      const withData = dates.find(d => d.count > 0);
-      const initial = withData || dates[0];
-      if (initial) { sel.value = initial.day; loadHourlyChart(initial.day); }
+      // Auto-cargar totales
+      sel.value = 'totales';
+      loadHourlyChart('totales');
     } catch(e) {}
   }
 
