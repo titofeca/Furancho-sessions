@@ -1015,11 +1015,16 @@ router.delete('/admin/weekly/:week', requireAuth, (req, res) => {
   }
 })();
 
-// Comprobación periódica en segundo plano de sorteos expirados (cada 5 segundos)
+// Comprobación periódica en segundo plano de sorteos expirados y push de rescate (cada 5 segundos)
+const _notifiedRescueRaffleIds = new Set();
 setInterval(() => {
   try {
     const { db, rejectRaffle } = require('../db/database');
-    const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const { sendPushToWallet } = require('../services/push');
+    const now = Date.now();
+    const nowStr = new Date(now).toISOString().replace('T', ' ').slice(0, 19);
+    
+    // 1. Sorteos expirados
     const expired = db.prepare(`
       SELECT id, prize, winner_wallet FROM raffles 
       WHERE status = 'pending_acceptance' AND acceptance_deadline <= ?
@@ -1031,8 +1036,30 @@ setInterval(() => {
       broadcast('raffle_timeout', { raffleId: r.id, prize: r.prize });
       if (activeRaffle?.raffleId === r.id) activeRaffle = null;
     });
+
+    // 2. Alerta de rescate "Malo Será" (falta < 5 minutos)
+    const deadlineSoon = new Date(now + 300000).toISOString().replace('T', ' ').slice(0, 19);
+    const soonToExpire = db.prepare(`
+      SELECT id, prize, winner_wallet FROM raffles
+      WHERE status = 'pending_acceptance' AND acceptance_deadline > ? AND acceptance_deadline <= ?
+    `).all(nowStr, deadlineSoon);
+
+    soonToExpire.forEach(r => {
+      if (!_notifiedRescueRaffleIds.has(r.id)) {
+        _notifiedRescueRaffleIds.add(r.id);
+        if (r.winner_wallet) {
+          sendPushToWallet(
+            r.winner_wallet,
+            '🚨 ¡Malo será!',
+            `Te ha tocado el premio "${r.prize}" en el Furancho y quedan menos de 5 min para trincarlo. ¡Abre la app, ho! 🍷`,
+            { url: '/claim' }
+          );
+          console.log(`[Raffle] Push de rescate enviado para sorteo #${r.id} al ganador ${r.winner_wallet.slice(0,6)}...`);
+        }
+      }
+    });
   } catch (e) {
-    console.error('Error en autocheck de expiración de sorteos:', e);
+    console.error('Error en autocheck de expiración y rescate de sorteos:', e);
   }
 }, 5000);
 

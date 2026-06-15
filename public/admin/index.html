@@ -3264,7 +3264,7 @@
       }
 
       const LEVEL_LABELS = { all: 'Todos', '1': 'Cautivo', '2': 'O Cunqueiro', '3': 'O Larpeiro', '4': 'O Presidente' };
-      const EMOJIS = ['🍷','🙌','😂','🔥'];
+      const EMOJIS = ['🍷','👍','🔥','🙌','😂'];
       container.innerHTML = messages.map(m => {
         const r = reactionsMap[m.id] || {};
         const total = EMOJIS.reduce((s, e) => s + (r[e] || 0), 0);

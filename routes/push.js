@@ -10,12 +10,12 @@ router.get('/vapid-public-key', (req, res) => {
 
 // POST /api/push/subscribe
 router.post('/subscribe', (req, res) => {
-  const { subscription, walletAddress } = req.body;
+  const { subscription, walletAddress, channels } = req.body;
   if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
     return res.status(400).json({ error: 'Suscripción inválida' });
   }
   try {
-    savePushSubscription(walletAddress, subscription);
+    savePushSubscription(walletAddress, subscription, channels || null);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });

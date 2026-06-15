@@ -131,4 +131,46 @@ async function sendPushToWallets(walletAddresses, title, body, data = {}) {
   logPushAttempt(title, body, `list (${set.size} wallets)`, ok, err, subscriptions.length, errMsg);
 }
 
-module.exports = { sendPushToAll, sendPushToWallet, sendPushToWallets, VAPID_PUBLIC };
+async function sendPushToChannel(channel, title, body, data = {}) {
+  if (!VAPID_PUBLIC || !VAPID_PRIVATE) {
+    logPushAttempt(title, body, `channel:${channel}`, 0, 0, 0, 'VAPID no configurado');
+    return;
+  }
+  const subscriptions = getAllPushSubscriptions().filter(sub => {
+    if (!sub.channels) return channel === 'general';
+    const list = sub.channels.split(',').map(x => x.trim().toLowerCase());
+    return list.includes(channel.toLowerCase());
+  });
+
+  if (!subscriptions.length) {
+    logPushAttempt(title, body, `channel:${channel}`, 0, 0, 0, 'Sin suscripciones en este canal');
+    return;
+  }
+
+  const payload = JSON.stringify({ title, body, ...data });
+  const results = await Promise.allSettled(
+    subscriptions.map(sub =>
+      webpush.sendNotification(
+        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+        payload
+      ).catch(err => {
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          deletePushSubscription(sub.endpoint);
+        }
+        throw err;
+      })
+    )
+  );
+
+  const ok  = results.filter(r => r.status === 'fulfilled').length;
+  const err = results.filter(r => r.status === 'rejected').length;
+  let errMsg = null;
+  if (err > 0) {
+    const failed = results.filter(r => r.status === 'rejected');
+    errMsg = `${err} envíos fallidos. Primer error: ${failed[0]?.reason?.message || failed[0]?.reason || 'Desconocido'}`;
+  }
+  logPushAttempt(title, body, `channel:${channel}`, ok, err, subscriptions.length, errMsg);
+  console.log(`[Push Channel:${channel}] Enviadas: ${ok} ok, ${err} fallidas de ${subscriptions.length}`);
+}
+
+module.exports = { sendPushToAll, sendPushToWallet, sendPushToWallets, sendPushToChannel, VAPID_PUBLIC };

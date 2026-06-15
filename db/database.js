@@ -220,6 +220,7 @@ db.exec(`
     endpoint TEXT NOT NULL UNIQUE,
     p256dh TEXT NOT NULL,
     auth TEXT NOT NULL,
+    channels TEXT DEFAULT 'general',
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -313,6 +314,7 @@ try { db.exec(`ALTER TABLE sessions ADD COLUMN exit_points INTEGER DEFAULT 0`); 
 // Marca si la salida fue por auto-cierre de las 23:00 (1) o salida manual del cliente (0).
 // Para sorteos: una salida manual saca del bombo; el auto-cierre NO (seguía dentro al acabar el evento).
 try { db.exec(`ALTER TABLE sessions ADD COLUMN auto_closed INTEGER DEFAULT 0`); } catch (_) {}
+try { db.exec(`ALTER TABLE push_subscriptions ADD COLUMN channels TEXT DEFAULT 'general'`); } catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS points (id INTEGER PRIMARY KEY AUTOINCREMENT, wallet_address TEXT NOT NULL, points INTEGER NOT NULL, reason TEXT, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
 try { db.exec(`CREATE INDEX IF NOT EXISTS idx_points_wallet ON points(wallet_address)`); } catch (_) {}
 
@@ -683,6 +685,21 @@ function openSession(walletAddress) {
   const countedAsVisit = (inEventWindow && !alreadyVisitedThisWeek) ? 1 : 0;
 
   db.prepare(`INSERT INTO sessions (wallet_address, counted_as_visit) VALUES (?, ?)`).run(walletAddress, countedAsVisit);
+
+  if (inEventWindow && walletAddress) {
+    try {
+      db.prepare(`
+        UPDATE push_subscriptions
+        SET channels = CASE 
+          WHEN channels IS NULL OR channels = '' THEN 'local-live'
+          WHEN channels NOT LIKE '%local-live%' THEN channels || ',local-live'
+          ELSE channels
+        END
+        WHERE LOWER(wallet_address) = LOWER(?)
+      `).run(walletAddress);
+    } catch(e) {}
+  }
+
   return { opened: true, counted: countedAsVisit === 1, hasEventNow: inEventWindow, alreadyVisitedThisWeek };
 }
 
@@ -704,15 +721,31 @@ function closeSession(walletAddress) {
       UPDATE sessions SET exit_time = datetime('now'), duration_minutes = ?
       WHERE id = ?
     `).run(diffMinutes, session.id);
+
+    try {
+      db.prepare(`
+        UPDATE push_subscriptions
+        SET channels = REPLACE(REPLACE(REPLACE(channels, ',local-live', ''), 'local-live,', ''), 'local-live', '')
+        WHERE LOWER(wallet_address) = LOWER(?)
+      `).run(walletAddress);
+    } catch(e) {}
   }
 }
 
-function savePushSubscription(walletAddress, subscription) {
+function savePushSubscription(walletAddress, subscription, channels = null) {
+  let channelsStr = 'general';
+  if (Array.isArray(channels)) {
+    channelsStr = channels.join(',');
+  } else if (typeof channels === 'string') {
+    channelsStr = channels;
+  }
   db.prepare(`
-    INSERT INTO push_subscriptions (wallet_address, endpoint, p256dh, auth)
-    VALUES (?, ?, ?, ?)
-    ON CONFLICT(endpoint) DO UPDATE SET wallet_address=excluded.wallet_address
-  `).run(walletAddress || null, subscription.endpoint, subscription.keys.p256dh, subscription.keys.auth);
+    INSERT INTO push_subscriptions (wallet_address, endpoint, p256dh, auth, channels)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(endpoint) DO UPDATE SET 
+      wallet_address = excluded.wallet_address,
+      channels = excluded.channels
+  `).run(walletAddress || null, subscription.endpoint, subscription.keys.p256dh, subscription.keys.auth, channelsStr);
 }
 
 function getAllPushSubscriptions() {
@@ -1151,12 +1184,21 @@ function autoCloseSessionsAfterEvent() {
     WHERE id = ?
   `);
 
+  const cleanPushStmt = db.prepare(`
+    UPDATE push_subscriptions
+    SET channels = REPLACE(REPLACE(REPLACE(channels, ',local-live', ''), 'local-live,', ''), 'local-live', '')
+    WHERE LOWER(wallet_address) = LOWER(?)
+  `);
+
   open.forEach(s => {
     const entryDate = new Date(s.entry_time.replace(' ', 'T') + 'Z');
     const exitDate = new Date(exitTimeUtcStr.replace(' ', 'T') + 'Z');
     let diffMinutes = Math.floor((exitDate - entryDate) / 60000);
     if (diffMinutes > 12 * 60 || diffMinutes < 0) diffMinutes = 60;
     stmt.run(exitTimeUtcStr, diffMinutes, s.id);
+    try {
+      cleanPushStmt.run(s.wallet_address);
+    } catch(e) {}
   });
 
   console.log(`[Auto-checkout fin evento ${event.end_time}] Sesiones cerradas: ${open.length} con exit_time = ${exitTimeUtcStr}`);
@@ -1300,7 +1342,7 @@ function linkScheduledRaffle(scheduledId, raffleId) {
   db.prepare(`UPDATE scheduled_raffles SET status = 'launched', raffle_id = ? WHERE id = ?`).run(raffleId, scheduledId);
 }
 
-const ALLOWED_REACTIONS = ['🍷', '🙌', '😂', '🔥'];
+const ALLOWED_REACTIONS = ['🍷', '👍', '🔥', '🙌', '😂'];
 
 function addReaction(messageId, emoji, walletAddress) {
   if (!ALLOWED_REACTIONS.includes(emoji)) throw new Error('Emoji no permitido');
