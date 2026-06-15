@@ -1990,18 +1990,18 @@
           <div id="next-raffle-mins" style="background:var(--wine); color:#fff; border-radius:20px; padding:4px 10px; font-size:12px; font-weight:700; white-space:nowrap; flex-shrink:0;"></div>
         </div>
 
-        <!-- Botón interactivo de Sorteos -->
+        <!-- Botón interactivo de Museo de Logros -->
         <button onclick="openPrizesModal()" class="raffle-menu-btn">
           <div style="display:flex; align-items:center; gap:12px; flex:1; min-width:0;">
-            <span class="raffle-icon" style="font-size:30px; flex-shrink:0; transition: transform 0.25s;">🎰</span>
+            <span class="raffle-icon" style="font-size:30px; flex-shrink:0; transition: transform 0.25s;">🏛️</span>
             <div style="flex:1; min-width:0;">
-              <h3 style="font-family:'Playfair Display',serif; font-size:16px; font-weight:900; color:var(--wine); margin:0 0 3px 0;">Sorteos do Furancho</h3>
-              <p id="raffle-status-text" style="font-size:12px; color:var(--text-muted); margin:0; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">👉 ¡Toca aquí para ver los sorteos y tus premios, ho! 👈</p>
+              <h3 style="font-family:'Playfair Display',serif; font-size:16px; font-weight:900; color:var(--wine); margin:0 0 3px 0;">O meu Museo do Furancho</h3>
+              <p id="raffle-status-text" style="font-size:12px; color:var(--text-muted); margin:0; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Logros, visitas y premios ganados, ho.</p>
             </div>
           </div>
           <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
             <div class="raffle-live-dot" id="raffle-live-dot" style="margin:0;"></div>
-            <span class="raffle-btn-badge">Entrar ➜</span>
+            <span class="raffle-btn-badge">Visitar ➜</span>
           </div>
         </button>
       </div>
@@ -2491,6 +2491,7 @@
     let userWalletAddress = localStorage.getItem('furancho_wallet_address');
     let userWalletPrivateKey = localStorage.getItem('furancho_wallet_private_key');
     let userClaimedLevels = [];
+    let userVisits = [];
     let _globalEvents = [];
     let _globalMyRsvps = [];
     const walletPreexistente = !!userWalletAddress; // true si ya había visitado antes
@@ -2632,6 +2633,7 @@
         if (refreshed) {
           userVisitCount = refreshed.visitCount || userVisitCount;
           userClaimedLevels = refreshed.levels || userClaimedLevels;
+          userVisits = refreshed.visits || userVisits;
           showProfileScreen(userVisitCount, userClaimedLevels);
         }
       } catch(e) {
@@ -2654,6 +2656,7 @@
         const data = await res.json();
         userVisitCount = data.visitCount || 0;
         userClaimedLevels = data.levels || [];
+        userVisits = data.visits || [];
         // Mostrar número de serie del nivel actual
         if (data.serialsByLevel) {
           const maxLevel = userClaimedLevels.length ? Math.max(...userClaimedLevels) : 0;
@@ -2676,9 +2679,10 @@
             // Aplicar nivel y mostrar perfil
             await applyManualLevel(levelParam);
             const refreshed = await fetch(`/api/mint/history?wallet=${userWalletAddress}`)
-              .then(r => r.json()).catch(() => ({ visitCount: userVisitCount, levels: userClaimedLevels }));
+              .then(r => r.json()).catch(() => ({ visitCount: userVisitCount, levels: userClaimedLevels, visits: userVisits }));
             userVisitCount = refreshed.visitCount || userVisitCount;
             userClaimedLevels = refreshed.levels || userClaimedLevels;
+            userVisits = refreshed.visits || userVisits;
           }
           showProfileScreen(userVisitCount, userClaimedLevels, data.pendingApproval || null);
           return;
@@ -2771,6 +2775,7 @@
             _pollingInterval = null;
             userVisitCount = refreshed.visitCount || 0;
             userClaimedLevels = refreshed.levels || [];
+            userVisits = refreshed.visits || [];
             showProfileScreen(userVisitCount, userClaimedLevels);
             showProfileBanner(`🎉 <strong>¡Carallo, qué nivelazo!</strong> El pase de <strong>${targetLevelName}</strong> ya está activo en tu cuenta. ¡A disfrutarlo, rapaz!`, 'gold');
           } else if (attempts >= 20) {
@@ -3088,7 +3093,11 @@
         const data = await res.json();
         if (data.action === 'mint' || data.action === 'mint_queued') {
           const refreshed = await fetch(`/api/mint/history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => null);
-          if (refreshed) { userVisitCount = refreshed.visitCount || 0; userClaimedLevels = refreshed.levels || []; }
+          if (refreshed) { 
+            userVisitCount = refreshed.visitCount || 0; 
+            userClaimedLevels = refreshed.levels || []; 
+            userVisits = refreshed.visits || [];
+          }
           showProfileScreen(userVisitCount, userClaimedLevels);
           if (data.action === 'mint_queued') {
             startPollingForLevel(data.level, data.levelName);
@@ -3670,15 +3679,22 @@
 
       // Llamadas en paralelo
       const today = new Date().toISOString().slice(0, 10);
-      let history = [], eligibility = { hasSessionToday: false, rafflesDoneTonight: 0 }, events = [], scheduled = [];
+      let history = [], eligibility = { hasSessionToday: false, rafflesDoneTonight: 0 }, events = [], scheduled = [], mintHistory = {};
       try {
-        [history, eligibility, events, scheduled] = await Promise.all([
+        [history, eligibility, events, scheduled, mintHistory] = await Promise.all([
           fetch(`/api/raffle/my-history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => []),
           fetch(`/api/raffle/eligible-check?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => ({})),
           fetch('/api/events').then(r => r.json()).catch(() => []),
-          fetch(`/api/raffle/scheduled?date=${today}`).then(r => r.json()).catch(() => [])
+          fetch(`/api/raffle/scheduled?date=${today}`).then(r => r.json()).catch(() => []),
+          fetch(`/api/mint/history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => ({}))
         ]);
       } catch(e) {}
+
+      if (mintHistory) {
+        userVisits = mintHistory.visits || [];
+        userVisitCount = mintHistory.visitCount || userVisitCount;
+        userClaimedLevels = mintHistory.levels || userClaimedLevels;
+      }
 
       const todayRaffles = history.filter(r => r.created_at && r.created_at.startsWith(today));
       const hasEntry     = eligibility.hasSessionToday;
@@ -3972,6 +3988,130 @@
       } else if (histSection) {
         histSection.style.display = 'none';
       }
+
+      // === RENDERIZAR INSIGNIAS Y LOGROS (MUSEO) ===
+      const badges = [
+        {
+          id: 'primer_cautivo',
+          name: 'Primer Cautivo',
+          icon: '🍷',
+          desc: '1ª visita registrada (Nivel 1 o superior)',
+          unlocked: userClaimedLevels.length > 0 || userVisits.length >= 1,
+          color: 'hsla(358, 70%, 45%, 0.15)',
+          borderColor: 'var(--wine)'
+        },
+        {
+          id: 'cunqueiro_fiel',
+          name: 'Cunqueiro Fiel',
+          icon: '🍶',
+          desc: '2+ visitas registradas (Nivel 2 o superior)',
+          unlocked: userVisits.length >= 2,
+          color: 'hsla(30, 80%, 45%, 0.12)',
+          borderColor: 'var(--gold)'
+        },
+        {
+          id: 'larpeiro_experto',
+          name: 'Larpeiro Experto',
+          icon: '🌿',
+          desc: '4+ visitas registradas (Nivel 3 o superior)',
+          unlocked: userVisits.length >= 4,
+          color: 'hsla(120, 50%, 40%, 0.12)',
+          borderColor: 'rgba(74,222,128,0.5)'
+        },
+        {
+          id: 'o_presidente',
+          name: 'O Presidente',
+          icon: '👑',
+          desc: '12+ visitas registradas (Nivel 4)',
+          unlocked: userVisits.length >= 12,
+          color: 'hsla(45, 90%, 45%, 0.15)',
+          borderColor: '#ffd700'
+        },
+        {
+          id: 'cazador_chaves',
+          name: 'Cazador de Chaves',
+          icon: '🔑',
+          desc: 'Ganador de al menos 1 Chave Semanal',
+          unlocked: history.some(r => r.is_weekly === 1 && r.is_winner === 1 && r.status !== 'rejected'),
+          color: 'hsla(210, 80%, 50%, 0.12)',
+          borderColor: 'rgba(59,130,246,0.5)'
+        },
+        {
+          id: 'neno_sorte',
+          name: 'Neno da Sorte',
+          icon: '🎰',
+          desc: 'Ganador de al menos 1 sorteo en vivo/nocturno',
+          unlocked: history.some(r => !r.is_weekly && r.is_winner === 1 && r.status !== 'rejected'),
+          color: 'hsla(280, 75%, 50%, 0.12)',
+          borderColor: 'rgba(168,85,247,0.5)'
+        },
+        {
+          id: 'boleto_ouro',
+          name: 'Boleto de Ouro',
+          icon: '🎟️',
+          desc: 'Has participado en algún sorteo',
+          unlocked: history.length > 0,
+          color: 'hsla(35, 100%, 50%, 0.15)',
+          borderColor: 'rgba(245,158,11,0.5)'
+        }
+      ];
+
+      const badgesGrid = document.getElementById('badges-grid');
+      const badgesSection = document.getElementById('my-badges-section');
+      if (badgesGrid && badgesSection) {
+        badgesGrid.innerHTML = badges.map(b => {
+          const lockedStyle = b.unlocked ? '' : 'opacity:0.35; filter:grayscale(100%);';
+          const bg = b.unlocked ? b.color : 'rgba(42,21,9,0.03)';
+          const border = b.unlocked ? `1.5px solid ${b.borderColor}` : '1.5px solid rgba(42,21,9,0.08)';
+          
+          return `
+            <div style="background:${bg}; border:${border}; ${lockedStyle} border-radius:12px; padding:10px 4px; text-align:center; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; min-height:85px; transition:transform 0.2s;" 
+                 onclick="showBadgeTooltip('${b.name}', '${b.desc}', ${b.unlocked}, '${b.icon}')"
+                 onmouseover="this.style.transform='scale(1.04)'"
+                 onmouseout="this.style.transform='scale(1)'">
+              <span style="font-size:24px; margin-bottom:4px; display:block;">${b.icon}</span>
+              <p style="font-size:10px; font-weight:700; color:var(--text); margin:0; line-height:1.2; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; max-width:100%; word-break:break-word; padding:0 2px;">${b.name}</p>
+              ${b.unlocked ? `<span style="position:absolute; top:-4px; right:-4px; background:var(--wine); color:#fff; font-size:7px; border-radius:50%; width:12px; height:12px; display:flex; align-items:center; justify-content:center; border:1px solid #F2EDE3;">✓</span>` : ''}
+            </div>
+          `;
+        }).join('');
+        badgesSection.style.display = 'block';
+      }
+
+      // === RENDERIZAR HISTORIAL DE VISITAS ===
+      const visitsList = document.getElementById('my-visits-list');
+      const visitsSection = document.getElementById('my-visits-section');
+      if (visitsList && visitsSection) {
+        if (userVisits && userVisits.length > 0) {
+          visitsList.innerHTML = userVisits.map(v => {
+            const dateObj = new Date(v.day + 'T12:00:00');
+            const formattedDate = dateObj.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+            const dateLabel = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+            const title = v.event_title || 'Sesión de Furancho';
+            
+            return `
+              <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 12px; background:rgba(42,21,9,0.03); border:1px solid rgba(42,21,9,0.06); border-radius:10px; margin-bottom:4px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <span style="font-size:16px;">🍷</span>
+                  <div>
+                    <p style="font-size:13px; font-weight:700; color:var(--text); margin:0;">${title}</p>
+                    <p style="font-size:11px; color:var(--text-muted); margin:0;">${dateLabel}</p>
+                  </div>
+                </div>
+                <span style="font-size:10px; background:rgba(139,25,24,0.06); color:var(--wine); padding:2px 8px; border-radius:100px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Fichado</span>
+              </div>
+            `;
+          }).join('');
+          visitsSection.style.display = 'block';
+        } else {
+          visitsList.innerHTML = `
+            <div style="text-align:center; padding:16px; background:rgba(42,21,9,0.02); border:1px dashed rgba(42,21,9,0.1); border-radius:12px;">
+              <p style="font-size:12px; color:var(--text-muted); margin:0;">Aún no tienes visitas registradas. ¡Ven al local y ficha tu entrada! 🍷</p>
+            </div>
+          `;
+          visitsSection.style.display = 'block';
+        }
+      }
     }
 
     function togglePrizesExpanded() {
@@ -4047,9 +4187,10 @@
         }
 
         // Actualizar historial y mostrar perfil
-        const refreshed = await fetch(`/api/mint/history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => ({ visitCount: 0, levels: [] }));
+        const refreshed = await fetch(`/api/mint/history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => ({ visitCount: 0, levels: [], visits: [] }));
         userVisitCount = refreshed.visitCount || 0;
         userClaimedLevels = refreshed.levels || [];
+        userVisits = refreshed.visits || [];
 
         showProfileScreen(userVisitCount, userClaimedLevels);
 
@@ -5547,6 +5688,7 @@
               if (refreshed) {
                 userVisitCount = refreshed.visitCount || userVisitCount;
                 userClaimedLevels = refreshed.levels || userClaimedLevels;
+                userVisits = refreshed.visits || userVisits;
                 showProfileScreen(userVisitCount, userClaimedLevels);
               }
             }, 500);
@@ -5752,6 +5894,54 @@
   window.closeAllergensModal = closeAllergensModal;
   window.submitAllergensRsvp = submitAllergensRsvp;
   window.submitEatAllRsvp = submitEatAllRsvp;
+
+  // === SISTEMA DE TOASTS FLOTANTES (PREMIUM) ===
+  function showToast(msg) {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toast-container';
+      container.style.cssText = 'position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:9999; display:flex; flex-direction:column; gap:8px; width:90%; max-width:360px; pointer-events:none;';
+      document.body.appendChild(container);
+    }
+    
+    const toast = document.createElement('div');
+    toast.style.cssText = 'background:rgba(28,12,5,0.95); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:1.5px solid rgba(196,151,58,0.3); color:#F2EDE3; padding:14px 20px; border-radius:16px; font-size:13px; font-weight:600; text-align:center; box-shadow:0 10px 35px rgba(0,0,0,0.4); pointer-events:auto; opacity:0; transform:translateY(15px); transition:all 0.35s cubic-bezier(0.22, 1, 0.36, 1); line-height:1.4;';
+    toast.innerHTML = msg;
+    
+    container.appendChild(toast);
+    
+    requestAnimationFrame(() => {
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateY(0)';
+    });
+    
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(-15px)';
+      setTimeout(() => {
+        toast.remove();
+        if (container.children.length === 0) {
+          container.remove();
+        }
+      }, 350);
+    }, 4500);
+  }
+  window.showToast = showToast;
+
+  function showBadgeTooltip(name, desc, unlocked, icon) {
+    const statusText = unlocked ? '🏆 ¡Logro Desbloqueado!' : '🔒 Logro Bloqueado';
+    const msg = `
+      <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px; padding:4px 0;">
+        <span style="font-size:36px; margin-bottom:4px; display:block;">${icon}</span>
+        <strong style="font-size:14px; color:var(--gold); font-family:\'Outfit\',sans-serif;">${name}</strong>
+        <span style="font-size:12px; color:#F2EDE3; opacity:0.9; font-weight:400;">${desc}</span>
+        <span style="font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; margin-top:6px; color:${unlocked ? '#4ade80' : '#7a6a5a'};">${statusText}</span>
+      </div>
+    `;
+    showToast(msg);
+  }
+  window.showBadgeTooltip = showBadgeTooltip;
 
   </script>
 
@@ -6056,27 +6246,42 @@
         <div style="width:36px; height:4px; background:rgba(42,21,9,0.15); border-radius:100px; margin:0 auto;"></div>
       </div>
 
-      <span style="font-size:44px; display:block; margin-bottom:10px;">🎁</span>
-      <span style="background:rgba(196,151,58,0.12); color:var(--gold); font-size:11px; font-weight:700; padding:4px 12px; border-radius:100px; text-transform:uppercase; letter-spacing:1.5px; display:inline-block; margin-bottom:10px;">Sorteos do Furancho</span>
-      <h2 style="font-family:'Playfair Display',serif; font-size:24px; font-weight:900; color:var(--wine); margin:0 0 16px 0;">Sorteos y Premios</h2>
+      <span style="font-size:44px; display:block; margin-bottom:10px;">🏛️</span>
+      <span style="background:rgba(196,151,58,0.12); color:var(--gold); font-size:11px; font-weight:700; padding:4px 12px; border-radius:100px; text-transform:uppercase; letter-spacing:1.5px; display:inline-block; margin-bottom:10px;">Museo do Furancho</span>
+      <h2 style="font-family:'Playfair Display',serif; font-size:24px; font-weight:900; color:var(--wine); margin:0 0 16px 0;">O meu Museo de Logros</h2>
 
-      <!-- Reglas del Sorteo -->
+      <!-- Reglas del Sorteo (Aviso) -->
       <div style="background:rgba(139,25,24,0.03); border:1.5px dashed rgba(139,25,24,0.18); border-radius:16px; padding:16px; margin-bottom:20px; text-align:left;">
         <p style="font-size:13px; color:var(--text); line-height:1.65; margin:0;">
-          ⚠️ <strong style="color:var(--wine);">¡Al loro!</strong> Cuando oigas la señal del sorteo, abre la app. Si te toca, acepta el premio en pantalla. Hay tiempo límite — si te despistas, el premio vuelve al bombo. ¡Sin excusas, ho!
+          🏆 <strong style="color:var(--wine);">¡El museo del Furancheiro!</strong> Aquí se graban a fuego todas tus visitas, los premios que trincas y tus insignias ganadas. Tus datos de aforo y tiempos están a salvo, neno — ¡aquí solo lucen tus medallas!
         </p>
       </div>
 
       <!-- Contenido del estado y listado de premios -->
       <div style="text-align:left; margin-bottom:24px;">
+        <!-- Insignias y Logros -->
+        <div id="my-badges-section" style="display:none; margin-top:14px; margin-bottom:20px;">
+          <p style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.2px; color:var(--text-muted); margin-bottom:10px;">Os meus logros (Insignias)</p>
+          <div id="badges-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:16px;"></div>
+        </div>
+
         <div id="prizes-state-content" style="margin-top:12px;"></div>
+
+        <!-- Mis Premios -->
         <div id="my-prizes-section" style="display:none; margin-top:14px;">
-          <p style="font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); margin-bottom:10px;" id="prizes-header-title">Mis premios y sorteos</p>
+          <p style="font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); margin-bottom:10px;" id="prizes-header-title">Mis premios ganados</p>
           <div id="prizes-list" style="display:flex; flex-direction:column; gap:8px;"></div>
         </div>
+
+        <!-- Historial de Visitas -->
+        <div id="my-visits-section" style="display:none; margin-top:20px;">
+          <p style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.2px; color:var(--text-muted); margin-bottom:8px;">Historial de visitas (Fichajes)</p>
+          <div id="my-visits-list" style="display:flex; flex-direction:column; gap:6px; margin-bottom:16px;"></div>
+        </div>
+
         <!-- Historial completo de participaciones -->
-        <div id="my-history-section" style="display:none; margin-top:14px;">
-          <p style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.2px; color:var(--text-muted); margin-bottom:8px;">Historial de participaciones</p>
+        <div id="my-history-section" style="display:none; margin-top:20px;">
+          <p style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.2px; color:var(--text-muted); margin-bottom:8px;">Sorteos participados</p>
           <div id="my-history-list" style="display:flex; flex-direction:column; gap:6px;"></div>
         </div>
       </div>
