@@ -3728,7 +3728,7 @@
         if (day === 4 && hours < 20) showHype = true;  // Jueves antes de las 20:00
 
         // Si ya hay un sorteo nocturno pendiente ESTA noche, ocultamos el hype general
-        if (sched && sched.length > 0) showHype = false;
+        if (scheduled && scheduled.length > 0) showHype = false;
         
         hypeBanner.style.display = showHype ? 'block' : 'none';
       }
@@ -3868,120 +3868,135 @@
 
       let itemsToRender = history;
       let showToggle = false;
-      if (history.length > 3) {
+      if (history.length > 6) {
         showToggle = true;
         if (!_prizesExpanded) {
-          itemsToRender = history.slice(0, 3);
+          itemsToRender = history.slice(0, 6);
         }
       }
 
-      // Agrupar por fecha
-      let lastDate = null;
-      list.innerHTML = itemsToRender.map((r) => {
+      // Ordenar: ganados primero (vivid), luego no ganados (apagado)
+      const sortedItems = [
+        ...itemsToRender.filter(r => r.is_winner === 1 && r.status !== 'rejected'),
+        ...itemsToRender.filter(r => !(r.is_winner === 1 && r.status !== 'rejected'))
+      ];
+
+      list.innerHTML = sortedItems.map((r) => {
         const won = r.is_winner === 1;
-        const msg = (statusMsg[r.status] || (() => r.prize))(r, won);
         const isWin = won && r.status !== 'rejected';
-        const bg = r.status === 'collected' ? 'rgba(74,222,128,0.06)'
-                 : isWin                    ? 'rgba(196,151,58,0.07)'
-                                            : 'rgba(42,21,9,0.03)';
-        const border = r.status === 'collected' ? 'rgba(74,222,128,0.25)'
-                     : isWin                    ? 'rgba(196,151,58,0.3)'
-                                                : 'rgba(42,21,9,0.08)';
-        const rDate = r.created_at ? r.created_at.slice(0, 10) : '';
-        const dateObj = new Date(r.created_at.replace(' ','T')+'Z');
-        const timeStr = dateObj.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
-        let dateSep = '';
-        if (rDate !== lastDate) {
-          lastDate = rDate;
-          const isToday = rDate === today;
-          const label = isToday ? 'Esta noche' : dateObj.toLocaleDateString('es-ES', {weekday:'long', day:'numeric', month:'long'});
-          dateSep = `<p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:${dateSep ? '12px' : '0'} 0 6px;">${label}</p>`;
-        }
-        // Botón descargar bono (solo premios de local colaborador aceptados/recogidos)
-        const showBonoBtn = won && ['accepted','collected'].includes(r.status) && r.prize_image;
-        const bonoBtn = showBonoBtn
-          ? `<a href="/api/pdf/premio/${r.id}?wallet=${encodeURIComponent(userWalletAddress)}" target="_blank"
-              style="display:inline-block; margin-top:8px; padding:7px 16px; background:rgba(196,151,58,0.1); border:1.5px solid var(--gold); color:var(--gold); border-radius:50px; font-size:12px; font-weight:700; text-decoration:none;">
-              📄 Descargar bono
-            </a>`
-          : '';
-        // Establecimiento si es local colaborador
-        const estLine = won && r.establishment
-          ? `<p style="font-size:11px; color:var(--wine); font-weight:700; text-transform:uppercase; letter-spacing:1px; margin:3px 0 0;">${r.establishment}</p>`
-          : '';
-        return dateSep + `<div style="background:${bg}; border:1px solid ${border}; border-radius:14px; padding:13px 15px; margin-bottom:2px;">
-          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px;">
-            <div style="flex:1;">
-              <p style="font-size:13px; font-weight:600; color:var(--text); margin:0 0 3px; line-height:1.5;">${msg}</p>
-              ${estLine}
-              ${isWin && r.verification_code ? `<div style="font-family:monospace; font-size:22px; font-weight:700; letter-spacing:5px; color:var(--wine); margin-top:6px;">${r.verification_code}</div>` : ''}
-              ${bonoBtn}
+        const dateObj = r.created_at ? new Date(r.created_at.replace(' ','T')+'Z') : new Date();
+        const dateStr = dateObj.toLocaleDateString('es-ES', {day:'numeric', month:'short', year:'numeric'});
+        const isWeekly = r.is_weekly === 1;
+
+        // === TARJETA GANADA (color vivo) ===
+        if (isWin) {
+          const isCollected = r.status === 'collected';
+          const bg = isCollected
+            ? 'linear-gradient(135deg, rgba(22,163,74,0.12) 0%, rgba(22,163,74,0.06) 100%)'
+            : 'linear-gradient(135deg, rgba(196,151,58,0.15) 0%, rgba(196,151,58,0.07) 100%)';
+          const borderColor = isCollected ? 'rgba(22,163,74,0.4)' : 'rgba(196,151,58,0.45)';
+          const accentColor = isCollected ? '#16a34a' : 'var(--gold)';
+          const statusLabel = isCollected ? '✅ Recogido' : '🏆 Ganado';
+          const icon = isWeekly ? '🔑' : '🏆';
+
+          // Botón descargar bono
+          const showBonoBtn = ['accepted','collected'].includes(r.status) && r.prize_image;
+          const bonoBtn = showBonoBtn
+            ? `<a href="/api/pdf/premio/${r.id}?wallet=${encodeURIComponent(userWalletAddress)}" target="_blank"
+                style="display:inline-block; margin-top:8px; padding:5px 12px; background:rgba(196,151,58,0.1); border:1.5px solid var(--gold); color:var(--gold); border-radius:50px; font-size:11px; font-weight:700; text-decoration:none;">
+                📄 Descargar bono
+              </a>`
+            : '';
+
+          return `
+            <div style="background:${bg}; border:1.5px solid ${borderColor}; border-radius:12px; padding:10px 12px; margin-bottom:6px; position:relative; overflow:hidden;">
+              <div style="position:absolute; top:0; left:0; bottom:0; width:3px; background:${accentColor}; border-radius:3px 0 0 3px;"></div>
+              <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px; padding-left:6px;">
+                <div style="flex:1;">
+                  <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+                    <span style="font-size:16px;">${icon}</span>
+                    <span style="font-size:11px; font-weight:800; color:${accentColor}; text-transform:uppercase; letter-spacing:0.8px;">${statusLabel}</span>
+                    ${isWeekly ? `<span style="font-size:9px; background:rgba(196,151,58,0.15); color:var(--gold); padding:1px 6px; border-radius:100px; font-weight:700;">Chave</span>` : ''}
+                  </div>
+                  <p style="font-size:12px; font-weight:700; color:var(--text); margin:0 0 2px; line-height:1.3;">${r.prize}</p>
+                  ${r.establishment ? `<p style="font-size:10px; color:var(--wine); font-weight:700; margin:2px 0 0; text-transform:uppercase; letter-spacing:0.5px;">${r.establishment}</p>` : ''}
+                  ${isWin && r.verification_code ? `<div style="font-family:monospace; font-size:18px; font-weight:800; letter-spacing:4px; color:var(--wine); margin-top:5px; background:rgba(139,25,24,0.06); border-radius:8px; padding:4px 8px; display:inline-block;">${r.verification_code}</div>` : ''}
+                  ${bonoBtn}
+                </div>
+                <span style="font-size:10px; color:var(--text-muted); flex-shrink:0; text-align:right;">${dateStr}</span>
+              </div>
             </div>
-            <span style="font-size:10px; color:var(--text-muted); flex-shrink:0; margin-top:2px; white-space:nowrap;">${timeStr}</span>
+          `;
+        }
+
+        // === TARJETA NO GANADA (apagada / gris) ===
+        const pendingAccept = r.status === 'pending_acceptance' && won;
+        const wonButLate = won && (r.status === 'rejected');
+        const icon = wonButLate ? '🍷' : isWeekly ? '🔑' : '🎲';
+        const statusLabel = wonButLate ? 'Te tocó — tarde' : r.status === 'pending_acceptance' ? 'Pendiente...' : 'Participé';
+
+        return `
+          <div style="background:rgba(42,21,9,0.02); border:1px solid rgba(42,21,9,0.07); border-radius:12px; padding:9px 12px; margin-bottom:5px; filter:${wonButLate ? 'none' : 'grayscale(30%)'}; opacity:${wonButLate ? '0.75' : '0.65'};">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+              <div style="display:flex; align-items:center; gap:8px; flex:1;">
+                <span style="font-size:14px; opacity:0.6;">${icon}</span>
+                <div style="flex:1;">
+                  <p style="font-size:11px; font-weight:600; color:var(--text-muted); margin:0; line-height:1.3;">${r.prize}</p>
+                  <p style="font-size:10px; color:var(--text-muted); margin:1px 0 0; opacity:0.7;">${statusLabel}${isWeekly ? ' · Chave' : ''}</p>
+                </div>
+              </div>
+              <span style="font-size:9px; color:var(--text-muted); flex-shrink:0; opacity:0.7;">${dateStr}</span>
+            </div>
           </div>
-        </div>`;
+        `;
       }).join('');
 
       if (showToggle) {
-        const remainingCount = history.length - 3;
-        const toggleText = _prizesExpanded 
-          ? 'Contraer lista ▴' 
-          : `Mostrar todos los sorteos (+${remainingCount}) ▾`;
-        
-        const btnId = 'toggle-prizes-btn';
+        const remainingCount = history.length - 6;
+        const toggleText = _prizesExpanded
+          ? 'Ver menos ▴'
+          : `Ver todos los sorteos (+${remainingCount}) ▾`;
         list.innerHTML += `
-          <button id="${btnId}" onclick="togglePrizesExpanded()" style="
-            width: 100%;
-            margin-top: 4px;
-            padding: 11px;
-            background: transparent;
-            border: 1px dashed rgba(139,25,24,0.3);
-            border-radius: 12px;
-            color: var(--wine);
-            font-family: 'Outfit', sans-serif;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-          " onmouseover="this.style.background='rgba(139,25,24,0.04)'; this.style.borderColor='var(--wine)';" onmouseout="this.style.background='transparent'; this.style.borderColor='rgba(139,25,24,0.3)';">
+          <button onclick="togglePrizesExpanded()" style="width:100%; margin-top:4px; padding:10px; background:transparent; border:1px dashed rgba(139,25,24,0.3); border-radius:12px; color:var(--wine); font-family:'Outfit',sans-serif; font-size:12px; font-weight:600; cursor:pointer;">
             ${toggleText}
           </button>
         `;
       }
 
-      // Historial de participaciones totales (en el modal — my-history-section)
+      // Historial compacto en my-history-section (REEMPLAZADO por nuevo diseño de tarjetas)
       const histSection = document.getElementById('my-history-section');
       const histList = document.getElementById('my-history-list');
       if (histSection && histList && history.length) {
-        const wins = history.filter(r => r.is_winner === 1 && r.status !== 'rejected').length;
+        const winsCount = history.filter(r => r.is_winner === 1 && r.status !== 'rejected').length;
         const total = history.length;
-        const summary = wins > 0
-          ? `<div style="display:flex; gap:12px; margin-bottom:10px;">
-              <div style="flex:1; background:rgba(196,151,58,0.08); border:1px solid rgba(196,151,58,0.25); border-radius:10px; padding:10px; text-align:center;">
-                <p style="font-size:22px; font-weight:800; color:var(--gold); margin:0;">${wins}</p>
-                <p style="font-size:10px; color:var(--text-muted); margin:0; text-transform:uppercase; letter-spacing:1px;">Premio${wins!==1?'s':''} ganado${wins!==1?'s':''}</p>
+        const summary = winsCount > 0
+          ? `<div style="display:flex; gap:10px; margin-bottom:10px;">
+              <div style="flex:1; background:linear-gradient(135deg, rgba(196,151,58,0.12), rgba(196,151,58,0.06)); border:1.5px solid rgba(196,151,58,0.35); border-radius:10px; padding:10px; text-align:center;">
+                <p style="font-size:22px; font-weight:800; color:var(--gold); margin:0;">${winsCount}</p>
+                <p style="font-size:9px; color:var(--text-muted); margin:2px 0 0; text-transform:uppercase; letter-spacing:1px;">Premio${winsCount!==1?'s':''} ganado${winsCount!==1?'s':''}</p>
               </div>
               <div style="flex:1; background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:10px; padding:10px; text-align:center;">
                 <p style="font-size:22px; font-weight:800; color:var(--text); margin:0;">${total}</p>
-                <p style="font-size:10px; color:var(--text-muted); margin:0; text-transform:uppercase; letter-spacing:1px;">Sorteos</p>
+                <p style="font-size:9px; color:var(--text-muted); margin:2px 0 0; text-transform:uppercase; letter-spacing:1px;">Sorteos</p>
               </div>
             </div>`
           : '';
-        // Últimas 5 participaciones en historial compacto
-        histList.innerHTML = summary + history.slice(0, 5).map(r => {
-          const won = r.is_winner === 1;
-          const icon = won && r.status !== 'rejected' ? '🏆' : won ? '🍷' : '🎲';
-          const color = won && r.status !== 'rejected' ? 'var(--gold)' : 'var(--text-muted)';
+        // Mini-tarjetas compactas: ganados primero
+        const sortedHistory = [
+          ...history.filter(r => r.is_winner === 1 && r.status !== 'rejected'),
+          ...history.filter(r => !(r.is_winner === 1 && r.status !== 'rejected'))
+        ].slice(0, 8);
+        histList.innerHTML = summary + sortedHistory.map(r => {
+          const won = r.is_winner === 1 && r.status !== 'rejected';
           const dateStr = r.created_at ? new Date(r.created_at.replace(' ','T')+'Z').toLocaleDateString('es-ES',{day:'numeric',month:'short'}) : '—';
-          return `<div style="display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid rgba(42,21,9,0.06);">
-            <span style="font-size:16px; flex-shrink:0;">${icon}</span>
-            <span style="font-size:13px; color:var(--text); flex:1;">${r.prize}</span>
-            <span style="font-size:11px; color:${color}; font-weight:600; white-space:nowrap;">${won && r.status !== 'rejected' ? 'Ganado' : 'Participé'}</span>
-            <span style="font-size:10px; color:var(--text-muted); flex-shrink:0; margin-left:4px;">${dateStr}</span>
+          const icon = won ? (r.is_weekly ? '🔑' : '🏆') : '🎲';
+          const bg = won ? 'rgba(196,151,58,0.08)' : 'rgba(42,21,9,0.02)';
+          const border = won ? 'rgba(196,151,58,0.3)' : 'rgba(42,21,9,0.07)';
+          const opacity = won ? '1' : '0.6';
+          return `<div style="display:flex; align-items:center; gap:8px; padding:7px 10px; background:${bg}; border:1px solid ${border}; border-radius:8px; margin-bottom:4px; opacity:${opacity};">
+            <span style="font-size:13px; flex-shrink:0;">${icon}</span>
+            <span style="font-size:11px; color:var(--text); flex:1; font-weight:${won?'700':'400'};">${r.prize}</span>
+            <span style="font-size:9px; color:var(--text-muted); flex-shrink:0;">${dateStr}</span>
           </div>`;
         }).join('');
         histSection.style.display = 'block';
