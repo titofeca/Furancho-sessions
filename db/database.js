@@ -1006,32 +1006,20 @@ function getActiveEventWindow() {
 function getEligibleRaffleParticipants() {
   // Elegibles para sorteos en vivo: SOLO los que ficharon entrada DENTRO de la ventana
   // horaria de un evento de la agenda ese día. Si no hay evento hoy, nadie es elegible.
-  const now = new Date();
-  const madridNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
-  const yyyy = madridNow.getFullYear();
-  const mm = String(madridNow.getMonth() + 1).padStart(2, '0');
-  const dd = String(madridNow.getDate()).padStart(2, '0');
-  const madridDateStr = `${yyyy}-${mm}-${dd}`;
-
   const win = getActiveEventWindow();
   if (!win) {
-    // FALLBACK: Si no hay evento configurado en la agenda para hoy,
-    // consideramos elegibles a todas las personas que tengan sesión activa hoy.
-    const rows = db.prepare(`
-      SELECT DISTINCT wallet_address FROM sessions
-      WHERE (date(entry_time) = ? OR date(entry_time) = date(?, '+1 day'))
-        AND exit_time IS NULL
-    `).all(madridDateStr, madridDateStr);
-    const eligible = new Set();
-    rows.forEach(r => eligible.add(r.wallet_address));
-    return [...eligible];
+    return [];
   }
 
-  const { eventDayStr, endMs } = win;
+  // Si la hora actual no está dentro del horario del evento (incluido el margen inicial)
+  if (win.nowMs < (win.startMs - EVENT_EARLY_MARGIN_MS) || win.nowMs > win.endMs) {
+    return [];
+  }
 
-  // Candidatos: sesiones que fichan el día del evento o el siguiente (por si cruza medianoche).
-  // Elegible = sigue DENTRO ahora mismo (exit_time IS NULL). Cualquier salida —manual o el
-  // auto-cierre de las 23:00— saca del bombo. Si el auto-cierre ya pasó, no queda nadie → 0 elegibles.
+  const { eventDayStr, startMs, endMs } = win;
+
+  // Candidatos: sesiones abiertas hoy (o día siguiente por si cruza medianoche).
+  // Elegible = sigue DENTRO ahora mismo (exit_time IS NULL).
   const rows = db.prepare(`
     SELECT DISTINCT wallet_address, entry_time FROM sessions
     WHERE (date(entry_time) = ? OR date(entry_time) = date(?, '+1 day'))
@@ -1041,12 +1029,10 @@ function getEligibleRaffleParticipants() {
   const eligible = new Set();
   rows.forEach(r => {
     const entryMs = _madridWallMs(r.entry_time);
-    // En el bombo = fichó el día del evento (aunque llegara pronto) y sigue dentro.
-    // Sin límite inferior: si la visita cuenta (o se re-marca al abrir la ventana),
-    // también participa — coherencia total entre "visita" y "bombo". Solo se excluye
-    // a quien ficha DESPUÉS del cierre del evento. La salida (manual o auto-cierre)
-    // sigue sacando del bombo, y la ventana de aceptación de 10 min cubre al ausente.
-    if (entryMs <= endMs) eligible.add(r.wallet_address);
+    // Para entrar en el bombo, el fichaje debió hacerse dentro de la ventana permitida
+    if (entryMs >= (startMs - EVENT_EARLY_MARGIN_MS) && entryMs <= endMs) {
+      eligible.add(r.wallet_address);
+    }
   });
   return [...eligible];
 }

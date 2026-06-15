@@ -3608,7 +3608,6 @@
       const today = new Date().toISOString().slice(0, 10);
       let scheduled = [];
       try { scheduled = await fetch(`/api/raffle/scheduled?date=${today}`).then(r => r.json()); } catch(_) {}
-      if (!scheduled.length) return;
 
       // ¿Ha fichado entrada esta noche dentro de la ventana del evento? Solo entonces se ven.
       let checkedInTonight = false;
@@ -3619,7 +3618,50 @@
         } catch(_) {}
       }
 
-      // Teaser sin desvelar premios — solo cuántos se preparan para esta noche
+      const card = document.getElementById('tonight-prizes-card');
+      const listEl = document.getElementById('tonight-prizes-list');
+      const liveDot = document.getElementById('tonight-live-dot');
+      const subEl = document.getElementById('tonight-prizes-sub');
+      const titleEl = card ? card.querySelector('p[style*="Playfair Display"]') : null;
+
+      const claimCard = document.getElementById('claim-tonight-prizes');
+      const claimList = document.getElementById('claim-tonight-list');
+      const claimTitle = claimCard ? claimCard.querySelector('h2') : null;
+
+      if (!scheduled.length) {
+        // No hay sorteos programados hoy (día sin evento o todavía no creados)
+        const noEventTeaserHtml = `
+          <div style="text-align:center; padding:8px 4px;">
+            <div style="font-size:13px; font-weight:700; color:var(--wine); line-height:1.5;">
+              🤫 Premios en preparación para la próxima sesión…
+            </div>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:6px; line-height:1.5;">
+              Ficha tu entrada el día del evento al llegar para desvelarlos, ho 🍷
+            </div>
+          </div>`;
+
+        if (card && listEl) {
+          if (titleEl) titleEl.textContent = 'Sorteos do Furancho';
+          if (subEl) subEl.textContent = 'Premios en preparación';
+          listEl.innerHTML = noEventTeaserHtml;
+          card.style.display = 'block';
+          if (liveDot) liveDot.style.display = 'none';
+        }
+
+        if (claimCard && claimList) {
+          if (claimTitle) claimTitle.textContent = 'Sorteos do Furancho';
+          claimList.innerHTML = `
+            <div style="text-align:center; padding:8px 4px;">
+              <div style="font-size:13px; font-weight:700; color:var(--wine); line-height:1.5;">
+                🤫 Premios en preparación para la próxima sesión…
+              </div>
+            </div>`;
+          claimCard.style.display = 'block';
+        }
+        return;
+      }
+
+      // Sí hay premios programados
       const n = scheduled.length;
       const teaserHtml = `
         <div style="text-align:center; padding:8px 4px;">
@@ -3647,11 +3689,8 @@
       const itemsHtml = scheduled.map(renderItem).join('');
 
       // Tarjeta en el perfil: premios reales solo si fichó; si no, teaser.
-      const card = document.getElementById('tonight-prizes-card');
-      const listEl = document.getElementById('tonight-prizes-list');
-      const liveDot = document.getElementById('tonight-live-dot');
-      const subEl = document.getElementById('tonight-prizes-sub');
       if (card && listEl) {
+        if (titleEl) titleEl.textContent = 'Premios de esta noche';
         listEl.innerHTML = checkedInTonight ? itemsHtml : teaserHtml;
         card.style.display = 'block';
         const hasLive = checkedInTonight && scheduled.some(s => s.status === 'launched');
@@ -3662,9 +3701,8 @@
       }
 
       // Tarjeta en screen-claim (antes de fichar): siempre teaser, nunca los premios.
-      const claimCard = document.getElementById('claim-tonight-prizes');
-      const claimList = document.getElementById('claim-tonight-list');
       if (claimCard && claimList) {
+        if (claimTitle) claimTitle.textContent = 'Premios de esta noche';
         claimList.innerHTML = teaserHtml;
         claimCard.style.display = 'block';
       }
