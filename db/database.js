@@ -1479,7 +1479,27 @@ function collectRedemption(id, adminUser) {
   `).run(adminUser || null, id);
 }
 
+function hasEventOnThursday() {
+  const madridTime = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+  const targetThursday = new Date(madridTime);
+  const day = madridTime.getDay();
+  // Calculate days to next Thursday
+  let daysToThursday = (4 - day + 7) % 7;
+  if (daysToThursday === 0) daysToThursday = 7; // If today is Thursday, check next Thursday, or wait, we check on Wednesday, so tomorrow is Thursday (daysToThursday=1).
+  
+  targetThursday.setDate(madridTime.getDate() + daysToThursday);
+  
+  const yyyy = targetThursday.getFullYear();
+  const mm = String(targetThursday.getMonth() + 1).padStart(2, '0');
+  const dd = String(targetThursday.getDate()).padStart(2, '0');
+  const targetDateStr = `${yyyy}-${mm}-${dd}`;
+  
+  const row = db.prepare(`SELECT id FROM events WHERE event_date = ? AND active = 1`).get(targetDateStr);
+  return !!row;
+}
+
 module.exports = {
+  hasEventOnThursday,
   openSession,
   closeSession,
   checkRecentVisit,

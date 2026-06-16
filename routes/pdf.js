@@ -429,4 +429,105 @@ router.get('/premio/:id', async (req, res) => {
   } catch(e) { res.status(500).send('Error generando PDF: ' + e.message); }
 });
 
+// ─── GET /api/pdf/weekly/:week — Bono visual de la chave semanal ──────────────
+router.get('/weekly/:week', async (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const raffle = db.prepare(`
+      SELECT claimed_week, prize, winner_wallet, verification_code, drawn_at, status, collected_at
+      FROM weekly_raffles WHERE claimed_week = ? AND status = 'completed' AND confirmed_at IS NOT NULL
+    `).get(req.params.week);
+
+    if (!raffle) return res.status(404).send('Premio semanal no encontrado o no confirmado todavía');
+
+    // Validación de seguridad: debe proveerse la wallet del ganador
+    const { wallet } = req.query;
+    if (!wallet) return res.status(400).send('Falta la dirección de la wallet');
+
+    let isWinner = false;
+    try {
+      const wallets = JSON.parse(raffle.winner_wallet);
+      if (Array.isArray(wallets)) {
+        isWinner = wallets.some(w => w.toLowerCase() === wallet.toLowerCase());
+      } else {
+        isWinner = wallets.toLowerCase() === wallet.toLowerCase();
+      }
+    } catch (e) {
+      isWinner = raffle.winner_wallet.toLowerCase() === wallet.toLowerCase();
+    }
+
+    if (!isWinner) {
+      return res.status(403).send('Acceso denegado: esta wallet no es ganadora de la semana');
+    }
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Furancho_Chave_Semanal_${raffle.claimed_week}.pdf"`);
+
+    const doc = new PDFDocument({ size: 'A4', margin: 0, info: { Title: `Chave Semanal — ${raffle.prize}`, Author: 'Furancho Sessions' } });
+    doc.pipe(res);
+
+    const W = doc.page.width;
+    const H = doc.page.height;
+
+    // ── Fondo crema
+    doc.rect(0, 0, W, H).fill(CREAM);
+
+    // ── Banda superior vino
+    doc.rect(0, 0, W, 120).fill(WINE);
+    doc.rect(0, 120, W, 4).fill(GOLD);
+
+    // ── Logo
+    try { doc.image(LOGO_PATH, (W - 52) / 2, 10, { width: 52, height: 92 }); } catch(_) {}
+
+    // ── FURANCHO SESSIONS
+    doc.fillColor(MUTED).fontSize(9).font('Helvetica')
+       .text('FURANCHO SESSIONS', 0, 130, { align: 'center', characterSpacing: 3 });
+
+    // ── ¡PARABÉNS, GAÑADOR!
+    doc.fillColor(WINE).fontSize(13).font('Helvetica-Bold')
+       .text('¡PARABÉNS, GAÑADOR DA CHAVE!', 0, 150, { align: 'center', characterSpacing: 1, width: W });
+
+    let y = 178;
+
+    // ── Título del premio
+    doc.fillColor(DARK).fontSize(28).font('Helvetica-Bold')
+       .text(raffle.prize, 40, y, { align: 'center', width: W - 80, lineGap: 4 });
+    y += doc.heightOfString(raffle.prize, { width: W - 80, fontSize: 28 }) + 28;
+
+    // ── Línea decorativa
+    doc.moveTo(60, y).lineTo(W - 60, y).stroke(GOLD).lineWidth(0.8);
+    y += 28;
+
+    // ── Código de verificación
+    doc.fillColor(MUTED).fontSize(9).font('Helvetica')
+       .text('CÓDIGO DE VERIFICACIÓN', 0, y, { align: 'center', characterSpacing: 2, width: W });
+    y += 16;
+
+    doc.roundedRect((W - 140) / 2, y, 140, 52, 10).fill('#FFFFFF').stroke(GOLD).lineWidth(1.5);
+    doc.fillColor(WINE).fontSize(36).font('Helvetica-Bold')
+       .text(raffle.verification_code, 0, y + 10, { align: 'center', width: W, characterSpacing: 8 });
+    y += 80;
+
+    // ── Fecha
+    const fecha = raffle.drawn_at ? raffle.drawn_at.slice(0, 10) : '';
+    doc.fillColor(MUTED).fontSize(9).font('Helvetica')
+       .text(`Chave Semanal ${raffle.claimed_week}  ·  Sorteo del ${fecha}`, 0, y, { align: 'center', width: W });
+    y += 20;
+
+    // ── Estado
+    const estadoTxt = raffle.collected_at ? 'Premio entregado' : 'Pendiente de recoger';
+    const estadoColor = raffle.collected_at ? '#22c55e' : WINE;
+    doc.fillColor(estadoColor).fontSize(10).font('Helvetica-Bold')
+       .text(estadoTxt, 0, y, { align: 'center', width: W });
+
+    // ── Footer
+    doc.rect(0, H - 42, W, 42).fill(WINE);
+    doc.rect(0, H - 46, W, 4).fill(GOLD);
+    doc.fillColor('#FFFFFF').fontSize(8).font('Helvetica').opacity(0.7)
+       .text('furancho.sessions  ·  O Bo Viño, A Boa Compaña', 0, H - 26, { align: 'center', characterSpacing: 1 });
+
+    doc.end();
+  } catch(e) { res.status(500).send('Error generando PDF: ' + e.message); }
+});
+
 module.exports = router;

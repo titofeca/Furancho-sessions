@@ -174,7 +174,7 @@ function scheduleWeeklyRaffle() {
     if (!isWednesday || !isDrawWindow) return;
 
     try {
-      const { db, drawWeeklyRaffle, getWeeklyRaffleTargetWeek } = require('./db/database');
+      const { db, drawWeeklyRaffle, getWeeklyRaffleTargetWeek, hasEventOnThursday } = require('./db/database');
 
       const weekStr = getWeeklyRaffleTargetWeek(madridHour);
 
@@ -189,16 +189,11 @@ function scheduleWeeklyRaffle() {
         return;
       }
 
-      // Calcular jueves siguiente para buscar evento
-      const thursday = new Date(madridHour);
-      thursday.setDate(madridHour.getDate() + 1);
-      const thursdayStr = thursday.toISOString().slice(0, 10);
-
-      const event = db.prepare(`SELECT id, title FROM events WHERE event_date = ? LIMIT 1`).get(thursdayStr);
       const hasPrize = existing && existing.prize;
+      const eventOnThursday = hasEventOnThursday();
 
-      if (!hasPrize && !event) {
-        console.log(`[WeeklyRaffle] Miércoles 21:00 — sin premio configurado ni evento el jueves ${thursdayStr}. Sin sorteo.`);
+      if (!hasPrize && !eventOnThursday) {
+        console.log(`[WeeklyRaffle] Miércoles 21:00 — sin premio configurado ni evento el jueves. Sin sorteo.`);
         _weeklyLastDrawnWeek = weekStr;
         return;
       }
@@ -206,7 +201,7 @@ function scheduleWeeklyRaffle() {
       if (hasPrize) {
         console.log(`[WeeklyRaffle] ⏰ 21:00 — lanzando sorteo "${existing.prize}" (${existing.winners_count || 1} premios) para semana ${weekStr}...`);
       } else {
-        console.log(`[WeeklyRaffle] ⏰ 21:00 — evento "${event.title}" el jueves. Lanzando sorteo semanal para semana ${weekStr}...`);
+        console.log(`[WeeklyRaffle] ⏰ 21:00 — evento el jueves. Lanzando sorteo semanal para semana ${weekStr}...`);
       }
 
       // Verificar que hay participantes
@@ -264,10 +259,24 @@ function scheduleWeeklyForfeitSweep() {
       const expired = forfeitExpiredWeeklyRaffles();
       if (!expired.length) return;
       const { broadcast } = require('./routes/raffle');
+      const { sendPushToWallet } = require('./services/push');
       expired.forEach(r => {
         console.log(`[WeeklyRaffle] ⌛ Premio de ${r.claimed_week} (${r.prize}) dado por perdido — el ganador no confirmó a tiempo`);
         if (r.winner_wallet) {
           broadcast('weekly_forfeited', { prize: r.prize, week: r.claimed_week }, r.winner_wallet);
+          
+          let winners = [];
+          try { winners = JSON.parse(r.winner_wallet); } catch(e) { winners = [r.winner_wallet]; }
+          if (!Array.isArray(winners)) winners = [winners];
+          
+          winners.forEach(w => {
+            sendPushToWallet(
+              w,
+              'Furancho Sessions 🍷',
+              'El tiempo para confirmar tu premio ha terminado... mala suerte para la próxima. 🍷',
+              { url: '/claim' }
+            );
+          });
         }
         // Refrescar la tarjeta semanal de todos los clientes conectados
         broadcast('weekly_draw_closed', { prize: r.prize, week: r.claimed_week });

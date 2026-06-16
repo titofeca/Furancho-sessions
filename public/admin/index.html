@@ -4163,11 +4163,17 @@
             const codes = JSON.parse(data.verificationCode || "{}");
             let html = '';
             wallets.forEach(w => {
-              html += `<div style="display:flex; justify-content:space-between; margin-bottom:4px; padding-bottom:4px; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-family:monospace; font-size:13px;">${w}</span> <span style="font-weight:bold; color:var(--wine);">${codes[w] || '—'}</span></div>`;
+              const pdfLink = data.confirmedAt 
+                ? `<a href="/api/pdf/weekly/${selectedWeek}?wallet=${encodeURIComponent(w)}" target="_blank" style="padding:2px 6px; background:rgba(196,151,58,0.12); border:1px solid rgba(196,151,58,0.3); border-radius:6px; font-size:10px; font-weight:700; color:var(--gold); cursor:pointer; text-decoration:none; margin-left:8px;">📄 PDF</a>`
+                : '';
+              html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; padding-bottom:4px; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-family:monospace; font-size:13px; display:flex; align-items:center;">${w}${pdfLink}</span> <span style="font-weight:bold; color:var(--wine);">${codes[w] || '—'}</span></div>`;
             });
             winnerAddress.innerHTML = html;
           } catch(e) {
-            winnerAddress.textContent = data.winnerWallet || '—';
+            const pdfLink = data.confirmedAt && data.winnerWallet && data.winnerWallet !== '—'
+                ? `<a href="/api/pdf/weekly/${selectedWeek}?wallet=${encodeURIComponent(data.winnerWallet)}" target="_blank" style="padding:2px 6px; background:rgba(196,151,58,0.12); border:1px solid rgba(196,151,58,0.3); border-radius:6px; font-size:10px; font-weight:700; color:var(--gold); cursor:pointer; text-decoration:none; margin-left:8px;">📄 PDF</a>`
+                : '';
+            winnerAddress.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; padding-bottom:4px; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-family:monospace; font-size:13px; display:flex; align-items:center;">${data.winnerWallet || '—'}${pdfLink}</span></div>`;
           }
         }
         const codeEl = document.getElementById('weekly-verification-code');

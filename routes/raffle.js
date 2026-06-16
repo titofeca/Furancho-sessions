@@ -11,7 +11,7 @@ const {
   getScheduledRaffles, createScheduledRaffle, updateScheduledRaffle,
   deleteScheduledRaffle, linkScheduledRaffle, insertMint,
   claimWeeklyRaffle, getWeeklyRaffleStatus, updateWeeklyPrize, drawWeeklyRaffle, collectWeeklyRaffle, forfeitWeeklyRaffle,
-  getWeeklyRaffleTargetWeek
+  getWeeklyRaffleTargetWeek, forfeitExpiredWeeklyRaffles
 } = require('../db/database');
 const { requireAuth } = require('./admin');
 const { sendPushToAll } = require('../services/push');
@@ -1075,6 +1075,23 @@ setInterval(() => {
         }
       }
     });
+
+    // 3. Sorteos semanales expirados (ganador no confirmó antes del deadline)
+    const forfeitedWeekly = forfeitExpiredWeeklyRaffles();
+    forfeitedWeekly.forEach(r => {
+      const wallets = (() => { try { return JSON.parse(r.winner_wallet); } catch { return [r.winner_wallet]; } })();
+      wallets.forEach(wallet => {
+        if (!wallet) return;
+        sendPushToWallet(
+          wallet,
+          '🍷 La Chave de Furancho',
+          `El tiempo para confirmar tu Chave ha pasado... mala suerte para la próxima. ¡Suerte la semana que viene! 🎲`,
+          { url: '/claim' }
+        );
+        console.log(`[WeeklyRaffle] Sorteo semanal ${r.claimed_week} caducado. Push enviado a ${wallet.slice(0,8)}...`);
+      });
+    });
+
   } catch (e) {
     console.error('Error en autocheck de expiración y rescate de sorteos:', e);
   }
