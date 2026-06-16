@@ -118,7 +118,7 @@ router.post('/vip', async (req, res) => {
   try {
     const events = getEvents();
     const ev = events.find(e => e.id === parseInt(eventId));
-    const cap = createVipReservation({
+    const { capacity: cap, reservationId } = createVipReservation({
       eventId: parseInt(eventId),
       walletAddress,
       phone: phoneClean,
@@ -133,6 +133,20 @@ router.post('/vip', async (req, res) => {
       eventTitle: ev ? ev.title : `Evento #${eventId}`,
       eventDate: ev ? ev.event_date : ''
     }).catch(() => {});
+    
+    // Notificar en tiempo real al panel admin si está conectado
+    try {
+      const { broadcastToAdmins } = require('./raffle');
+      broadcastToAdmins('new_vip_request', {
+        id: reservationId,
+        eventId: parseInt(eventId),
+        phone: phoneClean,
+        groupSize: parseInt(groupSize),
+        notes: notes || '',
+        eventTitle: ev ? ev.title : `Evento #${eventId}`
+      });
+    } catch (_) {}
+
     res.json({ success: true, capacity: cap });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });

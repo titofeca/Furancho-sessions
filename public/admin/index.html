@@ -2224,6 +2224,9 @@
 <!-- Toast notification -->
 <div id="toast"></div>
 
+<!-- Contenedor de notificaciones VIP flotantes -->
+<div id="vip-notifications-container" style="position:fixed; bottom:20px; right:20px; z-index:99999; display:flex; flex-direction:column; gap:12px; max-width:360px; width:calc(100% - 40px);"></div>
+
 <script>
   // Registro Service Worker para PWA Admin
   if ('serviceWorker' in navigator) {
@@ -2311,6 +2314,7 @@
         loadPeakHours();
         loadVipBadge();
         loadHourlyChart();
+        connectAdminSse();
       } else {
         errorDiv.style.display = 'block';
       }
@@ -2334,6 +2338,7 @@
       loadMessages();
       loadPeakHours();
       loadVipBadge();
+      connectAdminSse();
     }
   });
 
@@ -3311,9 +3316,158 @@
     setTimeout(() => toast.classList.remove('visible'), 3000);
   }
 
+  let adminSseSource = null;
+
+  function connectAdminSse() {
+    if (adminSseSource) {
+      try { adminSseSource.close(); } catch(e){}
+    }
+    adminSseSource = new EventSource('/api/raffle/stream?admin=true');
+    
+    adminSseSource.addEventListener('new_vip_request', (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        showVipRequestNotification(data);
+        loadVipBadge();
+        const activePageEl = document.getElementById('page-events');
+        if (activePageEl && activePageEl.classList.contains('active')) {
+          loadAgenda();
+        }
+      } catch(err) {
+        console.error('Error procesando evento new_vip_request:', err);
+      }
+    });
+
+    adminSseSource.onerror = () => {
+      adminSseSource.close();
+      setTimeout(connectAdminSse, 5000);
+    };
+  }
+
+  function showVipRequestNotification(data) {
+    const container = document.getElementById('vip-notifications-container');
+    if (!container) return;
+
+    const card = document.createElement('div');
+    card.className = 'vip-notif-card';
+    card.style.cssText = `
+      background: rgba(254, 252, 243, 0.98);
+      border: 1px solid rgba(139,25,24,0.18);
+      border-left: 5px solid var(--wine);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 10px 25px rgba(42,21,9,0.18);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-family: 'Outfit', sans-serif;
+      transform: translateX(120%);
+      transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+      opacity: 0;
+      position: relative;
+    `;
+
+    const notesHtml = data.notes 
+      ? `<div style="font-size:11.5px; color:#c4973a; font-weight:600; background:rgba(196,151,58,0.06); padding:6px 10px; border-radius:6px; border:1px solid rgba(196,151,58,0.15); margin-top:4px;">${data.notes}</div>` 
+      : '';
+
+    card.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-weight:800; color:var(--wine); font-size:12px; display:inline-flex; align-items:center; gap:5px; letter-spacing:0.5px;">
+          <span style="width:7px; height:7px; background:var(--wine); border-radius:50%; display:inline-block; animation:pulse 1.2s infinite;"></span>
+          💎 SOLICITUD VIP MESA
+        </span>
+        <button onclick="dismissVipNotif(this.closest('.vip-notif-card'))" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:16px; font-weight:600; padding:0 4px;">✕</button>
+      </div>
+      <div>
+        <p style="font-size:14px; font-weight:700; color:var(--text); margin:0 0 2px 0;">Teléfono: ${data.phone}</p>
+        <p style="font-size:12px; color:var(--text-muted); margin:0;">
+          Mesa para <strong style="color:var(--wine); font-size:13.5px; font-weight:800;">${data.groupSize} personas</strong> en:
+        </p>
+        <p style="font-size:13px; font-weight:700; color:var(--text); margin:3px 0 6px 0; font-family:'Playfair Display',serif;">📅 ${data.eventTitle}</p>
+        ${notesHtml}
+      </div>
+      <div style="display:flex; gap:8px; margin-top:4px;">
+        <button onclick="actionVipNotif(${data.id}, 'confirmed', this)" 
+          style="flex:1; padding:8px; background:#22c55e; color:#fff; border:none; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; transition:all 0.15s; font-family:'Outfit',sans-serif; box-shadow:0 2px 6px rgba(34,197,94,0.2);">
+          Aceptar ✓
+        </button>
+        <button onclick="actionVipNotif(${data.id}, 'cancelled', this)" 
+          style="flex:1; padding:8px; background:#ef4444; color:#fff; border:none; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; transition:all 0.15s; font-family:'Outfit',sans-serif; box-shadow:0 2px 6px rgba(239,68,68,0.2);">
+          Rechazar ✗
+        </button>
+      </div>
+    `;
+
+    container.appendChild(card);
+    
+    // Animar entrada
+    requestAnimationFrame(() => {
+      card.style.transform = 'translateX(0)';
+      card.style.opacity = '1';
+    });
+
+    // Sonido sutil
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+      gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.4);
+    } catch(e){}
+  }
+
+  function dismissVipNotif(card) {
+    if (!card) return;
+    card.style.transform = 'translateX(120%)';
+    card.style.opacity = '0';
+    setTimeout(() => card.remove(), 350);
+  }
+
+  async function actionVipNotif(reservationId, status, btn) {
+    const card = btn.closest('.vip-notif-card');
+    card.querySelectorAll('button').forEach(b => b.disabled = true);
+    btn.textContent = 'Procesando...';
+    try {
+      const res = await fetch(`/api/events/vip/${reservationId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ status })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(status === 'confirmed' ? '✅ Reserva VIP confirmada' : '❌ Reserva VIP rechazada');
+        dismissVipNotif(card);
+        loadVipBadge();
+        const activePageEl = document.getElementById('page-events');
+        if (activePageEl && activePageEl.classList.contains('active')) {
+          loadAgenda();
+        }
+      } else {
+        alert('Error: ' + (data.error || 'no se pudo actualizar'));
+        card.querySelectorAll('button').forEach(b => b.disabled = false);
+        btn.textContent = status === 'confirmed' ? 'Aceptar ✓' : 'Rechazar ✗';
+      }
+    } catch(err) {
+      alert('Error de red al procesar reserva');
+      card.querySelectorAll('button').forEach(b => b.disabled = false);
+      btn.textContent = status === 'confirmed' ? 'Aceptar ✓' : 'Rechazar ✗';
+    }
+  }
+
   function logout() {
     localStorage.removeItem('furancho_admin_token');
     AUTH_TOKEN = null;
+    if (adminSseSource) {
+      try { adminSseSource.close(); } catch(e){}
+      adminSseSource = null;
+    }
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('main-app').style.display = 'none';
   }

@@ -96,6 +96,21 @@ function broadcastToEligible(event, data, walletSet) {
   if (dead.length) clients = clients.filter(c => !dead.includes(c.id));
 }
 
+// Envía evento SSE a todos los administradores conectados
+function broadcastToAdmins(event, data) {
+  const dead = [];
+  const admins = clients.filter(c => c.isAdmin);
+  admins.forEach(client => {
+    try {
+      client.res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      if (typeof client.res.flush === 'function') client.res.flush();
+    } catch (e) {
+      dead.push(client.id);
+    }
+  });
+  if (dead.length) clients = clients.filter(c => !dead.includes(c.id));
+}
+
 // GET /api/raffle/stream?wallet=0x...
 router.get('/stream', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
@@ -107,7 +122,8 @@ router.get('/stream', (req, res) => {
 
   const clientId = Date.now() + Math.random();
   const walletAddress = req.query.wallet || null;
-  const newClient = { id: clientId, res, walletAddress };
+  const isAdmin = req.query.admin === 'true';
+  const newClient = { id: clientId, res, walletAddress, isAdmin };
 
   // Cap: máximo 500 conexiones SSE activas para evitar memory leaks
   if (clients.length >= 500) {
@@ -693,6 +709,7 @@ router.get('/voucher/:id', (req, res) => {
 
 module.exports = router;
 module.exports.broadcast = broadcast;
+module.exports.broadcastToAdmins = broadcastToAdmins;
 module.exports.doLaunch = doLaunch;
 
 // --- LÓGICA DE SORTEO SEMANAL ("LA CHAVE SEMANAL") ---

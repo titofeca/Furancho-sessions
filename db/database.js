@@ -931,9 +931,12 @@ function createVipReservation({ eventId, walletAddress, phone, groupSize, notes 
   if (groupSize > cap.remaining) throw new Error(`Solo quedan ${cap.remaining} plazas VIP disponibles.`);
   const existing = db.prepare(`SELECT id FROM vip_reservations WHERE event_id=? AND wallet_address=?`).get(eventId, walletAddress);
   if (existing) throw new Error('Ya tienes una reserva para este evento.');
-  db.prepare(`INSERT INTO vip_reservations (event_id, wallet_address, phone, group_size, notes) VALUES (?,?,?,?,?)`)
+  const result = db.prepare(`INSERT INTO vip_reservations (event_id, wallet_address, phone, group_size, notes) VALUES (?,?,?,?,?)`)
     .run(eventId, walletAddress, phone, groupSize, notes || null);
-  return getVipCapacity(eventId);
+  return {
+    capacity: getVipCapacity(eventId),
+    reservationId: result.lastInsertRowid
+  };
 }
 
 function getVipReservations(eventId) {
@@ -946,7 +949,7 @@ function getVipReservations(eventId) {
 
 function getVipReservation(reservationId) {
   return db.prepare(`
-    SELECT r.id, r.phone, r.group_size, r.status, r.notes, r.event_id,
+    SELECT r.id, r.wallet_address, r.phone, r.group_size, r.status, r.notes, r.event_id,
            e.title as event_title, e.event_date
     FROM vip_reservations r JOIN events e ON r.event_id = e.id
     WHERE r.id=?
