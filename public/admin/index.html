@@ -4158,17 +4158,28 @@
       if (data.status === 'completed' || data.status === 'forfeited') {
         if (winnerInfo) winnerInfo.style.display = 'block';
         if (winnerAddress) {
+          let parsedCollected = {};
+          try { parsedCollected = JSON.parse(data.collectedWallets || '{}'); } catch(_) {}
           try {
             const wallets = JSON.parse(data.winnerWallet);
             const codes = JSON.parse(data.verificationCode || "{}");
+            const isMultiple = wallets.length > 1;
             let html = '';
             wallets.forEach(w => {
-              const pdfLink = data.confirmedAt 
+              const pdfLink = data.confirmedAt
                 ? `<a href="/api/pdf/weekly/${selectedWeek}?wallet=${encodeURIComponent(w)}" target="_blank" style="padding:2px 6px; background:rgba(196,151,58,0.12); border:1px solid rgba(196,151,58,0.3); border-radius:6px; font-size:10px; font-weight:700; color:var(--gold); cursor:pointer; text-decoration:none; margin-left:8px;">📄 PDF</a>`
                 : '';
-              html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; padding-bottom:4px; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-family:monospace; font-size:13px; display:flex; align-items:center;">${w}${pdfLink}</span> <span style="font-weight:bold; color:var(--wine);">${codes[w] || '—'}</span></div>`;
+              const isWinnerCollected = !!parsedCollected[w];
+              const deliverBtn = isMultiple && !data.forfeitedAt && data.status !== 'forfeited'
+                ? (isWinnerCollected
+                    ? `<span style="font-size:11px; font-weight:700; color:#15803d; white-space:nowrap;">✅ Entregado</span>`
+                    : `<button onclick="collectWeeklyWinnerPrize('${w}')" style="padding:4px 10px; background:linear-gradient(135deg,#4ade80,#16a34a); color:#fff; border:none; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap; font-family:'Outfit',sans-serif;">Entregar</button>`)
+                : '';
+              html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid rgba(0,0,0,0.05); gap:8px; flex-wrap:wrap;"><span style="font-family:monospace; font-size:12px; display:flex; align-items:center; gap:4px;">${w}${pdfLink}</span><span style="font-weight:bold; color:var(--wine); font-size:14px;">${codes[w] || '—'}</span>${deliverBtn}</div>`;
             });
             winnerAddress.innerHTML = html;
+            // Guardar flag para la lógica de botón global más abajo
+            winnerAddress._isMultiple = isMultiple;
           } catch(e) {
             const pdfLink = data.confirmedAt && data.winnerWallet && data.winnerWallet !== '—'
                 ? `<a href="/api/pdf/weekly/${selectedWeek}?wallet=${encodeURIComponent(data.winnerWallet)}" target="_blank" style="padding:2px 6px; background:rgba(196,151,58,0.12); border:1px solid rgba(196,151,58,0.3); border-radius:6px; font-size:10px; font-weight:700; color:var(--gold); cursor:pointer; text-decoration:none; margin-left:8px;">📄 PDF</a>`
@@ -4213,16 +4224,20 @@
           // Ya entregado
           if (collectedEl) {
             const whenC = new Date(data.collectedAt).toLocaleString('es-ES');
-            collectedEl.textContent = `✅ Premio entregado el ${whenC}`;
+            collectedEl.textContent = `✅ Premio${(winnerAddress && winnerAddress._isMultiple) ? 's' : ''} entregado${(winnerAddress && winnerAddress._isMultiple) ? 's' : ''} el ${whenC}`;
             collectedEl.style.display = 'block';
           }
           if (forfeitedEl) forfeitedEl.style.display = 'none';
           if (collectBtn) {
-            collectBtn.disabled = true;
-            collectBtn.textContent = '✅ Premio ya entregado';
-            collectBtn.style.background = 'rgba(42,21,9,0.06)';
-            collectBtn.style.color = 'var(--text-muted)';
-            collectBtn.style.cursor = 'not-allowed';
+            if (winnerAddress && winnerAddress._isMultiple) {
+              collectBtn.style.display = 'none';
+            } else {
+              collectBtn.disabled = true;
+              collectBtn.textContent = '✅ Premio ya entregado';
+              collectBtn.style.background = 'rgba(42,21,9,0.06)';
+              collectBtn.style.color = 'var(--text-muted)';
+              collectBtn.style.cursor = 'not-allowed';
+            }
           }
           if (forfeitBtn) forfeitBtn.style.display = 'none';
         } else if (data.forfeitedAt || data.status === 'forfeited') {
@@ -4238,13 +4253,19 @@
         } else {
           if (collectedEl) collectedEl.style.display = 'none';
           if (forfeitedEl) forfeitedEl.style.display = 'none';
+          const isMultipleWinners = winnerAddress && winnerAddress._isMultiple;
           if (collectBtn) {
-            collectBtn.style.display = 'block';
-            collectBtn.disabled = false;
-            collectBtn.textContent = '✅ Marcar Premio como Entregado';
-            collectBtn.style.background = 'linear-gradient(135deg,#4ade80,#16a34a)';
-            collectBtn.style.color = '#fff';
-            collectBtn.style.cursor = 'pointer';
+            if (isMultipleWinners) {
+              // Botones individuales por ganador ya están en la lista de arriba
+              collectBtn.style.display = 'none';
+            } else {
+              collectBtn.style.display = 'block';
+              collectBtn.disabled = false;
+              collectBtn.textContent = '✅ Marcar Premio como Entregado';
+              collectBtn.style.background = 'linear-gradient(135deg,#4ade80,#16a34a)';
+              collectBtn.style.color = '#fff';
+              collectBtn.style.cursor = 'pointer';
+            }
           }
           if (forfeitBtn) forfeitBtn.style.display = 'block';
         }
@@ -4502,6 +4523,28 @@
     } catch (e) {
       showToast('Error al conectar con el servidor', true);
       if (collectBtn) collectBtn.disabled = false;
+    }
+  }
+
+  async function collectWeeklyWinnerPrize(wallet) {
+    const selectEl = document.getElementById('weekly-admin-week-select');
+    if (!selectEl) return;
+    const selectedWeek = selectEl.value;
+    try {
+      const res = await fetch('/api/raffle/admin/weekly/collect-winner', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ week: selectedWeek, wallet })
+      });
+      const data = res.ok ? await res.json() : null;
+      if (data && data.success) {
+        showToast(data.allCollected ? '✅ Todos los premios de la Chave entregados' : '✅ Premio marcado como entregado');
+        loadWeeklyRaffleAdmin();
+      } else {
+        showToast((data && data.error) || 'Error al marcar como entregado', true);
+      }
+    } catch (e) {
+      showToast('Error al conectar con el servidor', true);
     }
   }
 

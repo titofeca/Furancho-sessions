@@ -10,7 +10,7 @@ const {
   getPrizePresets, addPrizePreset, deletePrizePreset, getRaffleCountTonight,
   getScheduledRaffles, createScheduledRaffle, updateScheduledRaffle,
   deleteScheduledRaffle, linkScheduledRaffle, insertMint,
-  claimWeeklyRaffle, getWeeklyRaffleStatus, updateWeeklyPrize, drawWeeklyRaffle, collectWeeklyRaffle, forfeitWeeklyRaffle,
+  claimWeeklyRaffle, getWeeklyRaffleStatus, updateWeeklyPrize, drawWeeklyRaffle, collectWeeklyRaffle, collectWeeklyWinner, forfeitWeeklyRaffle,
   getWeeklyRaffleTargetWeek, forfeitExpiredWeeklyRaffles
 } = require('../db/database');
 const { requireAuth } = require('./admin');
@@ -774,6 +774,12 @@ router.post('/weekly/claim', claimLimiter, (req, res) => {
       return res.status(403).json({ error: 'Solo los furancheiros que hayan visitado el local o tengan un carnet VIP pueden participar en La Chave Semanal, ho.' });
     }
 
+    // Bloquear si el sorteo de esta semana ya fue realizado
+    const drawnRaffle = db.prepare(`SELECT status FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
+    if (drawnRaffle && (drawnRaffle.status === 'completed' || drawnRaffle.status === 'forfeited')) {
+      return res.status(400).json({ error: 'El sorteo de esta semana ya fue realizado, ho. ¡Apúntate a la próxima!' });
+    }
+
     claimWeeklyRaffle(walletAddress, weekStr);
     res.json({ success: true, week: weekStr });
   } catch (e) {
@@ -820,6 +826,7 @@ router.get('/admin/weekly/status', requireAuth, (req, res) => {
       winnerWallet: raffle ? raffle.winner_wallet : null,
       verificationCode: raffle ? raffle.verification_code : null,
       collectedAt: raffle ? raffle.collected_at : null,
+      collectedWallets: raffle ? raffle.collected_wallets : null,
       forfeitedAt: raffle ? raffle.forfeited_at : null,
       drawnAt: raffle ? raffle.drawn_at : null,
       confirmDeadline: raffle ? raffle.confirm_deadline : null,
@@ -865,6 +872,24 @@ router.post('/admin/weekly/collect', requireAuth, (req, res) => {
       }, raffle.winner_wallet);
     }
     res.json({ success: true });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/weekly/collect-winner (ADMIN) — marcar el premio de UN ganador específico como entregado
+router.post('/admin/weekly/collect-winner', requireAuth, (req, res) => {
+  const { week, wallet } = req.body;
+  if (!wallet) return res.status(400).json({ error: 'Falta wallet' });
+  const weekStr = week || getWeeklyRaffleTargetWeek();
+  try {
+    const result = collectWeeklyWinner(weekStr, wallet);
+    const { db } = require('../db/database');
+    const raffle = db.prepare(`SELECT prize, winner_wallet FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
+    if (raffle?.prize) {
+      broadcast('weekly_prize_collected', { prize: raffle.prize, week: weekStr }, wallet);
+    }
+    res.json({ success: true, allCollected: result.allCollected });
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
