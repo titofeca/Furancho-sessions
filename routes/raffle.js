@@ -456,16 +456,26 @@ router.get('/my-history', (req, res) => {
       })
       .map(w => {
         let isWinner = false;
+        let userCode = null; // código individual de ESTE ganador (no el JSON con todos)
         if (w.winner_wallet) {
           try {
             const wallets = JSON.parse(w.winner_wallet);
-            if (Array.isArray(wallets)) {
-              isWinner = wallets.some(x => x.toLowerCase() === lowerWallet);
-            } else {
-              isWinner = wallets.toLowerCase() === lowerWallet;
+            const list = Array.isArray(wallets) ? wallets : [wallets];
+            const matchWallet = list.find(x => x.toLowerCase() === lowerWallet);
+            if (matchWallet) {
+              isWinner = true;
+              try {
+                const codes = JSON.parse(w.verification_code || '{}');
+                userCode = (codes && typeof codes === 'object' && !Array.isArray(codes))
+                  ? codes[matchWallet]
+                  : w.verification_code; // formato antiguo: string simple
+              } catch(_) {
+                userCode = w.verification_code; // formato antiguo: string simple
+              }
             }
           } catch(e) {
             isWinner = w.winner_wallet.toLowerCase() === lowerWallet;
+            userCode = w.verification_code;
           }
         }
         let status;
@@ -480,6 +490,7 @@ router.get('/my-history', (req, res) => {
         return {
           id: 'weekly-' + w.claimed_week,
           is_weekly: 1,
+          weekly_week: w.claimed_week, // para construir la URL del bono PDF
           prize: `🔑 Chave Semanal · ${w.prize}`,
           status,
           created_at: w.drawn_at,
@@ -488,7 +499,7 @@ router.get('/my-history', (req, res) => {
           rejection_note: null,
           acceptance_deadline: null,
           is_winner: isWinner ? 1 : 0,
-          verification_code: isWinner && codeUnlocked ? w.verification_code : null,
+          verification_code: isWinner && codeUnlocked ? userCode : null,
           prize_details: null,
           prize_image: null,
           establishment: null

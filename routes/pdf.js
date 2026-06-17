@@ -434,8 +434,9 @@ router.get('/weekly/:week', async (req, res) => {
   try {
     const { db } = require('../db/database');
     const raffle = db.prepare(`
-      SELECT claimed_week, prize, winner_wallet, verification_code, drawn_at, status, collected_at
-      FROM weekly_raffles WHERE claimed_week = ? AND status = 'completed' AND confirmed_at IS NOT NULL
+      SELECT claimed_week, prize, winner_wallet, verification_code, drawn_at, status, collected_at, confirmed_at, confirm_deadline
+      FROM weekly_raffles WHERE claimed_week = ? AND status = 'completed'
+        AND (confirmed_at IS NOT NULL OR collected_at IS NOT NULL OR confirm_deadline IS NULL)
     `).get(req.params.week);
 
     if (!raffle) return res.status(404).send('Premio semanal no encontrado o no confirmado todavía');
@@ -445,15 +446,25 @@ router.get('/weekly/:week', async (req, res) => {
     if (!wallet) return res.status(400).send('Falta la dirección de la wallet');
 
     let isWinner = false;
+    let userCode = null; // código individual de ESTE ganador (no el JSON con todos)
     try {
       const wallets = JSON.parse(raffle.winner_wallet);
-      if (Array.isArray(wallets)) {
-        isWinner = wallets.some(w => w.toLowerCase() === wallet.toLowerCase());
-      } else {
-        isWinner = wallets.toLowerCase() === wallet.toLowerCase();
+      const list = Array.isArray(wallets) ? wallets : [wallets];
+      const matchWallet = list.find(w => w.toLowerCase() === wallet.toLowerCase());
+      if (matchWallet) {
+        isWinner = true;
+        try {
+          const codes = JSON.parse(raffle.verification_code || '{}');
+          userCode = (codes && typeof codes === 'object' && !Array.isArray(codes))
+            ? codes[matchWallet]
+            : raffle.verification_code; // formato antiguo: string simple
+        } catch(_) {
+          userCode = raffle.verification_code; // formato antiguo: string simple
+        }
       }
     } catch (e) {
       isWinner = raffle.winner_wallet.toLowerCase() === wallet.toLowerCase();
+      userCode = raffle.verification_code;
     }
 
     if (!isWinner) {
@@ -505,7 +516,7 @@ router.get('/weekly/:week', async (req, res) => {
 
     doc.roundedRect((W - 140) / 2, y, 140, 52, 10).fill('#FFFFFF').stroke(GOLD).lineWidth(1.5);
     doc.fillColor(WINE).fontSize(36).font('Helvetica-Bold')
-       .text(raffle.verification_code, 0, y + 10, { align: 'center', width: W, characterSpacing: 8 });
+       .text(userCode || '—', 0, y + 10, { align: 'center', width: W, characterSpacing: 8 });
     y += 80;
 
     // ── Fecha

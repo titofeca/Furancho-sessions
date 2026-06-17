@@ -3980,13 +3980,14 @@
           const icon = isWeekly ? '🔑' : '🏆';
 
           // Botón descargar bono
-          const showBonoBtn = ['accepted','collected'].includes(r.status) && r.prize_image;
-          const bonoBtn = showBonoBtn
-            ? `<a href="/api/pdf/premio/${r.id}?wallet=${encodeURIComponent(userWalletAddress)}" target="_blank"
-                style="display:inline-block; margin-top:8px; padding:5px 12px; background:rgba(196,151,58,0.1); border:1.5px solid var(--gold); color:var(--gold); border-radius:50px; font-size:11px; font-weight:700; text-decoration:none;">
-                📄 Descargar bono
-              </a>`
-            : '';
+          const bonoStyle = `display:inline-block; margin-top:8px; padding:5px 12px; background:rgba(196,151,58,0.1); border:1.5px solid var(--gold); color:var(--gold); border-radius:50px; font-size:11px; font-weight:700; text-decoration:none;`;
+          let bonoBtn = '';
+          if (isWeekly && isWin && r.verification_code && r.weekly_week) {
+            // Ganador de la Chave Semanal: bono PDF con el premio y su código
+            bonoBtn = `<a href="/api/pdf/weekly/${encodeURIComponent(r.weekly_week)}?wallet=${encodeURIComponent(userWalletAddress)}" target="_blank" style="${bonoStyle}">📄 Descargar bono PDF</a>`;
+          } else if (['accepted','collected'].includes(r.status) && r.prize_image) {
+            bonoBtn = `<a href="/api/pdf/premio/${r.id}?wallet=${encodeURIComponent(userWalletAddress)}" target="_blank" style="${bonoStyle}">📄 Descargar bono</a>`;
+          }
 
           return `
             <div style="background:${bg}; border:1.5px solid ${borderColor}; border-radius:12px; padding:10px 12px; margin-bottom:6px; position:relative; overflow:hidden;">
@@ -5348,7 +5349,7 @@
       if (rulesEl) rulesEl.textContent = CHAVE_DEFAULT_RULES;
       if (codeWrap) codeWrap.style.display = 'none';
     } else {
-      const isWinner = data.winnerWallet && userWalletAddress && data.winnerWallet.toLowerCase() === userWalletAddress.toLowerCase();
+      const isWinner = isWeeklyWinner(data.winnerWallet, userWalletAddress);
 
       if (prizeEl) prizeEl.textContent = data.prize || '🤫 Premio aún en secreto — el jefe anda maquinando, ho…';
 
@@ -5378,6 +5379,20 @@
     setTimeout(() => { modal.style.display = 'none'; }, 280);
   }
 
+  // La Chave puede tener varios ganadores: winnerWallet llega como JSON '["0x.."]'
+  // (formato multi-ganador) o como dirección simple '0x..' (sorteos antiguos).
+  function isWeeklyWinner(winnerWallet, wallet) {
+    if (!winnerWallet || !wallet) return false;
+    let list;
+    try {
+      const parsed = JSON.parse(winnerWallet);
+      list = Array.isArray(parsed) ? parsed : [parsed];
+    } catch (_) {
+      list = [winnerWallet];
+    }
+    return list.some(w => String(w).toLowerCase() === wallet.toLowerCase());
+  }
+
   async function loadWeeklyRaffle() {
     if (!userWalletAddress) return;
     const card = document.getElementById('weekly-claim-card');
@@ -5397,8 +5412,8 @@
       const infoBtn = document.getElementById('weekly-info-btn');
       if (infoBtn) infoBtn.style.display = 'inline-block';
 
-      // 1. Verificar si el usuario actual es el ganador del sorteo
-      const isWinner = data.winnerWallet && data.winnerWallet.toLowerCase() === userWalletAddress.toLowerCase();
+      // 1. Verificar si el usuario actual es el ganador del sorteo (soporta multi-ganador)
+      const isWinner = isWeeklyWinner(data.winnerWallet, userWalletAddress);
 
       // 1a. Ganador pendiente de CONFIRMAR (antes de las 23:00 de la noche del sorteo)
       if (isWinner && data.status === 'completed' && !data.confirmedAt && data.confirmDeadline) {
@@ -5432,11 +5447,16 @@
         // Ganador confirmado: mostrar código de verificación (independientemente del día/hora)
         btn.style.display = 'none';
         prizeText.innerHTML = `🏆 <strong>¡Te tocó la Chave, ho!</strong> ${data.prize}`;
+        const weekForPdf = data.currentWeek || _lastWeeklyData?.currentWeek;
+        const bonoLink = weekForPdf
+          ? `<a href="/api/pdf/weekly/${encodeURIComponent(weekForPdf)}?wallet=${encodeURIComponent(userWalletAddress)}" target="_blank" style="display:inline-block; margin-top:10px; padding:7px 16px; background:rgba(196,151,58,0.12); border:1.5px solid var(--gold); color:var(--gold); border-radius:50px; font-size:12px; font-weight:700; text-decoration:none;">📄 Descargar bono PDF</a>`
+          : '';
         if (rulesText) {
           rulesText.innerHTML = `<div style="margin-top:10px; background:rgba(139,25,24,0.06); border:1.5px dashed rgba(139,25,24,0.25); border-radius:10px; padding:12px; text-align:center;">
             <p style="font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); margin:0 0 4px;">🔑 Tu código del premio</p>
             <p style="font-family:monospace; font-size:22px; font-weight:900; color:var(--wine); margin:0 0 6px; letter-spacing:3px;">${data.verificationCode || '—'}</p>
             <p style="font-size:10px; color:var(--text-muted); margin:0;">Enséñaselo al staff para trincar el premio 🍷</p>
+            ${bonoLink}
           </div>`;
         }
         return;
@@ -5460,6 +5480,18 @@
         prizeText.innerHTML = `🍀 <strong style="color:var(--wine);">Chave do Furancho</strong>`;
         if (rulesText) {
           rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:13px; line-height:1.5;">😢 <strong>Esta semana no tocó, ho.</strong> El domingo a las 21:00 se abre el siguiente. ¡A por él, rapaz!</span>`;
+        }
+        return;
+      }
+
+      // 2b. El sorteo de esta semana YA se hizo y este furancheiro no se había apuntado:
+      // ya no puede trincar boleto hasta el próximo bombo (no enseñar el botón aunque
+      // estemos en horario de ventana — un sorteo adelantado cierra la semana en seco).
+      if (data.status === 'completed' || data.status === 'forfeited') {
+        btn.style.display = 'none';
+        prizeText.innerHTML = `🔑 <strong style="color:var(--wine);">Chave do Furancho</strong>`;
+        if (rulesText) {
+          rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:13px; line-height:1.5;">🎲 <strong>El sorteo de esta semana ya se hizo, ho.</strong> Llegaste tarde al bombo. El domingo a las 21:00 se abre el siguiente. ¡Estate al loro, rapaz!</span>`;
         }
         return;
       }
