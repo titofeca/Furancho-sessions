@@ -5108,14 +5108,65 @@
     } catch(e) { document.getElementById('analytics-content').textContent = 'Error cargando analytics'; }
   }
 
+  // Offset de semana de un evento respecto a HOY: 0 = semana actual, 1 = siguiente,
+  // negativo = semanas pasadas, >1 = futuro más lejano. (Semana empieza en lunes.)
+  function _eventWeekOffset(eventDateStr) {
+    const startOfWeek = (dt) => {
+      const x = new Date(dt); x.setHours(0, 0, 0, 0);
+      const dow = (x.getDay() + 6) % 7; // 0 = lunes
+      x.setDate(x.getDate() - dow);
+      return x;
+    };
+    const wkThis = startOfWeek(new Date());
+    const wkEv = startOfWeek(new Date(eventDateStr + 'T00:00:00'));
+    return Math.round((wkEv - wkThis) / (7 * 24 * 3600 * 1000));
+  }
+
+  // Plegar/desplegar el bloque "Ver más" de una sección de eventos
+  function toggleMoreEvents(btn, containerId, count) {
+    const c = document.getElementById(containerId);
+    if (!c) return;
+    const willOpen = c.style.display === 'none';
+    c.style.display = willOpen ? 'block' : 'none';
+    btn.innerHTML = willOpen ? '▴ Ver menos' : `▾ Ver más <span style="opacity:.6">(${count})</span>`;
+  }
+
+  // Pinta una lista de eventos mostrando por defecto semana actual + siguiente,
+  // y plegando el resto bajo un botón limpio "Ver más".
+  function _renderCollapsibleEvents(el, items, sectionKey) {
+    if (!el) return;
+    if (!items.length) {
+      el.innerHTML = '<p style="font-size:13px; color:var(--text-muted);">No hay eventos.</p>';
+      return;
+    }
+    let visible = items.filter(it => it.offset === 0 || it.offset === 1);
+    let hidden = items.filter(it => it.offset !== 0 && it.offset !== 1);
+    // Si nada cae en semana actual/siguiente, mostrar igualmente los 2 próximos para no dejarlo vacío
+    if (visible.length === 0) {
+      const upcoming = items.filter(it => it.offset >= 0);
+      visible = (upcoming.length ? upcoming : items).slice(0, 2);
+      hidden = items.filter(it => !visible.includes(it));
+    }
+    let html = visible.map(it => it.html).join('');
+    if (hidden.length) {
+      const hidId = `more-events-${sectionKey}`;
+      html += `<div id="${hidId}" style="display:none;">${hidden.map(it => it.html).join('')}</div>
+        <button type="button" onclick="toggleMoreEvents(this, '${hidId}', ${hidden.length})"
+          style="width:100%; margin-top:10px; padding:11px; background:transparent; border:1px dashed rgba(139,25,24,0.3); border-radius:12px; color:var(--wine); font-family:'Outfit',sans-serif; font-size:12px; font-weight:700; cursor:pointer;">
+          ▾ Ver más <span style="opacity:.6">(${hidden.length})</span>
+        </button>`;
+    }
+    el.innerHTML = html;
+  }
+
   async function loadEventsData() {
     try {
       const events = await fetch('/api/events').then(r => r.json());
       const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 
-      // RSVP section
+      // RSVP section — por defecto semana actual + siguiente, resto plegable
       const rsvpEl = document.getElementById('rsvp-content');
-      rsvpEl.innerHTML = events.map(ev => {
+      const rsvpItems = events.map(ev => {
         const d = new Date(ev.event_date + 'T00:00:00');
         
         const labelsMap = Object.fromEntries(ALLERGENS.map(a => [a.id, a.icon + ' ' + a.name]));
@@ -5141,7 +5192,7 @@
           eatAllHtml = `<div style="margin-top:6px;"><span style="display:inline-block; font-size:11px; background:#4ade8018; border:1px solid #4ade8040; color:#15803d; font-weight:600; padding:2px 6px; border-radius:6px;">😋 Sin alergias (comen de todo): <strong>${ev.eat_all_count}</strong></span></div>`;
         }
 
-        return `<div style="padding:10px 0; border-bottom:1px solid rgba(42,21,9,0.06);">
+        const html = `<div style="padding:10px 0; border-bottom:1px solid rgba(42,21,9,0.06);">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <p style="font-size:14px; font-weight:600; color:var(--text);">Jueves ${d.getDate()} ${months[d.getMonth()]}</p>
             <span style="background:var(--wine); color:#fff; font-size:12px; font-weight:700; border-radius:100px; padding:3px 10px;">${ev.rsvp_count} con ganas</span>
@@ -5149,11 +5200,13 @@
           ${peopleHtml}
           ${eatAllHtml}
         </div>`;
-      }).join('') || '<p>No hay eventos.</p>';
+        return { offset: _eventWeekOffset(ev.event_date), html };
+      });
+      _renderCollapsibleEvents(rsvpEl, rsvpItems, 'rsvp');
 
-      // VIP section
+      // VIP section — por defecto semana actual + siguiente, resto plegable
       const vipEl = document.getElementById('vip-content');
-      let vipHtml = '';
+      const vipItems = [];
       for (const ev of events) {
         const d = new Date(ev.event_date + 'T00:00:00');
         const res = await fetch(`/api/events/${ev.id}/vip/reservations`, { headers: authHeaders() }).then(r => r.json());
@@ -5162,7 +5215,7 @@
         const pct = capacity.max > 0 ? Math.round((capacity.used / capacity.max) * 100) : 0;
         const barColor = pct >= 90 ? '#f87171' : pct >= 60 ? 'var(--gold)' : '#4ade80';
 
-        vipHtml += `
+        let block = `
           <div style="margin-bottom:24px; border-bottom:1px solid rgba(42,21,9,0.07); padding-bottom:20px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
               <p style="font-size:14px; font-weight:700; color:var(--text);">Jueves ${d.getDate()} ${months[d.getMonth()]}
@@ -5185,9 +5238,9 @@
             </div>`;
 
         if (reservations.length === 0) {
-          vipHtml += `<p style="font-size:13px; color:var(--text-muted);">Sin reservas todavía.</p>`;
+          block += `<p style="font-size:13px; color:var(--text-muted);">Sin reservas todavía.</p>`;
         } else {
-          vipHtml += `<table style="width:100%; font-size:12px; border-collapse:collapse;">
+          block += `<table style="width:100%; font-size:12px; border-collapse:collapse;">
             <thead><tr style="color:var(--text-muted);">
               <th style="text-align:left; padding:6px 4px;">Teléfono</th>
               <th style="text-align:center; padding:6px 4px;">Pax</th>
@@ -5215,9 +5268,10 @@
             }).join('')}
             </tbody></table>`;
         }
-        vipHtml += `</div>`;
+        block += `</div>`;
+        vipItems.push({ offset: _eventWeekOffset(ev.event_date), html: block });
       }
-      vipEl.innerHTML = vipHtml || '<p>No hay eventos.</p>';
+      _renderCollapsibleEvents(vipEl, vipItems, 'vip');
     } catch(e) { document.getElementById('vip-content').textContent = 'Error cargando eventos'; }
   }
 
