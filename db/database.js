@@ -769,25 +769,33 @@ function getEvents() {
   `).all();
 
   events.forEach(ev => {
-    const rsvps = db.prepare(`SELECT allergens FROM rsvps WHERE event_id = ?`).all(ev.id);
+    const rsvps = db.prepare(`
+      SELECT r.wallet_address, r.allergens,
+        (SELECT m.email FROM mints m
+           WHERE LOWER(m.wallet_address) = LOWER(r.wallet_address) AND m.email IS NOT NULL AND m.email != ''
+           ORDER BY m.id DESC LIMIT 1) AS email
+      FROM rsvps r WHERE r.event_id = ?
+      ORDER BY r.created_at ASC
+    `).all(ev.id);
     const summary = {};
     let eatAllCount = 0;
+    const allergenPeople = []; // desglose por persona: [{ label, allergens: [ids] }]
     rsvps.forEach(r => {
-      if (!r.allergens || r.allergens.trim() === '' || r.allergens === 'ninguno' || r.allergens === 'tododo') {
+      const isEatAll = !r.allergens || r.allergens.trim() === '' || r.allergens === 'ninguno' || r.allergens === 'tododo';
+      const list = isEatAll ? [] : r.allergens.split(',').map(x => x.trim()).filter(Boolean);
+      if (list.length === 0) {
         eatAllCount++;
       } else {
-        const list = r.allergens.split(',').map(x => x.trim()).filter(Boolean);
-        if (list.length === 0) {
-          eatAllCount++;
-        } else {
-          list.forEach(a => {
-            summary[a] = (summary[a] || 0) + 1;
-          });
-        }
+        list.forEach(a => {
+          summary[a] = (summary[a] || 0) + 1;
+        });
+        const shortWallet = r.wallet_address ? `${r.wallet_address.slice(0, 6)}…${r.wallet_address.slice(-4)}` : '';
+        allergenPeople.push({ label: r.email || shortWallet, allergens: list });
       }
     });
-    ev.allergens_summary = summary;
+    ev.allergens_summary = summary; // se mantiene por compatibilidad
     ev.eat_all_count = eatAllCount;
+    ev.allergen_people = allergenPeople; // una entrada por comensal con alérgenos
   });
 
   return events;

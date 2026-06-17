@@ -5118,18 +5118,27 @@
       rsvpEl.innerHTML = events.map(ev => {
         const d = new Date(ev.event_date + 'T00:00:00');
         
-        let allergensHtml = '';
-        if (ev.allergens_summary && Object.keys(ev.allergens_summary).length > 0) {
-          const labelsMap = Object.fromEntries(ALLERGENS.map(a => [a.id, a.icon + ' ' + a.name]));
-          allergensHtml = Object.entries(ev.allergens_summary).filter(([key]) => labelsMap[key]).map(([key, count]) => {
-            const label = labelsMap[key];
-            return `<span style="display:inline-block; font-size:11px; background:#f8717118; border:1px solid #f8717140; color:#b91c1c; font-weight:600; padding:2px 6px; border-radius:6px; margin:2px 4px 2px 0;">${label}: <strong>${count}</strong></span>`;
-          }).join(' ');
+        const labelsMap = Object.fromEntries(ALLERGENS.map(a => [a.id, a.icon + ' ' + a.name]));
+
+        // Desglose POR PERSONA: cada comensal con alérgenos en su propia línea,
+        // para que se vea que una misma persona puede tener varias alergias.
+        let peopleHtml = '';
+        if (ev.allergen_people && ev.allergen_people.length > 0) {
+          peopleHtml = ev.allergen_people.map((p, i) => {
+            const chips = p.allergens.filter(id => labelsMap[id]).map(id =>
+              `<span style="display:inline-block; font-size:11px; background:#f8717118; border:1px solid #f8717140; color:#b91c1c; font-weight:600; padding:2px 6px; border-radius:6px;">${labelsMap[id]}</span>`
+            ).join(' ');
+            const who = p.label ? p.label : `Comensal ${i + 1}`;
+            return `<div style="display:flex; flex-wrap:wrap; gap:4px; align-items:center; margin-top:5px;">
+              <span style="font-size:11px; color:var(--text-muted); font-weight:700; margin-right:2px; white-space:nowrap;">🧍 ${who}:</span>
+              ${chips}
+            </div>`;
+          }).join('');
         }
-        
+
         let eatAllHtml = '';
         if (ev.eat_all_count > 0) {
-          eatAllHtml = `<span style="display:inline-block; font-size:11px; background:#4ade8018; border:1px solid #4ade8040; color:#15803d; font-weight:600; padding:2px 6px; border-radius:6px; margin:2px 0;">😋 Todo: <strong>${ev.eat_all_count}</strong></span>`;
+          eatAllHtml = `<div style="margin-top:6px;"><span style="display:inline-block; font-size:11px; background:#4ade8018; border:1px solid #4ade8040; color:#15803d; font-weight:600; padding:2px 6px; border-radius:6px;">😋 Sin alergias (comen de todo): <strong>${ev.eat_all_count}</strong></span></div>`;
         }
 
         return `<div style="padding:10px 0; border-bottom:1px solid rgba(42,21,9,0.06);">
@@ -5137,11 +5146,8 @@
             <p style="font-size:14px; font-weight:600; color:var(--text);">Jueves ${d.getDate()} ${months[d.getMonth()]}</p>
             <span style="background:var(--wine); color:#fff; font-size:12px; font-weight:700; border-radius:100px; padding:3px 10px;">${ev.rsvp_count} con ganas</span>
           </div>
-          ${(allergensHtml || eatAllHtml) ? `
-          <div style="display:flex; flex-wrap:wrap; gap:4px; align-items:center; margin-top:6px;">
-            ${allergensHtml}
-            ${eatAllHtml}
-          </div>` : ''}
+          ${peopleHtml}
+          ${eatAllHtml}
         </div>`;
       }).join('') || '<p>No hay eventos.</p>';
 
