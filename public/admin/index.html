@@ -3442,7 +3442,8 @@
       });
       const data = await res.json();
       if (res.ok) {
-        showToast(status === 'confirmed' ? '✅ Reserva VIP confirmada' : '❌ Reserva VIP rechazada');
+        showToast(status === 'confirmed' ? '✅ Reserva VIP confirmada — abriendo WhatsApp...' : '❌ Reserva VIP rechazada');
+        openVipWhatsApp(data, status);
         dismissVipNotif(card);
         loadVipBadge();
         const activePageEl = document.getElementById('page-events');
@@ -5253,6 +5254,7 @@
               const rowBg = isPending ? 'rgba(196,151,58,0.06)' : 'transparent';
               return `<tr style="border-top:1px solid rgba(42,21,9,0.05); background:${rowBg};">
                 <td style="padding:8px 4px;">
+                  ${r.alias ? `<div style="font-size:13px; color:var(--wine); font-weight:800; margin-bottom:3px;">🏷️ ${r.alias}</div>` : ''}
                   <span style="font-weight:600; color:var(--text);">${r.phone}</span>
                   ${r.notes ? `<div style="font-size:10px; color:var(--gold); font-weight:600; margin-top:2px;">${r.notes}</div>` : ''}
                 </td>
@@ -5287,22 +5289,33 @@
       loadVipBadge();
 
       if (data.success && data.phone && status !== 'pending') {
-        const phone = data.phone.replace(/[^0-9]/g, '');
-        let waMsg = '';
-        if (status === 'confirmed') {
-          waMsg = `Hola! Te confirmamos tu reserva VIP en *Furancho Sessions* — ${data.eventTitle} para ${data.groupSize} personas. ¡Te esperamos!`;
-          showToast('✓ Confirmada — abriendo WhatsApp...');
-        } else {
-          waMsg = `Hola, lamentamos informarte que tu reserva VIP en *Furancho Sessions* — ${data.eventTitle} ha sido cancelada. Contacta con nosotros para más información.`;
-          showToast('✗ Cancelada — abriendo WhatsApp...', true);
-        }
-        setTimeout(() => {
-          window.open(`https://wa.me/${phone}?text=${encodeURIComponent(waMsg)}`, '_blank');
-        }, 400);
+        showToast(status === 'confirmed' ? '✓ Confirmada — abriendo WhatsApp...' : '✗ Cancelada — abriendo WhatsApp...', status !== 'confirmed');
+        openVipWhatsApp(data, status);
       } else {
         showToast('Reserva actualizada');
       }
     } catch(e) { showToast('Error', true); }
+  }
+
+  // Abre WhatsApp con el cliente y el mensaje de confirmación/cancelación.
+  // En la confirmación incluye el alias gracioso que hace de nombre de la mesa.
+  function openVipWhatsApp(data, status) {
+    if (!data || !data.phone || status === 'pending') return;
+    const phone = String(data.phone).replace(/[^0-9]/g, '');
+    const hora = data.notes && /Hora:\s*([0-9:]+)/.exec(data.notes);
+    const horaTxt = hora ? ` a las ${hora[1]}` : '';
+    let waMsg;
+    if (status === 'confirmed') {
+      const aliasLine = data.alias
+        ? ` Tu mesa queda a nombre de *${data.alias}* — díselo al llegar y te sentamos volando. 😉`
+        : '';
+      waMsg = `¡Boas! Te confirmamos tu reserva VIP en *Furancho Sessions* — ${data.eventTitle} para ${data.groupSize} personas${horaTxt}.${aliasLine} ¡Te esperamos, ho!`;
+    } else {
+      waMsg = `¡Boas! Sentímolo, pero tu reserva VIP en *Furancho Sessions* — ${data.eventTitle} non puido confirmarse. Escríbenos e buscámoslle solución, ho.`;
+    }
+    setTimeout(() => {
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(waMsg)}`, '_blank');
+    }, 400);
   }
 
   async function setVipCapacity(eventId) {

@@ -89,7 +89,7 @@ router.get('/vip/my-reservations', (req, res) => {
   try {
     const { db } = require('../db/database');
     const rows = db.prepare(`
-      SELECT r.id, r.event_id, r.group_size, r.status, r.notes, r.created_at,
+      SELECT r.id, r.event_id, r.group_size, r.status, r.notes, r.alias, r.created_at,
              e.event_date, e.title as event_title
       FROM vip_reservations r
       JOIN events e ON r.event_id = e.id
@@ -167,12 +167,15 @@ router.patch('/vip/:id', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'Estado no válido' });
   try {
     const reservation = getVipReservation(parseInt(req.params.id));
-    updateVipStatus(parseInt(req.params.id), status);
+    // Al confirmar se genera (o recupera) el alias gracioso que hace de nombre de la mesa
+    const alias = updateVipStatus(parseInt(req.params.id), status);
     res.json({
       success: true,
       phone: reservation?.phone,
       groupSize: reservation?.group_size,
-      eventTitle: reservation?.event_title
+      eventTitle: reservation?.event_title,
+      notes: reservation?.notes,
+      alias
     });
     // Notificar al cliente vía SSE si está conectado
     if (reservation?.wallet_address) {
@@ -181,7 +184,8 @@ router.patch('/vip/:id', requireAuth, (req, res) => {
         broadcast('vip_status', {
           eventId: reservation.event_id,
           status,
-          eventTitle: reservation.event_title
+          eventTitle: reservation.event_title,
+          alias
         }, reservation.wallet_address);
       } catch(_) {}
     }

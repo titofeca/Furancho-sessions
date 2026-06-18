@@ -269,6 +269,8 @@ try { db.exec(`ALTER TABLE events ADD COLUMN vip_max INTEGER DEFAULT 15`); } cat
 // Ventana horaria del evento (hora Madrid) — define cuándo un fichaje cuenta como elegible para sorteos en vivo
 try { db.exec(`ALTER TABLE events ADD COLUMN start_time TEXT DEFAULT '19:00'`); } catch (_) {}
 try { db.exec(`ALTER TABLE events ADD COLUMN end_time TEXT DEFAULT '23:59'`); } catch (_) {}
+// Alias gracioso y anónimo de la reserva VIP (se genera al confirmar; hace de "nombre de la mesa")
+try { db.exec(`ALTER TABLE vip_reservations ADD COLUMN alias TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected INTEGER DEFAULT 0`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_at TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_by TEXT`); } catch (_) {}
@@ -953,22 +955,62 @@ function createVipReservation({ eventId, walletAddress, phone, groupSize, notes 
 function getVipReservations(eventId) {
   return db.prepare(`
     SELECT id, substr(wallet_address,1,6)||'...'||substr(wallet_address,-4) as wallet_masked,
-           phone, group_size, status, notes, created_at
+           phone, group_size, status, notes, alias, created_at
     FROM vip_reservations WHERE event_id=? ORDER BY created_at ASC
   `).all(eventId);
 }
 
 function getVipReservation(reservationId) {
   return db.prepare(`
-    SELECT r.id, r.wallet_address, r.phone, r.group_size, r.status, r.notes, r.event_id,
+    SELECT r.id, r.wallet_address, r.phone, r.group_size, r.status, r.notes, r.alias, r.event_id,
            e.title as event_title, e.event_date
     FROM vip_reservations r JOIN events e ON r.event_id = e.id
     WHERE r.id=?
   `).get(reservationId);
 }
 
+// Genera el "nombre de la mesa": un alias gracioso, anónimo y gallego (furancho + amistad).
+// Único dentro del mismo evento para que el patrón no confunda dos mesas la misma noche.
+const VIP_ALIAS_GRUPOS = [
+  'A Cuadrilla', 'A Tropa', 'A Panda', 'A Peña', 'A Troula', 'A Esmorga',
+  'A Xuntanza', 'A Parrulada', 'Os Amigos', 'Os Riquiños', 'Os Larpeiros',
+  'A Galería', 'O Clube', 'A Pandilla', 'Os Featos'
+];
+const VIP_ALIAS_COMPLEMENTOS = [
+  'do Albariño', 'do Ribeiro', 'do Godello', 'do Mencía', 'do Polbo',
+  'dos Percebes', 'dos Mexillóns', 'do Lacón', 'dos Grelos', 'da Queimada',
+  'da Empanada', 'do Furancho', 'da Gaita', 'do Queixo', 'da Ría',
+  'do Faro', 'dos Pementos', 'da Morriña', 'da Centola', 'do Caldiño'
+];
+
+function generateVipAlias(eventId) {
+  const taken = new Set(
+    db.prepare(`SELECT alias FROM vip_reservations WHERE event_id=? AND alias IS NOT NULL`)
+      .all(eventId).map(r => r.alias)
+  );
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+  let name;
+  for (let i = 0; i < 60; i++) {
+    name = `${pick(VIP_ALIAS_GRUPOS)} ${pick(VIP_ALIAS_COMPLEMENTOS)}`;
+    if (!taken.has(name)) return name;
+  }
+  return name; // fallback improbable: todas las combinaciones agotadas
+}
+
+// Devuelve el alias vigente de la reserva (lo genera la primera vez que se confirma).
 function updateVipStatus(reservationId, status) {
+  if (status === 'confirmed') {
+    const row = db.prepare(`SELECT event_id, alias FROM vip_reservations WHERE id=?`).get(reservationId);
+    if (row && !row.alias) {
+      const alias = generateVipAlias(row.event_id);
+      db.prepare(`UPDATE vip_reservations SET status=?, alias=? WHERE id=?`).run(status, alias, reservationId);
+      return alias;
+    }
+    db.prepare(`UPDATE vip_reservations SET status=? WHERE id=?`).run(status, reservationId);
+    return row ? row.alias : null;
+  }
   db.prepare(`UPDATE vip_reservations SET status=? WHERE id=?`).run(status, reservationId);
+  return null;
 }
 
 function getSessionAnalytics() {

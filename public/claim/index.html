@@ -3296,12 +3296,15 @@
                       📅 Guardar
                     </button>
                     ${myVip ? `
-                      <span id="vip-status-${ev.id}" style="display:inline-flex; align-items:center; gap:5px; padding:8px 14px; border-radius:50px; font-size:13px; font-weight:700; font-family:'Outfit',sans-serif; white-space:nowrap;
-                        background:${myVip.status==='confirmed'?'rgba(74,222,128,0.12)':myVip.status==='cancelled'?'rgba(248,113,113,0.1)':'rgba(196,151,58,0.1)'};
-                        border:1.5px solid ${myVip.status==='confirmed'?'rgba(74,222,128,0.4)':myVip.status==='cancelled'?'rgba(248,113,113,0.3)':'rgba(196,151,58,0.35)'};
-                        color:${myVip.status==='confirmed'?'#16a34a':myVip.status==='cancelled'?'#dc2626':'var(--gold)'};">
-                        ${myVip.status==='confirmed'?'✅ VIP Confirmada':myVip.status==='cancelled'?'❌ VIP Cancelada':'⏳ VIP Pendiente'}
-                        <span style="font-weight:400; opacity:0.8;">${myVip.group_size} pax</span>
+                      <span style="display:inline-flex; flex-direction:column; align-items:flex-start; gap:5px;">
+                        <span id="vip-status-${ev.id}" style="display:inline-flex; align-items:center; gap:5px; padding:8px 14px; border-radius:50px; font-size:13px; font-weight:700; font-family:'Outfit',sans-serif; white-space:nowrap;
+                          background:${myVip.status==='confirmed'?'rgba(74,222,128,0.12)':myVip.status==='cancelled'?'rgba(248,113,113,0.1)':'rgba(196,151,58,0.1)'};
+                          border:1.5px solid ${myVip.status==='confirmed'?'rgba(74,222,128,0.4)':myVip.status==='cancelled'?'rgba(248,113,113,0.3)':'rgba(196,151,58,0.35)'};
+                          color:${myVip.status==='confirmed'?'#16a34a':myVip.status==='cancelled'?'#dc2626':'var(--gold)'};">
+                          ${myVip.status==='confirmed'?'✅ VIP Confirmada':myVip.status==='cancelled'?'❌ VIP Cancelada':'⏳ VIP Pendiente'}
+                          <span style="font-weight:400; opacity:0.8;">${myVip.group_size} pax</span>
+                        </span>
+                        <span id="vip-alias-${ev.id}" style="display:${myVip.status==='confirmed' && myVip.alias ? 'inline-block':'none'}; font-size:12px; font-weight:800; color:var(--gold); padding-left:4px; font-family:'Outfit',sans-serif;">🏷️ Mesa: ${myVip.alias || ''}</span>
                       </span>` :
                     `<button onclick="event.stopPropagation(); openVipModal(${ev.id},'${ev.title} · ${d.getDate()} ${months[d.getMonth()]}')" style="
                       padding:9px 16px; border-radius:50px; font-size:13px; font-weight:700; cursor:pointer;
@@ -4667,9 +4670,20 @@
           // Actualizar solo el texto, conservar el "X pax"
           badge.childNodes[0].textContent = s.text + ' ';
         }
+        // Nombre de la mesa (alias) — aparece al confirmar, se oculta si se cancela
+        const aliasEl = document.getElementById(`vip-alias-${data.eventId}`);
+        if (aliasEl) {
+          if (data.status === 'confirmed' && data.alias) {
+            aliasEl.textContent = `🏷️ Mesa: ${data.alias}`;
+            aliasEl.style.display = 'inline-block';
+          } else {
+            aliasEl.style.display = 'none';
+          }
+        }
         // Mostrar banner de notificación
         if (data.status === 'confirmed') {
-          showProfileBanner(`✅ VIP confirmada para <strong>${data.eventTitle}</strong>. ¡La mesa ya es vuestra, campeones!`, 'gold');
+          const aliasTxt = data.alias ? ` Vuestra mesa va a nombre de <strong>${data.alias}</strong> — enseñádselo al llegar.` : '';
+          showProfileBanner(`✅ VIP confirmada para <strong>${data.eventTitle}</strong>. ¡La mesa ya es vuestra, campeones!${aliasTxt}`, 'gold');
         } else if (data.status === 'cancelled') {
           showProfileBanner(`❌ VIP cancelada para <strong>${data.eventTitle}</strong>. Llámanos si hay algo que resolver, ho.`, 'red');
         }
