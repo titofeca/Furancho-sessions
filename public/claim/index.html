@@ -1611,6 +1611,13 @@
         <p id="claim-admin-msg-body" class="admin-msg-body"></p>
       </div>
 
+      <!-- Recuperar cuenta si ya tenían pase -->
+      <div style="margin: 20px 0; text-align: center;">
+        <button onclick="openRestoreFlow()" style="background:transparent; border:none; color:var(--wine); font-family:'Outfit',sans-serif; font-size:14px; font-weight:600; cursor:pointer; text-decoration:underline; display:inline-flex; align-items:center; gap:6px;">
+          🔑 ¿Ya tenías pase? Recuperar cuenta
+        </button>
+      </div>
+
       <p class="footer-note">
         Sin contraseñas ni datos raros. Tu pase se queda aquí,<br>
         en tu móvil. Como los secretos de las cuncas de vino. 🤫
@@ -2218,7 +2225,7 @@
   </div>
 
   <!-- ==================== RAFFLE MODAL ==================== -->
-  <div class="raffle-modal screen" id="raffle-modal" style="position: fixed; inset: 0; z-index: 1000;">
+  <div class="raffle-modal screen" id="raffle-modal" style="position: fixed; inset: 0; z-index: 1000; background: var(--cream) !important; color: var(--text) !important;">
     <!-- Roulette Animation — logo girando -->
     <div id="raffle-roulette" style="display: none; text-align:center;">
       <h2 class="raffle-title" style="font-size:26px; margin-bottom:8px;" id="raffle-modal-title">⚡ Sorteo del Furancho</h2>
@@ -2233,7 +2240,7 @@
           animation:spinRing 1s linear infinite;
         "></div>
         <div style="position:absolute; inset:3px; border-radius:50%; background:var(--cream);"></div>
-        <img src="/assets/logo.jpg" onerror="this.style.display='none'; document.getElementById('spin-fallback').style.display='flex';"
+        <img src="/assets/logo.png" onerror="this.style.display='none'; document.getElementById('spin-fallback').style.display='flex';"
           style="position:absolute; inset:8px; border-radius:50%; object-fit:cover; animation:logoPulse 0.8s ease-in-out infinite alternate;" />
         <div id="spin-fallback" style="display:none; position:absolute; inset:8px; border-radius:50%; background:var(--wine); align-items:center; justify-content:center; font-size:44px; animation:logoPulse 0.8s ease-in-out infinite alternate;">🍷</div>
       </div>
@@ -2495,12 +2502,18 @@
         localStorage.setItem('furancho_account_created_at', new Date().toISOString());
       }
       if (isStandalone) {
-        history.replaceState(null, '', '/claim');
+        // En modo standalone limpiamos el restore de la URL para dejarla limpia
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.delete('restore');
+        const search = urlParams.toString();
+        history.replaceState(null, '', window.location.pathname + (search ? '?' + search : ''));
       }
     } else {
       const userWalletAddressTemp = localStorage.getItem('furancho_wallet_address');
       if (userWalletAddressTemp && !isStandalone) {
-        history.replaceState(null, '', `/claim?restore=${userWalletAddressTemp}`);
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.set('restore', userWalletAddressTemp);
+        history.replaceState(null, '', window.location.pathname + '?' + urlParams.toString());
       }
     }
 
@@ -2536,11 +2549,53 @@
       localStorage.setItem('furancho_account_created_at', new Date().toISOString());
     }
 
+    // Generar cuenta de forma automática y silenciosa (sin preguntar Onboarding)
+    async function autoCreateWalletSilently() {
+      // Mostrar pantalla de carga elegante
+      showScreen('screen-loading');
+      // Dar un pequeño respiro para asegurar que ethers cargó
+      if (typeof ethers === 'undefined') {
+        await new Promise(r => setTimeout(r, 450));
+      }
+      try {
+        let data = generateWalletLocally();
+        if (!data) {
+          const res = await fetch('/api/mint/create-wallet', { method: 'POST' });
+          data = await res.json();
+        }
+        if (data.address && data.privateKey) {
+          userWalletAddress = data.address;
+          userWalletPrivateKey = data.privateKey;
+          localStorage.setItem('furancho_wallet_address', userWalletAddress);
+          localStorage.setItem('furancho_wallet_private_key', userWalletPrivateKey);
+          if (!localStorage.getItem('furancho_account_created_at')) {
+            localStorage.setItem('furancho_account_created_at', new Date().toISOString());
+          }
+          if (data.mnemonic) {
+            localStorage.setItem('furancho_wallet_mnemonic', data.mnemonic);
+          }
+          
+          // Actualizar URL con restore param para que añadir a inicio funcione inmediatamente
+          const urlParams = new URLSearchParams(window.location.search);
+          urlParams.set('restore', userWalletAddress);
+          history.replaceState(null, '', window.location.pathname + '?' + urlParams.toString());
+
+          await initWallet();
+        } else {
+          throw new Error('No se pudo generar wallet');
+        }
+      } catch (e) {
+        console.error('Error en generación silenciosa de wallet:', e);
+        // Si hay un error total de red, mostramos el onboarding como plan de respaldo
+        showScreen('screen-onboarding');
+      }
+    }
+
     // Inicializar billetera anónima
     async function initWallet() {
       if (!userWalletAddress) {
-        // Mostrar onboarding — el usuario elige si es nuevo o tiene cuenta
-        showScreen('screen-onboarding');
+        // En lugar de ir directo al onboarding, auto-creamos el pase silenciosamente
+        await autoCreateWalletSilently();
         return;
       }
 

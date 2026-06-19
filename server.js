@@ -400,6 +400,9 @@ function scheduleAutoRaffles() {
       });
 
       // ── Lanzamiento automático ───────────────────────────────────────────
+      // DESACTIVADO: El usuario solicitó lanzar los sorteos programados manualmente para evitar problemas con la música.
+      // Quedan en estado 'pending' y se lanzan desde el panel de administración (/admin).
+      /*
       const pending = db.prepare(
         `SELECT * FROM scheduled_raffles WHERE status = 'pending' AND event_date = ? AND scheduled_time = ?`
       ).all(currentDate, currentTime);
@@ -426,6 +429,7 @@ function scheduleAutoRaffles() {
           console.error(`[AutoRaffle] ❌ Error lanzando sorteo #${s.id}:`, e.message);
         }
       });
+      */
     } catch(e) {
       console.error('[AutoRaffle] Error en scheduler:', e.message);
     }

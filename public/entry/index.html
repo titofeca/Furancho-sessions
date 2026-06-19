@@ -482,6 +482,13 @@
       </div>
       <h2 class="loading-title">Abriendo los barriles...</h2>
       <p class="loading-sub">Al loro, rapaz. Menos de lo que tarda el camarero en llenarte la cunca. No me toques el peluco que ya casi estamos.</p>
+      
+      <!-- Opción de recuperar cuenta oculta por defecto, se muestra en js si no hay wallet -->
+      <div id="loading-recovery-option" style="margin-top: 24px; display: none;">
+        <button onclick="cancelAutoEntryAndShowRecovery()" style="background:transparent; border:none; color:var(--wine); font-family:'Outfit',sans-serif; font-size:14px; font-weight:600; cursor:pointer; text-decoration:underline; outline:none;">
+          🔑 Ya tengo un pase (Restaurar)
+        </button>
+      </div>
     </div>
   </div>
 
@@ -511,7 +518,7 @@
   </div>
 
   <!-- ==================== RAFFLE MODAL ==================== -->
-  <div id="raffle-modal">
+  <div id="raffle-modal" style="background: var(--cream) !important; color: var(--text) !important;">
     <div id="raffle-roulette" style="display: none; text-align: center;">
       <h2 class="raffle-title-el">Sorteo Especial</h2>
       <p class="raffle-prize-sub" id="raffle-prize-text">Sorteando: ...</p>

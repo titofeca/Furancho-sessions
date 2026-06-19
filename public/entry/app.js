@@ -1,5 +1,59 @@
+// Timer global para poder cancelar la creación automática si el usuario quiere restaurar
+window._autoEntryTimeout = null;
+
+async function autoCreateEntryWalletSilently() {
+  if (typeof ethers === 'undefined') {
+    await new Promise(r => setTimeout(r, 450));
+  }
+  try {
+    let data = generateWalletLocally();
+    if (!data) {
+      const res = await fetch('/api/mint/create-wallet', { method: 'POST' });
+      data = await res.json();
+    }
+    if (!data.address) throw new Error('Sin dirección');
+    localStorage.setItem('furancho_wallet_address', data.address);
+    localStorage.setItem('furancho_wallet_private_key', data.privateKey);
+    if (data.mnemonic) localStorage.setItem('furancho_wallet_mnemonic', data.mnemonic);
+    if (!localStorage.getItem('furancho_account_created_at')) {
+      localStorage.setItem('furancho_account_created_at', new Date().toISOString());
+    }
+
+    // Actualizar URL con restore param para que añadir a inicio funcione inmediatamente
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('restore', data.address);
+    history.replaceState(null, '', window.location.pathname + '?' + urlParams.toString());
+
+    await doEntry(data.address);
+  } catch (e) {
+    console.error('Error en generación automática de wallet en entrada:', e);
+    cancelAutoEntryAndShowRecovery();
+  }
+}
+
+function cancelAutoEntryAndShowRecovery() {
+  if (window._autoEntryTimeout) {
+    clearTimeout(window._autoEntryTimeout);
+    window._autoEntryTimeout = null;
+  }
+  
+  // Ocultar pantalla de carga y mostrar onboarding con opciones de restauración
+  document.getElementById('screen-loading').style.display = 'none';
+  document.getElementById('screen-onboarding').style.display = 'flex';
+
+  // Detectar si no es modo standalone (corre en navegador común Safari/Chrome)
+  const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+  if (!isStandalone) {
+    const warningEl = document.getElementById('pwa-browser-warning');
+    if (warningEl) warningEl.style.display = 'block';
+  }
+
+  buildEntryRestoreInputs();
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   let walletAddress = localStorage.getItem('furancho_wallet_address');
+  const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
 
   // Restauración por URL (?restore=0x...): el QR personal de recuperación también
   // sirve para fichar entrada directamente sin pasar por el onboarding
@@ -12,22 +66,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         localStorage.setItem('furancho_account_created_at', new Date().toISOString());
       }
     }
+  } else {
+    // Si ya tiene wallet, nos aseguramos de que el restore esté siempre en la URL si no es standalone
+    if (!isStandalone) {
+      const urlParams = new URLSearchParams(window.location.search);
+      urlParams.set('restore', walletAddress);
+      history.replaceState(null, '', window.location.pathname + '?' + urlParams.toString());
+    }
   }
 
   if (!walletAddress) {
-    // Mostrar pantalla de onboarding — el usuario elige si es nuevo o ya tiene cuenta
-    document.getElementById('screen-loading').style.display = 'none';
-    document.getElementById('screen-onboarding').style.display = 'flex';
+    // Mostrar el botón de restaurar en la pantalla de carga
+    const recoveryOption = document.getElementById('loading-recovery-option');
+    if (recoveryOption) recoveryOption.style.display = 'block';
 
-    // Detectar si no es modo standalone (corre en navegador común Safari/Chrome)
-    const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
-    if (!isStandalone) {
-      const warningEl = document.getElementById('pwa-browser-warning');
-      if (warningEl) warningEl.style.display = 'block';
-    }
-
-    buildEntryRestoreInputs();
+    // Dar un margen de 1.5s antes de auto-crear la cuenta para permitir al usuario pulsar "Restaurar"
+    window._autoEntryTimeout = setTimeout(autoCreateEntryWalletSilently, 1500);
     return;
+  }
+
+  // Si es standalone y tiene el restore en la URL, lo limpiamos para dejarla limpia
+  if (isStandalone) {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('restore')) {
+      urlParams.delete('restore');
+      const search = urlParams.toString();
+      history.replaceState(null, '', window.location.pathname + (search ? '?' + search : ''));
+    }
   }
 
   await doEntry(walletAddress);

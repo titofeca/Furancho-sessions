@@ -3649,7 +3649,7 @@
         if (document.getElementById('sched-details')) document.getElementById('sched-details').value = '';
         if (document.getElementById('sched-participant-level')) document.getElementById('sched-participant-level').value = '';
         clearSchedImage();
-        showToast('✅ Sorteo programado — se lanzará automáticamente');
+        showToast('✅ Sorteo programado — recuerda lanzarlo manualmente');
         loadScheduled();
       } else showToast(data.error || 'Error', true);
     } catch(e) { showToast('Error', true); }
