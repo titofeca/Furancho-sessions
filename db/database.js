@@ -275,20 +275,16 @@ try {
   if (downgraded.changes > 0) console.log(`[DB] Migración: ${downgraded.changes} mints bajados de Nv2 → Nv1`);
 } catch (_) {}
 
-// Wallets con mint nivel 4 son de prueba → dejar solo 1 visita contada (la más antigua)
+// Restaurar visitas para wallets con mint nivel 4 (O Presidente ya no es de prueba, es real)
 try {
-  const fixed = db.prepare(`
-    UPDATE sessions SET counted_as_visit = 0
-    WHERE counted_as_visit = 1
-      AND wallet_address IN (SELECT DISTINCT wallet_address FROM mints WHERE level = 4)
-      AND id NOT IN (
-        SELECT MIN(id) FROM sessions
-        WHERE counted_as_visit = 1
-          AND wallet_address IN (SELECT DISTINCT wallet_address FROM mints WHERE level = 4)
-        GROUP BY wallet_address
-      )
+  const restored = db.prepare(`
+    UPDATE sessions SET counted_as_visit = 1
+    WHERE wallet_address IN (SELECT DISTINCT wallet_address FROM mints WHERE level = 4)
+      AND counted_as_visit = 0
   `).run();
-  if (fixed.changes > 0) console.log(`[DB] Migración: ${fixed.changes} visitas extra de wallets Nv4 puestas a 0`);
+  if (restored.changes > 0) {
+    console.log(`[DB] Migración: ${restored.changes} visitas de wallets Nv4 restauradas a 1`);
+  }
 } catch (_) {}
 
 try { db.exec(`ALTER TABLE events ADD COLUMN vip_max INTEGER DEFAULT 15`); } catch (_) {}
@@ -735,7 +731,11 @@ function openSession(walletAddress) {
 
   // Evitar exploit de acumulación: máximo una visita contada por semana natural
   const alreadyVisitedThisWeek = checkRecentVisit(walletAddress, 168);
-  const countedAsVisit = (inEventWindow && !alreadyVisitedThisWeek) ? 1 : 0;
+
+  // O Presidente (Nivel 4) no tiene restricciones de horario ni semanales para contar visitas (facilita pruebas y control)
+  const isLevel4 = !!db.prepare(`SELECT 1 FROM mints WHERE LOWER(wallet_address) = LOWER(?) AND level = 4 AND status != 'failed' LIMIT 1`).get(walletAddress);
+
+  const countedAsVisit = (isLevel4 || (inEventWindow && !alreadyVisitedThisWeek)) ? 1 : 0;
 
   db.prepare(`INSERT INTO sessions (wallet_address, counted_as_visit) VALUES (?, ?)`).run(walletAddress, countedAsVisit);
 
@@ -943,7 +943,7 @@ const EVENT_SEED = [
 
 // Fechas cuya descripción debe actualizarse aunque ya exista en BD (cuando cambias el texto desde aquí).
 // Añade la fecha aquí cuando quieras forzar la actualización desde código.
-const FORCED_UPDATE_DATES = ['2026-06-25'];
+const FORCED_UPDATE_DATES = [];
 
 function seedEvents() {
   const dates = EVENT_SEED;
