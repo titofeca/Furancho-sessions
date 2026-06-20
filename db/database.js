@@ -419,28 +419,40 @@ function checkRecentVisit(walletAddress, hours = 12) {
 
 function getVisitCount(walletAddress) {
   if (!walletAddress) return 0;
-  const row = db.prepare(`SELECT COUNT(*) as count FROM sessions WHERE LOWER(wallet_address) = LOWER(?) AND counted_as_visit = 1`).get(walletAddress);
+  const row = db.prepare(`
+    SELECT COUNT(*) as count FROM (
+      SELECT date(entry_time) as day FROM sessions WHERE LOWER(wallet_address) = LOWER(?) AND counted_as_visit = 1
+      UNION
+      SELECT date(visited_at) as day FROM visits WHERE LOWER(wallet_address) = LOWER(?)
+    )
+  `).get(walletAddress, walletAddress);
   return row ? row.count : 0;
 }
 
 function getStats() {
-  // Total: wallets únicas con mint O con sesión
+  // Total: wallets únicas con mint, sesión o visita legacy
   const total = db.prepare(`
     SELECT COUNT(*) as count FROM (
-      SELECT LOWER(wallet_address) FROM mints WHERE status != 'failed'
+      SELECT LOWER(wallet_address) as wallet_address FROM mints WHERE status != 'failed'
       UNION
-      SELECT LOWER(wallet_address) FROM sessions
+      SELECT LOWER(wallet_address) as wallet_address FROM sessions
+      UNION
+      SELECT LOWER(wallet_address) as wallet_address FROM visits
     )
   `).get();
 
-  // Nivel efectivo: mint confirma el nivel; sesión sin mint = Nv1 implícito
+  // Nivel efectivo: mint confirma el nivel; sesión/visita sin mint = Nv1 implícito
   const byLevel = db.prepare(`
     SELECT level, level_name, COUNT(*) as count FROM (
       SELECT LOWER(wallet_address) as wallet_address, MAX(level) as level, MAX(level_name) as level_name
       FROM mints WHERE status != 'failed' GROUP BY LOWER(wallet_address)
       UNION ALL
       SELECT LOWER(wallet_address) as wallet_address, 1 as level, 'Cautivo' as level_name
-      FROM sessions
+      FROM (
+        SELECT wallet_address FROM sessions
+        UNION
+        SELECT wallet_address FROM visits
+      )
       WHERE LOWER(wallet_address) NOT IN (SELECT LOWER(wallet_address) FROM mints WHERE status != 'failed')
       GROUP BY LOWER(wallet_address)
     ) GROUP BY level ORDER BY level
@@ -463,7 +475,6 @@ function getStats() {
       SELECT LOWER(wallet_address) as wallet_address, date(entry_time) as day FROM sessions WHERE counted_as_visit = 1
       UNION
       SELECT LOWER(wallet_address) as wallet_address, date(visited_at) as day FROM visits
-      WHERE LOWER(wallet_address) NOT IN (SELECT DISTINCT LOWER(wallet_address) FROM sessions WHERE counted_as_visit = 1)
     )
   `).get()?.count || 0;
 
@@ -473,7 +484,6 @@ function getStats() {
       SELECT LOWER(wallet_address) as wallet_address, date(entry_time) as day FROM sessions WHERE counted_as_visit = 1
       UNION
       SELECT LOWER(wallet_address) as wallet_address, date(visited_at) as day FROM visits
-      WHERE LOWER(wallet_address) NOT IN (SELECT DISTINCT LOWER(wallet_address) FROM sessions WHERE counted_as_visit = 1)
     )
     GROUP BY day ORDER BY day DESC LIMIT 30
   `).all();
@@ -484,7 +494,6 @@ function getStats() {
       SELECT LOWER(wallet_address) as wallet_address FROM sessions WHERE counted_as_visit = 1
       UNION
       SELECT LOWER(wallet_address) as wallet_address FROM visits
-      WHERE LOWER(wallet_address) NOT IN (SELECT DISTINCT LOWER(wallet_address) FROM sessions WHERE counted_as_visit = 1)
     )
   `).get()?.count || 0;
 
@@ -516,66 +525,79 @@ function getStats() {
 }
 
 function getHolders(levelFilter) {
-  // Nv2-4: solo en mints (tienen NFT real o demo)
-  // Nv1: sesiones sin mint asociado (escanaron entrada pero no salida/mint)
-  // "all": unión de ambos grupos
   const lvl = levelFilter && levelFilter !== 'all' ? parseInt(levelFilter) : null;
 
-  if (lvl && lvl >= 2) {
-    return db.prepare(`
-      SELECT substr(wallet_address,1,6)||'...'||substr(wallet_address,-6) as wallet_masked,
-             wallet_address, level, level_name, minted_at as event_date, status
-      FROM mints WHERE status != 'failed' AND level = ?
-      ORDER BY minted_at DESC
-    `).all(lvl);
-  }
-
-  if (lvl === 1) {
-    // Primero los que tienen mint Nv1, luego los que solo tienen sesión
-    return db.prepare(`
-      SELECT substr(wallet_address,1,6)||'...'||substr(wallet_address,-6) as wallet_masked,
-             wallet_address, 1 as level, 'Cautivo' as level_name,
-             MAX(entry_time) as event_date, 'session' as status
-      FROM sessions
-      WHERE wallet_address NOT IN (SELECT wallet_address FROM mints WHERE status != 'failed')
-      GROUP BY wallet_address
+  const query = `
+    WITH highest_levels AS (
+      SELECT LOWER(wallet_address) as wallet, MAX(level) as level
+      FROM mints WHERE status != 'failed'
+      GROUP BY LOWER(wallet_address)
       UNION ALL
-      SELECT substr(wallet_address,1,6)||'...'||substr(wallet_address,-6) as wallet_masked,
-             wallet_address, level, level_name, minted_at as event_date, status
-      FROM mints WHERE status != 'failed' AND level = 1
-      ORDER BY event_date DESC
-    `).all();
-  }
-
-  // All: union de sesiones-sin-mint (Nv1 implícito) + todos los mints
-  return db.prepare(`
-    SELECT substr(wallet_address,1,6)||'...'||substr(wallet_address,-6) as wallet_masked,
-           wallet_address, 1 as level, 'Cautivo' as level_name,
-           MAX(entry_time) as event_date, 'session' as status
-    FROM sessions
-    WHERE wallet_address NOT IN (SELECT wallet_address FROM mints WHERE status != 'failed')
-    GROUP BY wallet_address
-    UNION ALL
-    SELECT substr(wallet_address,1,6)||'...'||substr(wallet_address,-6) as wallet_masked,
-           wallet_address, level, level_name, minted_at as event_date, status
-    FROM mints WHERE status != 'failed'
+      SELECT LOWER(wallet_address) as wallet, 1 as level
+      FROM (
+        SELECT wallet_address FROM sessions
+        UNION
+        SELECT wallet_address FROM visits
+      )
+      WHERE LOWER(wallet_address) NOT IN (SELECT LOWER(wallet_address) FROM mints WHERE status != 'failed')
+      GROUP BY LOWER(wallet_address)
+    )
+    SELECT
+      h.wallet as wallet_address,
+      substr(h.wallet, 1, 6) || '...' || substr(h.wallet, -6) as wallet_masked,
+      h.level,
+      CASE h.level
+        WHEN 1 THEN 'Cautivo'
+        WHEN 2 THEN 'O Cunqueiro'
+        WHEN 3 THEN 'O Larpeiro'
+        WHEN 4 THEN 'O Presidente do Furancho'
+      END as level_name,
+      COALESCE(
+        (SELECT MAX(minted_at) FROM mints WHERE LOWER(wallet_address) = h.wallet AND level = h.level AND status != 'failed'),
+        (SELECT MAX(entry_time) FROM sessions WHERE LOWER(wallet_address) = h.wallet AND counted_as_visit = 1),
+        (SELECT MAX(visited_at) FROM visits WHERE LOWER(wallet_address) = h.wallet)
+      ) as event_date,
+      CASE WHEN (SELECT count(*) FROM mints WHERE LOWER(wallet_address) = h.wallet AND level = h.level AND status != 'failed') > 0 THEN 'success' ELSE 'session' END as status
+    FROM highest_levels h
+    ${lvl ? 'WHERE h.level = ?' : ''}
     ORDER BY event_date DESC
-  `).all();
+  `;
+
+  return lvl ? db.prepare(query).all(lvl) : db.prepare(query).all();
 }
 
 function getMultiLevelHolders() {
-  return db.prepare(`
+  const rows = db.prepare(`
     SELECT wallet_address,
            COUNT(DISTINCT level) as levels_count,
            GROUP_CONCAT(DISTINCT level_name) as levels,
-           MIN(minted_at) as first_visit,
-           MAX(minted_at) as last_visit,
-           COUNT(*) as total_visits
+           MIN(minted_at) as first_mint,
+           MAX(minted_at) as last_mint
     FROM mints WHERE status != 'failed'
     GROUP BY wallet_address
     HAVING levels_count > 1
-    ORDER BY levels_count DESC, total_visits DESC
+    ORDER BY levels_count DESC
   `).all();
+
+  return rows.map(r => {
+    const visits = getVisitCount(r.wallet_address);
+    const dates = db.prepare(`
+      SELECT MIN(day) as first_visit, MAX(day) as last_visit FROM (
+        SELECT date(entry_time) as day FROM sessions WHERE LOWER(wallet_address) = LOWER(?) AND counted_as_visit = 1
+        UNION
+        SELECT date(visited_at) as day FROM visits WHERE LOWER(wallet_address) = LOWER(?)
+      )
+    `).get(r.wallet_address, r.wallet_address);
+
+    return {
+      wallet_address: r.wallet_address,
+      levels_count: r.levels_count,
+      levels: r.levels,
+      total_visits: visits,
+      first_visit: dates?.first_visit || r.first_mint,
+      last_visit: dates?.last_visit || r.last_mint
+    };
+  });
 }
 
 function getWalletsByLevel(levelFilter) {
