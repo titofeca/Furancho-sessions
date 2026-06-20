@@ -305,52 +305,54 @@ try {
   const downgraded = db.prepare(`UPDATE mints SET level = 1 WHERE level = 2`).run();
   if (downgraded.changes > 0) console.log(`[DB] Migración: ${downgraded.changes} mints bajados de Nv2 → Nv1`);
 } catch (_) {}
-
-// Asegurar que el Presidente (0x5EFd6c904CfdB7029340E69B056364921B0eaBE1) tenga al menos 3 visitas registradas en sesiones de eventos pasados
+// Asegurar que las wallets del Presidente/test tengan al menos 3 visitas registradas en sesiones de eventos pasados
 try {
-  const target = '0x5EFd6c904CfdB7029340E69B056364921B0eaBE1';
-  // Comprobar cuántas visitas (sesiones con counted_as_visit = 1) tiene ya
-  const currentCount = db.prepare(`
-    SELECT COUNT(DISTINCT date(entry_time)) as count FROM sessions 
-    WHERE LOWER(wallet_address) = LOWER(?) AND counted_as_visit = 1
-  `).get(target).count;
-  
-  if (currentCount < 3) {
-    // Si tiene menos de 3 visitas, buscamos sus sesiones y las ponemos a 1
-    db.prepare(`
-      UPDATE sessions SET counted_as_visit = 1 
-      WHERE LOWER(wallet_address) = LOWER(?)
-    `).run(target);
-    
-    // Si aún después de actualizar sigue teniendo menos de 3, creamos sesiones para eventos pasados
-    const newCount = db.prepare(`
+  const targets = ['0x5EFd6c904CfdB7029340E69B056364921B0eaBE1', '0x3bdE3779DB08057A372b36577A999c34A268C54D'];
+  for (const target of targets) {
+    // Comprobar cuántas visitas (sesiones con counted_as_visit = 1) tiene ya
+    const currentCount = db.prepare(`
       SELECT COUNT(DISTINCT date(entry_time)) as count FROM sessions 
       WHERE LOWER(wallet_address) = LOWER(?) AND counted_as_visit = 1
     `).get(target).count;
     
-    if (newCount < 3) {
-      const pastDates = ['2026-06-04 20:00:00', '2026-06-11 20:00:00', '2026-06-18 20:00:00'];
-      for (const dateStr of pastDates) {
-        // Comprobar si ya existe una sesión ese día
-        const day = dateStr.split(' ')[0];
-        const exists = db.prepare(`
-          SELECT id FROM sessions 
-          WHERE LOWER(wallet_address) = LOWER(?) AND date(entry_time) = ?
-        `).get(target, day);
-        
-        if (!exists) {
-          db.prepare(`
-            INSERT INTO sessions (wallet_address, entry_time, exit_time, duration_minutes, counted_as_visit) 
-            VALUES (?, ?, ?, 60, 1)
-          `).run(target, dateStr, dateStr.replace('20:00:00', '21:00:00'));
+    if (currentCount < 3) {
+      // Si tiene menos de 3 visitas, buscamos sus sesiones y las ponemos a 1
+      db.prepare(`
+        UPDATE sessions SET counted_as_visit = 1 
+        WHERE LOWER(wallet_address) = LOWER(?)
+      `).run(target);
+      
+      // Si aún después de actualizar sigue teniendo menos de 3, creamos sesiones para eventos pasados
+      const newCount = db.prepare(`
+        SELECT COUNT(DISTINCT date(entry_time)) as count FROM sessions 
+        WHERE LOWER(wallet_address) = LOWER(?) AND counted_as_visit = 1
+      `).get(target).count;
+      
+      if (newCount < 3) {
+        const pastDates = ['2026-06-04 20:00:00', '2026-06-11 20:00:00', '2026-06-18 20:00:00'];
+        for (const dateStr of pastDates) {
+          // Comprobar si ya existe una sesión ese día
+          const day = dateStr.split(' ')[0];
+          const exists = db.prepare(`
+            SELECT id FROM sessions 
+            WHERE LOWER(wallet_address) = LOWER(?) AND date(entry_time) = ?
+          `).get(target, day);
+          
+          if (!exists) {
+            db.prepare(`
+              INSERT INTO sessions (wallet_address, entry_time, exit_time, duration_minutes, counted_as_visit) 
+              VALUES (?, ?, ?, 60, 1)
+            `).run(target, dateStr, dateStr.replace('20:00:00', '21:00:00'));
+          }
         }
       }
+      console.log(`[DB] Inicializadas/actualizadas visitas manuales para el Presidente (${target})`);
     }
-    console.log(`[DB] Inicializadas/actualizadas visitas manuales para el Presidente (0x5EFd6c904CfdB7029340E69B056364921B0eaBE1)`);
   }
 } catch (e) {
   console.warn('[DB] Error en migración manual del Presidente:', e.message);
 }
+
 
 try { db.exec(`ALTER TABLE events ADD COLUMN vip_max INTEGER DEFAULT 15`); } catch (_) {}
 // Ventana horaria del evento (hora Madrid) — define cuándo un fichaje cuenta como elegible para sorteos en vivo
