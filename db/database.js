@@ -238,7 +238,30 @@ db.exec(`
     total_count INTEGER DEFAULT 0,
     error_message TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS partner_establishments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    maps_url TEXT,
+    story TEXT,
+    visible INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
 `);
+
+// Pre-poblar locales colaboradores iniciales si la tabla está vacía
+try {
+  const count = db.prepare(`SELECT COUNT(*) as c FROM partner_establishments`).get().c;
+  if (count === 0) {
+    const stmt = db.prepare(`INSERT INTO partner_establishments (name, maps_url, story, visible) VALUES (?, ?, ?, 1)`);
+    stmt.run("Taberna O Pazo", "https://www.google.com/maps/search/?api=1&query=Taberna+O+Pazo+A+Coru%C3%B1a", "Una taberna de las de siempre en la zona vieja, donde el olor a cocina tradicional y el crujido de la madera te abrazan. Un rincón ideal para seguir la sobremesa.");
+    stmt.run("Pulpería de Melide", "https://www.google.com/maps/search/?api=1&query=Pulper%C3%ADa+de+Melide+A+Coru%C3%B1a", "Míticos pulpeiros preparando el pulpo con el mimo que solo el respeto a la tradición gallega puede dar. Su caldero de cobre es parte de nuestra alma compartida.");
+    stmt.run("La Bombilla", "https://www.google.com/maps/search/?api=1&query=La+Bombilla+A+Coru%C3%B1a", "La leyenda indiscutible de las tapas coruñesas. Sus pinchos icónicos encarnan el verdadero espíritu de compartir y disfrutar en las tabernas tradicionales.");
+    stmt.run("O Tarabelo", "https://www.google.com/maps/search/?api=1&query=O+Tarabelo+A+Coru%C3%B1a", "Con sus cuncas de ribeiro y carácter marinero, O Tarabelo mantiene encendida la llama de nuestras raíces. Vecinos de sabor y tradición en la Ciudad Vieja.");
+    stmt.run("O Cunqueiro", "https://www.google.com/maps/search/?api=1&query=O+Cunqueiro+A+Coru%C3%B1a", "Una parada obligada para saborear la gastronomía de siempre. Rinde homenaje al comer con autenticidad y alegría en la boa compañía de nuestro barrio.");
+    console.log("[DB] Inicializados 5 locales colaboradores iniciales.");
+  }
+} catch (_) {}
 
 // Migraciones de columnas y datos — DEBEN ir tras los CREATE TABLE para que
 // también se apliquen en bases de datos nuevas (antes corrían antes y fallaban en silencio).
@@ -1654,7 +1677,11 @@ module.exports = {
   getWeeklyRaffleTargetWeek,
   getActiveEventWindow,
   countPendingVisitsDuringEvent,
-  WEEKLY_DEFAULT_RULES
+  WEEKLY_DEFAULT_RULES,
+  getPartnerEstablishments,
+  getVisiblePartnerEstablishments,
+  upsertPartnerEstablishment,
+  deletePartnerEstablishment
 };
 
 function claimWeeklyRaffle(walletAddress, weekStr) {
@@ -1916,4 +1943,33 @@ function getWeeklyRaffleTargetWeek(d = new Date()) {
   const yearStart = new Date(Date.UTC(tempDate.getUTCFullYear(), 0, 1));
   const weekNo = Math.ceil((((tempDate - yearStart) / 86400000) + 1) / 7);
   return `${tempDate.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
+}
+
+function getPartnerEstablishments() {
+  return db.prepare(`SELECT * FROM partner_establishments ORDER BY name ASC`).all();
+}
+
+function getVisiblePartnerEstablishments() {
+  return db.prepare(`SELECT * FROM partner_establishments WHERE visible = 1 ORDER BY name ASC`).all();
+}
+
+function upsertPartnerEstablishment({ id, name, mapsUrl, story, visible }) {
+  if (id) {
+    db.prepare(`
+      UPDATE partner_establishments
+      SET name = ?, maps_url = ?, story = ?, visible = ?
+      WHERE id = ?
+    `).run(name, mapsUrl || null, story || null, visible ? 1 : 0, id);
+    return id;
+  } else {
+    const result = db.prepare(`
+      INSERT INTO partner_establishments (name, maps_url, story, visible)
+      VALUES (?, ?, ?, ?)
+    `).run(name, mapsUrl || null, story || null, visible ? 1 : 0);
+    return result.lastInsertRowid;
+  }
+}
+
+function deletePartnerEstablishment(id) {
+  db.prepare(`DELETE FROM partner_establishments WHERE id = ?`).run(id);
 }

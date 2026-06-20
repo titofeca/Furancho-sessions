@@ -4493,24 +4493,31 @@
       'Sin suerte en el bombo, pero con buen gusto para el vino. Eso cuenta.',
     ];
 
-    const PARTNER_ESTABLISHMENTS = {
+
+
+    let PARTNER_ESTABLISHMENTS = {
       "taberna o pazo": {
+        name: "Taberna O Pazo",
         mapsUrl: "https://www.google.com/maps/search/?api=1&query=Taberna+O+Pazo+A+Coru%C3%B1a",
         story: "Una taberna de las de siempre en la zona vieja, donde el olor a cocina tradicional y el crujido de la madera te abrazan. Un rincón ideal para seguir la sobremesa."
       },
       "pulpería de melide": {
+        name: "Pulpería de Melide",
         mapsUrl: "https://www.google.com/maps/search/?api=1&query=Pulper%C3%ADa+de+Melide+A+Coru%C3%B1a",
         story: "Míticos pulpeiros preparando el pulpo con el mimo que solo el respeto a la tradición gallega puede dar. Su caldero de cobre es parte de nuestra alma compartida."
       },
       "la bombilla": {
+        name: "La Bombilla",
         mapsUrl: "https://www.google.com/maps/search/?api=1&query=La+Bombilla+A+Coru%C3%B1a",
         story: "La leyenda indiscutible de las tapas coruñesas. Sus pinchos icónicos encarnan el verdadero espíritu de compartir y disfrutar en las tabernas tradicionales."
       },
       "o tarabelo": {
+        name: "O Tarabelo",
         mapsUrl: "https://www.google.com/maps/search/?api=1&query=O+Tarabelo+A+Coru%C3%B1a",
         story: "Con sus cuncas de ribeiro y carácter marinero, O Tarabelo mantiene encendida la llama de nuestras raíces. Vecinos de sabor y tradición en la Ciudad Vieja."
       },
       "o cunqueiro": {
+        name: "O Cunqueiro",
         mapsUrl: "https://www.google.com/maps/search/?api=1&query=O+Cunqueiro+A+Coru%C3%B1a",
         story: "Una parada obligada para saborear la gastronomía de siempre. Rinde homenaje al comer con autenticidad y alegría en la boa compañía de nuestro barrio."
       }
@@ -4536,6 +4543,25 @@
         mapsUrl: found ? found.mapsUrl : fallbackUrl,
         story: found ? found.story : fallbackStory
       };
+    }
+
+    async function loadPartnerEstablishments() {
+      try {
+        const list = await fetch('/api/admin/partners-public').then(r => r.json());
+        if (Array.isArray(list)) {
+          // Si el fetch es exitoso, sobrescribimos completamente el mapa local
+          PARTNER_ESTABLISHMENTS = {};
+          list.forEach(p => {
+            PARTNER_ESTABLISHMENTS[p.name.toLowerCase().trim()] = {
+              name: p.name,
+              mapsUrl: p.maps_url,
+              story: p.story
+            };
+          });
+        }
+      } catch (e) {
+        console.warn("No se pudieron cargar los locales dinámicos, usando locales por defecto:", e.message);
+      }
     }
 
     // Manejador del resultado de sorteo — declarado a nivel de módulo para ser
@@ -4851,7 +4877,11 @@
       };
     }
 
-    setTimeout(() => { connectRaffle(); checkActiveRaffle(); }, 2000);
+    setTimeout(() => {
+      loadPartnerEstablishments();
+      connectRaffle();
+      checkActiveRaffle();
+    }, 2000);
 
     // ===== NOTIFICACIONES PUSH =====
     async function subscribePush() {

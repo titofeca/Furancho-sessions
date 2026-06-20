@@ -20,7 +20,11 @@ const {
   approveMint,
   rejectMint,
   getVisitCount,
-  getEligibleRaffleParticipants
+  getEligibleRaffleParticipants,
+  getPartnerEstablishments,
+  getVisiblePartnerEstablishments,
+  upsertPartnerEstablishment,
+  deletePartnerEstablishment
 } = require('../db/database');
 const { DEMO_MODE } = require('../services/polygon');
 const { sendPushToAll, sendPushToWallet, sendPushToWallets } = require('../services/push');
@@ -1265,3 +1269,53 @@ router.post('/test-raffle/cleanup', requireAuth, (req, res) => {
 module.exports = router;
 module.exports.requireAuth = requireAuth;
 module.exports.verifyAdminToken = verifyToken;
+
+// GET /api/admin/partners-public (PÚBLICO para clientes móviles)
+router.get('/partners-public', (req, res) => {
+  try {
+    const partners = getVisiblePartnerEstablishments();
+    res.json(partners);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/partners (ADMIN ONLY)
+router.get('/partners', requireAuth, (req, res) => {
+  try {
+    const partners = getPartnerEstablishments();
+    res.json(partners);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/partners (ADMIN ONLY)
+router.post('/partners', requireAuth, (req, res) => {
+  const { id, name, mapsUrl, story, visible } = req.body;
+  if (!name) return res.status(400).json({ error: 'El nombre es obligatorio' });
+  try {
+    const partnerId = upsertPartnerEstablishment({
+      id: id ? parseInt(id) : null,
+      name: name.trim(),
+      mapsUrl: mapsUrl ? mapsUrl.trim() : null,
+      story: story ? story.trim() : null,
+      visible: visible !== undefined ? !!visible : true
+    });
+    res.json({ success: true, id: partnerId });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /api/admin/partners/:id (ADMIN ONLY)
+router.delete('/partners/:id', requireAuth, (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
+  try {
+    deletePartnerEstablishment(id);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
