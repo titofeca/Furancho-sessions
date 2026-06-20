@@ -2276,6 +2276,17 @@
       </div>
       <!-- Establecimiento -->
       <p id="raffle-establishment" style="display:none; font-size:12px; text-transform:uppercase; letter-spacing:2px; color:var(--wine); font-weight:700; margin-bottom:6px;"></p>
+      <!-- Historia / Sinergia local -->
+      <div id="raffle-establishment-story-box" style="display:none; background:rgba(196,151,58,0.06); border-left:3px solid var(--gold); padding:8px 12px; border-radius:0 8px 8px 0; margin-bottom:12px; text-align:left;">
+        <p style="font-size:10px; font-weight:800; color:var(--gold); text-transform:uppercase; margin:0 0 4px; letter-spacing:0.5px;">🤝 Historia de Barrio</p>
+        <p id="raffle-establishment-story" style="font-size:12px; color:var(--text-muted); line-height:1.45; margin:0; font-style:italic;"></p>
+      </div>
+      <!-- Enlace Google Maps -->
+      <div style="display:flex; justify-content:center;">
+        <a id="raffle-establishment-maps" href="" target="_blank" style="display:none; align-items:center; justify-content:center; gap:6px; margin:4px auto 14px; color:var(--wine); font-size:12px; font-weight:700; text-decoration:none; background:rgba(139,25,24,0.05); padding:6px 12px; border-radius:50px; border:1px solid rgba(139,25,24,0.15);">
+          📍 Cómo llegar (Google Maps)
+        </a>
+      </div>
       <p style="font-size: 15px; color: var(--text); margin-bottom: 8px; font-weight: 300;">Premio: <strong id="raffle-winner-prize" style="font-weight: 700; color: var(--gold);"></strong></p>
       <!-- Detalles del premio -->
       <p id="raffle-prize-details" style="display:none; font-size:13px; color:var(--text-muted); font-style:italic; margin-bottom:16px; line-height:1.5;"></p>
@@ -4072,7 +4083,25 @@
                     ${isWeekly ? `<span style="font-size:9px; background:rgba(196,151,58,0.15); color:var(--gold); padding:1px 6px; border-radius:100px; font-weight:700;">Chave</span>` : ''}
                   </div>
                   <p style="font-size:12px; font-weight:700; color:var(--text); margin:0 0 2px; line-height:1.3;">${r.prize}</p>
-                  ${r.establishment ? `<p style="font-size:10px; color:var(--wine); font-weight:700; margin:2px 0 0; text-transform:uppercase; letter-spacing:0.5px;">${r.establishment}</p>` : ''}
+                  ${(() => {
+                    if (!r.establishment) return '';
+                    const estInfo = getEstablishmentData(r.establishment);
+                    return `
+                      <div style="margin-top:6px; border-left:2px solid var(--gold); padding-left:8px; margin-bottom:6px; text-align:left;">
+                        <p style="font-size:10px; color:var(--wine); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin:0 0 2px;">
+                          ${estInfo.name}
+                        </p>
+                        <p style="font-size:11px; color:var(--text-muted); font-style:italic; line-height:1.35; margin:0 0 4px;">
+                          "${estInfo.story}"
+                        </p>
+                        <div style="margin-top:4px;">
+                          <a href="${estInfo.mapsUrl}" target="_blank" style="display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:700; color:var(--wine); text-decoration:none; background:rgba(139,25,24,0.05); padding:2px 8px; border-radius:50px; border:1px solid rgba(139,25,24,0.12);">
+                            📍 Ver en mapa
+                          </a>
+                        </div>
+                      </div>
+                    `;
+                  })()}
                   ${isWin && r.verification_code ? `<div style="font-family:monospace; font-size:18px; font-weight:800; letter-spacing:4px; color:var(--wine); margin-top:5px; background:rgba(139,25,24,0.06); border-radius:8px; padding:4px 8px; display:inline-block;">${r.verification_code}</div>` : ''}
                   ${bonoBtn}
                 </div>
@@ -4464,6 +4493,51 @@
       'Sin suerte en el bombo, pero con buen gusto para el vino. Eso cuenta.',
     ];
 
+    const PARTNER_ESTABLISHMENTS = {
+      "taberna o pazo": {
+        mapsUrl: "https://www.google.com/maps/search/?api=1&query=Taberna+O+Pazo+A+Coru%C3%B1a",
+        story: "Una taberna de las de siempre en la zona vieja, donde el olor a cocina tradicional y el crujido de la madera te abrazan. Un rincón ideal para seguir la sobremesa."
+      },
+      "pulpería de melide": {
+        mapsUrl: "https://www.google.com/maps/search/?api=1&query=Pulper%C3%ADa+de+Melide+A+Coru%C3%B1a",
+        story: "Míticos pulpeiros preparando el pulpo con el mimo que solo el respeto a la tradición gallega puede dar. Su caldero de cobre es parte de nuestra alma compartida."
+      },
+      "la bombilla": {
+        mapsUrl: "https://www.google.com/maps/search/?api=1&query=La+Bombilla+A+Coru%C3%B1a",
+        story: "La leyenda indiscutible de las tapas coruñesas. Sus pinchos icónicos encarnan el verdadero espíritu de compartir y disfrutar en las tabernas tradicionales."
+      },
+      "o tarabelo": {
+        mapsUrl: "https://www.google.com/maps/search/?api=1&query=O+Tarabelo+A+Coru%C3%B1a",
+        story: "Con sus cuncas de ribeiro y carácter marinero, O Tarabelo mantiene encendida la llama de nuestras raíces. Vecinos de sabor y tradición en la Ciudad Vieja."
+      },
+      "o cunqueiro": {
+        mapsUrl: "https://www.google.com/maps/search/?api=1&query=O+Cunqueiro+A+Coru%C3%B1a",
+        story: "Una parada obligada para saborear la gastronomía de siempre. Rinde homenaje al comer con autenticidad y alegría en la boa compañía de nuestro barrio."
+      }
+    };
+
+    function getEstablishmentData(name) {
+      if (!name) return null;
+      const key = name.toLowerCase().trim();
+      let found = null;
+      for (const k in PARTNER_ESTABLISHMENTS) {
+        if (key.includes(k) || k.includes(key)) {
+          found = PARTNER_ESTABLISHMENTS[k];
+          break;
+        }
+      }
+
+      const query = encodeURIComponent(name + " A Coruña");
+      const fallbackUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
+      const fallbackStory = "Un rincón entrañable de nuestro barrio en el Parrote. Juntos hacemos comunidad, uniendo la magia de nuestras Sessions con la autenticidad y el sabor de los comercios que dan vida a nuestras calles.";
+
+      return {
+        name: name,
+        mapsUrl: found ? found.mapsUrl : fallbackUrl,
+        story: found ? found.story : fallbackStory
+      };
+    }
+
     // Manejador del resultado de sorteo — declarado a nivel de módulo para ser
     // accesible desde SSE, checkActiveRaffle() y recarga de página
     function _handleRaffleResult(data) {
@@ -4504,8 +4578,21 @@
           prizeImg.src = data.prizeImage; prizeImgWrap.style.display = 'block';
         } else if (prizeImgWrap) prizeImgWrap.style.display = 'none';
         const estEl = document.getElementById('raffle-establishment');
-        if (isLocal && data.establishment && estEl) { estEl.textContent = data.establishment; estEl.style.display = 'block'; }
-        else if (estEl) estEl.style.display = 'none';
+        const storyBox = document.getElementById('raffle-establishment-story-box');
+        const storyText = document.getElementById('raffle-establishment-story');
+        const mapsLink = document.getElementById('raffle-establishment-maps');
+        
+        if (data.establishment) {
+          const estInfo = getEstablishmentData(data.establishment);
+          if (estEl) { estEl.textContent = estInfo.name; estEl.style.display = 'block'; }
+          if (storyBox && storyText) { storyText.textContent = estInfo.story; storyBox.style.display = 'block'; }
+          if (mapsLink) { mapsLink.href = estInfo.mapsUrl; mapsLink.style.display = 'inline-flex'; }
+        } else {
+          if (estEl) estEl.style.display = 'none';
+          if (storyBox) storyBox.style.display = 'none';
+          if (mapsLink) mapsLink.style.display = 'none';
+        }
+
         const detailsEl = document.getElementById('raffle-prize-details');
         if (isLocal && data.prizeDetails && detailsEl) { detailsEl.textContent = data.prizeDetails; detailsEl.style.display = 'block'; }
         else if (detailsEl) detailsEl.style.display = 'none';
