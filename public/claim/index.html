@@ -2028,6 +2028,20 @@
             <span class="raffle-btn-badge">Visitar ➜</span>
           </div>
         </button>
+
+        <!-- Botón interactivo de Ruta Furancheira -->
+        <button onclick="openRutaModal()" class="raffle-menu-btn" style="margin-top:10px;">
+          <div style="display:flex; align-items:center; gap:12px; flex:1; min-width:0;">
+            <span class="raffle-icon" style="font-size:30px; flex-shrink:0; transition: transform 0.25s;">🗺️</span>
+            <div style="flex:1; min-width:0;">
+              <h3 style="font-family:'Playfair Display',serif; font-size:16px; font-weight:900; color:var(--wine); margin:0 0 3px 0;">Ruta Furancheira</h3>
+              <p style="font-size:12px; color:var(--text-muted); margin:0; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Locales colaboradores en la zona.</p>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+            <span class="raffle-btn-badge">Explorar ➜</span>
+          </div>
+        </button>
       </div>
       </div>
  
@@ -5538,6 +5552,48 @@
     setTimeout(() => { modal.style.display = 'none'; }, 280);
   }
 
+  function openRutaModal() {
+    const modal = document.getElementById('ruta-modal');
+    const sheet = modal.firstElementChild || modal.querySelector('div');
+    modal.style.display = 'flex';
+    modal.offsetHeight;
+    if (sheet) sheet.style.transform = 'translateY(0)';
+    renderRutaList();
+  }
+
+  function closeRutaModal() {
+    const modal = document.getElementById('ruta-modal');
+    const sheet = modal.firstElementChild || modal.querySelector('div');
+    if (sheet) sheet.style.transform = 'translateY(100%)';
+    setTimeout(() => { modal.style.display = 'none'; }, 280);
+  }
+
+  async function renderRutaList() {
+    const container = document.getElementById('ruta-establishments-list');
+    if (!container) return;
+    container.innerHTML = `<p style="color:var(--text-muted); text-align:center; font-size:13px; padding:12px;">Cargando locales furancheiros...</p>`;
+    try {
+      const partners = await fetch('/api/admin/partners-public').then(r => r.json());
+      if (!partners || partners.length === 0) {
+        container.innerHTML = `<p style="color:var(--text-muted); text-align:center; font-size:13px; padding:12px;">Próximamente más amigos furancheiros... 🤫</p>`;
+        return;
+      }
+      container.innerHTML = partners.map(p => {
+        const isVisible = p.visible !== 0;
+        return `<div style="background:var(--bg); border:1px solid ${isVisible ? 'var(--border)' : 'rgba(255,255,255,0.04)'}; border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:8px; opacity:${isVisible ? '1' : '0.8'};">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+            <div style="font-size:15px; font-weight:700; color:${isVisible ? 'var(--wine)' : 'var(--text-muted)'};">${p.name}</div>
+            ${isVisible ? '<span style="font-size:10px; font-weight:700; background:rgba(22,163,74,0.1); color:#16a34a; padding:2px 8px; border-radius:100px;">Abierto</span>' : '<span style="font-size:10px; font-weight:700; background:rgba(255,255,255,0.06); color:var(--text-muted); padding:2px 8px; border-radius:100px;">Pronto</span>'}
+          </div>
+          <div style="font-size:12.5px; color:var(--text-muted); line-height:1.5; white-space:pre-wrap;">${p.story}</div>
+          ${isVisible && p.maps_url ? `<a href="${p.maps_url}" target="_blank" style="align-self:flex-start; margin-top:4px; font-size:12px; font-weight:700; color:var(--gold); text-decoration:none; display:flex; align-items:center; gap:4px; -webkit-tap-highlight-color:transparent;">📍 Ver en Google Maps ➜</a>` : ''}
+        </div>`;
+      }).join('');
+    } catch(e) {
+      container.innerHTML = `<p style="color:var(--text-muted); text-align:center; font-size:13px; padding:12px;">Error al cargar la ruta.</p>`;
+    }
+  }
+
   let _lastWeeklyData = null;
 
   function openChaveModal() {
@@ -6702,6 +6758,36 @@
 
       <button id="allergens-confirm-btn" onclick="submitAllergensRsvp()" style="width:100%; padding:15px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; box-shadow:0 4px 10px rgba(139,25,24,0.3); margin-bottom:12px;">Anotar mis alergias</button>
       <button onclick="submitEatAllRsvp()" style="width:100%; padding:14px; background:rgba(42,21,9,0.06); border:1.5px solid rgba(42,21,9,0.12); color:var(--text); border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer; transition:all 0.2s;">¡Como y bebo de todo! 😋</button>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL RUTA FURANCHEIRA ===================== -->
+  <div id="ruta-modal" style="display:none; position:fixed; inset:0; z-index:2000; background:rgba(24,12,5,0.65); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); align-items:flex-end; justify-content:center;" onclick="if(event.target===this)closeRutaModal()">
+    <div style="width:100%; max-width:480px; background:#F2EDE3; border-radius:24px 24px 0 0; padding:0 20px 40px; box-shadow:0 -8px 40px rgba(0,0,0,0.25); text-align:center; box-sizing:border-box; max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch; transform:translateY(100%); transition:transform 0.3s cubic-bezier(.32,.72,0,1);">
+      
+      <!-- Handle -->
+      <div style="padding:14px 0 8px; position:sticky; top:0; background:#F2EDE3; z-index:1;">
+        <div style="width:36px; height:4px; background:rgba(42,21,9,0.15); border-radius:100px; margin:0 auto;"></div>
+      </div>
+
+      <span style="font-size:44px; display:block; margin-bottom:10px;">🗺️</span>
+      <span style="background:rgba(139,25,24,0.12); color:var(--wine); font-size:11px; font-weight:700; padding:4px 12px; border-radius:100px; text-transform:uppercase; letter-spacing:1.5px; display:inline-block; margin-bottom:10px;">Sinergias locales</span>
+      <h2 style="font-family:'Playfair Display',serif; font-size:24px; font-weight:900; color:var(--wine); margin:0 0 16px 0;">Ruta Furancheira</h2>
+
+      <div style="background:rgba(196,151,58,0.06); border:1.5px dashed rgba(196,151,58,0.3); border-radius:16px; padding:16px; margin-bottom:20px; text-align:left;">
+        <p style="font-size:13px; color:var(--text); line-height:1.6; margin:0;">
+          🍷 <strong>Sinergia de barrio:</strong> Hemos tejido una red de colaboración con locales amigos de la Ciudad Vieja y el Parrote. ¡Descubre sus rincones e historias!
+        </p>
+      </div>
+
+      <!-- Listado de locales -->
+      <div id="ruta-establishments-list" style="display:flex; flex-direction:column; gap:12px; text-align:left;">
+        <!-- Se rellena dinámicamente -->
+      </div>
+
+      <button onclick="closeRutaModal()" style="width:100%; padding:14px; margin-top:24px; background:rgba(42,21,9,0.06); border:1px solid rgba(42,21,9,0.12); color:var(--text); border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer; transition: all 0.2s;">
+        Volver al perfil
+      </button>
     </div>
   </div>
 

@@ -1273,8 +1273,22 @@ module.exports.verifyAdminToken = verifyToken;
 // GET /api/admin/partners-public (PÚBLICO para clientes móviles)
 router.get('/partners-public', (req, res) => {
   try {
-    const partners = getVisiblePartnerEstablishments();
-    res.json(partners);
+    const { getPartnerEstablishments } = require('../db/database');
+    const partners = getPartnerEstablishments();
+    const masked = partners.map(p => {
+      if (p.visible === 1) {
+        return p;
+      } else {
+        return {
+          id: p.id,
+          name: "Local Colaborador",
+          story: "¡Brevemente nuestros amigos furancheiros! 🤫",
+          maps_url: null,
+          visible: 0
+        };
+      }
+    });
+    res.json(masked);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
