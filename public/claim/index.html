@@ -2591,6 +2591,15 @@
       }
     }
 
+    // Actualizar link de manifest dinámicamente para preservar sesión al instalar PWA
+    function updateManifestLink(address) {
+      const manifestLink = document.querySelector('link[rel="manifest"]');
+      if (manifestLink && address) {
+        manifestLink.setAttribute('href', `/manifest.json?restore=${address}`);
+        console.log('Manifest link updated dynamically:', manifestLink.getAttribute('href'));
+      }
+    }
+
     // Inicializar billetera anónima
     async function initWallet() {
       if (!userWalletAddress) {
@@ -2598,6 +2607,8 @@
         await autoCreateWalletSilently();
         return;
       }
+
+      updateManifestLink(userWalletAddress);
 
       // Mostrar la dirección en el claim (el elemento ya no existe tras quitar el formulario manual)
       const masked = userWalletAddress.substring(0, 8) + '...' + userWalletAddress.substring(userWalletAddress.length - 8);
@@ -3706,8 +3717,11 @@
     // Antes de fichar se muestra un teaser temático, sin desvelar los premios.
     async function loadTonightPrizes() {
       const today = new Date().toISOString().slice(0, 10);
+      const wallet = localStorage.getItem('furancho_wallet_address') || '';
       let scheduled = [];
-      try { scheduled = await fetch(`/api/raffle/scheduled?date=${today}`).then(r => r.json()); } catch(_) {}
+      try {
+        scheduled = await fetch(`/api/raffle/scheduled?date=${today}${wallet ? '&wallet=' + wallet : ''}`).then(r => r.json());
+      } catch(_) {}
 
       // ¿Ha fichado entrada esta noche dentro de la ventana del evento? Solo entonces se ven.
       let checkedInTonight = false;

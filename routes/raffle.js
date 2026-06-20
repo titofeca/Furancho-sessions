@@ -278,7 +278,7 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
     if (activeRaffle?.raffleId === raffleId) activeRaffle = null;
   }, 610000);
 
-  return { raffleId, winnerWallet, verificationCode, participants: eligibleWallets.length };
+  return { raffleId, winnerWallet, verificationCode, participants: eligibleWallets.length, prize, acceptWindow: 600 };
 }
 
 // POST /api/raffle/upload-image — sube imagen del premio (admin)
@@ -596,7 +596,31 @@ router.delete('/prizes/:id', requireAuth, (req, res) => {
 router.get('/scheduled', (req, res) => {
   try {
     const date = req.query.date || new Date().toISOString().slice(0, 10);
-    res.json(getScheduledRaffles(date));
+    const { wallet } = req.query;
+    
+    // Comprobar si el usuario ha fichado la entrada hoy y está en el local
+    const eligibleSet = new Set(getEligibleRaffleParticipants().map(w => w.toLowerCase()));
+    const isEligible = wallet && eligibleSet.has(wallet.toLowerCase());
+
+    const raffles = getScheduledRaffles(date);
+
+    // Enmascarar premios si no está fichado hoy o si hide_name es true y no se ha lanzado
+    const processed = raffles.map(r => {
+      const isPending = r.status === 'pending';
+      const shouldHide = !isEligible || (r.hide_name && isPending);
+      if (isPending && shouldHide) {
+        return {
+          ...r,
+          prize: 'Sorpresa 🎁',
+          prize_details: null,
+          prize_image: null,
+          establishment: r.establishment && !isEligible ? null : r.establishment
+        };
+      }
+      return r;
+    });
+
+    res.json(processed);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 

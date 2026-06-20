@@ -119,6 +119,29 @@ app.get('/nft-metadata/:id', (req, res) => {
 // Archivos estáticos (assets y demás)
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 app.use('/prize-images', express.static(path.join(__dirname, 'public', 'prize-images')));
+
+// Manifest dinámico para soportar aislamiento de sandbox PWA en iOS
+app.get('/manifest.json', (req, res) => {
+  const fs = require('fs');
+  const manifestPath = path.join(__dirname, 'public', 'manifest.json');
+  fs.readFile(manifestPath, 'utf8', (err, data) => {
+    if (err) {
+      return res.status(500).json({ error: 'Error al cargar manifest' });
+    }
+    try {
+      const manifest = JSON.parse(data);
+      if (req.query.restore && /^0x[a-fA-F0-9]{40}$/.test(req.query.restore)) {
+        manifest.start_url = `/claim?restore=${encodeURIComponent(req.query.restore)}`;
+      }
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.json(manifest);
+    } catch (parseErr) {
+      res.status(500).json({ error: 'Error al procesar manifest' });
+    }
+  });
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Health check — Railway lo llama periódicamente para verificar que el servidor vive

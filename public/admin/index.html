@@ -3678,25 +3678,83 @@
       }
       showToast(`🎲 Sorteo lanzado · ${data.participants} participantes`);
       loadScheduled();
+
+      const prize = data.prize || 'Sorteo Programado';
+
       // Mostrar panel de estado
-      window._activeRaffle = { id: data.raffleId, verificationCode: data.verificationCode };
+      window._activeRaffle = { id: data.raffleId, verificationCode: data.verificationCode, prize, winnerWallet: data.winnerWallet };
       document.getElementById('raffle-status').style.display = 'block';
       document.getElementById('raffle-winner-box').style.display = 'none';
       document.getElementById('accepted-banner').style.display = 'none';
       document.getElementById('collect-btn-wrap').style.display = 'none';
       document.getElementById('reject-btn-wrap').style.display = 'none';
-      document.getElementById('raffle-status-title').textContent = '🎲 Sorteo en curso...';
-      document.getElementById('raffle-status-desc').textContent = 'Mostrando ruleta en móviles...';
+      document.getElementById('raffle-status-title').textContent = '🎲 Ruleta girando en los móviles...';
+      document.getElementById('raffle-status-desc').textContent = 'Quedan 15 segundos';
+
+      let countdown = 15;
+      const interval = setInterval(() => {
+        countdown--;
+        document.getElementById('raffle-status-desc').textContent = `Quedan ${countdown} segundos`;
+        if (countdown <= 0) clearInterval(interval);
+      }, 1000);
+
       setTimeout(() => {
-        document.getElementById('raffle-status-title').textContent = '⏳ Esperando aceptación';
-        document.getElementById('raffle-status-desc').textContent = `Código: ${data.verificationCode}`;
+        clearInterval(interval);
+        document.getElementById('raffle-status-title').textContent = '⏳ Esperando aceptación del ganador';
+        document.getElementById('raffle-status-desc').textContent = `Código: ${data.verificationCode} · Premio: ${prize}`;
         document.getElementById('raffle-winner-box').style.display = 'block';
         document.getElementById('raffle-winner-code').textContent = data.verificationCode;
         document.getElementById('collect-raffle-id').value = data.raffleId;
         document.getElementById('reject-btn-wrap').style.display = 'block';
-        loadRaffleHistory(); loadEligibleParticipants();
+
+        // Countdown de aceptación (10 min) + polling cada 3s para detectar aceptación
+        let secs = data.acceptWindow || 600;
+        const totalSecs = secs;
+        const prog = document.getElementById('acceptance-progress');
+        const countEl = document.getElementById('acceptance-countdown');
+        if (prog) prog.style.width = '100%';
+        if (countEl) countEl.textContent = secs;
+        const countdownWrap = document.getElementById('acceptance-countdown-wrap');
+        if (countdownWrap) countdownWrap.style.display = 'block';
+
+        if (_acceptanceInterval) clearInterval(_acceptanceInterval);
+        _acceptanceInterval = setInterval(async () => {
+          secs--;
+          if (countEl) countEl.textContent = secs;
+          if (prog) prog.style.width = (secs / totalSecs * 100) + '%';
+
+          // Cada 3s comprobar si el ganador ya aceptó
+          if (secs % 3 === 0 && data.raffleId) {
+            try {
+              const hist = await fetch('/api/raffle/history', { headers: authHeaders() }).then(r => r.json());
+              const raffle = hist.find(r => r.id === data.raffleId);
+              if (raffle?.status === 'accepted' || raffle?.status === 'collected') {
+                clearInterval(_acceptanceInterval);
+                if (countdownWrap) countdownWrap.style.display = 'none';
+                document.getElementById('accepted-banner').style.display = 'block';
+                document.getElementById('collect-btn-wrap').style.display = 'block';
+                document.getElementById('reject-btn-wrap').style.display = 'none';
+                document.getElementById('raffle-status-title').textContent = '✅ ¡Premio aceptado!';
+                showToast('🏆 El ganador aceptó el premio');
+              }
+            } catch(_) {}
+          }
+
+          if (secs <= 0) {
+            clearInterval(_acceptanceInterval);
+            document.getElementById('raffle-status-title').textContent = '⏰ Tiempo agotado — no respondió';
+          }
+        }, 1000);
+
+        loadRaffleHistory();
+        loadEligibleParticipants();
       }, 15000);
-    } catch(e) { btn.disabled = false; btn.textContent = '▶ Lanzar'; showToast('Error', true); }
+
+    } catch(e) {
+      btn.disabled = false;
+      btn.textContent = '▶ Lanzar';
+      showToast('Error al lanzar sorteo', true);
+    }
   }
 
   async function loadPrizePresets() {
@@ -3868,15 +3926,16 @@
         document.getElementById('collect-raffle-id').value = data.raffleId;
         document.getElementById('reject-btn-wrap').style.display = 'block';
 
-        // Countdown de aceptación (90s) + polling cada 3s para detectar aceptación
-        let secs = 180;
+        // Countdown de aceptación (10 min) + polling cada 3s para detectar aceptación
+        let secs = data.acceptWindow || 600;
+        const totalSecs = secs;
         const prog = document.getElementById('acceptance-progress');
         const countEl = document.getElementById('acceptance-countdown');
         if (_acceptanceInterval) clearInterval(_acceptanceInterval);
         _acceptanceInterval = setInterval(async () => {
           secs--;
           if (countEl) countEl.textContent = secs;
-          if (prog) prog.style.width = (secs / 180 * 100) + '%';
+          if (prog) prog.style.width = (secs / totalSecs * 100) + '%';
 
           // Cada 3s comprobar si el ganador ya aceptó
           if (secs % 3 === 0 && data.raffleId) {

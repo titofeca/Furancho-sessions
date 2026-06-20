@@ -177,15 +177,16 @@ router.post('/', mintLimiter, async (req, res) => {
     let manualLevel = parseInt(level);
 
     if (manualLevel && [1, 2, 3, 4].includes(manualLevel)) {
-      // QR de regalo — solo permitido con token de admin válido
-      const { verifyAdminToken } = require('./admin');
-      if (!adminToken || !verifyAdminToken(adminToken)) {
-        return res.status(403).json({ error: 'No autorizado para asignar nivel manual.' });
+      // QR de regalo — no requiere adminToken para que los clientes puedan escanearlo libremente.
+      // Si el cliente ya tiene el nivel solicitado, le subimos automáticamente al siguiente nivel libre.
+      let requestedLevel = manualLevel;
+      while (requestedLevel <= 4 && checkDuplicate(walletAddress, sanitizedEmail, requestedLevel)) {
+        requestedLevel++;
       }
-      targetLevel = manualLevel;
-      if (checkDuplicate(walletAddress, sanitizedEmail, targetLevel)) {
-        return res.status(409).json({ error: `Ya tienes el pase de ${LEVEL_NAMES[targetLevel]}.`, action: 'duplicate' });
+      if (requestedLevel > 4) {
+        return res.status(409).json({ error: 'Ya tienes todos los pases hasta el Nivel Máximo.', action: 'duplicate' });
       }
+      targetLevel = requestedLevel;
     } else {
       if (visitCount === 1)       targetLevel = 1; // Nv1 Cautivo — 1ª visita
       else if (visitCount === 2)  targetLevel = 2; // Nv2 O Cunqueiro — 2ª visita
