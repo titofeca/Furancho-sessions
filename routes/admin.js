@@ -1333,3 +1333,47 @@ router.delete('/partners/:id', requireAuth, (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// GET /api/admin/scheduled-messages (ADMIN ONLY)
+router.get('/scheduled-messages', requireAuth, (req, res) => {
+  try {
+    const { getScheduledMessages } = require('../db/database');
+    res.json(getScheduledMessages());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/scheduled-messages (ADMIN ONLY)
+router.post('/scheduled-messages', requireAuth, (req, res) => {
+  const { id, subject, body, levelFilter, rsvpEventId, sendAt } = req.body;
+  if (!subject || !body || !sendAt) {
+    return res.status(400).json({ error: 'Asunto, cuerpo y fecha/hora de envío son obligatorios' });
+  }
+  try {
+    const { insertScheduledMessage, updateScheduledMessage } = require('../db/database');
+    if (id) {
+      updateScheduledMessage(parseInt(id), { subject, body, levelFilter, rsvpEventId, sendAt });
+      res.json({ success: true, id: parseInt(id) });
+    } else {
+      const newId = insertScheduledMessage({ subject, body, levelFilter, rsvpEventId, sendAt });
+      res.json({ success: true, id: newId });
+    }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /api/admin/scheduled-messages/:id (ADMIN ONLY)
+router.delete('/scheduled-messages/:id', requireAuth, (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
+  try {
+    const { deleteScheduledMessage } = require('../db/database');
+    deleteScheduledMessage(id);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+

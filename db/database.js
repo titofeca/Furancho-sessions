@@ -24,6 +24,37 @@ try { db.exec(`CREATE TABLE IF NOT EXISTS raffle_participants (raffle_id INTEGER
 try { db.exec(`CREATE TABLE IF NOT EXISTS scheduled_raffles (id INTEGER PRIMARY KEY AUTOINCREMENT, event_date TEXT NOT NULL, scheduled_time TEXT NOT NULL, prize TEXT NOT NULL, status TEXT DEFAULT 'pending', raffle_id INTEGER, target_level INTEGER, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
 try {
   db.exec(`
+    CREATE TABLE IF NOT EXISTS scheduled_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      subject TEXT NOT NULL,
+      body TEXT NOT NULL,
+      level_filter TEXT DEFAULT 'all',
+      rsvp_event_id INTEGER,
+      send_at TEXT NOT NULL,
+      status TEXT DEFAULT 'pending',
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+} catch (_) {}
+
+// Seed del primer mensaje programado para mañana (2026-06-21 11:00)
+try {
+  const count = db.prepare(`SELECT COUNT(*) as c FROM scheduled_messages`).get().c;
+  if (count === 0) {
+    db.prepare(`
+      INSERT INTO scheduled_messages (subject, body, level_filter, send_at)
+      VALUES (?, ?, ?, ?)
+    `).run(
+      "NFT Furancheiro Fiesteiro: ¡San Juan se acerca! 🔥",
+      "¡Hola Furancheiros! Recordad que los que vengáis este Jueves 25 de Junio a la sesión de San Juan desbloquearéis el logro exclusivo 'Furancheiro Fiesteiro'. Este logro se podrá acuñar como un NFT y, ¡atención!, en las siguientes sesiones del furancho, poseer ciertos NFTs os dará privilegios y ventajas gastronómicas únicas en el local. ¡No os lo perdáis, nenos! 🍷🥓",
+      "all",
+      "2026-06-21 11:00"
+    );
+    console.log("[DB] Se ha programado el mensaje de San Juan para mañana a las 11:00.");
+  }
+} catch (_) {}
+try {
+  db.exec(`
     CREATE TABLE IF NOT EXISTS redemptions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       wallet_address TEXT NOT NULL,
@@ -1715,7 +1746,11 @@ module.exports = {
   getPartnerEstablishments,
   getVisiblePartnerEstablishments,
   upsertPartnerEstablishment,
-  deletePartnerEstablishment
+  deletePartnerEstablishment,
+  getScheduledMessages,
+  insertScheduledMessage,
+  updateScheduledMessage,
+  deleteScheduledMessage
 };
 
 function claimWeeklyRaffle(walletAddress, weekStr) {
@@ -2006,4 +2041,34 @@ function upsertPartnerEstablishment({ id, name, mapsUrl, story, visible }) {
 
 function deletePartnerEstablishment(id) {
   db.prepare(`DELETE FROM partner_establishments WHERE id = ?`).run(id);
+}
+
+function getScheduledMessages() {
+  return db.prepare(`SELECT * FROM scheduled_messages ORDER BY send_at DESC`).all();
+}
+
+function insertScheduledMessage({ subject, body, levelFilter, rsvpEventId, sendAt }) {
+  const stmt = db.prepare(`
+    INSERT INTO scheduled_messages (subject, body, level_filter, rsvp_event_id, send_at)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+  return stmt.run(subject, body, levelFilter || 'all', rsvpEventId || null, sendAt).lastInsertRowid;
+}
+
+function updateScheduledMessage(id, { subject, body, levelFilter, rsvpEventId, sendAt, status }) {
+  const fields = [];
+  const vals = [];
+  if (subject !== undefined)      { fields.push('subject = ?');       vals.push(subject); }
+  if (body !== undefined)         { fields.push('body = ?');          vals.push(body); }
+  if (levelFilter !== undefined)  { fields.push('level_filter = ?');  vals.push(levelFilter); }
+  if (rsvpEventId !== undefined)  { fields.push('rsvp_event_id = ?');  vals.push(rsvpEventId); }
+  if (sendAt !== undefined)       { fields.push('send_at = ?');       vals.push(sendAt); }
+  if (status !== undefined)       { fields.push('status = ?');        vals.push(status); }
+  if (!fields.length) return;
+  vals.push(id);
+  db.prepare(`UPDATE scheduled_messages SET ${fields.join(', ')} WHERE id = ?`).run(...vals);
+}
+
+function deleteScheduledMessage(id) {
+  db.prepare(`DELETE FROM scheduled_messages WHERE id = ?`).run(id);
 }

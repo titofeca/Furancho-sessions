@@ -383,6 +383,70 @@ function scheduleComebackPushes() {
 }
 scheduleComebackPushes();
 
+// ─── ENVÍO AUTOMÁTICO DE MENSAJES PROGRAMADOS ───────────────────────────────
+// Cada minuto comprueba si hay mensajes programados pendientes cuya fecha/hora sea menor o igual a la actual en Madrid.
+// Si los encuentra, los envía y los marca como 'sent'.
+function scheduleAutoMessages() {
+  setInterval(() => {
+    const now = new Date();
+    const madridTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+    const yyyy = madridTime.getFullYear();
+    const mm = String(madridTime.getMonth() + 1).padStart(2, '0');
+    const dd = String(madridTime.getDate()).padStart(2, '0');
+    const hh = String(madridTime.getHours()).padStart(2, '0');
+    const min = String(madridTime.getMinutes()).padStart(2, '0');
+    const currentMadridStr = `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+
+    try {
+      const { db, getScheduledMessages } = require('./db/database');
+      const { getWalletsByLevel, getEligibleRaffleParticipants } = require('./db/database');
+      const { sendPushToAll, sendPushToWallets, sendPushToWallet } = require('./services/push');
+
+      const pending = db.prepare(`
+        SELECT * FROM scheduled_messages 
+        WHERE status = 'pending' AND send_at <= ?
+      `).all(currentMadridStr);
+
+      if (!pending.length) return;
+
+      pending.forEach(msg => {
+        console.log(`[AutoMessage] ⏰ Publicando automáticamente mensaje #${msg.id}: "${msg.subject}" programado para ${msg.send_at}`);
+
+        const levelFilter = msg.level_filter || 'all';
+        const checkedInOnly = levelFilter === 'checkedin';
+        const wallets = checkedInOnly ? getEligibleRaffleParticipants() : getWalletsByLevel(levelFilter);
+
+        // Guardar en tabla histórica
+        db.prepare(`
+          INSERT INTO messages (subject, body, level_filter, recipient_count, rsvp_event_id, sent_at)
+          VALUES (?, ?, ?, ?, ?, datetime('now'))
+        `).run(msg.subject, msg.body, levelFilter, wallets.length, msg.rsvp_event_id);
+
+        // Marcar enviado
+        db.prepare(`
+          UPDATE scheduled_messages 
+          SET status = 'sent' 
+          WHERE id = ?
+        `).run(msg.id);
+
+        // PUSH a los móviles
+        if (checkedInOnly) {
+          sendPushToWallets(wallets, `📢 ${msg.subject}`, msg.body, { url: '/claim' });
+        } else if (levelFilter && levelFilter.startsWith('0x')) {
+          sendPushToWallet(levelFilter, `✉️ Mensaje privado: ${msg.subject}`, msg.body, { url: '/claim' });
+        } else {
+          sendPushToAll(`📢 ${msg.subject}`, msg.body, { url: '/claim' });
+        }
+
+        console.log(`[AutoMessage] ✅ Mensaje #${msg.id} enviado a ${wallets.length} destinatarios.`);
+      });
+    } catch (err) {
+      console.error('[AutoMessage] Error running scheduled messages:', err.message);
+    }
+  }, 60 * 1000);
+}
+scheduleAutoMessages();
+
 // ─── AUTO-LANZAMIENTO DE SORTEOS PROGRAMADOS ─────────────────────────────────
 // Cada minuto comprueba si hay sorteos con hora = hora actual en Madrid que aún están pendientes.
 // Si los encuentra, los lanza automáticamente igual que si el admin pulsara "Lanzar".

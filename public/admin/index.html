@@ -1407,8 +1407,22 @@
           </select>
           <p style="margin:6px 0 0; font-size:12px; color:var(--text-muted); line-height:1.45;">Si eliges una sesión, el cliente verá en el mensaje el botón <strong>"¿te apetece?"</strong> para esa fecha concreta y podrá anotar sus alérgenos. Sin compromiso, solo para que la cocina calcule.</p>
         </div>
-        <button class="btn-primary btn-send" id="send-btn" onclick="sendMessage()" style="width: 100%;">
+        <div class="form-group" style="display:flex; align-items:center; gap:8px; margin-top:14px;">
+          <input type="checkbox" id="msg-schedule-chk" onchange="toggleScheduleInput()" style="width:18px; height:18px; cursor:pointer;" />
+          <label for="msg-schedule-chk" style="font-size:13.5px; font-weight:700; color:var(--text); cursor:pointer;">📅 Programar envío para más tarde</label>
+        </div>
+
+        <div class="form-group" id="msg-schedule-time-container" style="display:none; margin-top:12px;">
+          <label class="form-label">Fecha y hora de envío (Madrid)</label>
+          <input type="datetime-local" class="input-field" id="msg-schedule-time" />
+          <p style="margin:4px 0 0; font-size:11px; color:var(--text-muted);">El mensaje se enviará automáticamente en la fecha y hora seleccionadas.</p>
+        </div>
+
+        <button class="btn-primary btn-send" id="send-btn" onclick="sendMessage()" style="width: 100%; margin-top:14px;">
           📢 Publicar anuncio
+        </button>
+        <button class="btn-secondary" id="msg-cancel-edit-btn" onclick="cancelMsgEdit()" style="width: 100%; margin-top:8px; display:none; background:rgba(255,255,255,0.06); border:1px solid var(--border); color:var(--text); padding:10px; border-radius:8px; cursor:pointer; font-weight:700;">
+          Cancelar edición
         </button>
         <div id="send-result" class="send-result"></div>
       </div>
@@ -1419,6 +1433,14 @@
           <span class="card-title">Mensajes enviados</span>
         </div>
         <div id="msg-history"></div>
+      </div>
+
+      <!-- Mensajes programados -->
+      <div class="glass-card" style="margin-top:20px;">
+        <div class="card-header">
+          <span class="card-title">Mensajes programados pendientes</span>
+        </div>
+        <div id="scheduled-msg-list"></div>
       </div>
     </div>
 
@@ -2269,6 +2291,8 @@
 
   let AUTH_TOKEN = null;
   let currentHolderFilter = 'all';
+  let editingMsgId = null;
+  let cachedScheduledMessages = [];
 
   // ==================== INSTALACIÓN PWA ====================
   let _deferredInstallPrompt = null;
@@ -2341,6 +2365,7 @@
         errorDiv.style.display = 'none';
         loadStats();
         loadMessages();
+        loadScheduledMessages();
         loadPeakHours();
         loadVipBadge();
         loadHourlyChart();
@@ -2366,6 +2391,7 @@
       loadHolders('all');
       loadPendingMints();
       loadMessages();
+      loadScheduledMessages();
       loadPeakHours();
       loadVipBadge();
       connectAdminSse();
@@ -2457,7 +2483,7 @@
       document.body.scrollTop = 0;
     }, 0);
     if (pageId === 'events') loadEventsPage();
-    if (pageId === 'messages') loadMsgRsvpEvents();
+    if (pageId === 'messages') { loadMsgRsvpEvents(); loadScheduledMessages(); }
     if (pageId === 'dashboard') { loadStats(); loadHourlyChart(); }
     loadVipBadge();
     if (pageId === 'holders') {
@@ -3178,7 +3204,6 @@
       if (current) sel.value = current;
     } catch (e) { /* sin red: se queda solo "— Sin botón —" */ }
   }
-
   async function sendMessage() {
     const subject = document.getElementById('msg-subject').value.trim();
     const body = document.getElementById('msg-body').value.trim();
@@ -3202,29 +3227,64 @@
       return;
     }
 
+    const isScheduled = document.getElementById('msg-schedule-chk').checked;
+    let endpoint = '/api/admin/send-message';
+    let payload = { subject, body, levelFilter, rsvpEventId };
+
+    if (isScheduled) {
+      const sendAtVal = document.getElementById('msg-schedule-time').value;
+      if (!sendAtVal) {
+        resultDiv.className = 'send-result error';
+        resultDiv.textContent = 'La fecha y hora de envío son obligatorias para programar.';
+        return;
+      }
+      endpoint = '/api/admin/scheduled-messages';
+      payload.sendAt = sendAtVal.replace('T', ' ');
+      if (editingMsgId) {
+        payload.id = editingMsgId;
+      }
+    }
+
     btn.disabled = true;
     btn.textContent = 'Publicando...';
     resultDiv.className = 'send-result';
 
     try {
-      const res = await fetch('/api/admin/send-message', {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ subject, body, levelFilter, rsvpEventId })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
 
       if (data.success) {
+        if (editingMsgId && !isScheduled) {
+          try {
+            await fetch(`/api/admin/scheduled-messages/${editingMsgId}`, {
+              method: 'DELETE',
+              headers: authHeaders()
+            });
+          } catch (e) {
+            console.error('Error deleting scheduled message after immediate send:', e);
+          }
+        }
+
         resultDiv.className = 'send-result success';
-        resultDiv.textContent = `✓ Anuncio publicado con éxito en las pantallas móviles de los holders.`;
-        document.getElementById('msg-subject').value = '';
-        document.getElementById('msg-body').value = '';
-        document.getElementById('msg-rsvp-event').value = '';
+        if (isScheduled) {
+          resultDiv.textContent = editingMsgId 
+            ? `✓ Mensaje programado modificado con éxito.` 
+            : `✓ Mensaje programado con éxito. Se enviará el ${payload.sendAt}.`;
+        } else {
+          resultDiv.textContent = `✓ Anuncio publicado con éxito en las pantallas móviles de los holders.`;
+        }
+
+        cancelMsgEdit();
         loadMessages();
-        showToast(`Mensaje publicado para los holders`);
+        loadScheduledMessages();
+        showToast(isScheduled ? 'Mensaje programado con éxito' : 'Mensaje publicado para los holders');
       } else {
         resultDiv.className = 'send-result error';
-        resultDiv.textContent = data.error || 'Error al publicar';
+        resultDiv.textContent = data.error || 'Error al guardar el mensaje';
       }
     } catch (e) {
       resultDiv.className = 'send-result error';
@@ -3232,9 +3292,8 @@
     }
 
     btn.disabled = false;
-    btn.textContent = '📢 Publicar anuncio';
+    btn.textContent = editingMsgId ? '💾 Guardar cambios' : (isScheduled ? '📅 Programar anuncio' : '📢 Publicar anuncio');
   }
-
   function toggleMsgWalletInput() {
     const selectVal = document.getElementById('msg-level').value;
     const container = document.getElementById('msg-wallet-container');
@@ -3243,6 +3302,41 @@
     } else {
       container.style.display = 'none';
     }
+  }
+
+  function toggleScheduleInput() {
+    const isChecked = document.getElementById('msg-schedule-chk').checked;
+    const timeContainer = document.getElementById('msg-schedule-time-container');
+    const sendBtn = document.getElementById('send-btn');
+    if (isChecked) {
+      timeContainer.style.display = 'block';
+      if (!editingMsgId) {
+        sendBtn.textContent = '📅 Programar anuncio';
+      }
+    } else {
+      timeContainer.style.display = 'none';
+      if (!editingMsgId) {
+        sendBtn.textContent = '📢 Publicar anuncio';
+      }
+    }
+  }
+
+  function cancelMsgEdit() {
+    editingMsgId = null;
+    document.getElementById('msg-subject').value = '';
+    document.getElementById('msg-body').value = '';
+    document.getElementById('msg-rsvp-event').value = '';
+    document.getElementById('msg-level').value = 'all';
+    document.getElementById('msg-wallet-container').style.display = 'none';
+    document.getElementById('msg-wallet-address').value = '';
+    
+    document.getElementById('msg-schedule-chk').checked = false;
+    document.getElementById('msg-schedule-time-container').style.display = 'none';
+    document.getElementById('msg-schedule-time').value = '';
+    
+    document.getElementById('send-btn').textContent = '📢 Publicar anuncio';
+    document.getElementById('msg-cancel-edit-btn').style.display = 'none';
+    document.getElementById('send-result').textContent = '';
   }
 
   function writeToWallet(walletAddress) {
@@ -3322,6 +3416,124 @@
       }).join('');
     } catch (e) {
       console.error('Error loading messages:', e);
+    }
+  }
+
+  async function loadScheduledMessages() {
+    const container = document.getElementById('scheduled-msg-list');
+    if (!container) return;
+    try {
+      const res = await fetch('/api/admin/scheduled-messages', { headers: authHeaders() });
+      const messages = await res.json();
+      cachedScheduledMessages = messages || [];
+      const pending = cachedScheduledMessages.filter(m => m.status === 'pending');
+      
+      if (pending.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:15px; color:var(--text-muted); font-size:12px;">Sin mensajes programados pendientes</div>`;
+        return;
+      }
+
+      const LEVEL_LABELS = { 
+        all: 'Todos los holders', 
+        checkedin: 'Solo fichados', 
+        '1': 'Nivel 1', 
+        '2': 'Nivel 2', 
+        '3': 'Nivel 3', 
+        '4': 'Nivel 4' 
+      };
+
+      container.innerHTML = pending.map(m => {
+        const dest = m.level_filter && m.level_filter.startsWith('0x') 
+          ? `Privado: ${m.level_filter.substring(0,6)}...${m.level_filter.substring(m.level_filter.length-4)}`
+          : (LEVEL_LABELS[m.level_filter] || m.level_filter);
+
+        return `
+          <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px 14px; margin-bottom:8px; display:flex; align-items:center; gap:10px; justify-content:space-between;">
+            <div style="flex:1; min-width:0;">
+              <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:4px;">
+                <span style="font-size:11.5px; font-weight:700; color:var(--wine); background:rgba(139,25,24,0.07); padding:2px 7px; border-radius:4px;">⏰ ${m.send_at}</span>
+                <span style="font-size:10px; font-weight:600; color:var(--gold); border:1px solid rgba(196,151,58,0.25); background:rgba(196,151,58,0.05); padding:1px 6px; border-radius:100px;">
+                  ${dest}
+                </span>
+                ${m.rsvp_event_id ? \`<span style="font-size:10px; color:#2ecc71; background:rgba(46,204,113,0.1); padding:1px 6px; border-radius:100px; font-weight:600;">📋 Botón Asistencia</span>\` : ''}
+              </div>
+              <div style="font-size:13px; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">\${m.subject}</div>
+              <div style="font-size:11.5px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">\${m.body}</div>
+            </div>
+            <div style="display:flex; gap:6px; flex-shrink:0;">
+              <button onclick="editScheduledMsg(\${m.id})"
+                style="padding:6px 12px; background:rgba(196,151,58,0.12); color:var(--gold); border:1px solid rgba(196,151,58,0.3); border-radius:8px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">
+                ✏️ Editar
+              </button>
+              <button onclick="deleteScheduledMsg(\${m.id})"
+                style="padding:6px 10px; background:rgba(139,25,24,0.08); color:var(--wine); border:1px solid rgba(139,25,24,0.2); border-radius:8px; font-size:11px; cursor:pointer; font-family:'Outfit',sans-serif;">
+                ✕
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (e) {
+      console.error('Error loading scheduled messages:', e);
+      container.innerHTML = `<div style="text-align:center; padding:15px; color:var(--text-muted); font-size:12px;">Error al cargar mensajes programados</div>`;
+    }
+  }
+
+  function editScheduledMsg(id) {
+    const msg = cachedScheduledMessages.find(m => m.id === id);
+    if (!msg) return;
+
+    editingMsgId = msg.id;
+    document.getElementById('msg-subject').value = msg.subject;
+    document.getElementById('msg-body').value = msg.body;
+    document.getElementById('msg-rsvp-event').value = msg.rsvp_event_id || '';
+
+    if (msg.level_filter && msg.level_filter.startsWith('0x')) {
+      document.getElementById('msg-level').value = 'wallet';
+      document.getElementById('msg-wallet-container').style.display = 'block';
+      document.getElementById('msg-wallet-address').value = msg.level_filter;
+    } else {
+      document.getElementById('msg-level').value = msg.level_filter || 'all';
+      document.getElementById('msg-wallet-container').style.display = 'none';
+      document.getElementById('msg-wallet-address').value = '';
+    }
+
+    document.getElementById('msg-schedule-chk').checked = true;
+    document.getElementById('msg-schedule-time-container').style.display = 'block';
+
+    if (msg.send_at) {
+      document.getElementById('msg-schedule-time').value = msg.send_at.replace(' ', 'T');
+    } else {
+      document.getElementById('msg-schedule-time').value = '';
+    }
+
+    document.getElementById('send-btn').textContent = '💾 Guardar cambios';
+    document.getElementById('msg-cancel-edit-btn').style.display = 'block';
+
+    document.getElementById('msg-subject').focus();
+    document.getElementById('msg-subject').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  async function deleteScheduledMsg(id) {
+    if (!confirm('¿Estás seguro de que deseas eliminar este mensaje programado?')) return;
+    try {
+      const res = await fetch(\`/api/admin/scheduled-messages/\${id}\`, {
+        method: 'DELETE',
+        headers: authHeaders()
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Mensaje programado eliminado');
+        if (editingMsgId === id) {
+          cancelMsgEdit();
+        }
+        loadScheduledMessages();
+      } else {
+        alert(data.error || 'Error al eliminar');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error de conexión');
     }
   }
 
