@@ -4534,15 +4534,19 @@
         }
       }
 
-      const query = encodeURIComponent(name + " A Coruña");
-      const fallbackUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
-      const fallbackStory = "Un rincón entrañable de nuestro barrio en el Parrote. Juntos hacemos comunidad, uniendo la magia de nuestras Sessions con la autenticidad y el sabor de los comercios que dan vida a nuestras calles.";
-
-      return {
-        name: name,
-        mapsUrl: found ? found.mapsUrl : fallbackUrl,
-        story: found ? found.story : fallbackStory
-      };
+      if (found) {
+        return {
+          name: found.name,
+          mapsUrl: found.mapsUrl,
+          story: found.story
+        };
+      } else {
+        return {
+          name: "Local Colaborador",
+          mapsUrl: null,
+          story: "¡Brevemente nuestros amigos furancheiros! 🤫"
+        };
+      }
     }
 
     async function loadPartnerEstablishments() {
@@ -4612,7 +4616,14 @@
           const estInfo = getEstablishmentData(data.establishment);
           if (estEl) { estEl.textContent = estInfo.name; estEl.style.display = 'block'; }
           if (storyBox && storyText) { storyText.textContent = estInfo.story; storyBox.style.display = 'block'; }
-          if (mapsLink) { mapsLink.href = estInfo.mapsUrl; mapsLink.style.display = 'inline-flex'; }
+          if (mapsLink) {
+            if (estInfo.mapsUrl) {
+              mapsLink.href = estInfo.mapsUrl;
+              mapsLink.style.display = 'inline-flex';
+            } else {
+              mapsLink.style.display = 'none';
+            }
+          }
         } else {
           if (estEl) estEl.style.display = 'none';
           if (storyBox) storyBox.style.display = 'none';
