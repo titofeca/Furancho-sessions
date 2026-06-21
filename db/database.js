@@ -121,6 +121,11 @@ try {
 try {
   db.exec(`ALTER TABLE weekly_raffles ADD COLUMN collected_wallets TEXT DEFAULT NULL`);
 } catch (_) {}
+// Detalles/características del premio de la semana (editable por edición — el premio no
+// siempre es el mismo). Distinto de `rules` (operativa del sorteo).
+try {
+  db.exec(`ALTER TABLE weekly_raffles ADD COLUMN prize_details TEXT DEFAULT NULL`);
+} catch (_) {}
 // Limpiar reservas VIP huérfanas (apuntan a eventos que ya no existen)
 try {
   db.exec(`DELETE FROM vip_reservations WHERE event_id NOT IN (SELECT id FROM events)`);
@@ -1801,6 +1806,7 @@ module.exports = {
   confirmWeeklyRaffle,
   forfeitExpiredWeeklyRaffles,
   getWeeklyRaffleTargetWeek,
+  isWeeklyWindowOpen,
   getActiveEventWindow,
   countPendingVisitsDuringEvent,
   WEEKLY_DEFAULT_RULES,
@@ -1819,6 +1825,19 @@ function claimWeeklyRaffle(walletAddress, weekStr) {
     INSERT INTO weekly_claims (wallet_address, claimed_week)
     VALUES (?, ?)
   `).run(walletAddress, weekStr);
+}
+
+// Ventana en la que La Chave es visible/participable: domingo 21:00 → miércoles 21:00
+// (hora Madrid). ÚNICA fuente de la regla — la usan el claim, la visibilidad del premio
+// y el cliente. El premio "se publica" solo (auto) al abrirse esta ventana el domingo.
+function isWeeklyWindowOpen(d = new Date()) {
+  const madrid = new Date(d.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+  const day = madrid.getDay(); // 0=Dom..6=Sab
+  const hours = madrid.getHours();
+  if (day === 1 || day === 2) return true;       // lun, mar
+  if (day === 0) return hours >= 21;             // dom desde las 21:00
+  if (day === 3) return hours < 21;              // mié hasta las 21:00
+  return false;                                  // jue–sáb: cerrado
 }
 
 function getWeeklyRaffleStatus(walletAddress, weekStr) {
@@ -1852,10 +1871,18 @@ function getWeeklyRaffleStatus(walletAddress, weekStr) {
   // Currently, confirmed_at is just a global timestamp. 
   const codeUnlocked = raffle && (raffle.confirmed_at || raffle.collected_at || !raffle.confirm_deadline);
 
+  // Visibilidad del premio: solo se revela a los clientes cuando se abre el bombo
+  // (domingo 21:00) o una vez sorteado. Antes de eso el servidor NO devuelve el premio
+  // (se enmascara), para que no se filtre llamando al endpoint fuera de ventana.
+  const drawn = !!(raffle && raffle.status && raffle.status !== 'active');
+  const prizeVisible = !!raffle && (drawn || isWeeklyWindowOpen());
+
   return {
     claimed: !!claim,
-    prize: raffle ? raffle.prize : null,
-    rules: raffle ? (raffle.rules || WEEKLY_DEFAULT_RULES) : WEEKLY_DEFAULT_RULES,
+    prizeVisible,
+    prize: prizeVisible ? raffle.prize : null,
+    prizeDetails: prizeVisible ? (raffle.prize_details || null) : null,
+    rules: prizeVisible ? (raffle.rules || WEEKLY_DEFAULT_RULES) : null,
     winnerWallet: raffle ? raffle.winner_wallet : null,
     // Solo el ganador ve su propio código — y solo tras confirmar
     verificationCode: isWinner && codeUnlocked ? (userCode || null) : null,
@@ -1870,13 +1897,13 @@ function getWeeklyRaffleStatus(walletAddress, weekStr) {
   };
 }
 
-function updateWeeklyPrize(weekStr, prize, rules, winnersCount = 1) {
+function updateWeeklyPrize(weekStr, prize, rules, winnersCount = 1, prizeDetails = null) {
   db.prepare(`INSERT OR IGNORE INTO weekly_raffles (claimed_week) VALUES (?)`).run(weekStr);
   db.prepare(`
     UPDATE weekly_raffles
-    SET prize = ?, rules = ?, winners_count = ?
+    SET prize = ?, rules = ?, winners_count = ?, prize_details = ?
     WHERE claimed_week = ?
-  `).run(prize, rules, winnersCount, weekStr);
+  `).run(prize, rules, winnersCount, prizeDetails, weekStr);
 }
 
 function drawWeeklyRaffle(weekStr) {

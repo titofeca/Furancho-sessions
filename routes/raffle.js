@@ -11,7 +11,7 @@ const {
   getScheduledRaffles, createScheduledRaffle, updateScheduledRaffle,
   deleteScheduledRaffle, linkScheduledRaffle, insertMint,
   claimWeeklyRaffle, getWeeklyRaffleStatus, updateWeeklyPrize, drawWeeklyRaffle, collectWeeklyRaffle, collectWeeklyWinner, forfeitWeeklyRaffle,
-  getWeeklyRaffleTargetWeek, forfeitExpiredWeeklyRaffles
+  getWeeklyRaffleTargetWeek, forfeitExpiredWeeklyRaffles, isWeeklyWindowOpen
 } = require('../db/database');
 const { requireAuth } = require('./admin');
 const { sendPushToAll } = require('../services/push');
@@ -772,16 +772,9 @@ const claimLimiter = rateLimit({
 });
 
 // Ventana de participación de La Chave: domingo 21:00 → miércoles 21:00 (hora Madrid).
-// Misma regla que muestra el cliente — validada también aquí para cerrar el hueco.
-function isWeeklyClaimWindowOpen() {
-  const madrid = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
-  const day = madrid.getDay(); // 0=Dom..6=Sab
-  const hours = madrid.getHours();
-  if (day === 1 || day === 2) return true;
-  if (day === 0) return hours >= 21;
-  if (day === 3) return hours < 21;
-  return false;
-}
+// Regla única en db/database.js (isWeeklyWindowOpen): la comparten claim, visibilidad
+// del premio y cliente.
+const isWeeklyClaimWindowOpen = isWeeklyWindowOpen;
 
 // POST /api/raffle/weekly/claim
 router.post('/weekly/claim', claimLimiter, (req, res) => {
@@ -856,6 +849,7 @@ router.get('/admin/weekly/status', requireAuth, (req, res) => {
     res.json({
       week: weekStr,
       prize: raffle ? raffle.prize : null,
+      prizeDetails: raffle ? (raffle.prize_details || null) : null,
       rules: raffle ? (raffle.rules || WEEKLY_DEFAULT_RULES) : WEEKLY_DEFAULT_RULES,
       status: raffle ? raffle.status : 'active',
       winnerWallet: raffle ? raffle.winner_wallet : null,
@@ -944,13 +938,13 @@ router.post('/admin/weekly/forfeit', requireAuth, (req, res) => {
 
 // POST /api/admin/weekly/config (ADMIN)
 router.post('/admin/weekly/config', requireAuth, (req, res) => {
-  const { prize, rules, week, winnersCount } = req.body;
+  const { prize, rules, week, winnersCount, prizeDetails } = req.body;
   if (!prize) return res.status(400).json({ error: 'Falta el nombre del premio' });
   const weekStr = week || getWeeklyRaffleTargetWeek();
   try {
     const { WEEKLY_DEFAULT_RULES } = require('../db/database');
     const wCount = winnersCount ? parseInt(winnersCount) : 1;
-    updateWeeklyPrize(weekStr, prize, rules || WEEKLY_DEFAULT_RULES, wCount);
+    updateWeeklyPrize(weekStr, prize, rules || WEEKLY_DEFAULT_RULES, wCount, prizeDetails || null);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });

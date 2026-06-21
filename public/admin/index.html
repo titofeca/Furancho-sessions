@@ -1889,6 +1889,9 @@
             </div>
           </div>
           
+          <label class="form-label" style="font-size:11px; font-weight:700; color:var(--gold); text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:6px;">🎁 Detalles del Premio</label>
+          <textarea class="input-field" id="weekly-details-input" placeholder="Características y detalles del premio de esta semana (marca, tamaño, qué incluye...). Cambia según el premio." style="font-size:13px; font-family:'Outfit',sans-serif; min-height:64px; resize:vertical; margin-bottom:14px; background:rgba(42,21,9,0.05); border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; color:var(--text); width:100%; box-sizing:border-box; padding:10px; outline:none;"></textarea>
+
           <label class="form-label" style="font-size:11px; font-weight:700; color:var(--gold); text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:6px;">📝 Operativa y Reglas</label>
           <textarea class="input-field" id="weekly-rules-input" placeholder="Operativa del sorteo semanal..." style="font-size:13px; font-family:'Outfit',sans-serif; min-height:80px; resize:vertical; margin-bottom:14px; background:rgba(42,21,9,0.05); border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; color:var(--text); width:100%; box-sizing:border-box; padding:10px; outline:none;"></textarea>
           
@@ -4502,6 +4505,10 @@
       if (rulesInput && document.activeElement !== rulesInput) {
         rulesInput.value = data.rules || '';
       }
+      const detailsInput = document.getElementById('weekly-details-input');
+      if (detailsInput && document.activeElement !== detailsInput) {
+        detailsInput.value = data.prizeDetails || '';
+      }
       const winnersInput = document.getElementById('weekly-winners-input');
       if (winnersInput && document.activeElement !== winnersInput) {
         winnersInput.value = data.winnersCount || 1;
@@ -4793,6 +4800,8 @@
     const selectedWeek = selectEl.value;
     const prize = prizeInput.value.trim();
     const rules = rulesInput ? rulesInput.value.trim() : '';
+    const detailsInput = document.getElementById('weekly-details-input');
+    const prizeDetails = detailsInput ? detailsInput.value.trim() : '';
     const winnersInput = document.getElementById('weekly-winners-input');
     const winnersCount = winnersInput ? winnersInput.value : 1;
     if (!prize) {
@@ -4807,7 +4816,7 @@
           ...authHeaders(),
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ prize, rules, week: selectedWeek, winnersCount })
+        body: JSON.stringify({ prize, rules, week: selectedWeek, winnersCount, prizeDetails })
       });
       const data = await res.json();
       if (res.ok && data.success) {

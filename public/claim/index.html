@@ -5630,11 +5630,19 @@
     const data = _lastWeeklyData;
 
     const prizeEl = document.getElementById('chave-modal-prize');
+    const detailsEl = document.getElementById('chave-modal-details');
     const rulesEl = document.getElementById('chave-modal-rules');
     const codeWrap = document.getElementById('chave-modal-code-wrap');
     const codeEl = document.getElementById('chave-modal-code');
 
     const CHAVE_DEFAULT_RULES = '¡Trinca tu boleto esta semana y participa! Consulta las bases de participación a continuación para ver todos los detalles.';
+
+    // Detalles del premio: solo se muestran si el servidor los reveló (premio visible).
+    if (detailsEl) {
+      const det = data && data.prizeDetails;
+      detailsEl.textContent = det || '';
+      detailsEl.style.display = det ? 'block' : 'none';
+    }
 
     if (!data) {
       // Sin datos cargados aún
@@ -5807,7 +5815,10 @@
       if (isActiveWindow) {
         // Ventana activa: mostrar premio y permitir participación
         btn.style.display = 'block';
-        prizeText.innerHTML = `Premio: <strong style="color:var(--wine);">${data.prize || 'Sorpresa do Furancho'}</strong>`;
+        const detailsLine = data.prizeDetails
+          ? `<span style="display:block; margin-top:4px; font-size:12px; font-weight:400; color:var(--text-muted); line-height:1.45;">${data.prizeDetails}</span>`
+          : '';
+        prizeText.innerHTML = `Premio: <strong style="color:var(--wine);">${data.prize || 'Sorpresa do Furancho'}</strong>${detailsLine}`;
         if (rulesText) {
           rulesText.textContent = data.rules || 'Trinca el boleto y a esperar al sorteo. ¡Un regalo de la hostia te puede tocar, rapaz!';
         }
@@ -6650,6 +6661,8 @@
       <div style="overflow-y:auto; padding:18px 22px 28px; flex:1;">
         <p style="font-size:10px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:var(--text-muted); margin:0 0 6px;">Premio de la semana</p>
         <p id="chave-modal-prize" style="font-size:17px; font-weight:800; color:var(--wine); margin:0 0 16px; line-height:1.35;">—</p>
+
+        <p id="chave-modal-details" style="display:none; font-size:13px; color:var(--text-muted); margin:0 0 16px; line-height:1.55; white-space:pre-wrap;"></p>
 
         <div id="chave-modal-code-wrap" style="display:none; background:rgba(139,25,24,0.06); border:1.5px dashed rgba(139,25,24,0.3); border-radius:12px; padding:14px; text-align:center; margin-bottom:16px;">
           <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); margin:0 0 4px;">🔑 Tu código del premio</p>
