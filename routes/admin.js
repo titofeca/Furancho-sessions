@@ -806,21 +806,18 @@ router.get('/report-data', requireAuth, (req, res) => {
     stats.byLevel.forEach(r => { levelMap[r.level] = r.count; });
     const nv1 = levelMap[1] || 0, nv2 = levelMap[2] || 0, nv3 = levelMap[3] || 0, nv4 = levelMap[4] || 0;
 
+    // Aparición real con la MISMA definición de asistencia que el resto del panel (motor).
+    const attendeesByDate = metrics.getAttendeeWalletsByDate();
     const noshow = db.prepare(`
-      SELECT e.event_date, e.title,
-        (SELECT COUNT(*) FROM rsvps WHERE event_id=e.id) as rsvp_count,
-        (SELECT COUNT(DISTINCT LOWER(r.wallet_address)) 
-         FROM rsvps r 
-         JOIN (
-           SELECT wallet_address, entry_time as visit_time FROM sessions
-           UNION ALL
-           SELECT wallet_address, visited_at as visit_time FROM visits
-         ) v ON LOWER(r.wallet_address) = LOWER(v.wallet_address)
-         WHERE r.event_id = e.id 
-           AND (date(v.visit_time) = e.event_date OR date(v.visit_time) = date(e.event_date, '+1 day'))
-        ) as actual_count
+      SELECT e.id, e.event_date, e.title,
+        (SELECT COUNT(*) FROM rsvps WHERE event_id=e.id) as rsvp_count
       FROM events e WHERE e.active=1 ORDER BY e.event_date DESC LIMIT 6
-    `).all();
+    `).all().map(e => {
+      const rsvpWallets = db.prepare(`SELECT LOWER(wallet_address) w FROM rsvps WHERE event_id=?`).all(e.id).map(r => r.w);
+      const attended = new Set(attendeesByDate[e.event_date] || []);
+      return { event_date: e.event_date, title: e.title, rsvp_count: e.rsvp_count,
+               actual_count: rsvpWallets.filter(w => attended.has(w)).length };
+    });
 
     const topPoints = db.prepare(`
       SELECT wallet_address, substr(wallet_address,1,6)||'...'||substr(wallet_address,-4) as wallet_masked, SUM(points) as total_points

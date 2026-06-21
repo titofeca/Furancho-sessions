@@ -1646,24 +1646,25 @@ function getEventSessions(dateFilter) {
 }
 
 function getSessionDates() {
-  // Retorna únicamente las fechas registradas en la agenda de eventos activa (events table con active = 1)
-  // y cuenta las visitas registradas para cada fecha del evento.
-  return db.prepare(`
-    SELECT
-      d.day as day,
-      COUNT(CASE
-        WHEN s.entry_time IS NOT NULL
-          AND NOT (d.day = '2026-06-04' AND time(s.entry_time) < '17:30:00')
-        THEN 1
-      END) as count
-    FROM (
-      SELECT event_date AS day FROM events WHERE active = 1
-    ) d
-    LEFT JOIN sessions s ON date(s.entry_time) = d.day
-    GROUP BY d.day
-    ORDER BY d.day DESC
-    LIMIT 60
-  `).all();
+  // Fechas de la agenda activa con su nº de asistentes CANÓNICO (motor de métricas),
+  // para que el desplegable "(N visitas)" coincida con la tarjeta de asistencia.
+  try {
+    const ov = require('../services/metrics').getOverview();
+    return ov.perEvent
+      .map(e => ({ day: e.event_date, count: e.attendees }))
+      .sort((a, b) => (a.day < b.day ? 1 : -1))
+      .slice(0, 60);
+  } catch (_) {
+    // Fallback al conteo bruto por si el motor fallara
+    return db.prepare(`
+      SELECT d.day as day,
+        COUNT(CASE WHEN s.entry_time IS NOT NULL
+          AND NOT (d.day = '2026-06-04' AND time(s.entry_time) < '17:30:00') THEN 1 END) as count
+      FROM (SELECT event_date AS day FROM events WHERE active = 1) d
+      LEFT JOIN sessions s ON date(s.entry_time) = d.day
+      GROUP BY d.day ORDER BY d.day DESC LIMIT 60
+    `).all();
+  }
 }
 
 function createRedemption(walletAddress, code) {
