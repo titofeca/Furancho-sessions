@@ -1002,6 +1002,24 @@ router.post('/mints/:id/reject', requireAuth, (req, res) => {
   }
 });
 
+// POST /api/admin/mints/delete — borra un pase concreto (wallet + nivel), sea cual sea
+// su estado. Para corregir niveles asignados por error o limpiar wallets de prueba
+// (reject/clearStaleMint solo tocan pendientes, no un mint ya en 'success'). Solo admin.
+router.post('/mints/delete', requireAuth, (req, res) => {
+  const { walletAddress, level } = req.body;
+  const ethRegex = /^0x[a-fA-F0-9]{40}$/i;
+  if (!walletAddress || !ethRegex.test(walletAddress)) return res.status(400).json({ error: 'Wallet inválida' });
+  const lvl = parseInt(level);
+  if (![1, 2, 3, 4].includes(lvl)) return res.status(400).json({ error: 'Level debe ser 1, 2, 3 o 4' });
+  try {
+    const { db } = require('../db/database');
+    const r = db.prepare(`DELETE FROM mints WHERE LOWER(wallet_address) = LOWER(?) AND level = ?`).run(walletAddress, lvl);
+    res.json({ success: true, deleted: r.changes, walletAddress, level: lvl });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /api/admin/mint-direct — mintea directamente un nivel a una wallet (sin visitas, sin Crossmint)
 router.post('/mint-direct', requireAuth, (req, res) => {
   const { walletAddress, level, mintCostMatic } = req.body;
