@@ -609,8 +609,20 @@ function getStats() {
     FROM mints ORDER BY minted_at DESC LIMIT 50
   `).all();
 
+  // Visitas/asistencias canónicas (motor de métricas) — única fuente de verdad.
+  // Lazy-require para evitar el ciclo de carga con services/metrics.js.
+  let canonVisits = totalVisits, canonVisitsByDay = visitsByDay, canonUnique = uniqueVisitors;
+  try {
+    const vs = require('../services/metrics').getVisitStats();
+    canonVisits = vs.totalVisits;
+    canonVisitsByDay = vs.visitsByDay;
+    canonUnique = vs.uniqueVisitors;
+  } catch (_) {}
+
   return { total: total.count, totalMints: total.count, realMints: realMintsCount, totalMintCost,
-           byLevel, recent: recentWithCost, byDate, totalVisits, visitsByDay, uniqueVisitors, mintsByLevel };
+           byLevel, recent: recentWithCost, byDate,
+           totalVisits: canonVisits, visitsByDay: canonVisitsByDay, uniqueVisitors: canonUnique,
+           mintsByLevel };
 }
 
 function getHolders(levelFilter) {
@@ -1034,6 +1046,43 @@ try {
   });
 } catch(e) { console.warn('[DB] forced event update falló:', e.message); }
 
+// ─── HIGIENE DE DATOS PARA MÉTRICAS (idempotente) ────────────────────────────
+// Deja los datos limpios para que el motor de métricas (services/metrics.js) y
+// los conteos de cliente sean consistentes. Idempotente: arregla también Railway.
+//   1. Desactiva eventos de prueba que ensuciaban agendas y promedios.
+//   2. Quita el flag de visita a sesiones de días SIN evento (taps de prueba).
+//   3. Cierra sesiones "zombi" abiertas de días pasados que no son evento.
+try {
+  const EVENT_DATES_SQL = `SELECT event_date FROM events WHERE active = 1 AND title NOT LIKE '%est%'`;
+
+  // 1) Eventos de prueba → inactivos
+  const deact = db.prepare(`UPDATE events SET active = 0 WHERE active = 1 AND (title LIKE '%Test%' OR title LIKE '%test%')`).run();
+  if (deact.changes > 0) console.log(`[DB] Higiene: ${deact.changes} evento(s) de prueba desactivado(s)`);
+
+  // 2) Sesiones de días sin evento → counted_as_visit = 0 (no son asistencia real).
+  //    Conservador: respeta la sesión si su fecha UTC o su fecha +2h coincide con un evento.
+  const unvisit = db.prepare(`
+    UPDATE sessions SET counted_as_visit = 0
+    WHERE counted_as_visit = 1
+      AND date(entry_time)            NOT IN (${EVENT_DATES_SQL})
+      AND date(entry_time, '+2 hours') NOT IN (${EVENT_DATES_SQL})
+  `).run();
+  if (unvisit.changes > 0) console.log(`[DB] Higiene: ${unvisit.changes} sesión(es) de días sin evento desmarcadas como visita`);
+
+  // 3) Sesiones zombi (abiertas, de hace >1 día, en día no-evento) → cerrar.
+  const zombies = db.prepare(`
+    UPDATE sessions
+    SET exit_time = datetime(entry_time, '+60 minutes'), duration_minutes = 60, auto_closed = 1
+    WHERE exit_time IS NULL
+      AND entry_time < datetime('now', '-1 day')
+      AND date(entry_time)            NOT IN (${EVENT_DATES_SQL})
+      AND date(entry_time, '+2 hours') NOT IN (${EVENT_DATES_SQL})
+  `).run();
+  if (zombies.changes > 0) console.log(`[DB] Higiene: ${zombies.changes} sesión(es) zombi cerradas`);
+} catch (e) {
+  console.warn('[DB] Higiene de datos falló:', e.message);
+}
+
 function getVipCapacity(eventId) {
   const event = db.prepare(`SELECT vip_max FROM events WHERE id=?`).get(eventId);
   const max = event ? (event.vip_max ?? 15) : 15;
@@ -1151,7 +1200,16 @@ function getSessionAnalytics() {
   const activeNow = db.prepare(`SELECT COUNT(DISTINCT wallet_address) as count FROM sessions WHERE exit_time IS NULL`).get();
   const avgGlobal = db.prepare(`SELECT ROUND(AVG(duration_minutes),1) as avg FROM sessions WHERE exit_time IS NOT NULL AND duration_minutes > 0 AND duration_minutes < 300`).get();
 
-  return { avgByLevel, topClients, activeNow: activeNow.count, avgGlobal: avgGlobal.avg };
+  // Cifras canónicas (motor de métricas): gente dentro ahora y estancia media real.
+  let canonActive = activeNow.count, canonAvg = avgGlobal.avg;
+  try {
+    const m = require('../services/metrics');
+    canonActive = m.getActiveNow();
+    const t = m.getTotalsDetail();
+    if (t && t.avg_duration != null) canonAvg = t.avg_duration;
+  } catch (_) {}
+
+  return { avgByLevel, topClients, activeNow: canonActive, avgGlobal: canonAvg };
 }
 
 // Devuelve el evento activo de la agenda para la fecha Madrid dada (o null)

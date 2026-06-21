@@ -28,6 +28,7 @@ const {
 } = require('../db/database');
 const { DEMO_MODE } = require('../services/polygon');
 const { sendPushToAll, sendPushToWallet, sendPushToWallets } = require('../services/push');
+const metrics = require('../services/metrics');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'furancho2024';
 // ⚠️  IMPORTANTE: TOKEN_SECRET debe estar en Railway como variable de entorno.
@@ -379,6 +380,21 @@ router.get('/peak-hours', requireAuth, (req, res) => {
       FROM sessions WHERE ${dateWhere}
     `).get();
 
+    // Cabeceras canónicas (motor de métricas) — para que "Estadísticas globales"
+    // coincida con el resto del panel: asistentes únicos, asistencias y estancia real.
+    try {
+      const canon = safeDate ? metrics.getEventDetail(safeDate) : metrics.getTotalsDetail();
+      const vs = metrics.getVisitStats();
+      totals.open_now = metrics.getActiveNow();
+      totals.total_users = safeDate
+        ? (metrics.getAttendanceByDate().find(e => e.event_date === safeDate)?.attendees ?? totals.total_users)
+        : vs.uniqueVisitors;
+      totals.total_sessions = safeDate
+        ? (metrics.getAttendanceByDate().find(e => e.event_date === safeDate)?.attendees ?? totals.total_sessions)
+        : vs.totalVisits;
+      if (canon && canon.avg_duration != null) totals.avg_duration = canon.avg_duration;
+    } catch (_) {}
+
     // Clientes habituales (3+ visitas)
     const regulars = db.prepare(`
       SELECT COUNT(*) as count FROM (
@@ -442,38 +458,22 @@ router.get('/funnel', requireAuth, (req, res) => {
       { level: 4, name: 'Nv4 — Presidente',      count: nv4, pct_prev: nv3 > 0 ? Math.round(nv4 / nv3 * 100) : 0,              pct_of_total: nv1 > 0 ? Math.round(nv4 / nv1 * 100) : 0 }
     ];
 
+    // Ganas (RSVP) vs aparición real — la aparición usa la MISMA definición de
+    // asistencia que el resto del panel (motor de métricas), no un join suelto.
+    const attendeesByDate = metrics.getAttendeeWalletsByDate();
     const noshow = db.prepare(`
-      SELECT e.event_date, e.title,
-        (SELECT COUNT(*) FROM rsvps WHERE event_id=e.id) as rsvp_count,
-        (SELECT COUNT(DISTINCT LOWER(r.wallet_address)) 
-         FROM rsvps r 
-         JOIN (
-           SELECT wallet_address, entry_time as visit_time FROM sessions
-           UNION ALL
-           SELECT wallet_address, visited_at as visit_time FROM visits
-         ) v ON LOWER(r.wallet_address) = LOWER(v.wallet_address)
-         WHERE r.event_id = e.id 
-           AND (date(v.visit_time) = e.event_date OR date(v.visit_time) = date(e.event_date, '+1 day'))
-        ) as actual_count
+      SELECT e.id, e.event_date, e.title,
+        (SELECT COUNT(*) FROM rsvps WHERE event_id=e.id) as rsvp_count
       FROM events e WHERE e.active=1 ORDER BY e.event_date DESC LIMIT 6
-    `).all();
+    `).all().map(e => {
+      const rsvpWallets = db.prepare(`SELECT LOWER(wallet_address) w FROM rsvps WHERE event_id=?`).all(e.id).map(r => r.w);
+      const attended = new Set(attendeesByDate[e.event_date] || []);
+      const actual_count = rsvpWallets.filter(w => attended.has(w)).length;
+      return { event_date: e.event_date, title: e.title, rsvp_count: e.rsvp_count, actual_count };
+    });
 
-    const newByEvent = db.prepare(`
-      SELECT join_date as event_date, COUNT(*) as new_clients
-      FROM (
-        SELECT wallet, date(MIN(first_time)) as join_date
-        FROM (
-          SELECT LOWER(wallet_address) as wallet, MIN(entry_time) as first_time FROM sessions GROUP BY LOWER(wallet_address)
-          UNION ALL
-          SELECT LOWER(wallet_address) as wallet, MIN(visited_at) as first_time FROM visits GROUP BY LOWER(wallet_address)
-          UNION ALL
-          SELECT LOWER(wallet_address) as wallet, MIN(minted_at) as first_time FROM mints WHERE status != 'failed' GROUP BY LOWER(wallet_address)
-        ) GROUP BY wallet
-      )
-      GROUP BY join_date
-      HAVING join_date IN (SELECT event_date FROM events)
-      ORDER BY join_date DESC LIMIT 6
-    `).all();
+    // Nuevos por evento — definición canónica (primera asistencia del wallet = ese evento).
+    const newByEvent = metrics.getNewByEvent().slice(0, 6);
 
     const gapRow = db.prepare(`
       WITH unique_visits AS (
@@ -589,37 +589,13 @@ router.get('/funnel', requireAuth, (req, res) => {
       GROUP BY LOWER(wallet_address) HAVING COUNT(*) >= 1
     `).get();
 
-    // 5. Evento más concurrido (por sesiones únicas de wallet ese día)
-    const bestEventRow = db.prepare(`
-      SELECT e.title, e.event_date,
-        COUNT(DISTINCT uv.wallet_address) as attendees
-      FROM events e
-      JOIN (
-        SELECT LOWER(wallet_address) as wallet_address, date(entry_time) as visit_date FROM sessions WHERE counted_as_visit = 1
-        UNION
-        SELECT LOWER(wallet_address) as wallet_address, date(visited_at) as visit_date FROM visits
-      ) uv ON uv.visit_date = e.event_date
-      GROUP BY e.id ORDER BY attendees DESC LIMIT 1
-    `).get();
-
-    // 6. Crecimiento: nuevos clientes este mes vs mes anterior
-    const growthRow = db.prepare(`
-      SELECT
-        COUNT(CASE WHEN strftime('%Y-%m', first_visit) = strftime('%Y-%m', 'now') THEN 1 END) as this_month,
-        COUNT(CASE WHEN strftime('%Y-%m', first_visit) = strftime('%Y-%m', date('now', '-1 month')) THEN 1 END) as last_month
-      FROM (
-        SELECT wallet_address as w, MIN(visit_time) as first_visit
-        FROM (
-          SELECT LOWER(wallet_address) as wallet_address, date(entry_time) as visit_date, entry_time as visit_time FROM sessions WHERE counted_as_visit = 1
-          UNION ALL
-          SELECT LOWER(wallet_address) as wallet_address, date(visited_at) as visit_date, visited_at as visit_time FROM visits
-        ) GROUP BY w
-      )
-    `).get();
-
-    const growth_pct = growthRow?.last_month > 0
-      ? Math.round((growthRow.this_month - growthRow.last_month) / growthRow.last_month * 100)
+    // 5 y 6. Mejor evento + crecimiento mensual — del motor de métricas (asistencia canónica).
+    const _ov = metrics.getOverview();
+    const bestEventRow = _ov.totals.best_event
+      ? { title: _ov.totals.best_event.title, event_date: _ov.totals.best_event.event_date, attendees: _ov.totals.best_event.attendees }
       : null;
+    const growthRow = { this_month: _ov.totals.new_this_month, last_month: _ov.totals.new_last_month };
+    const growth_pct = _ov.totals.growth_pct;
 
     res.json({
       funnel,
@@ -753,173 +729,38 @@ router.get('/segments', requireAuth, (req, res) => {
   }
 });
 
-// GET /api/admin/hourly?date=YYYY-MM-DD — Aforo por hora
+// GET /api/admin/hourly?date=YYYY-MM-DD|totales — Aforo por hora (motor canónico)
+// Delegado a services/metrics.js: misma definición de aforo/estancia/pico que el resto.
 router.get('/hourly', requireAuth, (req, res) => {
   try {
-    const { db } = require('../db/database');
     const date = req.query.date || '';
     if (!date) return res.status(400).json({ error: 'Falta date' });
 
-    const TZ = `'+2 hours'`;
-
+    let data;
     if (date === 'totales') {
-      // 1. Obtener los días de evento que tienen al menos 1 fichaje registrado
-      const eventDaysRows = db.prepare(`
-        SELECT DISTINCT date(entry_time, ${TZ}) as day
-        FROM sessions
-        WHERE date(entry_time, ${TZ}) IN (SELECT event_date FROM events)
-      `).all();
-      const numEvents = eventDaysRows.length || 1;
-
-      // 2. Entradas por hora sumadas y divididas por numEvents
-      const raw_entries = db.prepare(`
-        SELECT CAST(strftime('%H', entry_time, ${TZ}) AS INTEGER) as hour, COUNT(*) as count
-        FROM sessions
-        WHERE date(entry_time, ${TZ}) IN (SELECT event_date FROM events)
-        GROUP BY hour ORDER BY hour
-      `).all();
-      const entries_by_hour = raw_entries.map(e => ({
-        hour: e.hour,
-        count: Math.round(e.count / numEvents * 10) / 10
-      }));
-
-      // 3. Salidas por hora sumadas y divididas por numEvents
-      const raw_exits = db.prepare(`
-        SELECT CAST(strftime('%H', exit_time, ${TZ}) AS INTEGER) as hour, COUNT(*) as count
-        FROM sessions
-        WHERE exit_time IS NOT NULL AND date(exit_time, ${TZ}) IN (SELECT event_date FROM events)
-        GROUP BY hour ORDER BY hour
-      `).all();
-      const exits_by_hour = raw_exits.map(e => ({
-        hour: e.hour,
-        count: Math.round(e.count / numEvents * 10) / 10
-      }));
-
-      // 4. Aforo promedio dentro por hora
-      const inside_by_hour = [];
-      for (let h = 16; h <= 23; h++) {
-        const row = db.prepare(`
-          SELECT COUNT(*) as count FROM sessions
-          WHERE date(entry_time, ${TZ}) IN (SELECT event_date FROM events)
-            AND CAST(strftime('%H', entry_time, ${TZ}) AS INTEGER) <= ${h}
-            AND (exit_time IS NULL OR CAST(strftime('%H', exit_time, ${TZ}) AS INTEGER) > ${h})
-        `).get();
-        inside_by_hour.push({
-          hour: h,
-          count: Math.round((row?.count || 0) / numEvents * 10) / 10
+      data = metrics.getTotalsDetail();
+    } else {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Formato de fecha no válido' });
+      data = metrics.getEventDetail(date);
+      if (!data) {
+        // Evento sin fichajes todavía (programado) — responder estructura vacía coherente
+        return res.json({
+          date, hours_range: [], entries_by_hour: [], exits_by_hour: [], inside_by_hour: [],
+          avg_duration: null, max_inside: 0, peak_hour: null, total_entries: 0, raffle_hours: []
         });
       }
-
-      // Encontrar el aforo máximo real alcanzado en cualquier evento individual (no el promedio del pico, sino el pico absoluto real alcanzado de verdad)
-      let max_inside = 0;
-      for (const dayRow of eventDaysRows) {
-        const dayStr = dayRow.day;
-        const inside_for_day = [];
-        for (let h = 16; h <= 23; h++) {
-          const row = db.prepare(`
-            SELECT COUNT(*) as count FROM sessions
-            WHERE date(entry_time, ${TZ}) = ?
-              AND CAST(strftime('%H', entry_time, ${TZ}) AS INTEGER) <= ${h}
-              AND (exit_time IS NULL OR CAST(strftime('%H', exit_time, ${TZ}) AS INTEGER) > ${h})
-          `).get(dayStr);
-          inside_for_day.push(row?.count || 0);
-        }
-        const dayMax = Math.max(...inside_for_day, 0);
-        if (dayMax > max_inside) max_inside = dayMax;
-      }
-
-      // Estancia media de todos los eventos
-      const durRow = db.prepare(`
-        SELECT ROUND(AVG(duration_minutes), 0) as avg_duration
-        FROM sessions
-        WHERE exit_time IS NOT NULL AND duration_minutes > 0 AND duration_minutes < 300
-          AND date(entry_time, ${TZ}) IN (SELECT event_date FROM events)
-      `).get();
-
-      const peakEntry = entries_by_hour.reduce((a, b) => b.count > (a?.count || 0) ? b : a, null);
-      
-      // Total entradas acumuladas de todos los eventos
-      const total_entries = db.prepare(`
-        SELECT COUNT(*) as count FROM sessions
-        WHERE date(entry_time, ${TZ}) IN (SELECT event_date FROM events)
-      `).get()?.count || 0;
-
-      // Sorteos lanzados (a qué horas se lanzaron sorteos en cualquier evento)
-      const raffle_hours = db.prepare(`
-        SELECT DISTINCT CAST(strftime('%H', created_at, ${TZ}) AS INTEGER) as hour
-        FROM raffles
-        ORDER BY hour
-      `).all();
-
-      return res.json({
-        date: 'totales',
-        entries_by_hour,
-        exits_by_hour,
-        inside_by_hour,
-        avg_duration: durRow?.avg_duration || null,
-        max_inside,
-        peak_hour: peakEntry?.hour || null,
-        total_entries,
-        raffle_hours
-      });
     }
+    delete data._stays; // detalle interno
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
-    // Validar formato estricto YYYY-MM-DD (previene SQL injection)
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Formato de fecha no válido' });
-    const safeDate = date;
-
-    const entries_by_hour = db.prepare(`
-      SELECT CAST(strftime('%H', entry_time, ${TZ}) AS INTEGER) as hour, COUNT(*) as count
-      FROM sessions WHERE date(entry_time, ${TZ}) = ?
-      GROUP BY hour ORDER BY hour
-    `).all(safeDate);
-
-    const exits_by_hour = db.prepare(`
-      SELECT CAST(strftime('%H', exit_time, ${TZ}) AS INTEGER) as hour, COUNT(*) as count
-      FROM sessions WHERE exit_time IS NOT NULL AND date(exit_time, ${TZ}) = ?
-      GROUP BY hour ORDER BY hour
-    `).all(safeDate);
-
-    const inside_by_hour = [];
-    for (let h = 16; h <= 23; h++) {
-      const row = db.prepare(`
-        SELECT COUNT(*) as count FROM sessions
-        WHERE date(entry_time, ${TZ}) = ?
-          AND CAST(strftime('%H', entry_time, ${TZ}) AS INTEGER) <= ${h}
-          AND (exit_time IS NULL OR CAST(strftime('%H', exit_time, ${TZ}) AS INTEGER) > ${h})
-      `).get(safeDate);
-      inside_by_hour.push({ hour: h, count: row?.count || 0 });
-    }
-
-    const max_inside = Math.max(...inside_by_hour.map(x => x.count), 0);
-
-    const durRow = db.prepare(`
-      SELECT ROUND(AVG(duration_minutes), 0) as avg_duration
-      FROM sessions
-      WHERE exit_time IS NOT NULL AND duration_minutes > 0 AND duration_minutes < 300
-        AND date(entry_time, ${TZ}) = ?
-    `).get(safeDate);
-
-    const peakEntry = entries_by_hour.reduce((a, b) => b.count > (a?.count || 0) ? b : a, null);
-    const total_entries = entries_by_hour.reduce((s, r) => s + r.count, 0);
-
-    const raffle_hours = db.prepare(`
-      SELECT DISTINCT CAST(strftime('%H', created_at, ${TZ}) AS INTEGER) as hour
-      FROM raffles WHERE date(created_at, ${TZ}) = ?
-      ORDER BY hour
-    `).all(safeDate);
-
-    res.json({
-      date,
-      entries_by_hour,
-      exits_by_hour,
-      inside_by_hour,
-      avg_duration: durRow?.avg_duration || null,
-      max_inside,
-      peak_hour: peakEntry?.hour || null,
-      total_entries,
-      raffle_hours
-    });
+// GET /api/admin/metrics/overview — Resumen canónico por evento + globales (única fuente de verdad)
+router.get('/metrics/overview', requireAuth, (req, res) => {
+  try {
+    res.json(metrics.getOverview());
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

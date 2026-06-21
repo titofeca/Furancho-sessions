@@ -1145,6 +1145,16 @@
           </div>
         </div>
 
+        <!-- SECCIÓN 1.5: ASISTENCIA POR EVENTO (motor canónico — fuente única) -->
+        <div class="glass-card" style="margin-bottom:20px;">
+          <div class="card-title" style="margin-bottom:6px;">🍷 Asistencia por evento</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;">Personas distintas que ficharon dentro de la ventana de cada sesión. <span style="color:var(--gold);font-weight:700;">●</span> nuevos · <span style="color:var(--wine);font-weight:700;">●</span> recurrentes</div>
+          <div id="asistencia-totals" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:18px;"></div>
+          <div id="asistencia-bars">
+            <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Cargando asistencia...</div>
+          </div>
+        </div>
+
         <!-- SECCIÓN 2: FUNNEL DE CONVERSIÓN -->
         <div class="glass-card" style="margin-bottom:20px;">
           <div class="card-title" style="margin-bottom:16px;">🔽 Funnel de Conversión</div>
@@ -2665,7 +2675,9 @@
   }
 
   // ==================== GRÁFICA ENTRADAS POR HORA ====================
-  async function loadHourlyChart() {
+  // DEPRECATED: versión antigua sustituida por loadHourlyChart(date) más abajo (motor canónico).
+  // Se conserva renombrada para no romper nada; no se invoca en ningún sitio.
+  async function loadHourlyChart_legacy_unused() {
     try {
       const today = new Date().toISOString().slice(0, 10);
       const res = await apiFetch(`/api/admin/report-data?date=${today}`);
@@ -5813,9 +5825,62 @@
       renderNoShow(funnelData);
       renderMessageStats(msgStats);
       loadHourlyDateOptions();
+      loadAttendanceOverview();
       analyticsLoaded = true;
     } catch(e) {
       console.error('Error cargando analíticas:', e);
+    }
+  }
+
+  // Tarjeta "Asistencia por evento" — alimentada por el motor canónico (/metrics/overview).
+  // Mismos números que el resto del panel: asistentes, nuevos vs recurrentes, pico y estancia.
+  async function loadAttendanceOverview() {
+    const barsEl = document.getElementById('asistencia-bars');
+    const totalsEl = document.getElementById('asistencia-totals');
+    if (!barsEl) return;
+    try {
+      const data = await fetch('/api/admin/metrics/overview', { headers: authHeaders() }).then(r => r.json());
+      if (data.error) { barsEl.innerHTML = `<div style="color:#ef4444;font-size:13px;padding:12px;">${data.error}</div>`; return; }
+
+      const past = (data.pastEvents || []).slice().sort((a,b) => a.event_date < b.event_date ? 1 : -1);
+      const t = data.totals || {};
+
+      // Tira de totales globales
+      const growthChip = t.growth_pct == null ? '' :
+        t.growth_pct > 0 ? `<span style="color:#15803d;font-weight:700;">▲ +${t.growth_pct}%</span>` :
+        t.growth_pct < 0 ? `<span style="color:#b91c1c;font-weight:700;">▼ ${t.growth_pct}%</span>` :
+        `<span style="color:var(--text-muted);">=</span>`;
+      totalsEl.innerHTML = `
+        <div class="analytics-kpi" style="padding:10px;"><div class="kpi-value" style="font-size:22px;color:var(--wine);">${t.avg_attendees_per_event ?? '—'}</div><div class="kpi-label">Media / evento</div></div>
+        <div class="analytics-kpi" style="padding:10px;"><div class="kpi-value" style="font-size:22px;color:var(--gold);">${t.total_unique_attendees ?? '—'}</div><div class="kpi-label">Personas únicas</div></div>
+        <div class="analytics-kpi" style="padding:10px;"><div class="kpi-value" style="font-size:22px;color:var(--text);">${t.events_held ?? '—'}</div><div class="kpi-label">Eventos hechos</div></div>
+        <div class="analytics-kpi" style="padding:10px;"><div class="kpi-value" style="font-size:22px;color:#15803d;">${t.new_this_month ?? '—'}</div><div class="kpi-label">Nuevos / mes ${growthChip}</div></div>
+      `;
+
+      if (!past.length) {
+        barsEl.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Aún no hay eventos celebrados con fichajes</div>';
+        return;
+      }
+
+      const maxAtt = Math.max(...past.map(e => e.attendees), 1);
+      barsEl.innerHTML = past.map(e => {
+        const d = new Date(e.event_date + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short' });
+        const wPct = Math.round(e.attendees / maxAtt * 100);
+        const nuevosW = e.attendees > 0 ? Math.round(e.nuevos / e.attendees * 100) : 0;
+        const stay = e.avg_stay != null ? `${e.avg_stay} min` : '—';
+        return `<div style="margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+            <span style="font-size:12px;font-weight:700;color:var(--text);text-transform:capitalize;">${d}</span>
+            <span style="font-size:11px;color:var(--text-muted);">👥 <b style="color:var(--wine);font-size:14px;">${e.attendees}</b> · 🆕 ${e.nuevos} · 📈 pico ${e.peak_inside} · ⏱ ${stay}</span>
+          </div>
+          <div style="height:18px;border-radius:9px;background:rgba(42,21,9,0.06);overflow:hidden;display:flex;width:${Math.max(wPct,6)}%;min-width:40px;">
+            <div title="${e.nuevos} nuevos" style="width:${nuevosW}%;background:var(--gold);"></div>
+            <div title="${e.recurrentes} recurrentes" style="flex:1;background:var(--wine);"></div>
+          </div>
+        </div>`;
+      }).join('');
+    } catch(e) {
+      barsEl.innerHTML = '<div style="color:#ef4444;font-size:13px;padding:12px;">Error cargando asistencia</div>';
     }
   }
 
@@ -6052,8 +6117,11 @@
         </div>
       `;
 
-      // Gráfica barras + línea SVG inline
-      const allHours = Array.from({length: 8}, (_, i) => i + 16); // 16-23
+      // Gráfica barras + línea SVG inline — rango horario REAL del evento (motor canónico),
+      // soporta eventos que cruzan medianoche (terraza San Juan, etc.). Fallback 16-23.
+      const allHours = (data.hours_range && data.hours_range.length)
+        ? data.hours_range
+        : Array.from({length: 8}, (_, i) => i + 16);
       const entryMap = {}, exitMap = {}, insideMap = {};
       entries.forEach(e => { entryMap[e.hour] = e.count; });
       exits.forEach(e => { exitMap[e.hour] = e.count; });

@@ -1,0 +1,468 @@
+// ─────────────────────────────────────────────────────────────────────────────
+//  MOTOR CANÓNICO DE MÉTRICAS — única fuente de verdad para toda la analítica.
+//
+//  Antes había ~9 endpoints, cada uno con su propia definición de "asistente",
+//  "visita", "nuevo", "estancia" y "pico". Daban números distintos para el mismo
+//  concepto. Este módulo centraliza TODO: cualquier endpoint o gráfico debe leer
+//  de aquí para que los números coincidan en todos los puntos del panel.
+//
+//  DEFINICIONES CANÓNICAS
+//  ----------------------
+//  · Evento real      → fila en `events` con active=1 y que NO sea de prueba.
+//  · Ventana de evento→ [start_time, end_time] en hora Madrid, con 1h de margen
+//                        antes de la apertura (los que llegan pronto cuentan).
+//                        Si end<=start la ventana cruza medianoche (+24h).
+//  · Asistencia       → 1 por (wallet, evento): el wallet fichó dentro de la
+//                        ventana de ese evento. Aunque fiche varias veces esa
+//                        noche, cuenta como UNA asistencia.
+//  · Asistentes       → nº de wallets distintas con asistencia ese día.
+//  · Nuevo            → wallet cuya PRIMERA asistencia (de toda su historia) es
+//                        ese evento. El resto son recurrentes.
+//  · Estancia         → (última salida − primera entrada) de esa noche, en min,
+//                        calculada de los timestamps reales (no del valor de
+//                        relleno guardado). Si sigue dentro, se usa el cierre
+//                        del evento. Se descartan valores absurdos (>12h).
+//  · Aforo / pico     → concurrencia real: gente dentro en cada instante,
+//                        derivada de entry/exit. El pico es el máximo.
+//
+//  Toda conversión horaria usa la zona Europe/Madrid de forma robusta a DST
+//  (sin el antiguo "+2 horas" cableado que se rompía en invierno).
+// ─────────────────────────────────────────────────────────────────────────────
+
+const { db } = require('../db/database');
+
+// Margen antes de la apertura en el que la entrada ya cuenta (igual que el resto del sistema).
+const EVENT_EARLY_MARGIN_MS = 60 * 60 * 1000;
+// Estancia máxima creíble: por encima se considera dato corrupto y se descarta.
+const MAX_STAY_MIN = 12 * 60;
+
+// ── Helpers de zona horaria (Madrid) ─────────────────────────────────────────
+
+// Convierte una cadena UTC de SQLite ('YYYY-MM-DD HH:MM:SS') a epoch ms.
+function utcStrToMs(s) {
+  if (!s) return null;
+  const ms = new Date(s.replace(' ', 'T') + 'Z').getTime();
+  return Number.isNaN(ms) ? null : ms;
+}
+
+// Offset de Madrid (ms) respecto a UTC para un instante dado — gestiona verano/invierno.
+function madridOffsetMs(atMs) {
+  const d = new Date(atMs);
+  const asMadrid = new Date(d.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+  const asUTC = new Date(d.toLocaleString('en-US', { timeZone: 'UTC' }));
+  return asMadrid.getTime() - asUTC.getTime();
+}
+
+// Convierte una hora de pared en Madrid (y-m-d h:mi) al instante UTC real (epoch ms).
+function madridWallToMs(y, mo, d, h, mi) {
+  const asIfUTC = Date.UTC(y, mo - 1, d, h, mi, 0);
+  // El offset depende del instante; con una iteración basta salvo en el salto DST (madrugada).
+  const off = madridOffsetMs(asIfUTC);
+  return asIfUTC - off;
+}
+
+// Componentes de fecha/hora en Madrid para un epoch ms.
+function madridParts(ms) {
+  const p = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Madrid',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+  }).formatToParts(new Date(ms));
+  const m = {};
+  p.forEach(x => { m[x.type] = x.value; });
+  return {
+    date: `${m.year}-${m.month}-${m.day}`,
+    hour: parseInt(m.hour, 10) % 24,
+    minute: parseInt(m.minute, 10)
+  };
+}
+
+// ── Carga de eventos reales y sus ventanas ───────────────────────────────────
+
+function getRealEvents() {
+  const rows = db.prepare(`
+    SELECT id, event_date, title, start_time, end_time, vip_max
+    FROM events
+    WHERE active = 1
+      AND title NOT LIKE '%Test%' AND title NOT LIKE '%test%'
+    ORDER BY event_date ASC
+  `).all();
+
+  return rows.map(e => {
+    const [y, mo, d] = e.event_date.split('-').map(Number);
+    const [sh, sm] = (e.start_time || '19:00').split(':').map(Number);
+    const [eh, em] = (e.end_time || '23:59').split(':').map(Number);
+    const startMs = madridWallToMs(y, mo, d, sh, sm);
+    let endMs = madridWallToMs(y, mo, d, eh, em);
+    if (endMs <= startMs) endMs += 24 * 60 * 60 * 1000; // cruza medianoche
+    return {
+      id: e.id,
+      event_date: e.event_date,
+      title: e.title,
+      start_time: e.start_time || '19:00',
+      end_time: e.end_time || '23:59',
+      startMs,
+      endMs,
+      eligibleStartMs: startMs - EVENT_EARLY_MARGIN_MS,
+      startHour: sh,
+      endHour: eh
+    };
+  });
+}
+
+// ── Núcleo: asigna cada sesión a su evento y agrega por evento ───────────────
+
+function analyze() {
+  const events = getRealEvents();
+  if (!events.length) return { events: [], byDate: new Map(), walletFirstDate: new Map() };
+
+  // Orden por ventana para asignación rápida.
+  const sorted = [...events].sort((a, b) => a.eligibleStartMs - b.eligibleStartMs);
+
+  const sessions = db.prepare(`
+    SELECT id, LOWER(wallet_address) AS wallet, entry_time, exit_time, auto_closed
+    FROM sessions
+    WHERE wallet_address IS NOT NULL
+  `).all();
+
+  // Estructura por evento: agrupar sesiones de cada wallet en una asistencia.
+  const byDate = new Map(); // event_date -> { event, walletSpans: Map(wallet -> {firstEntryMs,lastExitMs,open}) , sessions:[{entryMs,exitMs}] }
+  events.forEach(ev => byDate.set(ev.event_date, { event: ev, walletSpans: new Map(), spans: [] }));
+
+  const now = Date.now();
+
+  for (const s of sessions) {
+    const entryMs = utcStrToMs(s.entry_time);
+    if (entryMs == null) continue;
+    // ¿A qué evento pertenece? (ventanas semanales no se solapan → primer match)
+    const ev = sorted.find(e => entryMs >= e.eligibleStartMs && entryMs <= e.endMs);
+    if (!ev) continue;
+
+    // Salida real: timestamp si existe; si sigue abierta se considera dentro hasta
+    // el cierre del evento (o "ahora" si el evento aún no ha terminado).
+    let exitMs = utcStrToMs(s.exit_time);
+    if (exitMs == null) exitMs = Math.min(ev.endMs, Math.max(now, entryMs));
+    if (exitMs < entryMs) exitMs = entryMs;
+
+    const bucket = byDate.get(ev.event_date);
+    bucket.spans.push({ entryMs, exitMs });
+
+    const prev = bucket.walletSpans.get(s.wallet);
+    if (!prev) {
+      bucket.walletSpans.set(s.wallet, { firstEntryMs: entryMs, lastExitMs: exitMs });
+    } else {
+      if (entryMs < prev.firstEntryMs) prev.firstEntryMs = entryMs;
+      if (exitMs > prev.lastExitMs) prev.lastExitMs = exitMs;
+    }
+  }
+
+  // Primera asistencia histórica de cada wallet (para nuevos vs recurrentes).
+  const walletFirstDate = new Map();
+  for (const ev of events) {
+    const bucket = byDate.get(ev.event_date);
+    for (const wallet of bucket.walletSpans.keys()) {
+      const cur = walletFirstDate.get(wallet);
+      if (!cur || ev.event_date < cur) walletFirstDate.set(wallet, ev.event_date);
+    }
+  }
+
+  return { events, byDate, walletFirstDate };
+}
+
+// Métricas agregadas de un evento a partir de su bucket.
+function summarizeEvent(ev, bucket, walletFirstDate) {
+  const attendees = bucket.walletSpans.size;
+  let nuevos = 0;
+  const stays = [];
+  for (const [wallet, span] of bucket.walletSpans) {
+    if (walletFirstDate.get(wallet) === ev.event_date) nuevos++;
+    const mins = Math.round((span.lastExitMs - span.firstEntryMs) / 60000);
+    if (mins > 0 && mins <= MAX_STAY_MIN) stays.push(mins);
+  }
+  const avgStay = stays.length ? Math.round(stays.reduce((a, b) => a + b, 0) / stays.length) : null;
+
+  // Pico de aforo: máximo de spans solapados (barrido de eventos entrada/salida).
+  const peakInside = computePeak(bucket.spans);
+
+  return {
+    event_date: ev.event_date,
+    title: ev.title,
+    start_time: ev.start_time,
+    end_time: ev.end_time,
+    attendees,
+    nuevos,
+    recurrentes: attendees - nuevos,
+    avg_stay: avgStay,
+    peak_inside: peakInside
+  };
+}
+
+// Concurrencia máxima a partir de intervalos [entrada, salida).
+function computePeak(spans) {
+  if (!spans.length) return 0;
+  const points = [];
+  spans.forEach(s => {
+    points.push({ t: s.entryMs, delta: 1 });
+    points.push({ t: s.exitMs, delta: -1 });
+  });
+  // Salidas antes que entradas en el mismo instante para no inflar el pico.
+  points.sort((a, b) => a.t - b.t || a.delta - b.delta);
+  let cur = 0, peak = 0;
+  for (const p of points) { cur += p.delta; if (cur > peak) peak = cur; }
+  return peak;
+}
+
+// ── API pública ──────────────────────────────────────────────────────────────
+
+// Resumen por evento + globales. Alimenta el panel y otros endpoints.
+function getOverview() {
+  const { events, byDate, walletFirstDate } = analyze();
+  const perEvent = events.map(ev => summarizeEvent(ev, byDate.get(ev.event_date), walletFirstDate));
+
+  // Solo eventos que ya ocurrieron (tienen al menos una asistencia) para los totales.
+  const withData = perEvent.filter(e => e.attendees > 0);
+
+  const totalUniqueAttendees = walletFirstDate.size;
+  const todayMadrid = madridParts(Date.now()).date;
+  const monthStr = todayMadrid.slice(0, 7);
+  const prevMonthStr = (() => {
+    const [yy, mm] = monthStr.split('-').map(Number);
+    const d = new Date(Date.UTC(yy, mm - 2, 1));
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  })();
+
+  let newThisMonth = 0, newLastMonth = 0;
+  for (const date of walletFirstDate.values()) {
+    if (date.slice(0, 7) === monthStr) newThisMonth++;
+    else if (date.slice(0, 7) === prevMonthStr) newLastMonth++;
+  }
+
+  const bestEvent = withData.reduce((a, b) => (b.attendees > (a?.attendees || 0) ? b : a), null);
+  const avgAttendees = withData.length
+    ? Math.round(withData.reduce((s, e) => s + e.attendees, 0) / withData.length * 10) / 10
+    : 0;
+
+  return {
+    perEvent,                 // todos (incluye futuros con 0)
+    pastEvents: withData,     // solo los que ya ocurrieron
+    totals: {
+      total_unique_attendees: totalUniqueAttendees,
+      events_held: withData.length,
+      avg_attendees_per_event: avgAttendees,
+      best_event: bestEvent,
+      new_this_month: newThisMonth,
+      new_last_month: newLastMonth,
+      growth_pct: newLastMonth > 0 ? Math.round((newThisMonth - newLastMonth) / newLastMonth * 100) : null,
+      active_now: getActiveNow()
+    }
+  };
+}
+
+// Gente dentro AHORA (sesiones abiertas dentro de la ventana del evento activo).
+function getActiveNow() {
+  const events = getRealEvents();
+  const now = Date.now();
+  const live = events.find(e => now >= e.eligibleStartMs && now <= e.endMs);
+  if (!live) return 0;
+  const open = db.prepare(`SELECT LOWER(wallet_address) AS wallet, entry_time FROM sessions WHERE exit_time IS NULL`).all();
+  const inside = new Set();
+  open.forEach(s => {
+    const entryMs = utcStrToMs(s.entry_time);
+    if (entryMs != null && entryMs >= live.eligibleStartMs && entryMs <= live.endMs) inside.add(s.wallet);
+  });
+  return inside.size;
+}
+
+// Detalle horario de UN evento (para el gráfico "Aforo por hora").
+function getEventDetail(eventDate) {
+  const { events, byDate } = analyze();
+  const ev = events.find(e => e.event_date === eventDate);
+  if (!ev) return null;
+  const bucket = byDate.get(eventDate);
+  return buildHourly(ev, bucket.spans, [bucket]);
+}
+
+// Detalle horario PROMEDIO de todos los eventos celebrados (para "totales").
+function getTotalsDetail() {
+  const { events, byDate } = analyze();
+  const buckets = events.map(e => byDate.get(e.event_date)).filter(b => b.spans.length > 0);
+  if (!buckets.length) {
+    return { date: 'totales', hours_range: [], entries_by_hour: [], exits_by_hour: [], inside_by_hour: [], max_inside: 0, avg_duration: null, total_entries: 0, peak_hour: null, raffle_hours: [] };
+  }
+  // Rango horario que cubra todos los eventos.
+  const allHours = new Set();
+  buckets.forEach(b => buildHourly(b.event, b.spans, [b]).hours_range.forEach(h => allHours.add(h)));
+  const hoursRange = [...allHours].sort((a, b) => a - b);
+
+  // Promediar por hora dividiendo entre el nº de eventos celebrados.
+  const n = buckets.length;
+  const sumEntries = {}, sumExits = {}, sumInside = {};
+  let allStays = [], totalEntries = 0;
+  buckets.forEach(b => {
+    const d = buildHourly(b.event, b.spans, [b]);
+    d.entries_by_hour.forEach(x => { sumEntries[x.hour] = (sumEntries[x.hour] || 0) + x.count; });
+    d.exits_by_hour.forEach(x => { sumExits[x.hour] = (sumExits[x.hour] || 0) + x.count; });
+    d.inside_by_hour.forEach(x => { sumInside[x.hour] = (sumInside[x.hour] || 0) + x.count; });
+    totalEntries += d.total_entries;
+    if (d._stays) allStays = allStays.concat(d._stays);
+  });
+  const avg = o => hoursRange.map(h => ({ hour: h, count: Math.round((o[h] || 0) / n * 10) / 10 }));
+  const entries_by_hour = avg(sumEntries);
+  const inside_by_hour = avg(sumInside);
+  const peakEntry = entries_by_hour.reduce((a, b) => (b.count > (a?.count || 0) ? b : a), null);
+
+  // Pico real máximo alcanzado en CUALQUIER evento individual (no el promedio).
+  const maxInside = Math.max(...buckets.map(b => computePeak(b.spans)), 0);
+  const avgDuration = allStays.length ? Math.round(allStays.reduce((a, b) => a + b, 0) / allStays.length) : null;
+
+  return {
+    date: 'totales',
+    hours_range: hoursRange,
+    entries_by_hour,
+    exits_by_hour: avg(sumExits),
+    inside_by_hour,
+    max_inside: maxInside,
+    avg_duration: avgDuration,
+    total_entries: Math.round(totalEntries / n * 10) / 10,
+    peak_hour: peakEntry ? peakEntry.hour : null,
+    raffle_hours: getRaffleHours(null)
+  };
+}
+
+// Construye las series por hora (entradas, salidas, aforo dentro) de un evento.
+function buildHourly(ev, spans, buckets) {
+  // Rango de horas Madrid que cubre la ventana (maneja cruce de medianoche).
+  const startH = ev.startHour;
+  let endH = ev.endHour;
+  // Si cruza medianoche, extiende 0..endH como 24..(24+endH)
+  const crosses = ev.endMs - ev.startMs > 24 * 60 * 60 * 1000 - 1 ? false : (ev.endHour <= ev.startHour);
+  const hours = [];
+  const from = Math.max(0, startH - 1); // incluye el margen de 1h antes
+  if (crosses) {
+    for (let h = from; h <= 23; h++) hours.push(h);
+    for (let h = 0; h <= endH; h++) hours.push(h);
+  } else {
+    for (let h = from; h <= endH; h++) hours.push(h);
+  }
+
+  const entryCount = {}, exitCount = {};
+  const stays = [];
+  spans.forEach(s => {
+    const ep = madridParts(s.entryMs);
+    entryCount[ep.hour] = (entryCount[ep.hour] || 0) + 1;
+    if (s.exitMs != null) {
+      const xp = madridParts(s.exitMs);
+      exitCount[xp.hour] = (exitCount[xp.hour] || 0) + 1;
+    }
+    const mins = Math.round((s.exitMs - s.entryMs) / 60000);
+    if (mins > 0 && mins <= MAX_STAY_MIN) stays.push(mins);
+  });
+
+  // Aforo dentro al final de cada hora (gente con entry<=fin_hora<exit).
+  const inside_by_hour = hours.map(h => {
+    // instante = fin de esa hora Madrid del día del evento (o día siguiente si >=24 lógico)
+    const sampleMs = hourSampleMs(ev, h);
+    let c = 0;
+    spans.forEach(s => { if (s.entryMs <= sampleMs && s.exitMs > sampleMs) c++; });
+    return { hour: h, count: c };
+  });
+
+  const entries_by_hour = hours.map(h => ({ hour: h, count: entryCount[h] || 0 }));
+  const exits_by_hour = hours.map(h => ({ hour: h, count: exitCount[h] || 0 }));
+  const total_entries = spans.length;
+  const max_inside = computePeak(spans);
+  const avg_duration = stays.length ? Math.round(stays.reduce((a, b) => a + b, 0) / stays.length) : null;
+  const peakEntry = entries_by_hour.reduce((a, b) => (b.count > (a?.count || 0) ? b : a), null);
+
+  return {
+    date: ev.event_date,
+    hours_range: hours,
+    entries_by_hour,
+    exits_by_hour,
+    inside_by_hour,
+    max_inside,
+    avg_duration,
+    total_entries,
+    peak_hour: peakEntry ? peakEntry.hour : null,
+    raffle_hours: getRaffleHours(ev.event_date),
+    _stays: stays
+  };
+}
+
+// Instante UTC (ms) que corresponde al final de la hora `h` (Madrid) del evento.
+function hourSampleMs(ev, h) {
+  const [y, mo, d] = ev.event_date.split('-').map(Number);
+  // Horas < startHour-? que en realidad son del día siguiente (cruce de medianoche)
+  let dayOffset = 0;
+  if (ev.endHour <= ev.startHour && h <= ev.endHour) dayOffset = 1;
+  const base = new Date(Date.UTC(y, mo - 1, d));
+  base.setUTCDate(base.getUTCDate() + dayOffset);
+  return madridWallToMs(base.getUTCFullYear(), base.getUTCMonth() + 1, base.getUTCDate(), h, 59);
+}
+
+// Horas (Madrid) a las que se lanzaron sorteos — para marcar ⚡ en el gráfico.
+function getRaffleHours(eventDate) {
+  let rows;
+  if (eventDate) {
+    rows = db.prepare(`SELECT created_at FROM raffles`).all()
+      .filter(r => madridParts(utcStrToMs(r.created_at) || 0).date === eventDate);
+  } else {
+    rows = db.prepare(`SELECT created_at FROM raffles`).all();
+  }
+  const hours = new Set();
+  rows.forEach(r => { const ms = utcStrToMs(r.created_at); if (ms != null) hours.add(madridParts(ms).hour); });
+  return [...hours].sort((a, b) => a - b).map(hour => ({ hour }));
+}
+
+// ── Derivados canónicos para reutilizar en otros endpoints ───────────────────
+
+// Asistentes por día de evento (reemplaza las distintas "visitas por día").
+function getAttendanceByDate() {
+  const { events, byDate, walletFirstDate } = analyze();
+  return events
+    .map(ev => summarizeEvent(ev, byDate.get(ev.event_date), walletFirstDate))
+    .filter(e => e.attendees > 0)
+    .sort((a, b) => (a.event_date < b.event_date ? 1 : -1));
+}
+
+// Nuevos por evento (para el funnel) — misma definición que el resto.
+function getNewByEvent() {
+  return getAttendanceByDate().map(e => ({ event_date: e.event_date, new_clients: e.nuevos }));
+}
+
+// Wallets que asistieron a cada evento, en minúsculas: { 'YYYY-MM-DD': [wallet,...] }.
+// Para cruzar con RSVP (ganas vs aparición real) con la misma definición de asistencia.
+function getAttendeeWalletsByDate() {
+  const { events, byDate } = analyze();
+  const out = {};
+  events.forEach(ev => {
+    out[ev.event_date] = [...byDate.get(ev.event_date).walletSpans.keys()];
+  });
+  return out;
+}
+
+// Estadísticas de visita canónicas para getStats (total, únicos, por día).
+function getVisitStats() {
+  const byDate = getAttendanceByDate();
+  const totalVisits = byDate.reduce((s, e) => s + e.attendees, 0);
+  const { walletFirstDate } = analyze();
+  return {
+    totalVisits,
+    uniqueVisitors: walletFirstDate.size,
+    visitsByDay: byDate.map(e => ({ day: e.event_date, count: e.attendees }))
+  };
+}
+
+module.exports = {
+  getRealEvents,
+  getOverview,
+  getActiveNow,
+  getEventDetail,
+  getTotalsDetail,
+  getAttendanceByDate,
+  getNewByEvent,
+  getAttendeeWalletsByDate,
+  getVisitStats,
+  // helpers expuestos por si hacen falta en tests/otros módulos
+  _internal: { madridWallToMs, madridParts, utcStrToMs, computePeak }
+};
