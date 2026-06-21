@@ -802,9 +802,16 @@ router.get('/report-data', requireAuth, (req, res) => {
 
     const stats = getStats();
 
+    // stats.byLevel da el nivel EXCLUSIVo (MAX nivel por wallet). El funnel debe ser
+    // ACUMULATIVO (igual que GET /api/admin/funnel): Nv2 = "alcanzaron Nv2 o más", para
+    // que reconcilie con los recurrentes (quien vuelve es ≥ Nv2 por definición).
     const levelMap = {};
     stats.byLevel.forEach(r => { levelMap[r.level] = r.count; });
-    const nv1 = levelMap[1] || 0, nv2 = levelMap[2] || 0, nv3 = levelMap[3] || 0, nv4 = levelMap[4] || 0;
+    const c1 = levelMap[1] || 0, c2 = levelMap[2] || 0, c3 = levelMap[3] || 0, c4 = levelMap[4] || 0;
+    const nv4 = c4;
+    const nv3 = c3 + nv4;
+    const nv2 = c2 + nv3;
+    const nv1 = c1 + nv2;
 
     // Aparición real con la MISMA definición de asistencia que el resto del panel (motor).
     const attendeesByDate = metrics.getAttendeeWalletsByDate();

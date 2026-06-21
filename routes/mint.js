@@ -23,6 +23,45 @@ const LEVEL_NAMES = {
   4: 'O Presidente do Furancho'
 };
 
+// Hitos de visitas → nivel. ÚNICA fuente de la regla de subida por visitas:
+// 1ª visita = Nv1, 2ª = Nv2 (volver una vez), 4ª = Nv3, 12ª = Nv4.
+const VISIT_LEVEL_THRESHOLDS = { 1: 1, 2: 2, 4: 3, 12: 4 };
+const levelForVisitCount = (visitCount) => VISIT_LEVEL_THRESHOLDS[visitCount] || null;
+
+// Otorga el nivel que toca por número de visitas (sin salto manual). Idempotente:
+// si ya existe un pase no fallido de ese nivel, no hace nada (ni reinserta ni reenvía
+// email). Reutilizado por POST /api/mint y por el fichaje in-app (/entry) para que
+// VOLVER a un evento suba de nivel — antes /entry solo contaba la visita y el
+// recurrente se quedaba en Nv1 aunque ya tuviera ≥2 visitas. Devuelve el pase
+// otorgado { level, levelName, status } o null si no corresponde otorgar nada.
+function awardLevelByVisits({ walletAddress, email = null, visitCount, ipAddress }) {
+  const targetLevel = levelForVisitCount(visitCount);
+  if (!targetLevel) return null;
+
+  const { insertMint, db } = require('../db/database');
+
+  // Idempotencia: si ya tiene este nivel (success) o lo tiene en cola (pending_approval),
+  // no repetir — evita pases duplicados y emails de aprobación repetidos.
+  const existing = db.prepare(
+    `SELECT id FROM mints WHERE LOWER(wallet_address) = LOWER(?) AND level = ? AND status != 'failed' LIMIT 1`
+  ).get(walletAddress, targetLevel);
+  if (existing) return null;
+
+  const levelName = LEVEL_NAMES[targetLevel];
+
+  if (targetLevel <= 2) {
+    // Nv1/Nv2 — off-chain, registro instantáneo (idéntico a POST /api/mint).
+    insertMint({ email, level: targetLevel, levelName, walletAddress, status: 'success', ipAddress });
+    return { level: targetLevel, levelName, status: 'success' };
+  }
+
+  // Nv3/Nv4 — requieren aprobación del admin antes de ir a blockchain.
+  const mintId = insertMint({ email, level: targetLevel, levelName, walletAddress, status: 'pending_approval', ipAddress });
+  const adminUrl = `${process.env.APP_URL || 'https://furancho-sessions-production.up.railway.app'}/admin`;
+  sendNftApprovalEmail({ mintId, walletAddress, level: targetLevel, levelName, visitCount, adminUrl }).catch(() => {});
+  return { level: targetLevel, levelName, status: 'pending_approval', mintId };
+}
+
 
 // POST /api/mint/entry — abre sesión y cuenta la visita en el momento de entrada
 router.post('/entry', mintLimiter, async (req, res) => {
@@ -41,6 +80,18 @@ router.post('/entry', mintLimiter, async (req, res) => {
     // Visit count post-entrada (ya incluye la visita de hoy si contó)
     const visitCount = getVisitCount(walletAddress);
 
+    // Otorgar el nivel que corresponda por nº de visitas SOLO si esta entrada contó
+    // como visita nueva (si no contó, no hay hito que celebrar). Idempotente: no
+    // duplica pases. Esto es lo que hace que VOLVER suba de nivel desde el fichaje.
+    let levelUp = null;
+    if (result.counted) {
+      try {
+        levelUp = awardLevelByVisits({ walletAddress, visitCount, ipAddress: req.ip });
+      } catch (e) {
+        console.error('Error otorgando nivel en /entry:', e.message);
+      }
+    }
+
     return res.json({
       success: true,
       action: 'entry',
@@ -49,6 +100,7 @@ router.post('/entry', mintLimiter, async (req, res) => {
       counted: !!result.counted,
       hasEventNow: result.hasEventNow !== false,
       alreadyCounted: !!result.alreadyVisitedThisWeek || !!result.alreadyOpen,
+      levelUp,
       message: visitCount === 1 && result.counted
         ? '¡Benvido a Furancho Sessions!'
         : `¡Benvido de volta! Levas ${visitCount} visita${visitCount !== 1 ? 's' : ''}.`
@@ -188,10 +240,9 @@ router.post('/', mintLimiter, async (req, res) => {
       }
       targetLevel = requestedLevel;
     } else {
-      if (visitCount === 1)       targetLevel = 1; // Nv1 Cautivo — 1ª visita
-      else if (visitCount === 2)  targetLevel = 2; // Nv2 O Cunqueiro — 2ª visita
-      else if (visitCount === 4)  targetLevel = 3; // Nv3 O Larpeiro — 4ª visita (NFT real)
-      else if (visitCount === 12) targetLevel = 4; // Nv4 O Presidente — 12ª visita (NFT real)
+      // Subida por visitas — misma regla única que usa el fichaje in-app (/entry):
+      // 1ª=Nv1, 2ª=Nv2 (volver), 4ª=Nv3, 12ª=Nv4.
+      targetLevel = levelForVisitCount(visitCount);
     }
 
     if (!targetLevel) {
