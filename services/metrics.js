@@ -245,6 +245,7 @@ function getOverview() {
   return {
     perEvent,                 // todos (incluye futuros con 0)
     pastEvents: withData,     // solo los que ya ocurrieron
+    community: getCommunityGrowth(),  // nuevos usuarios cualquier día (≠ asistencia)
     totals: {
       total_unique_attendees: totalUniqueAttendees,
       events_held: withData.length,
@@ -430,6 +431,62 @@ function getNewByEvent() {
   return getAttendanceByDate().map(e => ({ event_date: e.event_date, new_clients: e.nuevos }));
 }
 
+// ── Crecimiento de comunidad (NUEVOS USUARIOS cualquier día) ────────────────
+// OJO: esto es distinto de "nuevos asistentes". La asistencia solo cuenta en días
+// de evento y su horario, pero un usuario puede darse de ALTA cualquier día de la
+// semana (mint, instalar la app/push, apuntarse a un RSVP, fichar...). Aquí medimos
+// el alta = primera vez que la wallet aparece por CUALQUIER vía, sin importar el día.
+function _prevMonth(monthStr) {
+  const [yy, mm] = monthStr.split('-').map(Number);
+  const d = new Date(Date.UTC(yy, mm - 2, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+function getCommunityGrowth() {
+  const rows = db.prepare(`
+    SELECT wallet, MIN(ts) AS first_seen FROM (
+      SELECT LOWER(wallet_address) AS wallet, minted_at AS ts FROM mints WHERE status != 'failed' AND wallet_address IS NOT NULL
+      UNION ALL SELECT LOWER(wallet_address), entry_time      FROM sessions            WHERE wallet_address IS NOT NULL
+      UNION ALL SELECT LOWER(wallet_address), visited_at      FROM visits              WHERE wallet_address IS NOT NULL
+      UNION ALL SELECT LOWER(wallet_address), created_at      FROM push_subscriptions  WHERE wallet_address IS NOT NULL
+      UNION ALL SELECT LOWER(wallet_address), created_at      FROM rsvps               WHERE wallet_address IS NOT NULL
+      UNION ALL SELECT LOWER(wallet_address), claimed_at      FROM weekly_claims       WHERE wallet_address IS NOT NULL
+    ) GROUP BY wallet
+  `).all();
+
+  const monthStr = madridParts(Date.now()).date.slice(0, 7);
+  const prevStr = _prevMonth(monthStr);
+  const byDay = {}, byMonth = {};
+  let total = 0, thisMonth = 0, lastMonth = 0;
+
+  rows.forEach(r => {
+    const ms = utcStrToMs(r.first_seen);
+    if (ms == null) return;
+    const day = madridParts(ms).date;       // fecha Madrid del alta
+    const mo = day.slice(0, 7);
+    byDay[day] = (byDay[day] || 0) + 1;
+    byMonth[mo] = (byMonth[mo] || 0) + 1;
+    total++;
+    if (mo === monthStr) thisMonth++; else if (mo === prevStr) lastMonth++;
+  });
+
+  const new_by_day = Object.entries(byDay)
+    .map(([day, count]) => ({ day, count }))
+    .sort((a, b) => (a.day < b.day ? 1 : -1));
+  const new_by_month = Object.entries(byMonth)
+    .map(([month, count]) => ({ month, count }))
+    .sort((a, b) => (a.month < b.month ? 1 : -1));
+
+  return {
+    total_users: total,
+    new_this_month: thisMonth,
+    new_last_month: lastMonth,
+    growth_pct: lastMonth > 0 ? Math.round((thisMonth - lastMonth) / lastMonth * 100) : null,
+    new_by_day,
+    new_by_month
+  };
+}
+
 // Wallets que asistieron a cada evento, en minúsculas: { 'YYYY-MM-DD': [wallet,...] }.
 // Para cruzar con RSVP (ganas vs aparición real) con la misma definición de asistencia.
 function getAttendeeWalletsByDate() {
@@ -462,6 +519,7 @@ module.exports = {
   getAttendanceByDate,
   getNewByEvent,
   getAttendeeWalletsByDate,
+  getCommunityGrowth,
   getVisitStats,
   // helpers expuestos por si hacen falta en tests/otros módulos
   _internal: { madridWallToMs, madridParts, utcStrToMs, computePeak }

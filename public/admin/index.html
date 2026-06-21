@@ -1155,6 +1155,17 @@
           </div>
         </div>
 
+        <!-- SECCIÓN 1.6: CRECIMIENTO DE COMUNIDAD (nuevos usuarios CUALQUIER día ≠ asistencia) -->
+        <div class="glass-card" style="margin-bottom:20px;">
+          <div class="card-title" style="margin-bottom:6px;">🌱 Crecimiento de comunidad</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;">Altas nuevas (mint, app, RSVP, fichaje…) <b>cualquier día</b>, haya evento o no. Distinto de la asistencia.</div>
+          <div id="comunidad-totals" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:18px;"></div>
+          <div class="card-title" style="font-size:13px;margin-bottom:10px;color:var(--text-muted);">Nuevos usuarios por día</div>
+          <div id="comunidad-bars">
+            <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:16px;">Cargando...</div>
+          </div>
+        </div>
+
         <!-- SECCIÓN 2: FUNNEL DE CONVERSIÓN -->
         <div class="glass-card" style="margin-bottom:20px;">
           <div class="card-title" style="margin-bottom:16px;">🔽 Funnel de Conversión</div>
@@ -5773,9 +5784,52 @@
           </div>
         </div>`;
       }).join('');
+
+      renderCommunityGrowth(data.community || {});
     } catch(e) {
       barsEl.innerHTML = '<div style="color:#ef4444;font-size:13px;padding:12px;">Error cargando asistencia</div>';
     }
+  }
+
+  // Tarjeta "Crecimiento de comunidad" — altas nuevas CUALQUIER día (≠ asistencia).
+  function renderCommunityGrowth(c) {
+    const totalsEl = document.getElementById('comunidad-totals');
+    const barsEl = document.getElementById('comunidad-bars');
+    if (!totalsEl || !barsEl) return;
+
+    const chip = c.growth_pct == null ? '' :
+      c.growth_pct > 0 ? `<span style="color:#15803d;font-weight:700;">▲ +${c.growth_pct}%</span>` :
+      c.growth_pct < 0 ? `<span style="color:#b91c1c;font-weight:700;">▼ ${c.growth_pct}%</span>` :
+      `<span style="color:var(--text-muted);">=</span>`;
+    totalsEl.innerHTML = `
+      <div class="analytics-kpi" style="padding:10px;"><div class="kpi-value" style="font-size:22px;color:var(--wine);">${c.total_users ?? '—'}</div><div class="kpi-label">Usuarios totales</div></div>
+      <div class="analytics-kpi" style="padding:10px;"><div class="kpi-value" style="font-size:22px;color:#15803d;">${c.new_this_month ?? '—'}</div><div class="kpi-label">Altas este mes ${chip}</div></div>
+      <div class="analytics-kpi" style="padding:10px;"><div class="kpi-value" style="font-size:22px;color:var(--text-muted);">${c.new_last_month ?? '—'}</div><div class="kpi-label">Mes anterior</div></div>
+    `;
+
+    const days = (c.new_by_day || []).slice(0, 21).reverse(); // cronológico para la barra
+    if (!days.length) {
+      barsEl.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:16px;">Aún no hay altas registradas</div>';
+      return;
+    }
+    const maxC = Math.max(...days.map(d => d.count), 1);
+    barsEl.innerHTML = `
+      <div style="display:flex;align-items:flex-end;gap:4px;height:90px;">
+        ${days.map(d => {
+          const h = Math.max(4, Math.round(d.count / maxC * 80));
+          const lbl = new Date(d.day + 'T12:00:00').toLocaleDateString('es-ES', { day:'numeric', month:'short' });
+          return `<div title="${lbl}: ${d.count} alta(s)" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;min-width:0;">
+            <span style="font-size:10px;font-weight:700;color:#15803d;">${d.count}</span>
+            <div style="width:100%;max-width:26px;height:${h}px;background:#15803d;border-radius:4px 4px 0 0;"></div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="display:flex;gap:4px;margin-top:4px;">
+        ${days.map(d => {
+          const lbl = new Date(d.day + 'T12:00:00').toLocaleDateString('es-ES', { day:'numeric', month:'short' });
+          return `<div style="flex:1;text-align:center;font-size:8px;color:var(--text-muted);min-width:0;overflow:hidden;white-space:nowrap;">${lbl}</div>`;
+        }).join('')}
+      </div>`;
   }
 
   function renderExecutiveSummary(funnelData, segmentsData) {
