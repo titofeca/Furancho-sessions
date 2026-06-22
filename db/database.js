@@ -126,6 +126,9 @@ try {
 try {
   db.exec(`ALTER TABLE weekly_raffles ADD COLUMN prize_details TEXT DEFAULT NULL`);
 } catch (_) {}
+// Filtro de elegibilidad de La Chave: nivel mínimo y/o logro NFT requerido.
+try { db.exec(`ALTER TABLE weekly_raffles ADD COLUMN min_level INTEGER DEFAULT NULL`); } catch (_) {}
+try { db.exec(`ALTER TABLE weekly_raffles ADD COLUMN required_achievement TEXT DEFAULT NULL`); } catch (_) {}
 // Limpiar reservas VIP huérfanas (apuntan a eventos que ya no existen)
 try {
   db.exec(`DELETE FROM vip_reservations WHERE event_id NOT IN (SELECT id FROM events)`);
@@ -403,6 +406,8 @@ try { db.exec(`ALTER TABLE raffles ADD COLUMN hide_name INTEGER DEFAULT 0`); } c
 try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN type TEXT DEFAULT 'night'`); } catch (_) {}
 try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN hide_name INTEGER DEFAULT 0`); } catch (_) {}
 try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN participant_level INTEGER`); } catch (_) {}
+// Logro NFT requerido para participar en un sorteo nocturno (id del catálogo de logros).
+try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN required_achievement TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN participant_level INTEGER`); } catch (_) {}
 // Número de serie del mint dentro de su nivel (1 = primero en alcanzar ese nivel)
 try { db.exec(`ALTER TABLE mints ADD COLUMN mint_serial INTEGER`); } catch (_) {}
@@ -1585,12 +1590,12 @@ function getScheduledRaffles(eventDate) {
   return eventDate ? db.prepare(q).all(eventDate) : db.prepare(q).all();
 }
 
-function createScheduledRaffle({ eventDate, scheduledTime, prize, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment }) {
-  return db.prepare(`INSERT INTO scheduled_raffles (event_date, scheduled_time, prize, target_level, participant_level, type, hide_name, prize_details, prize_image, establishment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .run(eventDate, scheduledTime, prize, targetLevel || null, participantLevel || null, type || 'night', hideName ? 1 : 0, prizeDetails || null, prizeImage || null, establishment || null).lastInsertRowid;
+function createScheduledRaffle({ eventDate, scheduledTime, prize, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment, requiredAchievement }) {
+  return db.prepare(`INSERT INTO scheduled_raffles (event_date, scheduled_time, prize, target_level, participant_level, type, hide_name, prize_details, prize_image, establishment, required_achievement) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(eventDate, scheduledTime, prize, targetLevel || null, participantLevel || null, type || 'night', hideName ? 1 : 0, prizeDetails || null, prizeImage || null, establishment || null, requiredAchievement || null).lastInsertRowid;
 }
 
-function updateScheduledRaffle(id, { eventDate, scheduledTime, prize, status, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment }) {
+function updateScheduledRaffle(id, { eventDate, scheduledTime, prize, status, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment, requiredAchievement }) {
   const fields = [], vals = [];
   if (eventDate !== undefined)       { fields.push('event_date = ?');        vals.push(eventDate); }
   if (scheduledTime !== undefined)   { fields.push('scheduled_time = ?');    vals.push(scheduledTime); }
@@ -1603,6 +1608,7 @@ function updateScheduledRaffle(id, { eventDate, scheduledTime, prize, status, ta
   if (prizeDetails !== undefined)    { fields.push('prize_details = ?');     vals.push(prizeDetails); }
   if (prizeImage !== undefined)      { fields.push('prize_image = ?');       vals.push(prizeImage); }
   if (establishment !== undefined)   { fields.push('establishment = ?');     vals.push(establishment); }
+  if (requiredAchievement !== undefined) { fields.push('required_achievement = ?'); vals.push(requiredAchievement || null); }
   if (!fields.length) return;
   vals.push(id);
   db.prepare(`UPDATE scheduled_raffles SET ${fields.join(', ')} WHERE id = ?`).run(...vals);
@@ -1928,6 +1934,8 @@ function getWeeklyRaffleStatus(walletAddress, weekStr) {
   return {
     claimed: !!claim,
     prizeVisible,
+    minLevel: raffle ? (raffle.min_level || null) : null,
+    requiredAchievement: raffle ? (raffle.required_achievement || null) : null,
     prize: prizeVisible ? raffle.prize : null,
     prizeDetails: prizeVisible ? (raffle.prize_details || null) : null,
     rules: prizeVisible ? (raffle.rules || WEEKLY_DEFAULT_RULES) : null,
@@ -1945,13 +1953,13 @@ function getWeeklyRaffleStatus(walletAddress, weekStr) {
   };
 }
 
-function updateWeeklyPrize(weekStr, prize, rules, winnersCount = 1, prizeDetails = null) {
+function updateWeeklyPrize(weekStr, prize, rules, winnersCount = 1, prizeDetails = null, minLevel = null, requiredAchievement = null) {
   db.prepare(`INSERT OR IGNORE INTO weekly_raffles (claimed_week) VALUES (?)`).run(weekStr);
   db.prepare(`
     UPDATE weekly_raffles
-    SET prize = ?, rules = ?, winners_count = ?, prize_details = ?
+    SET prize = ?, rules = ?, winners_count = ?, prize_details = ?, min_level = ?, required_achievement = ?
     WHERE claimed_week = ?
-  `).run(prize, rules, winnersCount, prizeDetails, weekStr);
+  `).run(prize, rules, winnersCount, prizeDetails, minLevel || null, requiredAchievement || null, weekStr);
 }
 
 function drawWeeklyRaffle(weekStr) {

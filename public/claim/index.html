@@ -3047,7 +3047,8 @@
           // Ocupado/retrasado
           const next = delayed[0];
           const prizeName = next.hide_name ? 'Regalo Sorpresa 🎁' : next.prize;
-          timeText.textContent = `${prizeName} — En nada lanzamos, ho 🍷`;
+          const reqTag = next.requirement_label ? ` · 🔒 ${next.requirement_label}` : '';
+          timeText.textContent = `${prizeName} — En nada lanzamos, ho 🍷${reqTag}`;
           minsEl.textContent = '🍷 Ya casi';
           minsEl.style.background = 'var(--gold)';
           minsEl.style.color = '#1c0e06';
@@ -3058,8 +3059,9 @@
           const [h, m] = next.scheduled_time.split(':').map(Number);
           const diff = (h * 60 + m) - nowMins;
           const prizeName = next.hide_name ? 'Sorpresa 🎁' : next.prize;
+          const reqTag = next.requirement_label ? ` · 🔒 ${next.requirement_label}` : '';
 
-          timeText.textContent = `${prizeName} — a las ${next.scheduled_time}`;
+          timeText.textContent = `${prizeName} — a las ${next.scheduled_time}${reqTag}`;
           minsEl.style.fontWeight = '700';
           if (diff <= 1) {
             minsEl.textContent = '¡Ahora!';
@@ -5876,7 +5878,17 @@
           rulesText.textContent = data.rules || 'Trinca el boleto y a esperar al sorteo. ¡Un regalo de la hostia te puede tocar, rapaz!';
         }
 
-        if (data.claimed) {
+        if (data.eligible === false) {
+          // Ve el premio pero no puede entrar (filtro de nivel/logro de esta edición).
+          btn.disabled = true;
+          btn.textContent = '🔒 No elegible';
+          btn.style.background = 'transparent';
+          btn.style.borderColor = 'rgba(139,25,24,0.25)';
+          btn.style.color = 'var(--text-muted)';
+          if (rulesText) {
+            rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--wine); font-size:12.5px; font-weight:700; line-height:1.5;">🔒 ${data.eligibilityReason || 'Este sorteo es solo para ciertos furancheiros, ho.'}</span>`;
+          }
+        } else if (data.claimed) {
           btn.disabled = true;
           btn.textContent = '✓ Participando';
           btn.style.background = 'transparent';

@@ -16,6 +16,11 @@ const claimLimiter = rateLimit({
   standardHeaders: true, legacyHeaders: false
 });
 
+// GET /api/achievements/catalog — lista simple de logros (para el desplegable del admin).
+router.get('/catalog', (req, res) => {
+  res.json(achievements.list().map(a => ({ id: a.id, name: a.name, tokenId: a.tokenId })));
+});
+
 // GET /api/achievements/status?wallet=0x... — catálogo de logros NFT + estado por wallet.
 router.get('/status', (req, res) => {
   const { wallet } = req.query;

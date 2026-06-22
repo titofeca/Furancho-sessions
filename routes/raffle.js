@@ -174,7 +174,7 @@ router.get('/stream', (req, res) => {
 });
 
 // ── FUNCIÓN CENTRAL DE LANZAMIENTO (usada por /start, /launch-scheduled y auto-launcher) ────
-function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel = null, prizeDetails = null, prizeImage = null, establishment = null, hideName = false, scheduledId = null }) {
+function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel = null, prizeDetails = null, prizeImage = null, establishment = null, hideName = false, scheduledId = null, requiredAchievement = null }) {
   const sanitizedTargetLevel = targetLevel ? parseInt(targetLevel) : null;
   if (sanitizedTargetLevel && ![2, 3, 4].includes(sanitizedTargetLevel)) {
     throw new Error('Nivel de destino no válido. Debe ser 2, 3 o 4.');
@@ -202,6 +202,16 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
     );
     eligibleWallets = eligibleWallets.filter(w => levelWallets.has(w));
     if (eligibleWallets.length === 0) throw new Error(`No hay participantes de nivel ${sanitizedParticipantLevel}+ presentes en el local.`);
+  }
+
+  // Filtro por logro NFT requerido
+  if (requiredAchievement) {
+    const { db } = require('../db/database');
+    const achWallets = new Set(
+      db.prepare(`SELECT DISTINCT LOWER(wallet_address) w FROM achievement_mints WHERE achievement_id = ? AND status != 'failed'`).all(requiredAchievement).map(r => r.w)
+    );
+    eligibleWallets = eligibleWallets.filter(w => achWallets.has(String(w).toLowerCase()));
+    if (eligibleWallets.length === 0) throw new Error('No hay participantes con el logro requerido presentes en el local.');
   }
 
   if (eligibleWallets.length === 0) throw new Error('No hay clientes con entrada fichada en el local.');
@@ -290,10 +300,10 @@ router.post('/upload-image', requireAuth, upload.single('image'), (req, res) => 
 
 // POST /api/raffle/start — admin lanza sorteo manualmente con todos los datos
 router.post('/start', requireAuth, (req, res) => {
-  const { prize, scheduledId, targetLevel, participantLevel, prizeDetails, prizeImage, establishment, type, hideName } = req.body;
+  const { prize, scheduledId, targetLevel, participantLevel, prizeDetails, prizeImage, establishment, type, hideName, requiredAchievement } = req.body;
   if (!prize) return res.status(400).json({ error: 'Falta el nombre del premio' });
   try {
-    const result = doLaunch({ prize, type: type || 'night', targetLevel, participantLevel, prizeDetails, prizeImage, establishment, hideName: !!hideName, scheduledId });
+    const result = doLaunch({ prize, type: type || 'night', targetLevel, participantLevel, prizeDetails, prizeImage, establishment, hideName: !!hideName, scheduledId, requiredAchievement: requiredAchievement || null });
     return res.json({ success: true, ...result });
   } catch(e) {
     return res.status(400).json({ error: e.message });
@@ -310,7 +320,7 @@ router.post('/launch-scheduled/:id', requireAuth, (req, res) => {
     const result = doLaunch({
       prize: s.prize, type: s.type || 'night', targetLevel: s.target_level, participantLevel: s.participant_level,
       prizeDetails: s.prize_details, prizeImage: s.prize_image, establishment: s.establishment,
-      hideName: s.hide_name ? true : false, scheduledId: s.id
+      hideName: s.hide_name ? true : false, scheduledId: s.id, requiredAchievement: s.required_achievement || null
     });
     return res.json({ success: true, ...result });
   } catch(e) {
@@ -603,21 +613,31 @@ router.get('/scheduled', (req, res) => {
     const isEligible = wallet && eligibleSet.has(wallet.toLowerCase());
 
     const raffles = getScheduledRaffles(date);
+    const elig = require('../services/eligibility');
 
-    // Enmascarar premios si no está fichado hoy o si hide_name es true y no se ha lanzado
+    // Enmascarar premios si no está fichado hoy o si hide_name es true y no se ha lanzado.
+    // Además adjuntar el requisito de elegibilidad (nivel/logro) y si ESTA wallet lo cumple,
+    // para que pueda "ver el sorteo pero no entrar" con un motivo.
     const processed = raffles.map(r => {
+      const criteria = { minLevel: r.participant_level, requiredAchievement: r.required_achievement };
+      const e = wallet ? elig.checkEligibility(wallet, criteria) : { eligible: null, reason: null };
+      const meta = {
+        requirement_label: elig.requirementLabel(criteria),
+        eligible: wallet ? e.eligible : null,
+        eligibility_reason: e.reason
+      };
       const isPending = r.status === 'pending';
       const shouldHide = !isEligible || (r.hide_name && isPending);
       if (isPending && shouldHide) {
         return {
-          ...r,
+          ...r, ...meta,
           prize: 'Sorpresa 🎁',
           prize_details: null,
           prize_image: null,
           establishment: r.establishment && !isEligible ? null : r.establishment
         };
       }
-      return r;
+      return { ...r, ...meta };
     });
 
     res.json(processed);
@@ -631,7 +651,7 @@ router.get('/scheduled/all', requireAuth, (req, res) => {
 
 // POST /api/raffle/scheduled — admin, crear sorteo programado
 router.post('/scheduled', requireAuth, (req, res) => {
-  const { eventDate, scheduledTime, prize, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment } = req.body;
+  const { eventDate, scheduledTime, prize, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment, requiredAchievement } = req.body;
   if (!eventDate || !scheduledTime || !prize)
     return res.status(400).json({ error: 'Faltan campos: eventDate, scheduledTime, prize' });
   try {
@@ -643,7 +663,8 @@ router.post('/scheduled', requireAuth, (req, res) => {
       hideName: !!hideName,
       prizeDetails: prizeDetails || null,
       prizeImage: prizeImage || null,
-      establishment: establishment || null
+      establishment: establishment || null,
+      requiredAchievement: requiredAchievement || null
     });
     res.json({ success: true, id });
   } catch(e) { res.status(400).json({ error: e.message }); }
@@ -651,13 +672,13 @@ router.post('/scheduled', requireAuth, (req, res) => {
 
 // PATCH /api/raffle/scheduled/:id — admin, editar
 router.patch('/scheduled/:id', requireAuth, (req, res) => {
-  const { eventDate, scheduledTime, prize, status, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment } = req.body;
+  const { eventDate, scheduledTime, prize, status, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment, requiredAchievement } = req.body;
   try {
     updateScheduledRaffle(parseInt(req.params.id), {
       eventDate, scheduledTime, prize, status,
       targetLevel: targetLevel !== undefined ? (targetLevel ? parseInt(targetLevel) : null) : undefined,
       participantLevel: participantLevel !== undefined ? (participantLevel ? parseInt(participantLevel) : null) : undefined,
-      type, hideName, prizeDetails, prizeImage, establishment
+      type, hideName, prizeDetails, prizeImage, establishment, requiredAchievement
     });
     res.json({ success: true });
   } catch(e) { res.status(400).json({ error: e.message }); }
@@ -756,7 +777,10 @@ router.get('/weekly/status', (req, res) => {
   const weekStr = week || getWeeklyRaffleTargetWeek();
   try {
     const status = getWeeklyRaffleStatus(wallet, weekStr);
-    res.json({ ...status, currentWeek: weekStr });
+    const elig = require('../services/eligibility');
+    const criteria = { minLevel: status.minLevel, requiredAchievement: status.requiredAchievement };
+    const e = elig.checkEligibility(wallet, criteria);
+    res.json({ ...status, currentWeek: weekStr, eligible: e.eligible, eligibilityReason: e.reason, requirementLabel: elig.requirementLabel(criteria) });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -803,9 +827,16 @@ router.post('/weekly/claim', claimLimiter, (req, res) => {
     }
 
     // Bloquear si el sorteo de esta semana ya fue realizado
-    const drawnRaffle = db.prepare(`SELECT status FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
+    const drawnRaffle = db.prepare(`SELECT status, min_level, required_achievement FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
     if (drawnRaffle && (drawnRaffle.status === 'completed' || drawnRaffle.status === 'forfeited')) {
       return res.status(400).json({ error: 'El sorteo de esta semana ya fue realizado, ho. ¡Apúntate a la próxima!' });
+    }
+
+    // Filtro de elegibilidad (nivel mínimo y/o logro). Verificación servidor.
+    if (drawnRaffle && (drawnRaffle.min_level || drawnRaffle.required_achievement)) {
+      const elig = require('../services/eligibility');
+      const e = elig.checkEligibility(walletAddress, { minLevel: drawnRaffle.min_level, requiredAchievement: drawnRaffle.required_achievement });
+      if (!e.eligible) return res.status(403).json({ error: `El sorteo de esta semana es ${e.reason}, ho.`, action: 'not_eligible' });
     }
 
     claimWeeklyRaffle(walletAddress, weekStr);
@@ -850,6 +881,8 @@ router.get('/admin/weekly/status', requireAuth, (req, res) => {
       week: weekStr,
       prize: raffle ? raffle.prize : null,
       prizeDetails: raffle ? (raffle.prize_details || null) : null,
+      minLevel: raffle ? (raffle.min_level || null) : null,
+      requiredAchievement: raffle ? (raffle.required_achievement || null) : null,
       rules: raffle ? (raffle.rules || WEEKLY_DEFAULT_RULES) : WEEKLY_DEFAULT_RULES,
       status: raffle ? raffle.status : 'active',
       winnerWallet: raffle ? raffle.winner_wallet : null,
@@ -938,13 +971,14 @@ router.post('/admin/weekly/forfeit', requireAuth, (req, res) => {
 
 // POST /api/admin/weekly/config (ADMIN)
 router.post('/admin/weekly/config', requireAuth, (req, res) => {
-  const { prize, rules, week, winnersCount, prizeDetails } = req.body;
+  const { prize, rules, week, winnersCount, prizeDetails, minLevel, requiredAchievement } = req.body;
   if (!prize) return res.status(400).json({ error: 'Falta el nombre del premio' });
   const weekStr = week || getWeeklyRaffleTargetWeek();
   try {
     const { WEEKLY_DEFAULT_RULES } = require('../db/database');
     const wCount = winnersCount ? parseInt(winnersCount) : 1;
-    updateWeeklyPrize(weekStr, prize, rules || WEEKLY_DEFAULT_RULES, wCount, prizeDetails || null);
+    const mLevel = minLevel ? parseInt(minLevel) : null;
+    updateWeeklyPrize(weekStr, prize, rules || WEEKLY_DEFAULT_RULES, wCount, prizeDetails || null, mLevel, requiredAchievement || null);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });

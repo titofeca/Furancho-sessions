@@ -1727,6 +1727,14 @@
           </select>
         </div>
 
+        <!-- Filtro de logro requerido -->
+        <div style="margin-bottom:10px;">
+          <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:5px;">🎟️ Requiere logro NFT</label>
+          <select class="input-field ach-filter-select" id="sched-required-achievement" style="margin:0; font-size:13px;">
+            <option value="">Sin requisito de logro</option>
+          </select>
+        </div>
+
         <button onclick="addScheduled()" style="width:100%; background:var(--wine); color:#fff; border:none; border-radius:12px; padding:11px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; margin-bottom:14px;">+ Programar sorteo</button>
 
         <!-- Lista de sorteos programados -->
@@ -1891,6 +1899,19 @@
           
           <label class="form-label" style="font-size:11px; font-weight:700; color:var(--gold); text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:6px;">🎁 Detalles del Premio</label>
           <textarea class="input-field" id="weekly-details-input" placeholder="Características y detalles del premio de esta semana (marca, tamaño, qué incluye...). Cambia según el premio." style="font-size:13px; font-family:'Outfit',sans-serif; min-height:64px; resize:vertical; margin-bottom:14px; background:rgba(42,21,9,0.05); border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; color:var(--text); width:100%; box-sizing:border-box; padding:10px; outline:none;"></textarea>
+
+          <label class="form-label" style="font-size:11px; font-weight:700; color:var(--gold); text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:6px;">🎫 Quién puede participar</label>
+          <div style="display:flex; gap:10px; margin-bottom:14px;">
+            <select class="input-field" id="weekly-min-level" style="flex:1; margin:0; font-size:13px;">
+              <option value="">Todos los niveles</option>
+              <option value="2">Nv2+ (Cunqueiro)</option>
+              <option value="3">Nv3+ (Larpeiro)</option>
+              <option value="4">Nv4 (O Presidente)</option>
+            </select>
+            <select class="input-field ach-filter-select" id="weekly-required-achievement" style="flex:1; margin:0; font-size:13px;">
+              <option value="">Sin requisito de logro</option>
+            </select>
+          </div>
 
           <label class="form-label" style="font-size:11px; font-weight:700; color:var(--gold); text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:6px;">📝 Operativa y Reglas</label>
           <textarea class="input-field" id="weekly-rules-input" placeholder="Operativa del sorteo semanal..." style="font-size:13px; font-family:'Outfit',sans-serif; min-height:80px; resize:vertical; margin-bottom:14px; background:rgba(42,21,9,0.05); border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; color:var(--text); width:100%; box-sizing:border-box; padding:10px; outline:none;"></textarea>
@@ -2514,7 +2535,7 @@
       loadVisits('__totales__');
       loadAnalyticsPage();
     }
-    if (pageId === 'raffles') { loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); loadScheduled(); loadWeeklyRaffleAdmin(); loadPartnersAdmin(); }
+    if (pageId === 'raffles') { loadAchievementFilterOptions(); loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); loadScheduled(); loadWeeklyRaffleAdmin(); loadPartnersAdmin(); }
     if (pageId === 'scanner') { stopScanner(); document.getElementById('scanner-result').style.display='none'; document.getElementById('scanner-status').textContent=''; }
     if (pageId === 'nfts') loadNftsPage();
   }
@@ -3786,6 +3807,21 @@
     document.getElementById('sched-image-input').value = '';
   }
 
+  // Rellena los desplegables de "logro requerido" (.ach-filter-select) desde el catálogo.
+  async function loadAchievementFilterOptions() {
+    try {
+      const cat = await fetch('/api/achievements/catalog').then(r => r.json()).catch(() => []);
+      if (!Array.isArray(cat)) return;
+      const opts = cat.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+      document.querySelectorAll('.ach-filter-select').forEach(sel => {
+        const cur = sel.value;
+        const first = sel.querySelector('option'); // "sin requisito"
+        sel.innerHTML = (first ? first.outerHTML : '<option value="">Sin requisito de logro</option>') + opts;
+        sel.value = cur;
+      });
+    } catch (e) {}
+  }
+
   async function addScheduled() {
     const date  = document.getElementById('sched-date').value;
     const time  = document.getElementById('sched-time').value;
@@ -3796,12 +3832,13 @@
     const prizeDetails     = type === 'local' ? (document.getElementById('sched-details')?.value.trim() || null) : null;
     const prizeImage       = type === 'local' ? (document.getElementById('sched-image-url')?.value || null) : null;
     const participantLevel = document.getElementById('sched-participant-level')?.value || null;
+    const requiredAchievement = document.getElementById('sched-required-achievement')?.value || null;
 
     if (!date || !time || !prize) return showToast('Completa fecha, hora y nombre del premio', true);
     try {
       const res = await fetch('/api/raffle/scheduled', {
         method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventDate: date, scheduledTime: time, prize, type, hideName, establishment, prizeDetails, prizeImage, participantLevel })
+        body: JSON.stringify({ eventDate: date, scheduledTime: time, prize, type, hideName, establishment, prizeDetails, prizeImage, participantLevel, requiredAchievement })
       });
       const data = await res.json();
       if (data.success) {
@@ -3810,6 +3847,7 @@
         if (document.getElementById('sched-establishment')) document.getElementById('sched-establishment').value = '';
         if (document.getElementById('sched-details')) document.getElementById('sched-details').value = '';
         if (document.getElementById('sched-participant-level')) document.getElementById('sched-participant-level').value = '';
+        if (document.getElementById('sched-required-achievement')) document.getElementById('sched-required-achievement').value = '';
         clearSchedImage();
         showToast('✅ Sorteo programado — recuerda lanzarlo manualmente');
         loadScheduled();
@@ -4509,6 +4547,10 @@
       if (detailsInput && document.activeElement !== detailsInput) {
         detailsInput.value = data.prizeDetails || '';
       }
+      const minLvlSel = document.getElementById('weekly-min-level');
+      if (minLvlSel) minLvlSel.value = data.minLevel ? String(data.minLevel) : '';
+      const achSel = document.getElementById('weekly-required-achievement');
+      if (achSel) achSel.value = data.requiredAchievement || '';
       const winnersInput = document.getElementById('weekly-winners-input');
       if (winnersInput && document.activeElement !== winnersInput) {
         winnersInput.value = data.winnersCount || 1;
@@ -4804,6 +4846,8 @@
     const prizeDetails = detailsInput ? detailsInput.value.trim() : '';
     const winnersInput = document.getElementById('weekly-winners-input');
     const winnersCount = winnersInput ? winnersInput.value : 1;
+    const minLevel = document.getElementById('weekly-min-level')?.value || null;
+    const requiredAchievement = document.getElementById('weekly-required-achievement')?.value || null;
     if (!prize) {
       showToast('Introduce el nombre del premio', true);
       return;
@@ -4816,7 +4860,7 @@
           ...authHeaders(),
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ prize, rules, week: selectedWeek, winnersCount, prizeDetails })
+        body: JSON.stringify({ prize, rules, week: selectedWeek, winnersCount, prizeDetails, minLevel, requiredAchievement })
       });
       const data = await res.json();
       if (res.ok && data.success) {
