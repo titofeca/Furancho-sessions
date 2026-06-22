@@ -504,6 +504,19 @@ function updateAchievementMintStatus(id, status, txHash = null, costMatic = null
     .run(status, txHash, costMatic, id);
 }
 
+// Candidatos a BACKFILL on-chain: registros marcados 'success' pero que se mintearon en
+// modo demo (txHash 'demo_' o nulo). Solo Nv3/Nv4 (Nv1/Nv2 son off-chain por diseño).
+function getDemoLevelMints() {
+  return db.prepare(`SELECT id, wallet_address, level, level_name FROM mints
+    WHERE level >= 3 AND status = 'success' AND (crossmint_action_id IS NULL OR crossmint_action_id LIKE 'demo_%')
+    ORDER BY id ASC`).all();
+}
+function getDemoAchievementMints() {
+  return db.prepare(`SELECT id, wallet_address, achievement_id, token_id FROM achievement_mints
+    WHERE status = 'success' AND (tx_hash IS NULL OR tx_hash LIKE 'demo_%')
+    ORDER BY id ASC`).all();
+}
+
 // Reglas por defecto de La Chave Semanal (texto único para cliente y admin).
 // Declarado antes de module.exports para evitar TDZ al requerir el módulo.
 const WEEKLY_DEFAULT_RULES = '¡Trinca tu boleto esta semana y participa! Consulta las bases de participación a continuación para ver todos los detalles.';
@@ -1850,6 +1863,8 @@ module.exports = {
   getWalletAchievementMints,
   getNextPendingAchievementMint,
   updateAchievementMintStatus,
+  getDemoLevelMints,
+  getDemoAchievementMints,
   claimWeeklyRaffle,
   getWeeklyRaffleStatus,
   updateWeeklyPrize,

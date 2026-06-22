@@ -82,6 +82,17 @@ async function getMinterBalance() {
   };
 }
 
+// Saldo on-chain de un token para una wallet (lectura, sin gas). En DEMO devuelve null.
+// Sirve para el backfill: saltar lo que ya está minteado y no malgastar gas en reverts.
+async function getOnchainBalance(walletAddress, tokenId) {
+  if (DEMO_MODE) return null;
+  const provider = new ethers.JsonRpcProvider(POLYGON_RPC);
+  const abi = ['function balanceOf(address,uint256) view returns (uint256)'];
+  const contract = new ethers.Contract(CONTRACT_ADDR, abi, provider);
+  const bal = await contract.balanceOf(walletAddress, tokenId);
+  return Number(bal);
+}
+
 async function getMintStatus(txHash) {
   if (!txHash || txHash.startsWith('demo_')) {
     return { status: 'success' };
@@ -174,4 +185,4 @@ function notifyAchievementQueue() {
 setTimeout(startQueueWorker, 1000);
 setTimeout(startAchievementQueueWorker, 1200);
 
-module.exports = { mintNFT, getMintStatus, getMinterBalance, DEMO_MODE, notifyQueue, notifyAchievementQueue };
+module.exports = { mintNFT, getMintStatus, getMinterBalance, getOnchainBalance, DEMO_MODE, notifyQueue, notifyAchievementQueue };

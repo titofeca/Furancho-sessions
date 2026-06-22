@@ -953,6 +953,66 @@ router.get('/polygon-balance', requireAuth, async (_req, res) => {
   }
 });
 
+// GET /api/admin/nft-backfill/preview — qué NFT de la época demo faltan on-chain.
+// SOLO LECTURA (no gasta gas): lee la cadena para saltar lo ya minteado.
+router.get('/nft-backfill/preview', requireAuth, async (_req, res) => {
+  try {
+    const polygon = require('../services/polygon');
+    if (polygon.DEMO_MODE) return res.json({ demo: true, toMint: 0, alreadyOnchain: 0, candidates: [], message: 'Modo demo activo — no hay minteo on-chain.' });
+    const { getDemoLevelMints, getDemoAchievementMints } = require('../db/database');
+    const jobs = [
+      ...getDemoLevelMints().map(m => ({ kind: 'level', wallet: m.wallet_address, tokenId: m.level, label: `Nv${m.level} ${m.level_name}` })),
+      ...getDemoAchievementMints().map(m => ({ kind: 'achievement', wallet: m.wallet_address, tokenId: m.token_id, label: `Logro ${m.achievement_id}` }))
+    ];
+    const candidates = [];
+    let alreadyOnchain = 0;
+    for (const j of jobs) {
+      let bal = 0;
+      try { bal = await polygon.getOnchainBalance(j.wallet, j.tokenId); } catch (e) { bal = 0; }
+      if (bal > 0) { alreadyOnchain++; continue; }
+      candidates.push(j);
+    }
+    res.json({ demo: false, totalDemoRecords: jobs.length, alreadyOnchain, toMint: candidates.length, candidates: candidates.slice(0, 100) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/admin/nft-backfill/run — mintea on-chain los pendientes de la época demo.
+// ⚠️ GASTA GAS. Acotado por lote (default 10, máx 25) para no exceder el timeout HTTP.
+// Salta lo que ya esté en la cadena. Repetir hasta que remaining = 0.
+router.post('/nft-backfill/run', requireAuth, async (req, res) => {
+  try {
+    const polygon = require('../services/polygon');
+    if (polygon.DEMO_MODE) return res.status(400).json({ error: 'Modo demo activo — nada que mintear.' });
+    const { getDemoLevelMints, getDemoAchievementMints, updateMintStatus, updateAchievementMintStatus } = require('../db/database');
+    const limit = Math.min(parseInt(req.body?.limit) || 10, 25);
+    const out = { minted: 0, skipped: 0, failed: 0, remaining: 0, details: [] };
+
+    const jobs = [
+      ...getDemoLevelMints().map(m => ({ kind: 'level', id: m.id, wallet: m.wallet_address, level: m.level, tokenId: m.level, label: `Nv${m.level} ${m.level_name}` })),
+      ...getDemoAchievementMints().map(m => ({ kind: 'achievement', id: m.id, wallet: m.wallet_address, tokenId: m.token_id, label: `Logro ${m.achievement_id}` }))
+    ];
+
+    let mintsThisRun = 0;
+    for (const j of jobs) {
+      let bal = 0;
+      try { bal = await polygon.getOnchainBalance(j.wallet, j.tokenId); } catch (e) { bal = 0; }
+      if (bal > 0) { out.skipped++; continue; }
+      if (mintsThisRun >= limit) { out.remaining++; continue; }
+      try {
+        const r = await polygon.mintNFT({ walletAddress: j.wallet, tokenId: j.tokenId, level: j.kind === 'level' ? j.level : undefined, levelName: j.label });
+        if (j.kind === 'level') updateMintStatus(j.id, 'success', j.wallet, r.txHash, r.costMatic || null);
+        else updateAchievementMintStatus(j.id, 'success', r.txHash, r.costMatic || null);
+        out.minted++; mintsThisRun++;
+        out.details.push({ wallet: j.wallet, label: j.label, txHash: r.txHash });
+      } catch (e) {
+        out.failed++;
+        out.details.push({ wallet: j.wallet, label: j.label, error: e.message });
+      }
+    }
+    res.json({ success: true, ...out });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // GET /api/admin/pending-mints — lista de NFTs esperando aprobación
 router.get('/pending-mints', requireAuth, (_req, res) => {
   try {

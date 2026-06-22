@@ -2127,6 +2127,17 @@
         <div id="minter-balance-box" style="font-size:13px; color:var(--text-muted);">Cargando saldo…</div>
       </div>
 
+      <!-- Backfill on-chain (re-mintear NFT de la época demo) -->
+      <div class="glass-card" style="margin-bottom:16px;">
+        <div class="card-title" style="margin-bottom:10px;">🔁 Re-mintear NFT antiguos (backfill)</div>
+        <p style="font-size:12px; color:var(--text-muted); margin:0 0 12px; line-height:1.5;">Los Nv3/Nv4 y logros conseguidos en modo demo no están en la cadena. Aquí los mandas on-chain. <strong>Comprueba primero</strong> (gratis); el minteo gasta gas. Se salta lo que ya esté minteado.</p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+          <button onclick="backfillPreview()" style="background:var(--surface); color:var(--wine); border:1.5px solid var(--wine); border-radius:10px; padding:9px 14px; font-size:12px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">🔍 Comprobar (gratis)</button>
+          <button id="backfill-run-btn" onclick="backfillRun()" disabled style="background:var(--wine); color:#fff; border:none; border-radius:10px; padding:9px 14px; font-size:12px; font-weight:700; cursor:not-allowed; opacity:0.5; font-family:'Outfit',sans-serif;">⚡ Mintear pendientes</button>
+        </div>
+        <div id="backfill-box" style="font-size:12.5px; color:var(--text-muted); line-height:1.5;">Pulsa «Comprobar» para ver cuántos faltan on-chain.</div>
+      </div>
+
       <!-- Pendientes de aprobación -->
       <div class="glass-card" style="margin-bottom:16px;">
         <div class="card-header" style="margin-bottom:12px;">
@@ -2793,6 +2804,43 @@
   }
 
   // ==================== NFTs PAGE ====================
+  async function backfillPreview() {
+    const box = document.getElementById('backfill-box');
+    const runBtn = document.getElementById('backfill-run-btn');
+    box.textContent = 'Comprobando en la cadena… (sin gastar gas)';
+    try {
+      const d = await fetch('/api/admin/nft-backfill/preview', { headers: authHeaders() }).then(r => r.json());
+      if (d.error) { box.textContent = d.error; return; }
+      if (d.demo) { box.innerHTML = '⚠️ Modo demo activo — no hay nada que mintear on-chain.'; return; }
+      box.innerHTML = `Registros demo: <strong>${d.totalDemoRecords}</strong> · ya on-chain: <strong>${d.alreadyOnchain}</strong> · <strong style="color:var(--wine);">faltan: ${d.toMint}</strong>` +
+        (d.candidates && d.candidates.length ? `<br><span style="font-size:11px;">${d.candidates.slice(0,8).map(c=>`${c.label} → ${String(c.wallet).slice(0,6)}…`).join(' · ')}${d.toMint>8?` y ${d.toMint-8} más`:''}</span>` : '');
+      if (d.toMint > 0) {
+        runBtn.disabled = false; runBtn.style.cursor = 'pointer'; runBtn.style.opacity = '1';
+        runBtn.textContent = `⚡ Mintear ${d.toMint} pendiente${d.toMint!==1?'s':''}`;
+      } else {
+        runBtn.disabled = true; runBtn.style.cursor = 'not-allowed'; runBtn.style.opacity = '0.5';
+        box.innerHTML += '<br>✅ Todo está ya on-chain.';
+      }
+    } catch (e) { box.textContent = 'Error al comprobar.'; }
+  }
+
+  async function backfillRun() {
+    const box = document.getElementById('backfill-box');
+    const runBtn = document.getElementById('backfill-run-btn');
+    if (!confirm('Esto MINTEA on-chain y gasta gas (POL), por lotes. ¿Seguir?')) return;
+    runBtn.disabled = true; runBtn.style.opacity = '0.5'; runBtn.style.cursor = 'not-allowed';
+    box.textContent = 'Minteando en la cadena… (puede tardar, no cierres la pestaña)';
+    try {
+      const d = await fetch('/api/admin/nft-backfill/run', {
+        method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ limit: 10 })
+      }).then(r => r.json());
+      if (d.error) { box.textContent = d.error; return; }
+      box.innerHTML = `✅ Minteados: <strong>${d.minted}</strong> · saltados (ya on-chain): ${d.skipped} · fallidos: ${d.failed}` +
+        (d.remaining > 0 ? `<br>Quedan <strong>${d.remaining}</strong> — pulsa «Comprobar» y «Mintear» otra vez para el siguiente lote.` : '<br>🎉 No queda nada pendiente.');
+      loadMinterBalance();
+    } catch (e) { box.textContent = 'Error durante el minteo (puede que algunos sí se mintearan — vuelve a Comprobar).'; }
+  }
+
   async function loadMinterBalance() {
     const box = document.getElementById('minter-balance-box');
     if (!box) return;
