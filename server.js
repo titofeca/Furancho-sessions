@@ -29,6 +29,7 @@ app.use('/api/raffle', raffleRoutes);
 app.use('/api/push', require('./routes/push'));
 app.use('/api/events', require('./routes/events'));
 app.use('/api/pdf', require('./routes/pdf'));
+app.use('/api/achievements', require('./routes/achievements'));
 
 // Rutas HTML explícitas — sin caché para siempre recibir versión actualizada
 const NO_CACHE = { 'Cache-Control': 'no-cache, no-store, must-revalidate', Pragma: 'no-cache', Expires: '0' };
@@ -109,7 +110,8 @@ app.get('/nft-metadata/:id', (req, res) => {
     tokenId = parseInt(raw, 10);
   }
 
-  const meta = NFT_METADATA[tokenId];
+  // Niveles (1-4) en NFT_METADATA; logros (token >= 100) desde el catálogo de logros.
+  const meta = NFT_METADATA[tokenId] || require('./services/achievements').metadataForToken(tokenId);
   if (!meta) return res.status(404).json({ error: 'Token no encontrado' });
   res.setHeader('Cache-Control', 'public, max-age=3600');
   res.json(meta);

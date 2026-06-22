@@ -146,6 +146,22 @@ try {
 } catch (_) {}
 try { db.exec(`ALTER TABLE tapas ADD COLUMN allergens TEXT DEFAULT ''`); } catch (_) {}
 
+// Mints de LOGROS (ediciones especiales NFT, token >= 100). Separado de `mints`, que
+// está limitado a niveles 1-4 por CHECK. Un logro por wallet (UNIQUE).
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS achievement_mints (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_address TEXT NOT NULL,
+    achievement_id TEXT NOT NULL,
+    token_id INTEGER NOT NULL,
+    status TEXT DEFAULT 'pending',
+    tx_hash TEXT,
+    cost_matic REAL,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(wallet_address, achievement_id)
+  )`);
+} catch (_) {}
+
 // =====================
 // CREAR TABLAS
 // =====================
@@ -454,6 +470,33 @@ function updateMintStatus(id, status, walletAddress, txHash = null, costMatic = 
 
 function getNextPendingMint() {
   return db.prepare(`SELECT * FROM mints WHERE status = 'pending' ORDER BY id ASC LIMIT 1`).get();
+}
+
+// ── Mints de LOGROS (NFT de ediciones especiales, claim del cliente) ─────────
+// Idempotente: si ya existe (UNIQUE wallet+logro), no duplica y devuelve el existente.
+function claimAchievement(walletAddress, achievementId, tokenId) {
+  const info = db.prepare(`
+    INSERT OR IGNORE INTO achievement_mints (wallet_address, achievement_id, token_id, status)
+    VALUES (?, ?, ?, 'pending')
+  `).run(walletAddress, achievementId, tokenId);
+  return { created: info.changes > 0, row: getAchievementMint(walletAddress, achievementId) };
+}
+
+function getAchievementMint(walletAddress, achievementId) {
+  return db.prepare(`SELECT * FROM achievement_mints WHERE LOWER(wallet_address) = LOWER(?) AND achievement_id = ?`).get(walletAddress, achievementId);
+}
+
+function getWalletAchievementMints(walletAddress) {
+  return db.prepare(`SELECT * FROM achievement_mints WHERE LOWER(wallet_address) = LOWER(?)`).all(walletAddress);
+}
+
+function getNextPendingAchievementMint() {
+  return db.prepare(`SELECT * FROM achievement_mints WHERE status = 'pending' ORDER BY id ASC LIMIT 1`).get();
+}
+
+function updateAchievementMintStatus(id, status, txHash = null, costMatic = null) {
+  db.prepare(`UPDATE achievement_mints SET status = ?, tx_hash = COALESCE(?, tx_hash), cost_matic = COALESCE(?, cost_matic) WHERE id = ?`)
+    .run(status, txHash, costMatic, id);
 }
 
 // Reglas por defecto de La Chave Semanal (texto único para cliente y admin).
@@ -1796,6 +1839,11 @@ module.exports = {
   deleteScheduledRaffle,
   linkScheduledRaffle,
   getNextPendingMint,
+  claimAchievement,
+  getAchievementMint,
+  getWalletAchievementMints,
+  getNextPendingAchievementMint,
+  updateAchievementMintStatus,
   claimWeeklyRaffle,
   getWeeklyRaffleStatus,
   updateWeeklyPrize,

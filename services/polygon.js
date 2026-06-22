@@ -25,9 +25,13 @@ if (DEMO_MODE && process.env.DEMO_MODE !== 'true') {
   console.log('[Polygon] ✅ Modo producción Polygon activo — los mints Nv3/Nv4 van a la blockchain real.');
 }
 
-async function mintNFT({ walletAddress, level, levelName }) {
+// Mintea por nivel (1-4) o por tokenId directo (logros, token >= 100). Si se pasa
+// `tokenId` tiene prioridad; si no, se resuelve desde el nivel.
+async function mintNFT({ walletAddress, level, levelName, tokenId }) {
+  const id = (tokenId != null) ? tokenId : TOKEN_IDS[level];
+
   if (DEMO_MODE) {
-    console.log(`[DEMO] Minting NFT nivel ${level} (${levelName}) → ${walletAddress}`);
+    console.log(`[DEMO] Minting NFT token ${id} (${levelName || 'logro'}) → ${walletAddress}`);
     await new Promise(r => setTimeout(r, 1200));
     return {
       success: true,
@@ -37,16 +41,15 @@ async function mintNFT({ walletAddress, level, levelName }) {
     };
   }
 
+  if (id == null) throw new Error(`Token ID no configurado (level=${level}, tokenId=${tokenId})`);
+
   const provider = new ethers.JsonRpcProvider(POLYGON_RPC);
   const signer   = new ethers.Wallet(MINTER_KEY, provider);
   const contract = new ethers.Contract(CONTRACT_ADDR, ABI, signer);
 
-  const tokenId = TOKEN_IDS[level];
-  if (tokenId === undefined) throw new Error(`Token ID no configurado para nivel ${level}`);
+  console.log(`[Polygon] Minting token ${id} → ${walletAddress}`);
 
-  console.log(`[Polygon] Minting nivel ${level} (tokenId ${tokenId}) → ${walletAddress}`);
-
-  const tx = await contract.mint(walletAddress, tokenId, 1);
+  const tx = await contract.mint(walletAddress, id, 1);
   const receipt = await tx.wait();
 
   const gasUsed = receipt.gasUsed || 0n;
@@ -135,7 +138,40 @@ function notifyQueue() {
   setImmediate(startQueueWorker);
 }
 
-// Iniciar cola al cargar el módulo por si quedaron tareas pendientes de un reinicio previo
-setTimeout(startQueueWorker, 1000);
+// --- COLA DE MINTS DE LOGROS (tokens >= 100, claim del cliente) ---
+let isProcessingAch = false;
 
-module.exports = { mintNFT, getMintStatus, getMinterBalance, DEMO_MODE, notifyQueue };
+async function startAchievementQueueWorker() {
+  if (isProcessingAch) return;
+  isProcessingAch = true;
+  try {
+    const { getNextPendingAchievementMint, updateAchievementMintStatus } = require('../db/database');
+    let next = getNextPendingAchievementMint();
+    while (next) {
+      console.log(`[AchQueue] Procesando logro ID ${next.id} (token ${next.token_id}) → ${next.wallet_address}`);
+      try {
+        const result = await mintNFT({ walletAddress: next.wallet_address, tokenId: next.token_id, levelName: next.achievement_id });
+        updateAchievementMintStatus(next.id, 'success', result.txHash, result.costMatic || null);
+        console.log(`[AchQueue] ✅ Logro ID ${next.id} minteado. Tx: ${result.txHash}`);
+      } catch (err) {
+        console.error(`[AchQueue] ❌ Error en logro ID ${next.id}:`, err.message);
+        updateAchievementMintStatus(next.id, 'failed');
+      }
+      next = getNextPendingAchievementMint();
+    }
+  } catch (globalErr) {
+    console.error('[AchQueue] Error crítico en bucle de cola:', globalErr);
+  } finally {
+    isProcessingAch = false;
+  }
+}
+
+function notifyAchievementQueue() {
+  setImmediate(startAchievementQueueWorker);
+}
+
+// Iniciar colas al cargar el módulo por si quedaron tareas pendientes de un reinicio previo
+setTimeout(startQueueWorker, 1000);
+setTimeout(startAchievementQueueWorker, 1200);
+
+module.exports = { mintNFT, getMintStatus, getMinterBalance, DEMO_MODE, notifyQueue, notifyAchievementQueue };

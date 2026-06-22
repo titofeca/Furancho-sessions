@@ -3907,6 +3907,7 @@
       // detrás de los returns tempranos y solo aparecía si el cliente tenía historial
       // de sorteos. Un logro se desbloquea por haber asistido a su día/evento concreto.
       renderMuseoBadges(userVisits, userClaimedLevels, history);
+      renderNftAchievements(); // logros NFT reclamables (async, fire-and-forget)
 
       const todayRaffles = history.filter(r => r.created_at && r.created_at.startsWith(today));
       const hasEntry     = eligibility.hasSessionToday;
@@ -6468,6 +6469,65 @@
   }
   window.showBadgeTooltip = showBadgeTooltip;
 
+  // ── LOGROS NFT (ediciones especiales reclamables desde el museo) ──────────────
+  // Pinta solo los logros DESBLOQUEADOS (asistió al evento). El servidor verifica la
+  // regla; aquí solo mostramos el estado de claim.
+  async function renderNftAchievements() {
+    const section = document.getElementById('museo-nft-section');
+    const grid = document.getElementById('museo-nft-grid');
+    if (!section || !grid || !userWalletAddress) return;
+    try {
+      const data = await fetch(`/api/achievements/status?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => null);
+      const items = (data && data.achievements) ? data.achievements.filter(a => a.unlocked) : [];
+      if (!items.length) { section.style.display = 'none'; return; }
+      grid.innerHTML = items.map(a => {
+        let cta;
+        if (a.claimStatus === 'success') {
+          cta = `<span style="font-size:12px; font-weight:800; color:#16a34a;">✅ NFT en tu wallet</span>`;
+        } else if (a.claimStatus === 'pending') {
+          cta = `<span style="font-size:12px; font-weight:800; color:var(--gold);">⏳ Generando tu NFT…</span>`;
+        } else {
+          const label = a.claimStatus === 'failed' ? '🔁 Reintentar NFT' : '🎟️ Convertir en NFT';
+          cta = `<button onclick="claimAchievementNft('${a.id}', this)" style="background:var(--wine); color:#fff; border:none; border-radius:100px; padding:8px 16px; font-size:12px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif;">${label}</button>`;
+        }
+        return `<div style="display:flex; gap:12px; align-items:center; background:rgba(196,151,58,0.08); border:1.5px solid rgba(196,151,58,0.3); border-radius:14px; padding:10px 12px;">
+          <img src="${a.image}" alt="${a.name}" style="width:54px; height:54px; object-fit:cover; border-radius:10px; flex-shrink:0;" onerror="this.style.display='none'">
+          <div style="flex:1; min-width:0;">
+            <p style="font-size:13px; font-weight:800; color:var(--wine); margin:0 0 2px;">${a.name}</p>
+            <p style="font-size:11px; color:var(--text-muted); margin:0 0 7px; line-height:1.35;">${a.description}</p>
+            ${cta}
+          </div>
+        </div>`;
+      }).join('');
+      section.style.display = 'block';
+    } catch (e) {
+      section.style.display = 'none';
+    }
+  }
+
+  async function claimAchievementNft(id, btn) {
+    if (!userWalletAddress) return;
+    if (btn) { btn.disabled = true; btn.textContent = 'Reclamando…'; }
+    try {
+      const res = await fetch('/api/achievements/claim', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: userWalletAddress, achievementId: id })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast('🎟️ ¡NFT en camino, ho! Tu pase de logro se está generando.');
+        renderNftAchievements();
+      } else {
+        showToast(data.error || 'No se pudo reclamar el NFT, ho.', true);
+        if (btn) { btn.disabled = false; btn.textContent = '🎟️ Convertir en NFT'; }
+      }
+    } catch (e) {
+      showToast('Error de red al reclamar el NFT.', true);
+      if (btn) { btn.disabled = false; btn.textContent = '🎟️ Convertir en NFT'; }
+    }
+  }
+  window.claimAchievementNft = claimAchievementNft;
+
   </script>
 
   <!-- ===================== MODAL RESERVA VIP ===================== -->
@@ -6786,6 +6846,12 @@
 
       <!-- Contenido del estado y listado de premios -->
       <div style="text-align:left; margin-bottom:24px;">
+        <!-- Logros NFT (ediciones especiales reclamables) -->
+        <div id="museo-nft-section" style="display:none; margin-top:14px; margin-bottom:20px;">
+          <p style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.2px; color:var(--gold); margin-bottom:10px;">🎟️ Logros NFT (ediciones especiais)</p>
+          <div id="museo-nft-grid" style="display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+
         <!-- Insignias y Logros -->
         <div id="my-badges-section" style="display:none; margin-top:14px; margin-bottom:20px;">
           <p style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.2px; color:var(--text-muted); margin-bottom:10px;">Os meus logros (Insignias)</p>
