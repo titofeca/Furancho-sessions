@@ -3903,6 +3903,11 @@
         userClaimedLevels = mintHistory.levels || userClaimedLevels;
       }
 
+      // El museo (logros/insignias) se pinta SIEMPRE, por ASISTENCIA — antes quedaba
+      // detrás de los returns tempranos y solo aparecía si el cliente tenía historial
+      // de sorteos. Un logro se desbloquea por haber asistido a su día/evento concreto.
+      renderMuseoBadges(userVisits, userClaimedLevels, history);
+
       const todayRaffles = history.filter(r => r.created_at && r.created_at.startsWith(today));
       const hasEntry     = eligibility.hasSessionToday;
       const doneTonight  = eligibility.rafflesDoneTonight || 0;
@@ -4231,6 +4236,8 @@
       }
 
       // === RENDERIZAR INSIGNIAS Y LOGROS (MUSEO) ===
+      // Declarada aquí (hoisted) pero invocada arriba para que el museo se pinte siempre.
+      function renderMuseoBadges(userVisits, userClaimedLevels, history) {
       const badges = [
         {
           id: 'primer_cautivo',
@@ -4336,6 +4343,7 @@
         }).join('');
         badgesSection.style.display = 'block';
       }
+      } // fin renderMuseoBadges
 
       // === RENDERIZAR HISTORIAL DE VISITAS ===
       const visitsList = document.getElementById('my-visits-list');
