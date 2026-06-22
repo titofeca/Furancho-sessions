@@ -2221,6 +2221,19 @@
       <!-- Imagen QR oculta (usada internamente) -->
       <img id="recovery-qr-img" src="" alt="" style="display:none;" />
       <a id="recovery-qr-download" href="" download="furancho-mi-pase.png" style="display:none;"></a>
+
+      <!-- Aviso fijo inferior: guardar acceso. Dentro del perfil (se auto-oculta en
+           otras pantallas). Se quita al guardar (openRecoverySheet) o con la ✕. -->
+      <div id="recovery-nudge" onclick="openRecoverySheet('qr')"
+        style="display:none; position:fixed; left:12px; right:12px; bottom:16px; z-index:901; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border-radius:16px; padding:12px 14px; box-shadow:0 6px 24px rgba(139,25,24,0.35); cursor:pointer; align-items:center; gap:12px; font-family:'Outfit',sans-serif;">
+        <span style="font-size:22px; flex-shrink:0;">🔐</span>
+        <div style="flex:1; min-width:0; text-align:left;">
+          <p style="font-size:13px; font-weight:800; margin:0 0 1px;">Guarda tu acceso, ho</p>
+          <p style="font-size:11px; opacity:0.92; margin:0; line-height:1.35;">Descarga tu QR o tus 12 palabras para no perder la cuenta si cambias de móvil.</p>
+        </div>
+        <button onclick="event.stopPropagation(); dismissRecoveryNudge();" aria-label="Cerrar"
+          style="background:rgba(255,255,255,0.18); border:none; color:#fff; width:26px; height:26px; border-radius:50%; font-size:13px; cursor:pointer; flex-shrink:0; line-height:1;">✕</button>
+      </div>
  
       <!-- Tarjeta de identidad del cliente (oculta, usada por VirtualCard) -->
       <span id="profile-card-level-tag" style="display:none;">NIVEL 1</span>
@@ -2705,9 +2718,9 @@
             localStorage.setItem('furancho_wallet_mnemonic', data.mnemonic);
           }
           await initWallet();
-          if (data.mnemonic) {
-            setTimeout(() => showMnemonicModal(data.mnemonic), 800);
-          }
+          // Antes saltaba el modal de las 12 palabras a la fuerza. Ahora la cuenta
+          // entra directa al perfil (menos fricción); el aviso de guardar el acceso
+          // vive en el banner inferior no intrusivo (maybeShowRecoveryNudge).
         } else {
           throw new Error('No se pudo generar billetera');
         }
@@ -3168,7 +3181,7 @@
       loadTonightPrizes();
       loadAgenda();
       loadWeeklyRaffle();
-      checkPendingMnemonic();
+      maybeShowRecoveryNudge();
       startNextRaffleCountdown();
 
       // Mostrar toast si viene de restauración por QR
@@ -5057,14 +5070,29 @@
     showToast('🔐 Perfecto. Tus palabras están guardadas.');
   }
 
-  // Mostrar modal si hay mnemónico guardado pero nunca confirmado
-  // (clientes que entraron por el QR de entrada antes de abrir claim)
-  function checkPendingMnemonic() {
-    const mnemonic = localStorage.getItem('furancho_wallet_mnemonic');
-    const confirmed = localStorage.getItem('furancho_mnemonic_confirmed');
-    if (mnemonic && !confirmed) {
-      setTimeout(() => showMnemonicModal(mnemonic), 1200);
-    }
+  // Banner inferior no intrusivo que aconseja guardar el acceso. Sustituye al antiguo
+  // modal forzado de las 12 palabras. Se muestra mientras haya cuenta y el cliente no
+  // haya guardado su acceso (abrir la hoja de recuperación) ni descartado el aviso.
+  function maybeShowRecoveryNudge() {
+    const nudge = document.getElementById('recovery-nudge');
+    if (!nudge) return;
+    const hasWallet = !!localStorage.getItem('furancho_wallet_address');
+    const saved = localStorage.getItem('furancho_recovery_saved');
+    const dismissed = localStorage.getItem('furancho_recovery_nudge_dismissed');
+    const show = hasWallet && !saved && !dismissed;
+    nudge.style.display = show ? 'flex' : 'none';
+    // Subir el FAB del buzón mientras el banner ocupe la parte inferior, para que no
+    // se solapen. Al ocultarse, vuelve a su sitio.
+    const fab = document.getElementById('msg-fab');
+    if (fab) fab.style.bottom = show ? '172px' : '82px';
+  }
+
+  function dismissRecoveryNudge() {
+    localStorage.setItem('furancho_recovery_nudge_dismissed', '1');
+    const nudge = document.getElementById('recovery-nudge');
+    if (nudge) nudge.style.display = 'none';
+    const fab = document.getElementById('msg-fab');
+    if (fab) fab.style.bottom = '82px';
   }
 
   function toggleRecovery() {
@@ -5122,6 +5150,13 @@
       document.getElementById('recovery-sheet-inner').style.transform = 'translateY(0)';
     });
     document.body.style.overflow = 'hidden';
+
+    // El cliente ya está gestionando su backup → dejar de mostrar el banner inferior.
+    localStorage.setItem('furancho_recovery_saved', '1');
+    const _nudge = document.getElementById('recovery-nudge');
+    if (_nudge) _nudge.style.display = 'none';
+    const _fab = document.getElementById('msg-fab');
+    if (_fab) _fab.style.bottom = '82px';
   }
 
   function closeRecoverySheet() {
