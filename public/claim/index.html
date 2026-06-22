@@ -4299,6 +4299,10 @@
           id: 'furancheiro_fiesteiro',
           name: 'Furancheiro Fiesteiro',
           icon: '🔥',
+          // Ilustración del logro. Sube el archivo a assets/ con este nombre y se verá
+          // automáticamente en el museo de cada cliente que cumpla la condición. Si el
+          // archivo aún no existe, cae al emoji (icon) sin romper nada.
+          image: '/assets/logro_sanjuan2026.jpg',
           desc: 'San Juan 2026: Tener ciertos NFT dará privilegios Gastronómicos.',
           unlocked: userVisits && userVisits.some(v => v.day === '2026-06-25'),
           color: 'hsla(18, 90%, 50%, 0.15)',
@@ -4314,12 +4318,18 @@
           const bg = b.unlocked ? b.color : 'rgba(42,21,9,0.03)';
           const border = b.unlocked ? `1.5px solid ${b.borderColor}` : '1.5px solid rgba(42,21,9,0.08)';
           
+          // Ilustración si el logro la tiene; si la imagen no carga (aún no subida),
+          // se reemplaza por el emoji sin romper la rejilla.
+          const visual = b.image
+            ? `<img src="${b.image}" alt="${b.name}" style="width:42px; height:42px; object-fit:cover; border-radius:9px; margin-bottom:4px; display:block;" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${b.icon}',style:'font-size:24px;margin-bottom:4px;display:block;'}))">`
+            : `<span style="font-size:24px; margin-bottom:4px; display:block;">${b.icon}</span>`;
+
           return `
-            <div style="background:${bg}; border:${border}; ${lockedStyle} border-radius:12px; padding:10px 4px; text-align:center; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; min-height:85px; transition:transform 0.2s;" 
-                 onclick="showBadgeTooltip('${b.name}', '${b.desc}', ${b.unlocked}, '${b.icon}')"
+            <div style="background:${bg}; border:${border}; ${lockedStyle} border-radius:12px; padding:10px 4px; text-align:center; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; min-height:85px; transition:transform 0.2s;"
+                 onclick="showBadgeTooltip('${b.name}', '${b.desc}', ${b.unlocked}, '${b.icon}', '${b.image || ''}')"
                  onmouseover="this.style.transform='scale(1.04)'"
                  onmouseout="this.style.transform='scale(1)'">
-              <span style="font-size:24px; margin-bottom:4px; display:block;">${b.icon}</span>
+              ${visual}
               <p style="font-size:10px; font-weight:700; color:var(--text); margin:0; line-height:1.2; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; max-width:100%; word-break:break-word; padding:0 2px;">${b.name}</p>
               ${b.unlocked ? `<span style="position:absolute; top:-4px; right:-4px; background:var(--wine); color:#fff; font-size:7px; border-radius:50%; width:12px; height:12px; display:flex; align-items:center; justify-content:center; border:1px solid #F2EDE3;">✓</span>` : ''}
             </div>
@@ -6432,11 +6442,16 @@
   }
   window.showToast = showToast;
 
-  function showBadgeTooltip(name, desc, unlocked, icon) {
+  function showBadgeTooltip(name, desc, unlocked, icon, image) {
     const statusText = unlocked ? '🏆 ¡Logro Desbloqueado!' : '🔒 Logro Bloqueado';
+    const lock = unlocked ? '' : 'opacity:0.45; filter:grayscale(100%);';
+    // Ilustración grande si la hay; si no carga, cae al emoji.
+    const visual = image
+      ? `<img src="${image}" alt="${name}" style="width:128px; height:128px; object-fit:cover; border-radius:16px; margin-bottom:6px; ${lock}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${icon}',style:'font-size:36px;margin-bottom:4px;display:block;'}))">`
+      : `<span style="font-size:36px; margin-bottom:4px; display:block; ${lock}">${icon}</span>`;
     const msg = `
       <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px; padding:4px 0;">
-        <span style="font-size:36px; margin-bottom:4px; display:block;">${icon}</span>
+        ${visual}
         <strong style="font-size:14px; color:var(--gold); font-family:\'Outfit\',sans-serif;">${name}</strong>
         <span style="font-size:12px; color:#F2EDE3; opacity:0.9; font-weight:400;">${desc}</span>
         <span style="font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; margin-top:6px; color:${unlocked ? '#4ade80' : '#7a6a5a'};">${statusText}</span>
