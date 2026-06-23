@@ -11,10 +11,11 @@ const {
   getScheduledRaffles, createScheduledRaffle, updateScheduledRaffle,
   deleteScheduledRaffle, linkScheduledRaffle, insertMint,
   claimWeeklyRaffle, getWeeklyRaffleStatus, updateWeeklyPrize, drawWeeklyRaffle, collectWeeklyRaffle, collectWeeklyWinner, forfeitWeeklyRaffle,
-  getWeeklyRaffleTargetWeek, forfeitExpiredWeeklyRaffles, isWeeklyWindowOpen
+  getWeeklyRaffleTargetWeek, forfeitExpiredWeeklyRaffles, isWeeklyWindowOpen,
+  insertWeeklyChatMessage, getWeeklyChatMessages, markWeeklyChatRead, getWeeklyChatThreads
 } = require('../db/database');
 const { requireAuth } = require('./admin');
-const { sendPushToAll } = require('../services/push');
+const { sendPushToAll, sendPushToWallet } = require('../services/push');
 const { notifyQueue } = require('../services/polygon');
 
 // Configuración de upload de imágenes de premio
@@ -781,6 +782,103 @@ router.get('/weekly/status', (req, res) => {
     const criteria = { minLevel: status.minLevel, requiredAchievement: status.requiredAchievement };
     const e = elig.checkEligibility(wallet, criteria);
     res.json({ ...status, currentWeek: weekStr, eligible: e.eligible, eligibilityReason: e.reason, requirementLabel: elig.requirementLabel(criteria) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// --- CHAT 1:1 CON EL GANADOR DE LA CHAVE SEMANAL ---
+// Permite que el ganador escriba al staff (dudas, agradecimientos) y que el staff
+// le responda. Hilo identificado por wallet+semana, solo accesible para el ganador real.
+
+const chatLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 10,
+  message: { error: 'Demasiados mensajes. Espera un poco, ho.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+function isWeeklyRaffleWinnerWallet(winnerWalletRaw, wallet) {
+  if (!winnerWalletRaw || !wallet) return false;
+  let list;
+  try {
+    const parsed = JSON.parse(winnerWalletRaw);
+    list = Array.isArray(parsed) ? parsed : [parsed];
+  } catch (_) {
+    list = [winnerWalletRaw];
+  }
+  return list.some(w => String(w).toLowerCase() === wallet.toLowerCase());
+}
+
+// GET /api/raffle/weekly/chat?wallet=0x...&week=2026-W23 — hilo del cliente (público, solo el propio ganador)
+router.get('/weekly/chat', (req, res) => {
+  const { wallet, week } = req.query;
+  if (!wallet || !week) return res.status(400).json({ error: 'Faltan datos' });
+  try {
+    const { db } = require('../db/database');
+    const raffle = db.prepare(`SELECT winner_wallet FROM weekly_raffles WHERE claimed_week = ?`).get(week);
+    if (!raffle || !isWeeklyRaffleWinnerWallet(raffle.winner_wallet, wallet)) {
+      return res.status(403).json({ error: 'Esta wallet no es ganadora de esa semana' });
+    }
+    markWeeklyChatRead(wallet, week, 'client');
+    res.json(getWeeklyChatMessages(wallet, week));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/raffle/weekly/chat — el ganador escribe al staff
+router.post('/weekly/chat', chatLimiter, (req, res) => {
+  const { wallet, week, message } = req.body;
+  if (!wallet || !week || !message || !message.trim()) return res.status(400).json({ error: 'Faltan datos' });
+  if (message.length > 500) return res.status(400).json({ error: 'Mensaje demasiado largo' });
+  try {
+    const { db } = require('../db/database');
+    const raffle = db.prepare(`SELECT winner_wallet FROM weekly_raffles WHERE claimed_week = ?`).get(week);
+    if (!raffle || !isWeeklyRaffleWinnerWallet(raffle.winner_wallet, wallet)) {
+      return res.status(403).json({ error: 'Esta wallet no es ganadora de esa semana' });
+    }
+    const body = message.trim();
+    insertWeeklyChatMessage({ claimedWeek: week, walletAddress: wallet, sender: 'client', body });
+    broadcastToAdmins('weekly_chat_message', { wallet, week, sender: 'client', body });
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/raffle/admin/weekly-chats (ADMIN) — listado de hilos con no leídos
+router.get('/admin/weekly-chats', requireAuth, (req, res) => {
+  try {
+    res.json(getWeeklyChatThreads());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/raffle/admin/weekly-chat?wallet=&week= (ADMIN) — hilo completo
+router.get('/admin/weekly-chat', requireAuth, (req, res) => {
+  const { wallet, week } = req.query;
+  if (!wallet || !week) return res.status(400).json({ error: 'Faltan datos' });
+  try {
+    markWeeklyChatRead(wallet, week, 'admin');
+    res.json(getWeeklyChatMessages(wallet, week));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/raffle/admin/weekly-chat (ADMIN) — el staff responde al ganador
+router.post('/admin/weekly-chat', requireAuth, (req, res) => {
+  const { wallet, week, message } = req.body;
+  if (!wallet || !week || !message || !message.trim()) return res.status(400).json({ error: 'Faltan datos' });
+  try {
+    const body = message.trim();
+    insertWeeklyChatMessage({ claimedWeek: week, walletAddress: wallet, sender: 'admin', body });
+    broadcast('weekly_chat_message', { wallet, week, sender: 'admin', body }, wallet);
+    sendPushToWallet(wallet, '🔑 Mensaje del staff sobre tu premio', body, { url: '/claim' });
+    res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

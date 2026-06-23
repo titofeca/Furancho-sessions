@@ -3113,7 +3113,7 @@
       const hint = document.getElementById('profile-progress-hint');
       if (hint) {
         if (visitCount >= 12 || claimedLevels.includes(4)) {
-          hint.textContent = '👑 Nivel máximo O Presidente de la hostia';
+          hint.textContent = '👑 Nivel máximo O Presidente alcanzado';
         } else if (visitCount >= 4 || claimedLevels.includes(3)) {
           hint.textContent = `Te faltan ${12 - visitCount} visitas para coronarte como O Presidente, ho!`;
         } else {
@@ -4923,6 +4923,17 @@
         setTimeout(loadWeeklyRaffle, 1500);
       });
 
+      // Mensaje nuevo del staff sobre el premio de la Chave
+      evtSource.addEventListener('weekly_chat_message', (e) => {
+        const data = JSON.parse(e.data);
+        if (data.sender !== 'admin') return;
+        if (_weeklyChatOpenWeek === data.week) {
+          appendWeeklyChatMessage(data.sender, data.body);
+        } else {
+          showProfileBanner(`💬 <strong>El staff te ha escrito:</strong> ${data.body}`, 'gold');
+        }
+      });
+
       // Premio Chave entregado: notificar al ganador
       evtSource.addEventListener('weekly_prize_collected', (e) => {
         const data = JSON.parse(e.data);
@@ -5737,6 +5748,107 @@
     requestAnimationFrame(() => requestAnimationFrame(() => { sheet.style.transform = 'translateY(0)'; }));
   }
 
+  // --- Chat con el staff (ganador de la Chave Semanal) ---
+  let _weeklyChatOpenWeek = null;
+
+  function weeklyChatBoxHtml(week) {
+    return `
+      <div style="margin-top:10px;">
+        <button id="weekly-chat-toggle-btn" onclick="toggleWeeklyChat('${week}')" style="width:100%; padding:9px; background:rgba(139,25,24,0.06); border:1.5px solid rgba(139,25,24,0.2); color:var(--wine); border-radius:50px; font-family:'Outfit',sans-serif; font-size:12.5px; font-weight:700; cursor:pointer;">
+          💬 Escribir al staff
+        </button>
+        <div id="weekly-chat-panel" style="display:none; margin-top:8px; background:rgba(42,21,9,0.03); border:1px solid rgba(42,21,9,0.1); border-radius:12px; padding:10px;">
+          <div id="weekly-chat-messages" style="max-height:160px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; margin-bottom:8px;">
+            <p style="font-size:11px; color:var(--text-muted); text-align:center; margin:6px 0;">Cargando...</p>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <input id="weekly-chat-input" maxlength="500" placeholder="Escribe tu mensaje..." style="flex:1; padding:8px 12px; border-radius:50px; border:1.5px solid rgba(42,21,9,0.15); font-size:13px; font-family:'Outfit',sans-serif; outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault(); sendWeeklyChatMsg('${week}');}" />
+            <button onclick="sendWeeklyChatMsg('${week}')" style="background:var(--wine); color:#fff; border:none; border-radius:50%; width:36px; height:36px; flex-shrink:0; font-size:14px; cursor:pointer;">➤</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  async function toggleWeeklyChat(week) {
+    const panel = document.getElementById('weekly-chat-panel');
+    if (!panel) return;
+    const opening = panel.style.display === 'none';
+    panel.style.display = opening ? 'block' : 'none';
+    if (opening) {
+      _weeklyChatOpenWeek = week;
+      await loadWeeklyChatThread(week);
+    } else {
+      _weeklyChatOpenWeek = null;
+    }
+  }
+
+  function renderWeeklyChatMessages(messages) {
+    const box = document.getElementById('weekly-chat-messages');
+    if (!box) return;
+    if (!messages.length) {
+      box.innerHTML = `<p style="font-size:11px; color:var(--text-muted); text-align:center; margin:6px 0;">Aún no hay mensajes. ¡Escribe el primero!</p>`;
+      return;
+    }
+    box.innerHTML = messages.map(m => weeklyChatBubbleHtml(m.sender, m.body)).join('');
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function weeklyChatBubbleHtml(sender, body) {
+    const isAdmin = sender === 'admin';
+    return `<div style="display:flex; justify-content:${isAdmin ? 'flex-start' : 'flex-end'};">
+      <div style="max-width:80%; padding:6px 11px; border-radius:14px; font-size:12.5px; line-height:1.4; ${isAdmin ? 'background:rgba(196,151,58,0.15); color:var(--text);' : 'background:var(--wine); color:#fff;'}">
+        ${isAdmin ? '<strong style="font-size:10px; display:block; opacity:0.7; margin-bottom:1px;">STAFF</strong>' : ''}${escapeHtml(body)}
+      </div>
+    </div>`;
+  }
+
+  function appendWeeklyChatMessage(sender, body) {
+    const box = document.getElementById('weekly-chat-messages');
+    if (!box) return;
+    if (box.querySelector('p')) box.innerHTML = '';
+    box.insertAdjacentHTML('beforeend', weeklyChatBubbleHtml(sender, body));
+    box.scrollTop = box.scrollHeight;
+  }
+
+  async function loadWeeklyChatThread(week) {
+    try {
+      const res = await fetch(`/api/raffle/weekly/chat?wallet=${encodeURIComponent(userWalletAddress)}&week=${encodeURIComponent(week)}`);
+      const data = await res.json();
+      renderWeeklyChatMessages(Array.isArray(data) ? data : []);
+    } catch (e) {
+      const box = document.getElementById('weekly-chat-messages');
+      if (box) box.innerHTML = `<p style="font-size:11px; color:var(--text-muted); text-align:center;">No se pudo cargar el chat.</p>`;
+    }
+  }
+
+  async function sendWeeklyChatMsg(week) {
+    const input = document.getElementById('weekly-chat-input');
+    if (!input) return;
+    const message = input.value.trim();
+    if (!message) return;
+    input.value = '';
+    appendWeeklyChatMessage('client', message);
+    try {
+      const res = await fetch('/api/raffle/weekly/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet: userWalletAddress, week, message })
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showProfileBanner(`⚠️ ${data.error || 'No se pudo enviar el mensaje'}`, 'red');
+      }
+    } catch (e) {
+      showProfileBanner('⚠️ No se pudo enviar el mensaje, revisa tu conexión.', 'red');
+    }
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
   function closeChaveModal() {
     const modal = document.getElementById('chave-modal');
     const sheet = document.getElementById('chave-modal-sheet');
@@ -5825,6 +5937,7 @@
             <p style="font-size:10px; color:var(--text-muted); margin:0;">Enséñaselo al staff para trincar el premio 🍷</p>
             ${bonoLink}
           </div>`;
+          rulesText.insertAdjacentHTML('beforeend', weekForPdf ? weeklyChatBoxHtml(weekForPdf) : '');
         }
         return;
       }
@@ -5837,6 +5950,8 @@
           rulesText.innerHTML = `<div style="margin-top:10px; background:rgba(42,21,9,0.05); border:1.5px dashed rgba(42,21,9,0.2); border-radius:10px; padding:12px; text-align:center;">
             <p style="font-size:13px; color:var(--text-muted); margin:0; line-height:1.5;">⌛ <strong>Premio dado por perdido</strong> — no se confirmó antes de las 23:00.<br>Quedó en tu historial como recuerdo. ¡La próxima no se te escape, ho! 🍷</p>
           </div>`;
+          const weekForChat = data.currentWeek || _lastWeeklyData?.currentWeek;
+          rulesText.insertAdjacentHTML('beforeend', weekForChat ? weeklyChatBoxHtml(weekForChat) : '');
         }
         return;
       }

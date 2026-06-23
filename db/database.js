@@ -165,6 +165,20 @@ try {
   )`);
 } catch (_) {}
 
+// Chat 1:1 entre el ganador de la Chave Semanal y el staff (admin). Hilo por wallet+semana.
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS weekly_chat_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    claimed_week TEXT NOT NULL,
+    wallet_address TEXT NOT NULL,
+    sender TEXT NOT NULL CHECK(sender IN ('client','admin')),
+    body TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    read_by_admin INTEGER DEFAULT 0,
+    read_by_client INTEGER DEFAULT 0
+  )`);
+} catch (_) {}
+
 // =====================
 // CREAR TABLAS
 // =====================
@@ -1883,6 +1897,10 @@ module.exports = {
   forfeitWeeklyRaffle,
   confirmWeeklyRaffle,
   forfeitExpiredWeeklyRaffles,
+  insertWeeklyChatMessage,
+  getWeeklyChatMessages,
+  markWeeklyChatRead,
+  getWeeklyChatThreads,
   getWeeklyRaffleTargetWeek,
   isWeeklyWindowOpen,
   getActiveEventWindow,
@@ -2092,6 +2110,55 @@ function forfeitExpiredWeeklyRaffles() {
   const stmt = db.prepare(`UPDATE weekly_raffles SET status = 'forfeited', forfeited_at = datetime('now') WHERE claimed_week = ?`);
   expired.forEach(r => stmt.run(r.claimed_week));
   return expired;
+}
+
+// Chat 1:1 entre el ganador de la Chave Semanal y el staff. Hilo identificado por wallet+semana.
+function insertWeeklyChatMessage({ claimedWeek, walletAddress, sender, body }) {
+  const info = db.prepare(`
+    INSERT INTO weekly_chat_messages (claimed_week, wallet_address, sender, body, read_by_admin, read_by_client)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(claimedWeek, walletAddress.toLowerCase(), sender, body, sender === 'admin' ? 1 : 0, sender === 'client' ? 1 : 0);
+  return info.lastInsertRowid;
+}
+
+function getWeeklyChatMessages(walletAddress, claimedWeek) {
+  return db.prepare(`
+    SELECT id, claimed_week, wallet_address, sender, body, created_at
+    FROM weekly_chat_messages
+    WHERE LOWER(wallet_address) = LOWER(?) AND claimed_week = ?
+    ORDER BY id ASC
+  `).all(walletAddress, claimedWeek);
+}
+
+// reader = 'admin' marca como leídos los mensajes del cliente, y viceversa.
+function markWeeklyChatRead(walletAddress, claimedWeek, reader) {
+  const col = reader === 'admin' ? 'read_by_admin' : 'read_by_client';
+  const otherSender = reader === 'admin' ? 'client' : 'admin';
+  db.prepare(`UPDATE weekly_chat_messages SET ${col} = 1 WHERE LOWER(wallet_address) = LOWER(?) AND claimed_week = ? AND sender = ?`)
+    .run(walletAddress, claimedWeek, otherSender);
+}
+
+// Hilos para el panel de admin: uno por wallet+semana, con último mensaje y no leídos.
+function getWeeklyChatThreads() {
+  const rows = db.prepare(`
+    SELECT wallet_address, claimed_week, MAX(id) as last_id,
+      SUM(CASE WHEN sender = 'client' AND read_by_admin = 0 THEN 1 ELSE 0 END) as unread
+    FROM weekly_chat_messages
+    GROUP BY wallet_address, claimed_week
+    ORDER BY last_id DESC
+  `).all();
+  const lastStmt = db.prepare(`SELECT body, sender, created_at FROM weekly_chat_messages WHERE id = ?`);
+  return rows.map(row => {
+    const last = lastStmt.get(row.last_id);
+    return {
+      walletAddress: row.wallet_address,
+      claimedWeek: row.claimed_week,
+      unread: row.unread || 0,
+      lastBody: last ? last.body : '',
+      lastSender: last ? last.sender : null,
+      lastAt: last ? last.created_at : null
+    };
+  });
 }
 
 function collectWeeklyRaffle(weekStr) {

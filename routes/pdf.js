@@ -430,16 +430,49 @@ router.get('/premio/:id', async (req, res) => {
 });
 
 // ─── GET /api/pdf/weekly/:week — Bono visual de la chave semanal ──────────────
+function sendWeeklyPdfNotice(res, status, { icon, title, message }) {
+  res.status(status).send(`<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Chave Semanal · Furancho Sessions</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{background:#F2EDE3;font-family:Arial,sans-serif;color:#1C0E06;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;text-align:center}
+  .box{background:#fff;border-radius:16px;max-width:380px;padding:32px 24px;box-shadow:0 8px 30px rgba(42,21,9,.1);border:1px solid rgba(139,25,24,.1)}
+  .icon{font-size:42px;margin-bottom:12px}
+  h1{font-size:18px;color:#8B1918;margin-bottom:10px}
+  p{font-size:14px;color:#7A6A5A;line-height:1.5}
+</style></head>
+<body><div class="box"><div class="icon">${icon}</div><h1>${title}</h1><p>${message}</p></div></body></html>`);
+}
+
 router.get('/weekly/:week', async (req, res) => {
   try {
     const { db } = require('../db/database');
     const raffle = db.prepare(`
       SELECT claimed_week, prize, winner_wallet, verification_code, drawn_at, status, collected_at, confirmed_at, confirm_deadline
-      FROM weekly_raffles WHERE claimed_week = ? AND status = 'completed'
-        AND (confirmed_at IS NOT NULL OR collected_at IS NOT NULL OR confirm_deadline IS NULL)
+      FROM weekly_raffles WHERE claimed_week = ?
     `).get(req.params.week);
 
-    if (!raffle) return res.status(404).send('Premio semanal no encontrado o no confirmado todavía');
+    if (!raffle) {
+      return sendWeeklyPdfNotice(res, 404, {
+        icon: '🔑', title: 'Premio no encontrado',
+        message: 'No encontramos ningún premio de la Chave Semanal para esa semana.'
+      });
+    }
+
+    if (raffle.status === 'forfeited') {
+      return sendWeeklyPdfNotice(res, 410, {
+        icon: '⌛', title: 'Este bono ya no es válido',
+        message: 'El plazo para reclamar este premio venció porque no se confirmó a tiempo. Ya no se puede descargar ni usar este bono.'
+      });
+    }
+
+    if (!(raffle.confirmed_at || raffle.collected_at || !raffle.confirm_deadline)) {
+      return sendWeeklyPdfNotice(res, 409, {
+        icon: '⏳', title: 'Premio aún sin confirmar',
+        message: 'Antes de descargar el bono, confirma el premio desde la app dentro del plazo indicado.'
+      });
+    }
 
     // Validación de seguridad: debe proveerse la wallet del ganador
     const { wallet } = req.query;

@@ -2343,6 +2343,26 @@
 <!-- Contenedor de notificaciones VIP flotantes -->
 <div id="vip-notifications-container" style="position:fixed; bottom:20px; right:20px; z-index:99999; display:flex; flex-direction:column; gap:12px; max-width:360px; width:calc(100% - 40px);"></div>
 
+<!-- Modal: Chat con el ganador de la Chave Semanal -->
+<div id="weekly-chat-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:99998; align-items:center; justify-content:center; padding:16px;">
+  <div style="background:var(--surface); border-radius:16px; max-width:420px; width:100%; max-height:80vh; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid var(--border);">
+      <div>
+        <span style="font-weight:800; color:var(--wine); font-size:14px;">💬 Chat con el ganador</span>
+        <div id="weekly-chat-modal-wallet" style="font-family:monospace; font-size:11px; color:var(--text-muted); margin-top:2px;"></div>
+      </div>
+      <button onclick="closeWeeklyChatModal()" style="background:transparent; border:none; color:var(--text-muted); font-size:20px; cursor:pointer; line-height:1;">✕</button>
+    </div>
+    <div id="weekly-chat-modal-messages" style="flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:8px; min-height:200px;">
+      <p style="font-size:12px; color:var(--text-muted); text-align:center;">Cargando...</p>
+    </div>
+    <div style="display:flex; gap:8px; padding:12px 14px; border-top:1px solid var(--border);">
+      <input id="weekly-chat-modal-input" maxlength="500" placeholder="Responder al ganador..." style="flex:1; padding:9px 14px; border-radius:50px; border:1.5px solid var(--border); background:var(--bg); color:var(--text); font-size:13px; font-family:'Outfit',sans-serif; outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault(); sendAdminWeeklyChatMsg();}" />
+      <button onclick="sendAdminWeeklyChatMsg()" style="background:var(--wine); color:#fff; border:none; border-radius:50%; width:38px; height:38px; flex-shrink:0; font-size:14px; cursor:pointer;">➤</button>
+    </div>
+  </div>
+</div>
+
 <script>
   // Registro Service Worker para PWA Admin
   if ('serviceWorker' in navigator) {
@@ -3577,10 +3597,106 @@
       }
     });
 
+    adminSseSource.addEventListener('weekly_chat_message', (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.sender !== 'client') return;
+        if (_weeklyChatModalWallet && _weeklyChatModalWeek === data.week && _weeklyChatModalWallet.toLowerCase() === data.wallet.toLowerCase()) {
+          appendAdminWeeklyChatMessage(data.sender, data.body);
+        } else {
+          showToast(`💬 ${data.wallet.slice(0,8)}… te escribió sobre su premio de la Chave`);
+        }
+      } catch(err) {
+        console.error('Error procesando evento weekly_chat_message:', err);
+      }
+    });
+
     adminSseSource.onerror = () => {
       adminSseSource.close();
       setTimeout(connectAdminSse, 5000);
     };
+  }
+
+  // --- Chat con el ganador de la Chave Semanal ---
+  let _weeklyChatModalWallet = null;
+  let _weeklyChatModalWeek = null;
+
+  function escapeHtmlAdmin(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function weeklyChatBubbleHtmlAdmin(sender, body) {
+    const isClient = sender === 'client';
+    return `<div style="display:flex; justify-content:${isClient ? 'flex-start' : 'flex-end'};">
+      <div style="max-width:80%; padding:7px 12px; border-radius:14px; font-size:13px; line-height:1.4; ${isClient ? 'background:rgba(196,151,58,0.18); color:var(--text);' : 'background:var(--wine); color:#fff;'}">
+        ${isClient ? '<strong style="font-size:10px; display:block; opacity:0.65; margin-bottom:1px;">GANADOR</strong>' : ''}${escapeHtmlAdmin(body)}
+      </div>
+    </div>`;
+  }
+
+  function appendAdminWeeklyChatMessage(sender, body) {
+    const box = document.getElementById('weekly-chat-modal-messages');
+    if (!box) return;
+    if (box.querySelector('p')) box.innerHTML = '';
+    box.insertAdjacentHTML('beforeend', weeklyChatBubbleHtmlAdmin(sender, body));
+    box.scrollTop = box.scrollHeight;
+  }
+
+  async function openWeeklyChatModal(wallet, week) {
+    _weeklyChatModalWallet = wallet;
+    _weeklyChatModalWeek = week;
+    const modal = document.getElementById('weekly-chat-modal');
+    const walletLabel = document.getElementById('weekly-chat-modal-wallet');
+    if (walletLabel) walletLabel.textContent = `${wallet} · ${week}`;
+    if (modal) modal.style.display = 'flex';
+    await loadAdminWeeklyChatThread();
+  }
+
+  function closeWeeklyChatModal() {
+    const modal = document.getElementById('weekly-chat-modal');
+    if (modal) modal.style.display = 'none';
+    _weeklyChatModalWallet = null;
+    _weeklyChatModalWeek = null;
+  }
+
+  async function loadAdminWeeklyChatThread() {
+    const box = document.getElementById('weekly-chat-modal-messages');
+    if (!box || !_weeklyChatModalWallet || !_weeklyChatModalWeek) return;
+    try {
+      const res = await fetch(`/api/raffle/admin/weekly-chat?wallet=${encodeURIComponent(_weeklyChatModalWallet)}&week=${encodeURIComponent(_weeklyChatModalWeek)}`, { headers: authHeaders() });
+      const data = await res.json();
+      const messages = Array.isArray(data) ? data : [];
+      box.innerHTML = messages.length
+        ? messages.map(m => weeklyChatBubbleHtmlAdmin(m.sender, m.body)).join('')
+        : `<p style="font-size:12px; color:var(--text-muted); text-align:center;">Aún no hay mensajes con este ganador.</p>`;
+      box.scrollTop = box.scrollHeight;
+    } catch (e) {
+      box.innerHTML = `<p style="font-size:12px; color:var(--text-muted); text-align:center;">No se pudo cargar el chat.</p>`;
+    }
+  }
+
+  async function sendAdminWeeklyChatMsg() {
+    const input = document.getElementById('weekly-chat-modal-input');
+    if (!input || !_weeklyChatModalWallet || !_weeklyChatModalWeek) return;
+    const message = input.value.trim();
+    if (!message) return;
+    input.value = '';
+    appendAdminWeeklyChatMessage('admin', message);
+    try {
+      const res = await fetch('/api/raffle/admin/weekly-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ wallet: _weeklyChatModalWallet, week: _weeklyChatModalWeek, message })
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showToast(`⚠️ ${data.error || 'No se pudo enviar el mensaje'}`);
+      }
+    } catch (e) {
+      showToast('⚠️ No se pudo enviar el mensaje');
+    }
   }
 
   function showVipRequestNotification(data) {
@@ -4640,13 +4756,14 @@
               const pdfLink = data.confirmedAt
                 ? `<a href="/api/pdf/weekly/${selectedWeek}?wallet=${encodeURIComponent(w)}" target="_blank" style="padding:2px 6px; background:rgba(196,151,58,0.12); border:1px solid rgba(196,151,58,0.3); border-radius:6px; font-size:10px; font-weight:700; color:var(--gold); cursor:pointer; text-decoration:none; margin-left:8px;">📄 PDF</a>`
                 : '';
+              const chatBtn = `<button onclick="openWeeklyChatModal('${w}','${selectedWeek}')" style="padding:2px 8px; background:rgba(139,25,24,0.08); border:1px solid rgba(139,25,24,0.25); border-radius:6px; font-size:10px; font-weight:700; color:var(--wine); cursor:pointer; margin-left:6px; font-family:'Outfit',sans-serif;">💬 Chat</button>`;
               const isWinnerCollected = !!parsedCollected[w];
               const deliverBtn = isMultiple && !data.forfeitedAt && data.status !== 'forfeited'
                 ? (isWinnerCollected
                     ? `<span style="font-size:11px; font-weight:700; color:#15803d; white-space:nowrap;">✅ Entregado</span>`
                     : `<button onclick="collectWeeklyWinnerPrize('${w}')" style="padding:4px 10px; background:linear-gradient(135deg,#4ade80,#16a34a); color:#fff; border:none; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap; font-family:'Outfit',sans-serif;">Entregar</button>`)
                 : '';
-              html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid rgba(0,0,0,0.05); gap:8px; flex-wrap:wrap;"><span style="font-family:monospace; font-size:12px; display:flex; align-items:center; gap:4px;">${w}${pdfLink}</span><span style="font-weight:bold; color:var(--wine); font-size:14px;">${codes[w] || '—'}</span>${deliverBtn}</div>`;
+              html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid rgba(0,0,0,0.05); gap:8px; flex-wrap:wrap;"><span style="font-family:monospace; font-size:12px; display:flex; align-items:center; gap:4px;">${w}${pdfLink}${chatBtn}</span><span style="font-weight:bold; color:var(--wine); font-size:14px;">${codes[w] || '—'}</span>${deliverBtn}</div>`;
             });
             winnerAddress.innerHTML = html;
             // Guardar flag para la lógica de botón global más abajo
@@ -4655,7 +4772,10 @@
             const pdfLink = data.confirmedAt && data.winnerWallet && data.winnerWallet !== '—'
                 ? `<a href="/api/pdf/weekly/${selectedWeek}?wallet=${encodeURIComponent(data.winnerWallet)}" target="_blank" style="padding:2px 6px; background:rgba(196,151,58,0.12); border:1px solid rgba(196,151,58,0.3); border-radius:6px; font-size:10px; font-weight:700; color:var(--gold); cursor:pointer; text-decoration:none; margin-left:8px;">📄 PDF</a>`
                 : '';
-            winnerAddress.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; padding-bottom:4px; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-family:monospace; font-size:13px; display:flex; align-items:center;">${data.winnerWallet || '—'}${pdfLink}</span></div>`;
+            const chatBtn = data.winnerWallet && data.winnerWallet !== '—'
+                ? `<button onclick="openWeeklyChatModal('${data.winnerWallet}','${selectedWeek}')" style="padding:2px 8px; background:rgba(139,25,24,0.08); border:1px solid rgba(139,25,24,0.25); border-radius:6px; font-size:10px; font-weight:700; color:var(--wine); cursor:pointer; margin-left:6px; font-family:'Outfit',sans-serif;">💬 Chat</button>`
+                : '';
+            winnerAddress.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; padding-bottom:4px; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-family:monospace; font-size:13px; display:flex; align-items:center;">${data.winnerWallet || '—'}${pdfLink}${chatBtn}</span></div>`;
           }
         }
         const codeEl = document.getElementById('weekly-verification-code');
