@@ -1413,6 +1413,7 @@
             <option value="2">Nivel 2 — O Cunqueiro</option>
             <option value="3">Nivel 3 — O Larpeiro</option>
             <option value="4">Nivel 4 — O Presidente do Furancho</option>
+            <optgroup id="msg-ach-group" label="🎟️ Solo con logro NFT"></optgroup>
             <option value="wallet">Billetera específica (0x...)</option>
           </select>
         </div>
@@ -2546,7 +2547,7 @@
       document.body.scrollTop = 0;
     }, 0);
     if (pageId === 'events') loadEventsPage();
-    if (pageId === 'messages') { loadMsgRsvpEvents(); loadScheduledMessages(); }
+    if (pageId === 'messages') { loadMsgRsvpEvents(); loadScheduledMessages(); loadAchievementFilterOptions(); }
     if (pageId === 'dashboard') { loadStats(); loadHourlyChart(); }
     loadVipBadge();
     if (pageId === 'holders') {
@@ -3874,6 +3875,9 @@
         sel.innerHTML = (first ? first.outerHTML : '<option value="">Sin requisito de logro</option>') + opts;
         sel.value = cur;
       });
+      // Selector del anuncio: grupo "Solo con logro NFT" con value 'ach:<id>'.
+      const achGroup = document.getElementById('msg-ach-group');
+      if (achGroup) achGroup.innerHTML = cat.map(a => `<option value="ach:${a.id}">${a.name}</option>`).join('');
     } catch (e) {}
   }
 

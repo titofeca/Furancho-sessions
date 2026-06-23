@@ -781,6 +781,14 @@ function getWalletsByLevel(levelFilter) {
     .map(r => r.wallet_address);
 }
 
+// Wallets que tienen un logro NFT concreto (no fallido) — para filtrar anuncios.
+function getWalletsByAchievement(achievementId) {
+  if (!achievementId) return [];
+  return db.prepare(`SELECT DISTINCT wallet_address FROM achievement_mints WHERE achievement_id = ? AND status != 'failed'`)
+    .all(achievementId)
+    .map(r => r.wallet_address);
+}
+
 function insertMessage({ subject, body, levelFilter, recipientCount, rsvpEventId = null }) {
   const stmt = db.prepare(`
     INSERT INTO messages (subject, body, level_filter, recipient_count, rsvp_event_id)
@@ -1801,6 +1809,7 @@ module.exports = {
   getHolders,
   getMultiLevelHolders,
   getWalletsByLevel,
+  getWalletsByAchievement,
   getClaimedLevels,
   insertMessage,
   getMessages,

@@ -9,6 +9,7 @@ const {
   getHolders,
   getMultiLevelHolders,
   getWalletsByLevel,
+  getWalletsByAchievement,
   insertMessage,
   getMessages,
   addReaction,
@@ -133,13 +134,25 @@ router.get('/inbox', (req, res) => {
       isCheckedIn = getEligibleRaffleParticipants()
         .some(w => w.toLowerCase() === verifiedWallet.toLowerCase());
     }
-    const messages = db.prepare(`
-      SELECT id, subject, body, sent_at, rsvp_event_id FROM messages
+    // Logros NFT que tiene esta wallet (para mensajes con filtro de logro 'ach:<id>')
+    const walletAchievements = new Set();
+    if (verifiedWallet) {
+      db.prepare(`SELECT achievement_id FROM achievement_mints WHERE LOWER(wallet_address) = LOWER(?) AND status != 'failed'`)
+        .all(verifiedWallet).forEach(r => walletAchievements.add(r.achievement_id));
+    }
+    const rawMessages = db.prepare(`
+      SELECT id, subject, body, sent_at, rsvp_event_id, level_filter FROM messages
       WHERE level_filter = 'all' OR level_filter = ?
         OR (LOWER(level_filter) = LOWER(?) AND ? != '')
         OR (level_filter = 'checkedin' AND ?)
-      ORDER BY sent_at DESC LIMIT 30
-    `).all(level.toString(), verifiedWallet, verifiedWallet, isCheckedIn ? 1 : 0);
+        OR (level_filter LIKE 'ach:%' AND ? != '')
+      ORDER BY sent_at DESC LIMIT 50
+    `).all(level.toString(), verifiedWallet, verifiedWallet, isCheckedIn ? 1 : 0, verifiedWallet);
+    // Mensajes con filtro de logro: solo si la wallet tiene ese logro. Se quita level_filter del output.
+    const messages = rawMessages
+      .filter(m => !(m.level_filter && m.level_filter.startsWith('ach:')) || walletAchievements.has(m.level_filter.slice(4)))
+      .slice(0, 30)
+      .map(({ level_filter, ...rest }) => rest);
     const ids = messages.map(m => m.id);
     const reactions = ids.length ? getReactionsForMessages(ids) : {};
     res.json(messages.map(m => ({
@@ -252,9 +265,15 @@ router.post('/send-message', requireAuth, async (req, res) => {
   const rsvpEvent = rsvpEventId != null && rsvpEventId !== '' && !isNaN(parseInt(rsvpEventId))
     ? parseInt(rsvpEventId) : null;
 
-  // 'checkedin' = solo clientes que ficharon entrada esta noche dentro de la ventana del evento
+  // 'checkedin' = solo clientes que ficharon entrada esta noche dentro de la ventana del evento.
+  // 'ach:<id>' = solo clientes que tienen ese logro NFT.
   const checkedInOnly = levelFilter === 'checkedin';
-  const wallets = checkedInOnly ? getEligibleRaffleParticipants() : getWalletsByLevel(levelFilter);
+  const isAchFilter = typeof levelFilter === 'string' && levelFilter.startsWith('ach:');
+  const wallets = checkedInOnly
+    ? getEligibleRaffleParticipants()
+    : isAchFilter
+      ? getWalletsByAchievement(levelFilter.slice(4))
+      : getWalletsByLevel(levelFilter);
 
   // Guardar mensaje en DB
   const messageId = insertMessage({
@@ -268,7 +287,7 @@ router.post('/send-message', requireAuth, async (req, res) => {
   console.log(`[MESSAGE] Mensaje publicado. Destinatarios estimados: ${wallets.length}${checkedInOnly ? ' (solo fichados en local)' : ''}`);
 
   // Push a móviles con pantalla apagada
-  if (checkedInOnly) {
+  if (checkedInOnly || isAchFilter) {
     sendPushToWallets(wallets, `📢 ${subject}`, body, { url: '/claim' });
   } else if (levelFilter && levelFilter.startsWith('0x')) {
     sendPushToWallet(levelFilter, `✉️ Mensaje privado: ${subject}`, body, { url: '/claim' });

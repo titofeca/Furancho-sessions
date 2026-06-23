@@ -401,7 +401,7 @@ function scheduleAutoMessages() {
 
     try {
       const { db, getScheduledMessages } = require('./db/database');
-      const { getWalletsByLevel, getEligibleRaffleParticipants } = require('./db/database');
+      const { getWalletsByLevel, getWalletsByAchievement, getEligibleRaffleParticipants } = require('./db/database');
       const { sendPushToAll, sendPushToWallets, sendPushToWallet } = require('./services/push');
 
       const pending = db.prepare(`
@@ -416,7 +416,12 @@ function scheduleAutoMessages() {
 
         const levelFilter = msg.level_filter || 'all';
         const checkedInOnly = levelFilter === 'checkedin';
-        const wallets = checkedInOnly ? getEligibleRaffleParticipants() : getWalletsByLevel(levelFilter);
+        const isAchFilter = typeof levelFilter === 'string' && levelFilter.startsWith('ach:');
+        const wallets = checkedInOnly
+          ? getEligibleRaffleParticipants()
+          : isAchFilter
+            ? getWalletsByAchievement(levelFilter.slice(4))
+            : getWalletsByLevel(levelFilter);
 
         // Guardar en tabla histórica
         db.prepare(`
@@ -432,7 +437,7 @@ function scheduleAutoMessages() {
         `).run(msg.id);
 
         // PUSH a los móviles
-        if (checkedInOnly) {
+        if (checkedInOnly || isAchFilter) {
           sendPushToWallets(wallets, `📢 ${msg.subject}`, msg.body, { url: '/claim' });
         } else if (levelFilter && levelFilter.startsWith('0x')) {
           sendPushToWallet(levelFilter, `✉️ Mensaje privado: ${msg.subject}`, msg.body, { url: '/claim' });
