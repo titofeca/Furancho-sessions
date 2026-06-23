@@ -3908,8 +3908,14 @@
       // El museo (logros/insignias) se pinta SIEMPRE, por ASISTENCIA — antes quedaba
       // detrás de los returns tempranos y solo aparecía si el cliente tenía historial
       // de sorteos. Un logro se desbloquea por haber asistido a su día/evento concreto.
-      renderMuseoBadges(userVisits, userClaimedLevels, history);
-      renderNftAchievements(); // logros NFT reclamables (async, fire-and-forget)
+      // Estado de logros NFT — se trae UNA vez y se pasa a ambos renders, para reflejar
+      // también los logros OTORGADOS por el admin (no solo los de asistencia).
+      let _achStatus = null;
+      try { if (userWalletAddress) _achStatus = await fetch(`/api/achievements/status?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => null); } catch (e) {}
+      const _achMap = {};
+      if (_achStatus && _achStatus.achievements) _achStatus.achievements.forEach(a => { _achMap[a.id] = a; });
+      renderMuseoBadges(userVisits, userClaimedLevels, history, _achMap);
+      renderNftAchievements(_achStatus); // logros NFT (usa el estado ya traído)
 
       const todayRaffles = history.filter(r => r.created_at && r.created_at.startsWith(today));
       const hasEntry     = eligibility.hasSessionToday;
@@ -4240,14 +4246,18 @@
 
       // === RENDERIZAR INSIGNIAS Y LOGROS (MUSEO) ===
       // Declarada aquí (hoisted) pero invocada arriba para que el museo se pinte siempre.
-      function renderMuseoBadges(userVisits, userClaimedLevels, history) {
+      function renderMuseoBadges(userVisits, userClaimedLevels, history, achMap) {
+      achMap = achMap || {};
+      // Nivel máximo que TIENE (otorgado o ganado). Las insignias de nivel se desbloquean
+      // por nivel poseído, no solo por nº de visitas — así un nivel regalado también cuenta.
+      const maxLevel = (userClaimedLevels && userClaimedLevels.length) ? Math.max(...userClaimedLevels) : 0;
       const badges = [
         {
           id: 'primer_cautivo',
           name: 'Primer Cautivo',
           icon: '🍷',
           desc: '1ª visita registrada (Nivel 1 o superior)',
-          unlocked: userClaimedLevels.length > 0 || userVisits.length >= 1,
+          unlocked: maxLevel >= 1 || userVisits.length >= 1,
           color: 'hsla(358, 70%, 45%, 0.15)',
           borderColor: 'var(--wine)'
         },
@@ -4256,7 +4266,7 @@
           name: 'Cunqueiro Fiel',
           icon: '🍶',
           desc: '2+ visitas registradas (Nivel 2 o superior)',
-          unlocked: userVisits.length >= 2,
+          unlocked: maxLevel >= 2 || userVisits.length >= 2,
           color: 'hsla(30, 80%, 45%, 0.12)',
           borderColor: 'var(--gold)'
         },
@@ -4265,7 +4275,7 @@
           name: 'Larpeiro Experto',
           icon: '🌿',
           desc: '4+ visitas registradas (Nivel 3 o superior)',
-          unlocked: userVisits.length >= 4,
+          unlocked: maxLevel >= 3 || userVisits.length >= 4,
           color: 'hsla(120, 50%, 40%, 0.12)',
           borderColor: 'rgba(74,222,128,0.5)'
         },
@@ -4274,7 +4284,7 @@
           name: 'O Presidente',
           icon: '👑',
           desc: '12+ visitas registradas (Nivel 4)',
-          unlocked: userVisits.length >= 12,
+          unlocked: maxLevel >= 4 || userVisits.length >= 12,
           color: 'hsla(45, 90%, 45%, 0.15)',
           borderColor: '#ffd700'
         },
@@ -4313,7 +4323,8 @@
           // cae al emoji (icon) sin romper nada.
           image: '/assets/furanchosanjuan.jpg',
           desc: 'San Juan 2026: Tener ciertos NFT dará privilegios Gastronómicos.',
-          unlocked: userVisits && userVisits.some(v => v.day === '2026-06-25'),
+          // Desbloqueado por asistir el 25 O por tener ya el logro (otorgado/reclamado).
+          unlocked: (userVisits && userVisits.some(v => v.day === '2026-06-25')) || !!(achMap['furancheiro_fiesteiro'] && achMap['furancheiro_fiesteiro'].claimStatus),
           color: 'hsla(18, 90%, 50%, 0.15)',
           borderColor: 'rgba(249,115,22,0.6)'
         }
@@ -6484,13 +6495,14 @@
   // ── LOGROS NFT (ediciones especiales reclamables desde el museo) ──────────────
   // Pinta solo los logros DESBLOQUEADOS (asistió al evento). El servidor verifica la
   // regla; aquí solo mostramos el estado de claim.
-  async function renderNftAchievements() {
+  async function renderNftAchievements(prefetched) {
     const section = document.getElementById('museo-nft-section');
     const grid = document.getElementById('museo-nft-grid');
     if (!section || !grid || !userWalletAddress) return;
     try {
-      const data = await fetch(`/api/achievements/status?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => null);
-      const items = (data && data.achievements) ? data.achievements.filter(a => a.unlocked) : [];
+      const data = prefetched || await fetch(`/api/achievements/status?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => null);
+      // Mostrar los desbloqueados por asistencia Y los ya OTORGADOS/reclamados (claimStatus).
+      const items = (data && data.achievements) ? data.achievements.filter(a => a.unlocked || a.claimStatus) : [];
       if (!items.length) { section.style.display = 'none'; return; }
       grid.innerHTML = items.map(a => {
         let cta;
