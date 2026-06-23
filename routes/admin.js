@@ -887,8 +887,8 @@ router.get('/inspect-wallet/:address', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'Dirección no válida' });
   }
   try {
-    const { db, getVisitCount } = require('../db/database');
-    
+    const { db, getVisitCount, getClaimedLevels } = require('../db/database');
+
     // Nivel del holder
     const holder = db.prepare(`
       SELECT level, level_name, minted_at FROM mints
@@ -936,6 +936,7 @@ router.get('/inspect-wallet/:address', requireAuth, (req, res) => {
       lastVisit: lastSession ? lastSession.entry_time : (holder ? holder.minted_at : null),
       activeNow: !!activeSession,
       activeSessionStart: activeSession ? activeSession.entry_time : null,
+      claimedLevels: getClaimedLevels(address),
       tapasByDay
     });
   } catch (e) {
@@ -1108,6 +1109,26 @@ router.post('/mint-direct', requireAuth, (req, res) => {
       notifyQueue();
     }
     res.json({ success: true, id, level: lvl, levelName: LEVEL_NAMES[lvl], walletAddress, queued: onChain });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/grant-achievement — otorga un logro NFT a una wallet por decisión del
+// admin (sin requisito de asistencia; autoridad admin). Encola el mint on-chain.
+router.post('/grant-achievement', requireAuth, (req, res) => {
+  const { walletAddress, achievementId } = req.body;
+  if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) return res.status(400).json({ error: 'Wallet inválida' });
+  const achievements = require('../services/achievements');
+  const a = achievements.getById(achievementId);
+  if (!a) return res.status(404).json({ error: 'Logro no encontrado' });
+  try {
+    const { claimAchievement, getAchievementMint } = require('../db/database');
+    const existing = getAchievementMint(walletAddress, a.id);
+    if (existing) return res.json({ success: true, alreadyGranted: true, status: existing.status, achievementId: a.id });
+    claimAchievement(walletAddress, a.id, a.tokenId);
+    require('../services/polygon').notifyAchievementQueue();
+    res.json({ success: true, status: 'pending', achievementId: a.id, name: a.name });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

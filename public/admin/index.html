@@ -515,6 +515,13 @@
     .input-field::placeholder { color: rgba(42, 21, 9, 0.38); }
     textarea.input-field { resize: vertical; min-height: 110px; }
 
+    .scan-action-btn {
+      background: rgba(139,25,24,0.06); color: var(--wine); border: 1.5px solid rgba(139,25,24,0.25);
+      border-radius: 12px; padding: 11px 8px; font-size: 12.5px; font-weight: 700; cursor: pointer;
+      font-family: 'Outfit', sans-serif; text-align: center; transition: background 0.15s;
+    }
+    .scan-action-btn:hover { background: rgba(139,25,24,0.12); }
+
     select.input-field {
       cursor: pointer;
       appearance: none;
@@ -6376,6 +6383,7 @@
 
   function renderScanResult(d) {
     const resultDiv = document.getElementById('scanner-result');
+    window._scanData = d; // para las acciones del menú (visitas, logros, etc.)
     const levelColors = { 1: '#8B6914', 2: '#5C8B19', 3: '#195C8B', 4: '#8B1918' };
     const levelEmojis = { 1: '🍷', 2: '🥂', 3: '🍾', 4: '👑' };
     const lColor = levelColors[d.level] || '#8B1918';
@@ -6450,6 +6458,18 @@
           ${tapasDayRows}
         </div>` : `<div style="font-size:13px;color:var(--text-muted);text-align:center;padding:10px;">Sin historial de tapas registrado</div>`}
 
+        <!-- ⚡ Acciones sobre este furancheiro -->
+        <div style="margin-top:16px; padding-top:14px; border-top:1px solid rgba(42,21,9,0.1);">
+          <p style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--gold);margin:0 0 8px;">⚡ Acciones</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <button onclick="scanShowVisits()" class="scan-action-btn">🍷 Revisar visitas</button>
+            <button onclick="scanShowLogros('${d.walletAddress}')" class="scan-action-btn">🏅 Ver sus logros</button>
+            <button onclick="scanLevelUpUI('${d.walletAddress}')" class="scan-action-btn">⬆️ Subir de nivel</button>
+            <button onclick="scanGrantAchUI('${d.walletAddress}')" class="scan-action-btn">🎟️ Otorgar logro NFT</button>
+          </div>
+          <div id="scan-action-panel" style="margin-top:10px;"></div>
+        </div>
+
         <!-- Botón ver perfil completo en holders -->
         <button onclick="showPage('holders'); setTimeout(()=>{ document.getElementById('scanner-manual-input') && (document.getElementById('scanner-manual-input').value=''); filterHolders('all', document.getElementById('fbtn-all')); },100);"
           style="margin-top:14px;width:100%;background:rgba(42,21,9,0.06);color:var(--text);border:1.5px solid rgba(42,21,9,0.1);border-radius:12px;padding:11px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;">
@@ -6461,6 +6481,89 @@
         </button>
       </div>
     `;
+  }
+
+  // ===== Acciones del menú del escaneo admin =====
+  function _scanPanel(html) {
+    const p = document.getElementById('scan-action-panel');
+    if (p) p.innerHTML = `<div style="background:rgba(42,21,9,0.04);border:1px solid rgba(42,21,9,0.1);border-radius:12px;padding:12px;">${html}</div>`;
+  }
+
+  function scanShowVisits() {
+    const d = window._scanData; if (!d) return;
+    const rows = (d.tapasByDay || []).map(t => {
+      const day = new Date(t.day + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short' });
+      return `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(42,21,9,0.06);font-size:12.5px;"><span>${day}${t.event_title?` · <span style="color:var(--text-muted);">${t.event_title}</span>`:''}</span><span style="font-weight:700;color:var(--wine);">${t.tapas} 🍷</span></div>`;
+    }).join('') || '<p style="font-size:12px;color:var(--text-muted);margin:0;">Sin visitas registradas.</p>';
+    _scanPanel(`<p style="font-size:12px;font-weight:700;margin:0 0 8px;">🍷 ${d.visitCount || 0} visitas totales</p>${rows}`);
+  }
+
+  async function scanShowLogros(wallet) {
+    _scanPanel('Cargando logros…');
+    try {
+      const d = window._scanData || {};
+      const lvlNames = { 1:'Cautivo', 2:'Cunqueiro', 3:'Larpeiro', 4:'Presidente' };
+      const levels = (d.claimedLevels || []).slice().sort((a,b)=>a-b);
+      const lvlHtml = levels.length
+        ? levels.map(l=>`<span style="display:inline-block;background:rgba(139,25,24,0.1);color:var(--wine);border-radius:100px;padding:3px 10px;font-size:11px;font-weight:700;margin:2px;">Nv${l} ${lvlNames[l]||''}</span>`).join('')
+        : '<span style="font-size:12px;color:var(--text-muted);">Sin niveles aún</span>';
+      const ach = await fetch(`/api/achievements/status?wallet=${wallet}`).then(r=>r.json()).catch(()=>null);
+      const items = (ach && ach.achievements) || [];
+      const achHtml = items.length ? items.map(a=>{
+        const st = a.claimStatus==='success' ? '✅ en wallet' : a.claimStatus==='pending' ? '⏳ generando' : a.unlocked ? '🔓 desbloqueado' : '🔒 bloqueado';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(42,21,9,0.06);font-size:12.5px;"><span>${a.name}</span><span style="font-size:11px;color:var(--text-muted);">${st}</span></div>`;
+      }).join('') : '<span style="font-size:12px;color:var(--text-muted);">Sin logros NFT.</span>';
+      _scanPanel(`<p style="font-size:11px;font-weight:800;text-transform:uppercase;color:var(--gold);margin:0 0 6px;">Niveles</p><div style="margin-bottom:10px;">${lvlHtml}</div><p style="font-size:11px;font-weight:800;text-transform:uppercase;color:var(--gold);margin:0 0 4px;">Logros NFT</p>${achHtml}`);
+    } catch (e) { _scanPanel('Error al cargar logros.'); }
+  }
+
+  function scanLevelUpUI(wallet) {
+    _scanPanel(`
+      <p style="font-size:12px;font-weight:700;margin:0 0 8px;">⬆️ Otorgar nivel (mintea el pase)</p>
+      <div style="display:flex;gap:8px;">
+        <select id="scan-level-sel" class="input-field" style="flex:1;margin:0;font-size:13px;">
+          <option value="1">Nv1 Cautivo</option><option value="2">Nv2 Cunqueiro</option>
+          <option value="3">Nv3 Larpeiro</option><option value="4" selected>Nv4 Presidente</option>
+        </select>
+        <button onclick="doScanLevelUp('${wallet}')" style="background:var(--wine);color:#fff;border:none;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">Otorgar</button>
+      </div>
+      <p style="font-size:10.5px;color:var(--text-muted);margin:6px 0 0;">Nv3/Nv4 se mintean on-chain (gas).</p>
+    `);
+  }
+  async function doScanLevelUp(wallet) {
+    const lvl = document.getElementById('scan-level-sel')?.value;
+    _scanPanel('Otorgando…');
+    try {
+      const r = await fetch('/api/admin/mint-direct', { method:'POST', headers:{ ...authHeaders(), 'Content-Type':'application/json' }, body: JSON.stringify({ walletAddress: wallet, level: lvl }) }).then(r=>r.json());
+      if (r.success) _scanPanel(`✅ Otorgado <strong>${r.levelName}</strong>${r.queued?' — minteando on-chain…':''}. Vuelve a escanear para ver el cambio.`);
+      else _scanPanel(`⚠️ ${r.error || 'No se pudo otorgar'}`);
+    } catch (e) { _scanPanel('Error al otorgar nivel.'); }
+  }
+
+  async function scanGrantAchUI(wallet) {
+    _scanPanel('Cargando catálogo…');
+    try {
+      const cat = await fetch('/api/achievements/catalog').then(r=>r.json()).catch(()=>[]);
+      if (!Array.isArray(cat) || !cat.length) { _scanPanel('No hay logros en el catálogo.'); return; }
+      const opts = cat.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+      _scanPanel(`
+        <p style="font-size:12px;font-weight:700;margin:0 0 8px;">🎟️ Otorgar logro NFT (sin requisito de asistencia)</p>
+        <div style="display:flex;gap:8px;">
+          <select id="scan-ach-sel" class="input-field" style="flex:1;margin:0;font-size:13px;">${opts}</select>
+          <button onclick="doScanGrantAch('${wallet}')" style="background:var(--wine);color:#fff;border:none;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">Otorgar</button>
+        </div>
+        <p style="font-size:10.5px;color:var(--text-muted);margin:6px 0 0;">Se mintea on-chain (gas).</p>
+      `);
+    } catch (e) { _scanPanel('Error al cargar el catálogo.'); }
+  }
+  async function doScanGrantAch(wallet) {
+    const id = document.getElementById('scan-ach-sel')?.value;
+    _scanPanel('Otorgando…');
+    try {
+      const r = await fetch('/api/admin/grant-achievement', { method:'POST', headers:{ ...authHeaders(), 'Content-Type':'application/json' }, body: JSON.stringify({ walletAddress: wallet, achievementId: id }) }).then(r=>r.json());
+      if (r.success) _scanPanel(r.alreadyGranted ? `Ya lo tenía (${r.status}).` : `✅ Logro otorgado — minteando on-chain…`);
+      else _scanPanel(`⚠️ ${r.error || 'No se pudo otorgar'}`);
+    } catch (e) { _scanPanel('Error al otorgar logro.'); }
   }
 </script>
 </body>
