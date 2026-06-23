@@ -179,6 +179,17 @@ try {
   )`);
 } catch (_) {}
 
+// Vistas del premio de la Chave Semanal (cuántos furancheiros distintos vieron el
+// mensaje cada semana). Una fila por wallet+semana — visitas repetidas no duplican.
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS weekly_message_views (
+    wallet_address TEXT NOT NULL,
+    claimed_week TEXT NOT NULL,
+    viewed_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (wallet_address, claimed_week)
+  )`);
+} catch (_) {}
+
 // =====================
 // CREAR TABLAS
 // =====================
@@ -1901,6 +1912,9 @@ module.exports = {
   getWeeklyChatMessages,
   markWeeklyChatRead,
   getWeeklyChatThreads,
+  recordWeeklyMessageView,
+  getWeeklyMessageViewCount,
+  getWeeklyMessageViewCounts,
   getWeeklyRaffleTargetWeek,
   isWeeklyWindowOpen,
   getActiveEventWindow,
@@ -1972,6 +1986,10 @@ function getWeeklyRaffleStatus(walletAddress, weekStr) {
   // (se enmascara), para que no se filtre llamando al endpoint fuera de ventana.
   const drawn = !!(raffle && raffle.status && raffle.status !== 'active');
   const prizeVisible = !!raffle && (drawn || isWeeklyWindowOpen());
+
+  // Métrica: cuántos furancheiros distintos han visto el premio de esta semana
+  // (una vez por wallet+semana). Solo cuenta cuando el premio realmente se reveló.
+  if (prizeVisible) recordWeeklyMessageView(walletAddress, weekStr);
 
   return {
     claimed: !!claim,
@@ -2159,6 +2177,27 @@ function getWeeklyChatThreads() {
       lastAt: last ? last.created_at : null
     };
   });
+}
+
+// Métricas de vistas del mensaje de la Chave Semanal (cuántos distintos la vieron).
+function recordWeeklyMessageView(walletAddress, claimedWeek) {
+  if (!walletAddress || !claimedWeek) return;
+  try {
+    db.prepare(`INSERT OR IGNORE INTO weekly_message_views (wallet_address, claimed_week) VALUES (?, ?)`)
+      .run(walletAddress.toLowerCase(), claimedWeek);
+  } catch (_) {}
+}
+
+function getWeeklyMessageViewCount(claimedWeek) {
+  return db.prepare(`SELECT COUNT(*) as count FROM weekly_message_views WHERE claimed_week = ?`).get(claimedWeek)?.count || 0;
+}
+
+// Mapa { semana: nº de vistas } para todas las semanas con vistas registradas.
+function getWeeklyMessageViewCounts() {
+  const rows = db.prepare(`SELECT claimed_week, COUNT(*) as count FROM weekly_message_views GROUP BY claimed_week`).all();
+  const map = {};
+  rows.forEach(r => { map[r.claimed_week] = r.count; });
+  return map;
 }
 
 function collectWeeklyRaffle(weekStr) {

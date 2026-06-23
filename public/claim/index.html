@@ -1356,6 +1356,41 @@
       to   { transform: scale(1.1); opacity: 1; }
     }
 
+    /* Llamada a la acción del botón "Trincar Boleto" de la Chave Semanal:
+       pulso dorado + ligero rebote para que se note que hay que clicar ahí. */
+    #weekly-claim-btn.chave-btn-attention {
+      background: linear-gradient(135deg, var(--gold), var(--wine)) !important;
+      border-color: var(--gold) !important;
+      animation: chaveBtnPulse 1.8s ease-in-out infinite, chaveBtnBounce 2.6s ease-in-out infinite;
+    }
+    @keyframes chaveBtnPulse {
+      0%, 100% { box-shadow: 0 4px 14px rgba(196,151,58,0.25); }
+      50%      { box-shadow: 0 6px 26px rgba(196,151,58,0.65), 0 0 0 6px rgba(196,151,58,0.12); }
+    }
+    @keyframes chaveBtnBounce {
+      0%, 80%, 100% { transform: scale(1); }
+      88% { transform: scale(1.045); }
+      94% { transform: scale(0.99); }
+    }
+    #weekly-claim-card.chave-card-attention {
+      box-shadow: 0 0 0 2px rgba(196,151,58,0.35), 0 6px 24px rgba(139,25,24,0.12);
+    }
+    .chave-tap-hint {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--gold);
+      letter-spacing: 0.3px;
+      margin-top: 6px;
+      animation: chaveTapHintFade 1.8s ease-in-out infinite;
+    }
+    @keyframes chaveTapHintFade {
+      0%, 100% { opacity: 0.55; transform: translateX(0); }
+      50%      { opacity: 1; transform: translateX(3px); }
+    }
+
     /* nivel 2 light override */
     body.nivel-2 {
       background: #EAE4DA;
@@ -1972,12 +2007,13 @@
             </div>
           </div>
           <button id="weekly-claim-btn" onclick="claimWeeklyTicket()" style="
-            width:100%; padding:13px; border-radius:50px; font-size:14px; font-weight:700; cursor:pointer;
+            width:100%; padding:15px; border-radius:50px; font-size:15px; font-weight:800; cursor:pointer;
             border:1.5px solid var(--wine); background:var(--wine); color:#fff;
             font-family:'Outfit',sans-serif; transition:all 0.2s; outline:none; -webkit-tap-highlight-color:transparent;"
             onmouseover="this.style.background='var(--wine-light)'; this.style.borderColor='var(--wine-light)';"
             onmouseout="this.style.background='var(--wine)'; this.style.borderColor='var(--wine)';"
             onmousedown="this.style.transform='scale(0.96)';">Trincar Boleto</button>
+          <p id="weekly-claim-tap-hint" class="chave-tap-hint" style="display:none; width:100%; justify-content:center; margin:0;">👆 ¡Toca aquí, es gratis!</p>
         </div>
       </div>
 
@@ -6004,6 +6040,8 @@
           rulesText.textContent = data.rules || 'Trinca el boleto y a esperar al sorteo. ¡Un regalo de la hostia te puede tocar, rapaz!';
         }
 
+        const tapHint = document.getElementById('weekly-claim-tap-hint');
+
         if (data.eligible === false) {
           // Ve el premio pero no puede entrar (filtro de nivel/logro de esta edición).
           btn.disabled = true;
@@ -6011,6 +6049,9 @@
           btn.style.background = 'transparent';
           btn.style.borderColor = 'rgba(139,25,24,0.25)';
           btn.style.color = 'var(--text-muted)';
+          btn.classList.remove('chave-btn-attention');
+          card.classList.remove('chave-card-attention');
+          if (tapHint) tapHint.style.display = 'none';
           if (rulesText) {
             rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--wine); font-size:12.5px; font-weight:700; line-height:1.5;">🔒 ${data.eligibilityReason || 'Este sorteo es solo para ciertos furancheiros, ho.'}</span>`;
           }
@@ -6020,16 +6061,26 @@
           btn.style.background = 'transparent';
           btn.style.borderColor = 'rgba(139,25,24,0.3)';
           btn.style.color = 'var(--wine)';
+          btn.classList.remove('chave-btn-attention');
+          card.classList.remove('chave-card-attention');
+          if (tapHint) tapHint.style.display = 'none';
         } else {
           btn.disabled = false;
-          btn.textContent = 'Trincar Boleto';
-          btn.style.background = 'var(--wine)';
-          btn.style.borderColor = 'var(--wine)';
+          btn.textContent = '🔑 ¡Trincar Boleto Ya!';
+          btn.style.background = '';
+          btn.style.borderColor = '';
           btn.style.color = '#fff';
+          btn.classList.add('chave-btn-attention');
+          card.classList.add('chave-card-attention');
+          if (tapHint) tapHint.style.display = 'flex';
         }
       } else {
         // Ventana inactiva (resto de la semana): mostrar narrativa fija y ocultar botón
         btn.style.display = 'none';
+        btn.classList.remove('chave-btn-attention');
+        card.classList.remove('chave-card-attention');
+        const tapHint = document.getElementById('weekly-claim-tap-hint');
+        if (tapHint) tapHint.style.display = 'none';
         prizeText.innerHTML = `🔑 <strong style="color:var(--wine);">Chave do Furancho</strong>`;
         if (rulesText) {
           rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:13px; line-height:1.5;">⏳ El domingo a las 21:00 se abre el siguiente bombo. ¡Estate al loro, ho!</span>`;
@@ -6113,7 +6164,12 @@
         btn.style.background = 'transparent';
         btn.style.borderColor = 'rgba(139,25,24,0.3)';
         btn.style.color = 'var(--wine)';
-        
+        btn.classList.remove('chave-btn-attention');
+        const card0 = document.getElementById('weekly-claim-card');
+        if (card0) card0.classList.remove('chave-card-attention');
+        const tapHint0 = document.getElementById('weekly-claim-tap-hint');
+        if (tapHint0) tapHint0.style.display = 'none';
+
         showProfileBanner('🎫 <strong>¡Boleto trincado, ho!</strong> Estás en el bombo de la Chave Semanal. Cruza los dedos.', 'green');
 
         const card = document.getElementById('weekly-claim-card');

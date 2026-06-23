@@ -12,7 +12,8 @@ const {
   deleteScheduledRaffle, linkScheduledRaffle, insertMint,
   claimWeeklyRaffle, getWeeklyRaffleStatus, updateWeeklyPrize, drawWeeklyRaffle, collectWeeklyRaffle, collectWeeklyWinner, forfeitWeeklyRaffle,
   getWeeklyRaffleTargetWeek, forfeitExpiredWeeklyRaffles, isWeeklyWindowOpen,
-  insertWeeklyChatMessage, getWeeklyChatMessages, markWeeklyChatRead, getWeeklyChatThreads
+  insertWeeklyChatMessage, getWeeklyChatMessages, markWeeklyChatRead, getWeeklyChatThreads,
+  getWeeklyMessageViewCount, getWeeklyMessageViewCounts
 } = require('../db/database');
 const { requireAuth } = require('./admin');
 const { sendPushToAll, sendPushToWallet } = require('../services/push');
@@ -975,8 +976,10 @@ router.get('/admin/weekly/status', requireAuth, (req, res) => {
     const { db, WEEKLY_DEFAULT_RULES } = require('../db/database');
     const raffle = db.prepare(`SELECT * FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
     const totalParticipants = db.prepare(`SELECT COUNT(*) as count FROM weekly_claims WHERE claimed_week = ?`).get(weekStr)?.count || 0;
+    const viewCount = getWeeklyMessageViewCount(weekStr);
     res.json({
       week: weekStr,
+      viewCount,
       prize: raffle ? raffle.prize : null,
       prizeDetails: raffle ? (raffle.prize_details || null) : null,
       minLevel: raffle ? (raffle.min_level || null) : null,
@@ -1124,6 +1127,7 @@ router.get('/admin/weekly/list', requireAuth, (req, res) => {
   try {
     const { db } = require('../db/database');
     const raffles = db.prepare(`SELECT * FROM weekly_raffles ORDER BY claimed_week DESC`).all();
+    const viewCounts = getWeeklyMessageViewCounts();
     const list = raffles.map(r => {
       const count = db.prepare(`SELECT COUNT(*) as count FROM weekly_claims WHERE claimed_week = ?`).get(r.claimed_week)?.count || 0;
       return {
@@ -1140,6 +1144,7 @@ router.get('/admin/weekly/list', requireAuth, (req, res) => {
         confirmDeadline: r.confirm_deadline,
         confirmedAt: r.confirmed_at,
         totalParticipants: count,
+        viewCount: viewCounts[r.claimed_week] || 0,
         winnersCount: r.winners_count || 1
       };
     });
