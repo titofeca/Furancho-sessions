@@ -715,13 +715,16 @@
       border-radius: 50px;
       padding: 12px 22px;
       font-size: 13px;
-      font-weight: 500;
-      color: var(--text);
+      font-weight: 600;
+      /* Fondo casi negro → el texto DEBE ir claro o no se lee (era var(--text) oscuro
+         y el aviso parecía un recuadro negro vacío). */
+      color: #F6EFE2;
       z-index: 9999;
       opacity: 0;
       transition: opacity 0.3s, transform 0.3s;
       pointer-events: none;
-      white-space: nowrap;
+      max-width: calc(100vw - 32px);
+      text-align: center;
       box-shadow: 0 8px 24px -6px rgba(0,0,0,0.5);
     }
     #toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -4062,7 +4065,9 @@
 
       // Mostrar panel de estado
       window._activeRaffle = { id: data.raffleId, verificationCode: data.verificationCode, prize, winnerWallet: data.winnerWallet };
-      document.getElementById('raffle-status').style.display = 'block';
+      const _schedStatusPanel = document.getElementById('raffle-status');
+      _schedStatusPanel.style.display = 'block';
+      try { _schedStatusPanel.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(_) {}
       document.getElementById('raffle-winner-box').style.display = 'none';
       document.getElementById('accepted-banner').style.display = 'none';
       document.getElementById('collect-btn-wrap').style.display = 'none';
@@ -4393,7 +4398,11 @@
     }
 
     document.getElementById('start-raffle-btn').disabled = true;
-    document.getElementById('raffle-status').style.display = 'block';
+    const _statusPanel = document.getElementById('raffle-status');
+    _statusPanel.style.display = 'block';
+    // Llevar el panel a la vista: el form es largo y en el móvil quedaba fuera de
+    // pantalla, así que el admin no veía la "ruleta girando" y creía que no lanzó.
+    try { _statusPanel.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(_) {}
     document.getElementById('raffle-winner-box').style.display = 'none';
     document.getElementById('accepted-banner').style.display = 'none';
     document.getElementById('collect-btn-wrap').style.display = 'none';
