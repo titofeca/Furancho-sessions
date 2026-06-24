@@ -2573,32 +2573,34 @@
       document.title = `Furancho Sessions — ${nft.name}`;
     }
 
-    // Restaurar cuenta desde QR de recuperación (?restore=0x...)
+    // Restaurar cuenta desde QR de recuperación (?restore=0x...). La wallet ya guardada
+    // en este dispositivo es SIEMPRE la autoridad: un ?restore= de la URL solo se adopta
+    // si aquí no había ninguna todavía. Así un enlace/manifest con una dirección antigua
+    // (p.ej. de una cuenta recuperada después) nunca pisa la cuenta real ya activa.
     const isStandalone = (('standalone' in window.navigator) && (window.navigator.standalone)) || window.matchMedia('(display-mode: standalone)').matches;
     const _restoreParam = new URLSearchParams(window.location.search).get('restore');
+    const _hadExistingWallet = !!localStorage.getItem('furancho_wallet_address');
     const _isQrRestore = !!(
-      _restoreParam && /^0x[a-fA-F0-9]{40}$/.test(_restoreParam) &&
-      !localStorage.getItem('furancho_wallet_address')
+      _restoreParam && /^0x[a-fA-F0-9]{40}$/.test(_restoreParam) && !_hadExistingWallet
     );
-    if (_restoreParam && /^0x[a-fA-F0-9]{40}$/.test(_restoreParam)) {
+    if (_isQrRestore) {
       localStorage.setItem('furancho_wallet_address', _restoreParam);
       if (!localStorage.getItem('furancho_account_created_at')) {
         localStorage.setItem('furancho_account_created_at', new Date().toISOString());
       }
+    }
+    if (_hadExistingWallet || _isQrRestore) {
+      // Mantener la URL (y por tanto el manifest al "añadir a inicio") sincronizada
+      // con la cuenta real: limpia en standalone, o apuntando siempre a la wallet vigente.
+      const currentWallet = localStorage.getItem('furancho_wallet_address');
+      const urlParams = new URLSearchParams(window.location.search);
       if (isStandalone) {
-        // En modo standalone limpiamos el restore de la URL para dejarla limpia
-        const urlParams = new URLSearchParams(window.location.search);
         urlParams.delete('restore');
-        const search = urlParams.toString();
-        history.replaceState(null, '', window.location.pathname + (search ? '?' + search : ''));
+      } else if (currentWallet) {
+        urlParams.set('restore', currentWallet);
       }
-    } else {
-      const userWalletAddressTemp = localStorage.getItem('furancho_wallet_address');
-      if (userWalletAddressTemp && !isStandalone) {
-        const urlParams = new URLSearchParams(window.location.search);
-        urlParams.set('restore', userWalletAddressTemp);
-        history.replaceState(null, '', window.location.pathname + '?' + urlParams.toString());
-      }
+      const search = urlParams.toString();
+      history.replaceState(null, '', window.location.pathname + (search ? '?' + search : ''));
     }
 
     // Variables de la billetera local
