@@ -2610,7 +2610,6 @@
     let userVisits = [];
     let _globalEvents = [];
     let _globalMyRsvps = [];
-    let _chaveCountdownTimer = null; // cuenta atrás de La Chave hacia el próximo evento
     const walletPreexistente = !!userWalletAddress; // true si ya había visitado antes
 
     // Fuente única de alérgenos — los 14 de declaración obligatoria UE (Reglamento 1169/2011, Anexo II)
@@ -5911,62 +5910,19 @@
     return list.some(w => String(w).toLowerCase() === wallet.toLowerCase());
   }
 
-  // Próximo evento del calendario (futuro más cercano), usando event_date + start_time (hora Madrid local).
-  function nextFuranchoEvent() {
-    const now = Date.now();
-    const evs = (_globalEvents || []).slice().sort((a, b) => String(a.event_date).localeCompare(String(b.event_date)));
-    for (const ev of evs) {
-      const ts = new Date(`${ev.event_date}T${(ev.start_time || '19:00')}:00`).getTime();
-      if (!isNaN(ts) && ts > now) return { ev, ts };
-    }
-    return null;
-  }
-
-  // Pinta en la tarjeta de La Chave una cuenta atrás hacia el próximo evento del calendario.
-  // Si no hay evento futuro, cae al texto fijo de siempre. `preface` es la frase de cada estado.
-  function renderChaveCountdown(rulesEl, preface) {
-    if (!rulesEl) return;
-    if (_chaveCountdownTimer) { clearInterval(_chaveCountdownTimer); _chaveCountdownTimer = null; }
-
-    // Si aún no tenemos eventos en memoria, los cargamos y reintentamos.
-    if (!_globalEvents || !_globalEvents.length) {
-      fetch('/api/events').then(r => r.json()).then(evs => {
-        if (Array.isArray(evs) && evs.length) { _globalEvents = evs; renderChaveCountdown(rulesEl, preface); }
-      }).catch(() => {});
-    }
-
-    const next = nextFuranchoEvent();
-    const introStyle = 'display:block; margin-top:6px; color:var(--text-muted); font-size:13px; line-height:1.5;';
-    if (!next) {
-      rulesEl.innerHTML = `<span style="${introStyle}">${preface ? preface + '<br>' : ''}⏳ El domingo a las 21:00 se abre el siguiente bombo. ¡Estate al loro, ho!</span>`;
-      return;
-    }
-
-    const fecha = new Date(next.ev.event_date + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
-    const title = next.ev.title || 'Furancho Sessions';
-    const intro = preface || '⏳ El bombo se cerró, ho. Vuelve a girar en la próxima sesión:';
-    const box = (u) => `<div style="flex:1; background:rgba(139,25,24,0.06); border:1px solid rgba(139,25,24,0.12); border-radius:10px; padding:8px 4px;"><div class="chave-cd-num" data-u="${u}" style="font-size:22px; font-weight:900; color:var(--wine); font-variant-numeric:tabular-nums; line-height:1;">--</div><div style="font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-top:3px;">${u}</div></div>`;
-    rulesEl.innerHTML = `
-      <span style="${introStyle}">${intro}</span>
-      <span style="display:block; margin-top:4px; font-size:12.5px; font-weight:700; color:var(--wine); line-height:1.4;">🍷 ${title} · ${fecha}</span>
-      <div style="display:flex; gap:6px; margin-top:10px; text-align:center;">${box('Días')}${box('Horas')}${box('Min')}${box('Seg')}</div>`;
-
-    const nums = rulesEl.querySelectorAll('.chave-cd-num');
-    const tick = () => {
-      let diff = Math.floor((next.ts - Date.now()) / 1000);
-      if (diff <= 0) {
-        if (_chaveCountdownTimer) { clearInterval(_chaveCountdownTimer); _chaveCountdownTimer = null; }
-        loadWeeklyRaffle(); // el evento ya empezó: refrescamos el estado del sorteo
-        return;
-      }
-      const d = Math.floor(diff / 86400); diff -= d * 86400;
-      const h = Math.floor(diff / 3600); diff -= h * 3600;
-      const m = Math.floor(diff / 60); const s = diff - m * 60;
-      const vals = { 'Días': d, 'Horas': h, 'Min': m, 'Seg': s };
-      nums.forEach(n => { n.textContent = String(vals[n.dataset.u]).padStart(2, '0'); });
-    };
-    tick();
-    _chaveCountdownTimer = setInterval(tick, 1000);
+  // Mensajes graciosos (tono coruño) para el furancheiro que participó y NO ganó.
+  // Estables por semana para que no parpadeen entre refrescos: se elige por la semana del sorteo.
+  const _chaveLoserLines = [
+    '😜 <strong>¡Mala suerte, ho!</strong> Esta vez no fue — la Chave no estaba para ti esta semana.',
+    '🍀 <strong>¡Esta semana no tocó, neno!</strong> La suerte andaba en otra mesa, carallo.',
+    '🙃 <strong>¡Casi, rapaz!</strong> Esta vez la Chave miró para otro lado.',
+    '😅 <strong>¡Otra vez será, ho!</strong> Esta semana no estaba para ti, pero la noche es larga.'
+  ];
+  function chaveLoserLine(weekStr) {
+    // Índice estable a partir de la semana (mismo mensaje toda la semana, varía de una a otra).
+    let h = 0; const s = String(weekStr || '');
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return _chaveLoserLines[h % _chaveLoserLines.length];
   }
 
   async function loadWeeklyRaffle() {
@@ -5976,9 +5932,6 @@
     const rulesText = document.getElementById('weekly-rules-text');
     const btn = document.getElementById('weekly-claim-btn');
     if (!card || !prizeText || !btn) return;
-
-    // Detener cualquier cuenta atrás previa: la rama que toque la reactiva si procede.
-    if (_chaveCountdownTimer) { clearInterval(_chaveCountdownTimer); _chaveCountdownTimer = null; }
 
     try {
       const res = await fetch(`/api/raffle/weekly/status?wallet=${userWalletAddress}`);
@@ -6056,12 +6009,13 @@
         return;
       }
 
-      // 2. Si es un perdedor (participó pero no ganó en un sorteo completado o caducado)
+      // 2. Si es un perdedor (participó pero no ganó en un sorteo completado o caducado):
+      // mensaje gracioso de "no ganaste" + aviso de que el domingo empieza uno nuevo.
       if ((data.status === 'completed' || data.status === 'forfeited') && data.claimed) {
         btn.style.display = 'none';
         prizeText.innerHTML = `🍀 <strong style="color:var(--wine);">Chave do Furancho</strong>`;
         if (rulesText) {
-          renderChaveCountdown(rulesText, '😢 <strong>Esta semana no tocó, ho.</strong> El próximo bombo se abre en la sesión de:');
+          rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:13px; line-height:1.5;">${chaveLoserLine(data.currentWeek)}<br>🔑 El <strong style="color:var(--wine);">domingo</strong> empieza un sorteo nuevo. ¡A por la revancha, rapaz!</span>`;
         }
         return;
       }
@@ -6073,7 +6027,7 @@
         btn.style.display = 'none';
         prizeText.innerHTML = `🔑 <strong style="color:var(--wine);">Chave do Furancho</strong>`;
         if (rulesText) {
-          renderChaveCountdown(rulesText, '🎲 <strong>El sorteo de esta semana ya se hizo, ho.</strong> Llegaste tarde al bombo. El próximo se abre en la sesión de:');
+          rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:13px; line-height:1.5;">🎲 <strong>El sorteo de esta semana ya se hizo, ho.</strong> El <strong style="color:var(--wine);">domingo</strong> empieza uno nuevo — esta vez no te despistes, neno.</span>`;
         }
         return;
       }
@@ -6139,14 +6093,16 @@
           if (tapHint) tapHint.style.display = 'flex';
         }
       } else {
-        // Ventana inactiva (resto de la semana): cuenta atrás hacia el próximo evento + ocultar botón
+        // Ventana inactiva (resto de la semana): mensaje del próximo sorteo + ocultar botón
         btn.style.display = 'none';
         btn.classList.remove('chave-btn-attention');
         card.classList.remove('chave-card-attention');
         const tapHint = document.getElementById('weekly-claim-tap-hint');
         if (tapHint) tapHint.style.display = 'none';
         prizeText.innerHTML = `🔑 <strong style="color:var(--wine);">Chave do Furancho</strong>`;
-        renderChaveCountdown(rulesText, '⏳ El bombo se cerró, ho. Vuelve a girar en la sesión de:');
+        if (rulesText) {
+          rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:13px; line-height:1.5;">⏳ El <strong style="color:var(--wine);">domingo a las 21:00</strong> empieza un sorteo nuevo de La Chave. ¡Estate al loro, ho!</span>`;
+        }
       }
     } catch (e) {
       console.error('Error al cargar sorteo semanal:', e);
