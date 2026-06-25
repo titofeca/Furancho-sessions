@@ -1997,14 +1997,13 @@
       <!-- ② EL SORTEO SEMANAL ("LA CHAVE SEMANAL") -->
       <div class="profile-progress-card" id="weekly-claim-card" style="padding:18px; margin-bottom:20px; border:1.5px solid rgba(196,151,58,0.22); background:linear-gradient(135deg,rgba(196,151,58,0.06),rgba(139,25,24,0.03)); display:none;">
         <div style="display:flex; flex-direction:column; gap:12px;">
-          <div style="display:flex; align-items:flex-start; gap:12px;">
-            <span style="font-size:28px; flex-shrink:0; line-height:1.2;">🔑</span>
-            <div style="flex:1; min-width:0;">
-              <p style="font-size:10px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin:0 0 4px;">Chave Semanal (Sorteo)</p>
-              <p id="weekly-prize-text" style="font-size:14px; font-weight:700; color:var(--wine); margin:0 0 4px;">Premio: Botella de Viño de la Casa</p>
-              <p id="weekly-rules-text" style="font-size:13px; color:var(--text-muted); margin:0; line-height:1.5; display:block; white-space:pre-wrap;"></p>
-              <button id="weekly-info-btn" type="button" onclick="openChaveModal()" style="display:none; margin-top:8px; background:rgba(139,25,24,0.06); border:1px solid rgba(139,25,24,0.15); padding:5px 12px; color:var(--wine); font-size:11.5px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; border-radius:100px; -webkit-tap-highlight-color:transparent; transition: all 0.2s;" onmouseover="this.style.background='rgba(139,25,24,0.12)'" onmouseout="this.style.background='rgba(139,25,24,0.06)'">ℹ️ ¿Cómo funciona?</button>
-            </div>
+          <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
+            <span style="font-size:18px; flex-shrink:0; line-height:1;">🔑</span>
+            <p style="font-size:10px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin:0;">Chave Semanal (Sorteo)</p>
+          </div>
+          <div>
+            <p id="weekly-prize-text" style="font-size:14px; font-weight:700; color:var(--wine); margin:0 0 4px; text-align:center;">Premio: Botella de Viño de la Casa</p>
+            <p id="weekly-rules-text" style="font-size:13px; color:var(--text-muted); margin:0; line-height:1.5; display:block; white-space:pre-wrap; text-align:center;"></p>
           </div>
           <button id="weekly-claim-btn" onclick="claimWeeklyTicket()" style="
             width:100%; padding:15px; border-radius:50px; font-size:15px; font-weight:800; cursor:pointer;
@@ -2014,6 +2013,7 @@
             onmouseout="this.style.background='var(--wine)'; this.style.borderColor='var(--wine)';"
             onmousedown="this.style.transform='scale(0.96)';">Trincar Boleto</button>
           <p id="weekly-claim-tap-hint" class="chave-tap-hint" style="display:none; width:100%; justify-content:center; margin:0;">👆 ¡Toca aquí, es gratis!</p>
+          <button id="weekly-info-btn" type="button" onclick="openChaveModal()" style="display:none; align-self:center; background:rgba(139,25,24,0.06); border:1px solid rgba(139,25,24,0.15); padding:5px 12px; color:var(--wine); font-size:11.5px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; border-radius:100px; -webkit-tap-highlight-color:transparent; transition: all 0.2s;" onmouseover="this.style.background='rgba(139,25,24,0.12)'" onmouseout="this.style.background='rgba(139,25,24,0.06)'">ℹ️ ¿Cómo funciona?</button>
         </div>
       </div>
 
@@ -5926,24 +5926,28 @@
         if (Date.now() < deadlineMs) {
           btn.style.display = 'none';
           const deadlineStr = new Date(deadlineMs).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-          prizeText.innerHTML = `🏆 <strong>¡Te tocó la Chave, ho!</strong> ${data.prize}`;
+          prizeText.innerHTML = `🏆 <strong>¡Te tocó la Chave, ho!</strong>`;
           if (rulesText) {
-            rulesText.innerHTML = `<div style="margin-top:10px; background:rgba(196,151,58,0.1); border:1.5px solid var(--gold); border-radius:12px; padding:12px; text-align:center;">
-              <p style="font-size:13px; color:var(--text); margin:0 0 10px; line-height:1.5;">⏰ Confirma que es para ti <strong>antes de las ${deadlineStr}</strong> o el premio se pierde, carallo.</p>
-              <button id="weekly-confirm-btn" onclick="confirmWeeklyPrize(this)" style="width:100%; padding:13px; background:linear-gradient(135deg,var(--wine),#6B1212); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 4px 14px rgba(139,25,24,0.35);">
-                🔑 ¡Es mío, ho! Confirmar premio
-              </button>
-            </div>`;
+            rulesText.innerHTML = `
+              <p style="font-size:13px; color:var(--text-muted); margin:0 0 14px; line-height:1.5;">${data.prize}</p>
+              <div style="background:rgba(196,151,58,0.1); border:1.5px solid var(--gold); border-radius:14px; padding:14px;">
+                <p style="font-size:13px; color:var(--text); margin:0 0 10px; line-height:1.5;">⏰ Confirma que es para ti <strong>antes de las ${deadlineStr}</strong> o el premio se pierde, carallo.</p>
+                <button id="weekly-confirm-btn" onclick="confirmWeeklyPrize(this)" style="width:100%; padding:13px; background:linear-gradient(135deg,var(--wine),#6B1212); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 4px 14px rgba(139,25,24,0.35);">
+                  🔑 ¡Es mío, ho! Confirmar premio
+                </button>
+              </div>`;
           }
           return;
         }
         // Plazo vencido y el servidor aún no lo barrió → mostrar como perdido
         btn.style.display = 'none';
-        prizeText.innerHTML = `🏆 <strong>Ganaste la Chave:</strong> ${data.prize}`;
+        prizeText.innerHTML = `🏆 <strong>Ganaste la Chave:</strong>`;
         if (rulesText) {
-          rulesText.innerHTML = `<div style="margin-top:10px; background:rgba(42,21,9,0.05); border:1.5px dashed rgba(42,21,9,0.2); border-radius:10px; padding:12px; text-align:center;">
-            <p style="font-size:13px; color:var(--text-muted); margin:0; line-height:1.5;">⌛ <strong>No confirmaste antes de las 23:00.</strong><br>El premio se dio por perdido, ho. ¡La próxima no se te escape!</p>
-          </div>`;
+          rulesText.innerHTML = `
+            <p style="font-size:13px; color:var(--text-muted); margin:0 0 12px; line-height:1.5;">${data.prize}</p>
+            <div style="background:rgba(42,21,9,0.05); border:1.5px dashed rgba(42,21,9,0.2); border-radius:12px; padding:14px;">
+              <p style="font-size:13px; color:var(--text-muted); margin:0; line-height:1.5;">⌛ <strong>No confirmaste antes de las 23:00.</strong><br>El premio se dio por perdido, ho. ¡La próxima no se te escape!</p>
+            </div>`;
         }
         return;
       }
@@ -5951,18 +5955,20 @@
       if (isWinner && data.status === 'completed') {
         // Ganador confirmado: mostrar código de verificación (independientemente del día/hora)
         btn.style.display = 'none';
-        prizeText.innerHTML = `🏆 <strong>¡Te tocó la Chave, ho!</strong> ${data.prize}`;
+        prizeText.innerHTML = `🏆 <strong>¡Te tocó la Chave, ho!</strong>`;
         const weekForPdf = data.currentWeek || _lastWeeklyData?.currentWeek;
         const bonoLink = weekForPdf
-          ? `<a href="/api/pdf/weekly/${encodeURIComponent(weekForPdf)}?wallet=${encodeURIComponent(userWalletAddress)}" target="_blank" style="display:inline-block; margin-top:10px; padding:7px 16px; background:rgba(196,151,58,0.12); border:1.5px solid var(--gold); color:var(--gold); border-radius:50px; font-size:12px; font-weight:700; text-decoration:none;">📄 Descargar bono PDF</a>`
+          ? `<a href="/api/pdf/weekly/${encodeURIComponent(weekForPdf)}?wallet=${encodeURIComponent(userWalletAddress)}" target="_blank" style="display:block; margin-top:12px; padding:11px; background:rgba(196,151,58,0.12); border:1.5px solid var(--gold); color:var(--gold); border-radius:50px; font-size:13px; font-weight:700; text-decoration:none; text-align:center;">📄 Descargar bono PDF</a>`
           : '';
         if (rulesText) {
-          rulesText.innerHTML = `<div style="margin-top:10px; background:rgba(139,25,24,0.06); border:1.5px dashed rgba(139,25,24,0.25); border-radius:10px; padding:12px; text-align:center;">
-            <p style="font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); margin:0 0 4px;">🔑 Tu código del premio</p>
-            <p style="font-family:monospace; font-size:22px; font-weight:900; color:var(--wine); margin:0 0 6px; letter-spacing:3px;">${data.verificationCode || '—'}</p>
-            <p style="font-size:10px; color:var(--text-muted); margin:0;">Enséñaselo al staff para trincar el premio 🍷</p>
-            ${bonoLink}
-          </div>`;
+          rulesText.innerHTML = `
+            <p style="font-size:13px; color:var(--text-muted); margin:0 0 14px; line-height:1.5;">${data.prize}</p>
+            <div style="background:rgba(139,25,24,0.06); border:1.5px dashed rgba(139,25,24,0.25); border-radius:14px; padding:16px 14px;">
+              <p style="font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); margin:0 0 6px;">🔑 Tu código del premio</p>
+              <p style="font-family:monospace; font-size:24px; font-weight:900; color:var(--wine); margin:0 0 6px; letter-spacing:4px;">${data.verificationCode || '—'}</p>
+              <p style="font-size:11px; color:var(--text-muted); margin:0;">Enséñaselo al staff para trincar el premio 🍷</p>
+            </div>
+            ${bonoLink}`;
           rulesText.insertAdjacentHTML('beforeend', weekForPdf ? weeklyChatBoxHtml(weekForPdf) : '');
         }
         return;
@@ -5971,11 +5977,13 @@
       // 1b. Ganador de un premio que se dio por perdido (no confirmado/recogido a tiempo)
       if (isWinner && data.status === 'forfeited') {
         btn.style.display = 'none';
-        prizeText.innerHTML = `🏆 <strong>Ganaste la Chave:</strong> ${data.prize}`;
+        prizeText.innerHTML = `🏆 <strong>Ganaste la Chave:</strong>`;
         if (rulesText) {
-          rulesText.innerHTML = `<div style="margin-top:10px; background:rgba(42,21,9,0.05); border:1.5px dashed rgba(42,21,9,0.2); border-radius:10px; padding:12px; text-align:center;">
-            <p style="font-size:13px; color:var(--text-muted); margin:0; line-height:1.5;">⌛ <strong>Premio dado por perdido</strong> — no se confirmó antes de las 23:00.<br>Quedó en tu historial como recuerdo. ¡La próxima no se te escape, ho! 🍷</p>
-          </div>`;
+          rulesText.innerHTML = `
+            <p style="font-size:13px; color:var(--text-muted); margin:0 0 12px; line-height:1.5;">${data.prize}</p>
+            <div style="background:rgba(42,21,9,0.05); border:1.5px dashed rgba(42,21,9,0.2); border-radius:12px; padding:14px;">
+              <p style="font-size:13px; color:var(--text-muted); margin:0; line-height:1.5;">⌛ <strong>Premio dado por perdido</strong> — no se confirmó antes de las 23:00.<br>Quedó en tu historial como recuerdo. ¡La próxima no se te escape, ho! 🍷</p>
+            </div>`;
           const weekForChat = data.currentWeek || _lastWeeklyData?.currentWeek;
           rulesText.insertAdjacentHTML('beforeend', weekForChat ? weeklyChatBoxHtml(weekForChat) : '');
         }
