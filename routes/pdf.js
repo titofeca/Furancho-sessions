@@ -449,7 +449,8 @@ router.get('/weekly/:week', async (req, res) => {
   try {
     const { db } = require('../db/database');
     const raffle = db.prepare(`
-      SELECT claimed_week, prize, winner_wallet, verification_code, drawn_at, status, collected_at, confirmed_at, confirm_deadline
+      SELECT claimed_week, prize, winner_wallet, verification_code, drawn_at, status, collected_at, confirmed_at, confirm_deadline,
+             confirmed_wallets, collected_wallets, forfeited_wallets, forfeited_at
       FROM weekly_raffles WHERE claimed_week = ?
     `).get(req.params.week);
 
@@ -460,23 +461,28 @@ router.get('/weekly/:week', async (req, res) => {
       });
     }
 
-    if (raffle.status === 'forfeited') {
+    // Validación de seguridad: debe proveerse la wallet del ganador
+    const { wallet } = req.query;
+    if (!wallet) return res.status(400).send('Falta la dirección de la wallet');
+
+    // Gating POR-GANADOR: cada ganador descarga su bono según SU propio estado.
+    const { weeklyWinnerState } = require('../db/database');
+    const myState = weeklyWinnerState(raffle, wallet);
+    if (!myState.matchedWallet) {
+      return res.status(403).send('Acceso denegado: esta wallet no es ganadora de la semana');
+    }
+    if (myState.forfeitedAt) {
       return sendWeeklyPdfNotice(res, 410, {
         icon: '⌛', title: 'Este bono ya no es válido',
         message: 'El plazo para reclamar este premio venció porque no se confirmó a tiempo. Ya no se puede descargar ni usar este bono.'
       });
     }
-
-    if (!(raffle.confirmed_at || raffle.collected_at || !raffle.confirm_deadline)) {
+    if (!(myState.confirmedAt || myState.collectedAt || !raffle.confirm_deadline)) {
       return sendWeeklyPdfNotice(res, 409, {
         icon: '⏳', title: 'Premio aún sin confirmar',
         message: 'Antes de descargar el bono, confirma el premio desde la app dentro del plazo indicado.'
       });
     }
-
-    // Validación de seguridad: debe proveerse la wallet del ganador
-    const { wallet } = req.query;
-    if (!wallet) return res.status(400).send('Falta la dirección de la wallet');
 
     let isWinner = false;
     let userCode = null; // código individual de ESTE ganador (no el JSON con todos)

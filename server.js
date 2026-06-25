@@ -286,23 +286,18 @@ function scheduleWeeklyForfeitSweep() {
       const { broadcast } = require('./routes/raffle');
       const { sendPushToWallet } = require('./services/push');
       expired.forEach(r => {
-        console.log(`[WeeklyRaffle] ⌛ Premio de ${r.claimed_week} (${r.prize}) dado por perdido — el ganador no confirmó a tiempo`);
-        if (r.winner_wallet) {
-          broadcast('weekly_forfeited', { prize: r.prize, week: r.claimed_week }, r.winner_wallet);
-          
-          let winners = [];
-          try { winners = JSON.parse(r.winner_wallet); } catch(e) { winners = [r.winner_wallet]; }
-          if (!Array.isArray(winners)) winners = [winners];
-          
-          winners.forEach(w => {
-            sendPushToWallet(
-              w,
-              'Furancho Sessions 🍷',
-              'El tiempo para confirmar tu premio ha terminado... mala suerte para la próxima. 🍷',
-              { url: '/claim' }
-            );
-          });
-        }
+        // r.wallets = solo los ganadores que NO confirmaron a tiempo (por-ganador)
+        console.log(`[WeeklyRaffle] ⌛ ${r.wallets.length} ganador(es) de ${r.claimed_week} (${r.prize}) no confirmaron a tiempo`);
+        (r.wallets || []).forEach(w => {
+          if (!w) return;
+          broadcast('weekly_forfeited', { prize: r.prize, week: r.claimed_week }, w);
+          sendPushToWallet(
+            w,
+            'Furancho Sessions 🍷',
+            'El tiempo para confirmar tu premio ha terminado... mala suerte para la próxima. 🍷',
+            { url: '/claim' }
+          );
+        });
         // Refrescar la tarjeta semanal de todos los clientes conectados
         broadcast('weekly_draw_closed', { prize: r.prize, week: r.claimed_week });
       });

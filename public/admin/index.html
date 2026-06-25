@@ -4807,7 +4807,24 @@
         // Estado de confirmación del ganador (debe confirmar antes de las 23:00 de la noche del sorteo)
         const confirmedEl = document.getElementById('weekly-confirmed-at');
         if (confirmedEl) {
-          if (data.confirmedAt) {
+          const nWinners = data.winnersCount || 1;
+          let confMap = {}; try { confMap = JSON.parse(data.confirmedWallets || '{}'); } catch (_) {}
+          const confCount = data.confirmedAt ? nWinners : Object.keys(confMap).length;
+          if (nWinners > 1 && data.status === 'completed' && data.confirmDeadline) {
+            // Multi-ganador: cada uno confirma el suyo. Mostrar progreso X de N.
+            const dl = new Date(data.confirmDeadline.replace(' ', 'T') + 'Z');
+            if (confCount >= nWinners) {
+              confirmedEl.textContent = `🔑 Confirmado por los ${nWinners} ganadores`;
+              confirmedEl.style.color = '#15803d';
+            } else if (dl.getTime() <= Date.now()) {
+              confirmedEl.textContent = `🔑 Confirmaron ${confCount} de ${nWinners} — el plazo cerró; el resto perdió su parte`;
+              confirmedEl.style.color = 'var(--gold)';
+            } else {
+              confirmedEl.textContent = `🔑 Confirmados ${confCount} de ${nWinners} — el resto tiene hasta las ${dl.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })} o pierde su parte`;
+              confirmedEl.style.color = 'var(--gold)';
+            }
+            confirmedEl.style.display = 'block';
+          } else if (data.confirmedAt) {
             confirmedEl.textContent = `🔑 Confirmado por el ganador el ${new Date(data.confirmedAt.replace(' ', 'T') + 'Z').toLocaleString('es-ES')}`;
             confirmedEl.style.color = '#15803d';
             confirmedEl.style.display = 'block';

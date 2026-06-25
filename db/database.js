@@ -121,6 +121,10 @@ try {
 try {
   db.exec(`ALTER TABLE weekly_raffles ADD COLUMN collected_wallets TEXT DEFAULT NULL`);
 } catch (_) {}
+// Multi-ganador: confirmación y pérdida POR ganador (mapa {wallet: fecha}).
+// `confirmed_at`/`forfeited_at` quedan como marcas agregadas (cuando TODOS confirman/pierden).
+try { db.exec(`ALTER TABLE weekly_raffles ADD COLUMN confirmed_wallets TEXT DEFAULT NULL`); } catch (_) {}
+try { db.exec(`ALTER TABLE weekly_raffles ADD COLUMN forfeited_wallets TEXT DEFAULT NULL`); } catch (_) {}
 // Detalles/características del premio de la semana (editable por edición — el premio no
 // siempre es el mismo). Distinto de `rules` (operativa del sorteo).
 try {
@@ -1901,6 +1905,7 @@ module.exports = {
   getDemoAchievementMints,
   claimWeeklyRaffle,
   getWeeklyRaffleStatus,
+  weeklyWinnerState,
   updateWeeklyPrize,
   drawWeeklyRaffle,
   collectWeeklyRaffle,
@@ -1950,6 +1955,30 @@ function isWeeklyWindowOpen(d = new Date()) {
   return false;                                  // jue–sáb: cerrado
 }
 
+// Estado POR-GANADOR de un sorteo semanal (soporta multi-ganador). Devuelve los timestamps
+// de confirmación/entrega/pérdida de ESA wallet. Compatible hacia atrás: si no hay mapas
+// por-ganador (sorteos antiguos) cae a las marcas globales confirmed_at/collected_at/forfeited_at.
+function weeklyWinnerState(raffle, walletAddress) {
+  const empty = { confirmedAt: null, collectedAt: null, forfeitedAt: null, matchedWallet: null };
+  if (!raffle || !walletAddress || !raffle.winner_wallet) return empty;
+  let winners = [];
+  try { const p = JSON.parse(raffle.winner_wallet); winners = Array.isArray(p) ? p : [p]; }
+  catch (_) { winners = [raffle.winner_wallet]; }
+  const matched = winners.find(w => w && w.toLowerCase() === walletAddress.toLowerCase());
+  if (!matched) return empty;
+
+  const parse = (s) => { try { const o = JSON.parse(s || '{}'); return (o && typeof o === 'object') ? o : {}; } catch (_) { return {}; } };
+  const conf = parse(raffle.confirmed_wallets);
+  const coll = parse(raffle.collected_wallets);
+  const forf = parse(raffle.forfeited_wallets);
+
+  const confirmedAt = conf[matched] || (Object.keys(conf).length === 0 && raffle.confirmed_at ? raffle.confirmed_at : null);
+  const collectedAt = coll[matched] || (Object.keys(coll).length === 0 && raffle.collected_at ? raffle.collected_at : null);
+  const forfeitedAt = forf[matched] || (Object.keys(forf).length === 0 && raffle.status === 'forfeited' ? (raffle.forfeited_at || raffle.drawn_at) : null);
+
+  return { confirmedAt, collectedAt, forfeitedAt, matchedWallet: matched };
+}
+
 function getWeeklyRaffleStatus(walletAddress, weekStr) {
   if (!walletAddress) return { claimed: false, totalParticipants: 0, isConfigured: false };
   const raffle = db.prepare(`SELECT * FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
@@ -1975,11 +2004,11 @@ function getWeeklyRaffleStatus(walletAddress, weekStr) {
     }
   }
 
-  // El código solo se revela al ganador una vez confirmado (o si es un sorteo
-  // antiguo sin plazo de confirmación, o ya entregado)
-  // Wait, if it's multiple winners, they ALL confirm at once? 
-  // Currently, confirmed_at is just a global timestamp. 
-  const codeUnlocked = raffle && (raffle.confirmed_at || raffle.collected_at || !raffle.confirm_deadline);
+  // Estado POR-GANADOR (multi-ganador): cada ganador confirma/recoge/pierde el suyo.
+  const myState = weeklyWinnerState(raffle, walletAddress);
+  // El código solo se revela a ESTE ganador si confirmó (o ya lo recogió, o es un
+  // sorteo antiguo sin plazo de confirmación).
+  const codeUnlocked = !!(raffle && (myState.confirmedAt || myState.collectedAt || !raffle.confirm_deadline));
 
   // Visibilidad del premio: solo se revela a los clientes cuando se abre el bombo
   // (domingo 21:00) o una vez sorteado. Antes de eso el servidor NO devuelve el premio
@@ -2004,10 +2033,11 @@ function getWeeklyRaffleStatus(walletAddress, weekStr) {
     verificationCode: isWinner && codeUnlocked ? (userCode || null) : null,
     status: raffle ? raffle.status : 'active',
     drawnAt: raffle ? raffle.drawn_at : null,
-    collectedAt: raffle ? raffle.collected_at : null,
-    forfeitedAt: raffle ? raffle.forfeited_at : null,
+    // Por-ganador (no globales): así cada ganador ve SU estado independiente.
+    collectedAt: myState.collectedAt,
+    forfeitedAt: myState.forfeitedAt,
     confirmDeadline: raffle ? raffle.confirm_deadline : null,
-    confirmedAt: raffle ? raffle.confirmed_at : null,
+    confirmedAt: myState.confirmedAt,
     totalParticipants,
     isConfigured: !!raffle
   };
@@ -2085,49 +2115,94 @@ function drawWeeklyRaffle(weekStr) {
   };
 }
 
-// El ganador confirma que ha visto el premio (antes de las 23:00 de la noche del sorteo)
+// El ganador confirma que ha visto el premio (antes de las 23:00 de la noche del sorteo).
+// Multi-ganador: cada ganador confirma SOLO el suyo (mapa confirmed_wallets). El estado
+// global confirmed_at se fija solo cuando TODOS los ganadores han confirmado.
 function confirmWeeklyRaffle(walletAddress, weekStr) {
   const raffle = db.prepare(`SELECT * FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
   if (!raffle) throw new Error('Sorteo no encontrado');
-  let isWinner = false;
-  if (raffle.winner_wallet) {
-    try {
-      const wallets = JSON.parse(raffle.winner_wallet);
-      if (Array.isArray(wallets)) {
-        isWinner = wallets.some(w => w.toLowerCase() === walletAddress.toLowerCase());
-      } else {
-        isWinner = wallets.toLowerCase() === walletAddress.toLowerCase();
-      }
-    } catch (e) {
-      isWinner = raffle.winner_wallet.toLowerCase() === walletAddress.toLowerCase();
-    }
-  }
-  if (!isWinner) {
-    throw new Error('No eres el ganador de esta semana');
-  }
+
+  let winners = [];
+  try { const p = JSON.parse(raffle.winner_wallet); winners = Array.isArray(p) ? p : [p]; }
+  catch (_) { winners = raffle.winner_wallet ? [raffle.winner_wallet] : []; }
+  const matched = winners.find(w => w && w.toLowerCase() === walletAddress.toLowerCase());
+  if (!matched) throw new Error('No eres el ganador de esta semana');
+
   if (raffle.status === 'forfeited') throw new Error('El plazo de confirmación terminó y el premio se dio por perdido');
   if (raffle.status !== 'completed') throw new Error('El sorteo no está pendiente de confirmación');
-  if (raffle.confirmed_at) return raffle; // idempotente — ya confirmado
+
+  const parse = (s) => { try { const o = JSON.parse(s || '{}'); return (o && typeof o === 'object') ? o : {}; } catch (_) { return {}; } };
+  const confirmed = parse(raffle.confirmed_wallets);
+  const forfeited = parse(raffle.forfeited_wallets);
+
+  // Idempotente: este ganador ya confirmó (o sorteo antiguo confirmado globalmente).
+  if (confirmed[matched]) return raffle;
+  if (Object.keys(confirmed).length === 0 && raffle.confirmed_at) return raffle;
+  // Este ganador ya perdió su plazo individualmente.
+  if (forfeited[matched]) throw new Error('El plazo de confirmación terminó y tu premio se dio por perdido');
+  // Plazo (compartido: todos se sortean a la vez).
   if (raffle.confirm_deadline) {
     const deadlineMs = new Date(raffle.confirm_deadline.replace(' ', 'T') + 'Z').getTime();
     if (Date.now() > deadlineMs) throw new Error('El plazo de confirmación ha terminado');
   }
-  db.prepare(`UPDATE weekly_raffles SET confirmed_at = datetime('now') WHERE claimed_week = ?`).run(weekStr);
+
+  confirmed[matched] = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const allConfirmed = winners.every(w => confirmed[w]);
+  if (allConfirmed) {
+    db.prepare(`UPDATE weekly_raffles SET confirmed_wallets = ?, confirmed_at = datetime('now') WHERE claimed_week = ?`).run(JSON.stringify(confirmed), weekStr);
+  } else {
+    db.prepare(`UPDATE weekly_raffles SET confirmed_wallets = ? WHERE claimed_week = ?`).run(JSON.stringify(confirmed), weekStr);
+  }
   return db.prepare(`SELECT * FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
 }
 
 // Da por perdidos los premios semanales cuyo plazo de confirmación expiró sin confirmar.
-// Devuelve la lista de sorteos forfeit para poder notificar.
+// Multi-ganador: marca SOLO a los ganadores que no confirmaron (ni recogieron). El sorteo
+// pasa a 'forfeited' únicamente si TODOS pierden; si alguno confirmó, sigue 'completed'.
+// Devuelve [{ claimed_week, prize, wallets: [...] }] con los ganadores recién perdidos
+// (solo los nuevos), para notificar a cada uno sin duplicar.
 function forfeitExpiredWeeklyRaffles() {
   const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
-  const expired = db.prepare(`
-    SELECT claimed_week, prize, winner_wallet FROM weekly_raffles
-    WHERE status = 'completed' AND confirmed_at IS NULL AND collected_at IS NULL
-      AND confirm_deadline IS NOT NULL AND confirm_deadline <= ?
+  const candidates = db.prepare(`
+    SELECT claimed_week, prize, winner_wallet, confirmed_wallets, collected_wallets, forfeited_wallets, confirmed_at, collected_at
+    FROM weekly_raffles
+    WHERE status = 'completed' AND confirm_deadline IS NOT NULL AND confirm_deadline <= ?
   `).all(nowStr);
-  const stmt = db.prepare(`UPDATE weekly_raffles SET status = 'forfeited', forfeited_at = datetime('now') WHERE claimed_week = ?`);
-  expired.forEach(r => stmt.run(r.claimed_week));
-  return expired;
+
+  const parse = (s) => { try { const o = JSON.parse(s || '{}'); return (o && typeof o === 'object') ? o : {}; } catch (_) { return {}; } };
+  const newlyForfeited = [];
+
+  candidates.forEach(r => {
+    let winners = [];
+    try { const p = JSON.parse(r.winner_wallet); winners = Array.isArray(p) ? p : [p]; }
+    catch (_) { winners = r.winner_wallet ? [r.winner_wallet] : []; }
+    if (!winners.length) return;
+
+    const confirmed = parse(r.confirmed_wallets);
+    const collected = parse(r.collected_wallets);
+    const forfeited = parse(r.forfeited_wallets);
+    // Compat: marcas globales antiguas valen para todos los ganadores.
+    if (Object.keys(confirmed).length === 0 && r.confirmed_at) winners.forEach(w => { if (w) confirmed[w] = r.confirmed_at; });
+    if (Object.keys(collected).length === 0 && r.collected_at) winners.forEach(w => { if (w) collected[w] = r.collected_at; });
+
+    const justForfeited = [];
+    winners.forEach(w => {
+      if (!w || confirmed[w] || collected[w] || forfeited[w]) return; // ya resuelto
+      forfeited[w] = nowStr;
+      justForfeited.push(w);
+    });
+    if (justForfeited.length === 0) return;
+
+    const allLost = winners.every(w => forfeited[w] && !confirmed[w] && !collected[w]);
+    if (allLost) {
+      db.prepare(`UPDATE weekly_raffles SET forfeited_wallets = ?, status = 'forfeited', forfeited_at = datetime('now') WHERE claimed_week = ?`).run(JSON.stringify(forfeited), r.claimed_week);
+    } else {
+      db.prepare(`UPDATE weekly_raffles SET forfeited_wallets = ? WHERE claimed_week = ?`).run(JSON.stringify(forfeited), r.claimed_week);
+    }
+    newlyForfeited.push({ claimed_week: r.claimed_week, prize: r.prize, wallets: justForfeited });
+  });
+
+  return newlyForfeited;
 }
 
 // Chat 1:1 entre el ganador de la Chave Semanal y el staff. Hilo identificado por wallet+semana.

@@ -460,8 +460,9 @@ router.get('/my-history', (req, res) => {
             isWinner = w.winner_wallet.toLowerCase() === lowerWallet;
           }
         }
-        // Ganador aún en plazo de confirmación → fuera del historial (lo gestiona la tarjeta)
-        if (isWinner && w.status === 'completed' && !w.confirmed_at && !w.collected_at && w.confirm_deadline) {
+        // Ganador aún en plazo de confirmación (por-ganador) → fuera del historial (lo gestiona la tarjeta)
+        const st = require('../db/database').weeklyWinnerState(w, lowerWallet);
+        if (isWinner && w.status === 'completed' && !st.confirmedAt && !st.collectedAt && !st.forfeitedAt && w.confirm_deadline) {
           return new Date(w.confirm_deadline.replace(' ', 'T') + 'Z').getTime() <= Date.now();
         }
         return true;
@@ -490,15 +491,16 @@ router.get('/my-history', (req, res) => {
             userCode = w.verification_code;
           }
         }
+        const st = require('../db/database').weeklyWinnerState(w, lowerWallet);
         let status;
         if (isWinner) {
-          if (w.collected_at) status = 'collected';
-          else if (w.status === 'forfeited') status = 'rejected';
+          if (st.collectedAt) status = 'collected';
+          else if (st.forfeitedAt) status = 'rejected';
           else status = 'accepted';
         } else {
           status = 'rejected';
         }
-        const codeUnlocked = w.confirmed_at || w.collected_at || !w.confirm_deadline;
+        const codeUnlocked = !!(st.confirmedAt || st.collectedAt || !w.confirm_deadline);
         return {
           id: 'weekly-' + w.claimed_week,
           is_weekly: 1,
@@ -506,8 +508,8 @@ router.get('/my-history', (req, res) => {
           prize: `🔑 Chave Semanal · ${w.prize}`,
           status,
           created_at: w.drawn_at,
-          collected: w.collected_at ? 1 : 0,
-          collected_at: w.collected_at,
+          collected: st.collectedAt ? 1 : 0,
+          collected_at: st.collectedAt,
           rejection_note: null,
           acceptance_deadline: null,
           is_winner: isWinner ? 1 : 0,
@@ -958,11 +960,22 @@ router.post('/weekly/confirm', claimLimiter, (req, res) => {
   try {
     const { confirmWeeklyRaffle } = require('../db/database');
     const raffle = confirmWeeklyRaffle(walletAddress, weekStr);
+    // Devolver el código INDIVIDUAL de este ganador (no el JSON con todos).
+    let userCode = raffle.verification_code;
+    try {
+      const codes = JSON.parse(raffle.verification_code || '{}');
+      if (codes && typeof codes === 'object' && !Array.isArray(codes)) {
+        const wallets = JSON.parse(raffle.winner_wallet);
+        const list = Array.isArray(wallets) ? wallets : [wallets];
+        const matched = list.find(w => w && w.toLowerCase() === walletAddress.toLowerCase());
+        if (matched) userCode = codes[matched];
+      }
+    } catch (_) {}
     res.json({
       success: true,
       week: weekStr,
       prize: raffle.prize,
-      verificationCode: raffle.verification_code
+      verificationCode: userCode
     });
   } catch (e) {
     res.status(400).json({ error: e.message });
@@ -991,9 +1004,11 @@ router.get('/admin/weekly/status', requireAuth, (req, res) => {
       collectedAt: raffle ? raffle.collected_at : null,
       collectedWallets: raffle ? raffle.collected_wallets : null,
       forfeitedAt: raffle ? raffle.forfeited_at : null,
+      forfeitedWallets: raffle ? raffle.forfeited_wallets : null,
       drawnAt: raffle ? raffle.drawn_at : null,
       confirmDeadline: raffle ? raffle.confirm_deadline : null,
       confirmedAt: raffle ? raffle.confirmed_at : null,
+      confirmedWallets: raffle ? raffle.confirmed_wallets : null,
       totalParticipants,
       isConfigured: !!raffle,
       winnersCount: raffle ? (raffle.winners_count || 1) : 1
@@ -1267,11 +1282,10 @@ setInterval(() => {
       }
     });
 
-    // 3. Sorteos semanales expirados (ganador no confirmó antes del deadline)
+    // 3. Sorteos semanales expirados — solo los ganadores (por-ganador) que no confirmaron
     const forfeitedWeekly = forfeitExpiredWeeklyRaffles();
     forfeitedWeekly.forEach(r => {
-      const wallets = (() => { try { return JSON.parse(r.winner_wallet); } catch { return [r.winner_wallet]; } })();
-      wallets.forEach(wallet => {
+      (r.wallets || []).forEach(wallet => {
         if (!wallet) return;
         sendPushToWallet(
           wallet,
