@@ -1483,6 +1483,28 @@
         <p class="page-subtitle">QR de entrada y salida. Imprímelos y colócalos en el local.</p>
       </div>
 
+      <!-- ===== Acceso camareros (fichaje asistido desde sus móviles) ===== -->
+      <div style="background:linear-gradient(135deg,rgba(139,25,24,0.07),rgba(196,151,58,0.05)); border:1.5px solid rgba(139,25,24,0.25); border-radius:20px; padding:20px; margin-bottom:28px;">
+        <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--wine); margin-bottom:4px;">🍷 Acceso camareros (fichaje)</p>
+        <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; margin-bottom:16px;">Cada camarero abre esta página en SU móvil y escanea el <strong>ID Socio (QR)</strong> de los clientes que no pueden fichar — quedan dentro para los sorteos. No accede al panel admin, solo al fichaje.</p>
+        <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+          <div style="text-align:center; flex-shrink:0;">
+            <img src="/api/qr/staff" alt="QR Camareros" style="width:120px; height:120px; border-radius:12px; border:1.5px solid rgba(139,25,24,0.2); background:#fff;" />
+            <p style="font-size:10px; color:var(--text-muted); margin-top:6px;">Que lo escaneen para abrir</p>
+          </div>
+          <div style="flex:1; min-width:180px;">
+            <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">Enlace</p>
+            <a id="staff-link" href="/staff" target="_blank" style="font-size:13px; font-weight:700; color:var(--wine); word-break:break-all; text-decoration:none;">/staff</a>
+            <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin:14px 0 4px;">Código para los camareros</p>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span id="staff-code-value" style="font-family:monospace; font-size:20px; font-weight:900; color:var(--wine); letter-spacing:2px; background:rgba(139,25,24,0.07); padding:6px 14px; border-radius:10px;">••••</span>
+              <button onclick="toggleStaffCode()" id="staff-code-toggle" style="background:none; border:1px solid rgba(42,21,9,0.2); border-radius:8px; padding:6px 10px; font-size:11px; font-weight:700; cursor:pointer; color:var(--text-muted); font-family:'Outfit',sans-serif;">👁 Ver</button>
+            </div>
+            <p id="staff-code-hint" style="font-size:10.5px; color:var(--text-muted); margin-top:8px; line-height:1.4;"></p>
+          </div>
+        </div>
+      </div>
+
       <!-- PDFs corporativos — descarga principal -->
       <div style="background:linear-gradient(135deg,rgba(139,25,24,0.06),rgba(196,151,58,0.04)); border:1.5px solid rgba(196,151,58,0.25); border-radius:20px; padding:20px; margin-bottom:28px;">
         <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--gold); margin-bottom:4px;">⬇ Descargar PDFs para imprimir</p>
@@ -2589,6 +2611,29 @@
     if (pageId === 'raffles') { loadAchievementFilterOptions(); loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); loadScheduled(); loadWeeklyRaffleAdmin(); loadPartnersAdmin(); }
     if (pageId === 'scanner') { stopScanner(); document.getElementById('scanner-result').style.display='none'; document.getElementById('scanner-status').textContent=''; }
     if (pageId === 'nfts') loadNftsPage();
+    if (pageId === 'qrcodes') loadStaffCode();
+  }
+
+  // ===== Acceso camareros: código + enlace para compartir =====
+  let _staffCodeShown = false, _staffCodeVal = null;
+  async function loadStaffCode() {
+    const link = document.getElementById('staff-link');
+    if (link) { link.href = location.origin + '/staff'; link.textContent = location.origin + '/staff'; }
+    try {
+      const r = await fetch('/api/admin/staff-code', { headers: authHeaders() }).then(r => r.json());
+      _staffCodeVal = r.code || '';
+      const hint = document.getElementById('staff-code-hint');
+      if (hint) hint.textContent = r.isDefault
+        ? '⚠️ Código por defecto. Pon STAFF_CODE en Railway para uno propio.'
+        : '✅ Configurado en Railway (STAFF_CODE).';
+    } catch (e) {}
+  }
+  function toggleStaffCode() {
+    const el = document.getElementById('staff-code-value');
+    const btn = document.getElementById('staff-code-toggle');
+    _staffCodeShown = !_staffCodeShown;
+    if (_staffCodeShown) { if (el) el.textContent = _staffCodeVal || '—'; if (btn) btn.textContent = '🙈 Ocultar'; }
+    else { if (el) el.textContent = '••••'; if (btn) btn.textContent = '👁 Ver'; }
   }
 
   // ==================== VISITAS ====================

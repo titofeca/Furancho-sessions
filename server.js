@@ -30,6 +30,7 @@ app.use('/api/push', require('./routes/push'));
 app.use('/api/events', require('./routes/events'));
 app.use('/api/pdf', require('./routes/pdf'));
 app.use('/api/achievements', require('./routes/achievements'));
+app.use('/api/staff', require('./routes/staff'));
 
 // Rutas HTML explícitas — sin caché para siempre recibir versión actualizada
 const NO_CACHE = { 'Cache-Control': 'no-cache, no-store, must-revalidate', Pragma: 'no-cache', Expires: '0' };
@@ -37,6 +38,7 @@ app.get('/', (req, res) => res.set(NO_CACHE).sendFile(path.join(__dirname, 'publ
 app.get('/admin', (req, res) => res.set(NO_CACHE).sendFile(path.join(__dirname, 'public', 'admin', 'index.html')));
 app.get('/claim', (req, res) => res.set(NO_CACHE).sendFile(path.join(__dirname, 'public', 'claim', 'index.html')));
 app.get('/entry', (req, res) => res.set(NO_CACHE).sendFile(path.join(__dirname, 'public', 'entry', 'index.html')));
+app.get('/staff', (req, res) => res.set(NO_CACHE).sendFile(path.join(__dirname, 'public', 'staff', 'index.html')));
 app.get('/nfc', (req, res) => res.set(NO_CACHE).sendFile(path.join(__dirname, 'public', 'nfc', 'index.html')));
 
 // Metadatos NFT para OpenSea / marketplaces ERC-1155

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Fichaje Camareros — Furancho Sessions</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    :root{ --wine:#8B1918; --wine-dark:#5C0F0F; --cream:#F2EDE3; --gold:#C4973A; --text:#2A1509; --text-muted:#7A6A5A; --green:#16a34a; }
+    *{ box-sizing:border-box; margin:0; padding:0; }
+    html,body{ min-height:100vh; font-family:'Outfit',sans-serif; background:var(--cream); color:var(--text);
+      background-image:radial-gradient(ellipse at 20% 0%, rgba(139,25,24,0.07) 0%, transparent 50%), radial-gradient(ellipse at 80% 100%, rgba(196,151,58,0.08) 0%, transparent 50%); }
+    .wrap{ max-width:480px; margin:0 auto; padding:20px 18px 40px; min-height:100vh; display:flex; flex-direction:column; }
+    .brand{ display:flex; align-items:center; gap:10px; justify-content:center; margin:8px 0 4px; }
+    .brand img{ height:34px; border-radius:7px; }
+    .brand b{ font-family:'Playfair Display',serif; font-size:18px; color:var(--wine); }
+    .sub{ text-align:center; font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:2px; font-weight:700; margin-bottom:20px; }
+    .card{ background:rgba(255,255,255,0.5); border:1px solid rgba(42,21,9,0.1); border-radius:20px; padding:22px; }
+    h2{ font-family:'Playfair Display',serif; font-size:22px; color:var(--text); margin-bottom:8px; }
+    p.lead{ font-size:14px; color:var(--text-muted); line-height:1.5; margin-bottom:18px; }
+    input{ width:100%; padding:15px 16px; border-radius:14px; border:1.5px solid rgba(42,21,9,0.15); background:#fff; font-size:18px; font-family:'Outfit',sans-serif; outline:none; text-align:center; letter-spacing:1px; }
+    button.primary{ width:100%; margin-top:12px; padding:16px; border:none; border-radius:50px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; font-family:'Outfit',sans-serif; font-size:16px; font-weight:800; cursor:pointer; box-shadow:0 6px 20px rgba(139,25,24,0.3); }
+    .err{ color:var(--wine); font-size:13px; font-weight:700; text-align:center; margin-top:10px; min-height:18px; }
+    /* scanner */
+    #reader{ width:100%; border-radius:18px; overflow:hidden; border:2px solid rgba(139,25,24,0.25); background:#000; min-height:240px; }
+    .scan-hint{ text-align:center; font-size:13px; color:var(--text-muted); margin-top:12px; line-height:1.5; }
+    .scan-status{ text-align:center; font-size:13px; font-weight:700; color:var(--wine); margin:10px 0 0; min-height:18px; }
+    .footer-link{ text-align:center; margin-top:auto; padding-top:18px; }
+    .footer-link button{ background:none; border:none; color:var(--text-muted); font-size:12.5px; font-weight:600; text-decoration:underline; cursor:pointer; font-family:'Outfit',sans-serif; }
+    /* result overlay */
+    .result{ position:fixed; inset:0; z-index:50; display:none; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:32px 24px; background:var(--cream); animation:pop .25s ease; }
+    @keyframes pop{ from{opacity:0; transform:scale(0.96);} to{opacity:1; transform:scale(1);} }
+    .result .icon{ width:96px; height:96px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:48px; margin-bottom:18px; }
+    .result h3{ font-family:'Playfair Display',serif; font-size:28px; font-weight:900; margin-bottom:8px; }
+    .result p{ font-size:16px; color:var(--text-muted); line-height:1.5; max-width:340px; }
+    .result .who{ font-family:monospace; font-size:13px; color:var(--text-muted); margin-top:14px; }
+    .result button{ margin-top:26px; padding:15px 40px; border:none; border-radius:50px; background:var(--wine); color:#fff; font-family:'Outfit',sans-serif; font-size:16px; font-weight:800; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand"><img src="/assets/logo.png" alt="" /><b>Furancho Sessions</b></div>
+    <div class="sub">Fichaje · Camareros</div>
+
+    <!-- GATE: código de acceso -->
+    <div id="gate" class="card" style="display:none;">
+      <h2>🔑 Acceso camareros</h2>
+      <p class="lead">Mete el código que te dio el jefe esta noche. Solo te lo pide una vez en este móvil, ho.</p>
+      <input id="code-input" type="text" inputmode="text" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Código" onkeydown="if(event.key==='Enter')doLogin()" />
+      <button class="primary" id="code-btn" onclick="doLogin()">Entrar</button>
+      <div class="err" id="gate-err"></div>
+    </div>
+
+    <!-- SCANNER -->
+    <div id="scanner" class="card" style="display:none;">
+      <h2 style="text-align:center;">📷 Escanea al cliente</h2>
+      <p class="lead" style="text-align:center;">Pídele que abra su app y te enseñe su <strong>🪪 ID Socio (QR)</strong>. Apunta y se ficha solo.</p>
+      <div id="reader"></div>
+      <div class="scan-status" id="scan-status"></div>
+      <p class="scan-hint">Cada escaneo ficha la <strong>entrada</strong> del cliente para que entre en los sorteos.</p>
+      <div class="footer-link"><button onclick="logout()">Cambiar código / salir</button></div>
+    </div>
+  </div>
+
+  <!-- RESULT OVERLAY -->
+  <div class="result" id="result">
+    <div class="icon" id="result-icon"></div>
+    <h3 id="result-title"></h3>
+    <p id="result-msg"></p>
+    <div class="who" id="result-who"></div>
+    <button onclick="resumeScan()">Escanear al siguiente ➜</button>
+  </div>
+
+  <script>
+    const STAFF_KEY = 'furancho_staff_code';
+    let scanner = null, processing = false, lastWallet = null, lastAt = 0;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const code = localStorage.getItem(STAFF_KEY);
+      if (code) startScanner();
+      else showGate();
+    });
+
+    function showGate(){
+      document.getElementById('gate').style.display = 'block';
+      document.getElementById('scanner').style.display = 'none';
+      setTimeout(() => document.getElementById('code-input').focus(), 200);
+    }
+
+    async function doLogin(){
+      const code = document.getElementById('code-input').value.trim();
+      const err = document.getElementById('gate-err');
+      const btn = document.getElementById('code-btn');
+      if (!code){ err.textContent = 'Escribe el código, neno.'; return; }
+      btn.disabled = true; btn.textContent = 'Comprobando…'; err.textContent = '';
+      try{
+        const r = await fetch('/api/staff/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ code }) });
+        if (r.ok){ localStorage.setItem(STAFF_KEY, code); startScanner(); }
+        else { const d = await r.json().catch(()=>({})); err.textContent = d.error || 'Código incorrecto.'; btn.disabled = false; btn.textContent = 'Entrar'; }
+      }catch(e){ err.textContent = 'Error de red. Inténtalo otra vez.'; btn.disabled = false; btn.textContent = 'Entrar'; }
+    }
+
+    function logout(){
+      localStorage.removeItem(STAFF_KEY);
+      try { if (scanner) scanner.stop().catch(()=>{}); } catch(e){}
+      scanner = null;
+      document.getElementById('code-input').value = '';
+      showGate();
+    }
+
+    async function startScanner(){
+      document.getElementById('gate').style.display = 'none';
+      document.getElementById('scanner').style.display = 'block';
+      document.getElementById('result').style.display = 'none';
+      const status = document.getElementById('scan-status');
+      status.textContent = 'Abriendo cámara…';
+      try{
+        if (scanner){ try { await scanner.stop(); } catch(e){} }
+        scanner = new Html5Qrcode('reader');
+        const config = { fps: 10, qrbox: { width: 230, height: 230 } };
+        const onScan = (decoded) => {
+          const now = Date.now();
+          const m = String(decoded).match(/(0x[a-fA-F0-9]{40})/);
+          if (!m) { status.textContent = '⚠️ Ese QR no es de un cliente Furancho'; return; }
+          const wallet = m[1];
+          if (processing) return;
+          if (wallet === lastWallet && (now - lastAt) < 6000) return; // anti-doble del mismo cliente
+          processing = true; lastWallet = wallet; lastAt = now;
+          doCheckin(wallet);
+        };
+        // Elegir cámara trasera para evitar errores en Android
+        let started = false;
+        try{
+          const cams = await Html5Qrcode.getCameras();
+          if (cams && cams.length){
+            let id = cams[cams.length - 1].id;
+            const back = cams.find(c => /back|rear|trasera|environment/i.test(c.label || ''));
+            if (back) id = back.id;
+            await scanner.start(id, config, onScan, ()=>{});
+            started = true;
+          }
+        }catch(e){ /* fallback abajo */ }
+        if (!started) await scanner.start({ facingMode:'environment' }, config, onScan, ()=>{});
+        status.textContent = '';
+      }catch(err){
+        status.innerHTML = '⚠️ No se pudo abrir la cámara. Permite el acceso a cámara en el navegador y recarga.';
+      }
+    }
+
+    async function doCheckin(wallet){
+      const status = document.getElementById('scan-status');
+      status.textContent = 'Fichando…';
+      try{
+        const r = await fetch('/api/staff/checkin', {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json', 'x-staff-code': localStorage.getItem(STAFF_KEY) || '' },
+          body: JSON.stringify({ walletAddress: wallet })
+        });
+        if (r.status === 401){ // código cambiado/incorrecto → volver al gate
+          logout();
+          document.getElementById('gate-err').textContent = 'El código ha cambiado. Pide el nuevo al jefe.';
+          return;
+        }
+        const d = await r.json().catch(()=>({}));
+        if (r.ok && d.success) showResult(d, wallet);
+        else { status.textContent = '⚠️ ' + (d.error || 'No se pudo fichar'); processing = false; }
+      }catch(e){ status.textContent = '⚠️ Error de red al fichar.'; processing = false; }
+    }
+
+    function showResult(d, wallet){
+      const icon = document.getElementById('result-icon');
+      const title = document.getElementById('result-title');
+      const msg = document.getElementById('result-msg');
+      const who = document.getElementById('result-who');
+      const green = 'rgba(22,163,74,0.15)', gold = 'rgba(196,151,58,0.18)';
+      let bg = green, ic = '✅', t = '¡Fichado!', m = '';
+      if (d.isNew){ ic = '🎉'; t = '¡Bienvenido!'; m = 'Primera visita registrada. ¡Ya está en el bombo de los sorteos!'; bg = gold; }
+      else if (d.counted){ t = '¡Fichado!'; m = `Entrada registrada · visita #${d.visitCount}. Ya participa en los sorteos.`; if (d.levelUp && d.levelUp.levelName) m += ` ¡Sube a ${d.levelUp.levelName}!`; }
+      else if (d.hasEventNow === false){ ic = '🍷'; t = 'Entrada registrada'; m = 'Hoy no hay sesión en la agenda, así que la visita no suma — pero queda dentro para los sorteos.'; }
+      else { ic = '✅'; t = '¡Ya está dentro!'; m = `La visita de esta semana ya estaba contada (lleva ${d.visitCount}). Sigue participando en los sorteos.`; }
+      icon.style.background = bg; icon.textContent = ic;
+      title.textContent = t; msg.textContent = m;
+      who.textContent = `${wallet.slice(0,6)}…${wallet.slice(-4)}`;
+      document.getElementById('result').style.display = 'flex';
+      // Auto-volver al escáner a los 3s
+      clearTimeout(window._resultTimer);
+      window._resultTimer = setTimeout(resumeScan, 3000);
+    }
+
+    function resumeScan(){
+      clearTimeout(window._resultTimer);
+      document.getElementById('result').style.display = 'none';
+      document.getElementById('scan-status').textContent = '';
+      processing = false;
+    }
+  </script>
+</body>
+</html>

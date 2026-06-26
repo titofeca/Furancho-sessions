@@ -50,6 +50,21 @@ router.get('/entry', async (req, res) => {
   }
 });
 
+// GET /api/qr/staff — QR que abre la página de fichaje de camareros (/staff)
+router.get('/staff', async (req, res) => {
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+  const staffUrl = `${protocol}://${req.get('host')}/staff`;
+  const options = { ...QR_OPTIONS, color: { dark: '#8B1918', light: '#FFFFFF' } };
+  try {
+    const qrBuffer = await QRCode.toBuffer(staffUrl, options);
+    res.set('Content-Type', 'image/png');
+    res.set('Content-Disposition', `inline; filename="qr-furancho-staff.png"`);
+    res.send(qrBuffer);
+  } catch (e) {
+    res.status(500).send('Error generando QR: ' + e.message);
+  }
+});
+
 // GET /api/qr/entry/download
 router.get('/entry/download', async (req, res) => {
   const protocol = req.headers['x-forwarded-proto'] || req.protocol;

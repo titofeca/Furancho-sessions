@@ -189,6 +189,11 @@ router.get('/stats', requireAuth, (req, res) => {
   }
 });
 
+// GET /api/admin/staff-code — código de acceso de camareros (para compartirlo con ellos)
+router.get('/staff-code', requireAuth, (req, res) => {
+  res.json({ code: process.env.STAFF_CODE || 'camareros', isDefault: !process.env.STAFF_CODE });
+});
+
 // GET /api/admin/debug-push
 router.get('/debug-push', requireAuth, (req, res) => {
   try {

@@ -144,33 +144,39 @@ router.post('/exit', mintLimiter, (req, res) => {
   }
 });
 
+// Lógica compartida de fichaje de ENTRADA — la usan /entry (cliente), /admin-checkin
+// (admin) y /api/staff/checkin (camarero). UNA sola fuente para no divergir: abre sesión
+// (openSession decide si cuenta como visita) y otorga el nivel por nº de visitas si contó.
+function performCheckin(walletAddress, ipAddress) {
+  const { getVisitCount, openSession } = require('../db/database');
+  const result = openSession(walletAddress);
+  const visitCount = getVisitCount(walletAddress);
+  let levelUp = null;
+  if (result.counted) {
+    try { levelUp = awardLevelByVisits({ walletAddress, visitCount, ipAddress }); }
+    catch (e) { console.error('Error otorgando nivel en check-in:', e.message); }
+  }
+  return {
+    success: true,
+    action: 'entry',
+    isNew: visitCount === 1 && result.counted,
+    visitCount,
+    counted: !!result.counted,
+    hasEventNow: result.hasEventNow !== false,
+    levelUp
+  };
+}
+
 // POST /api/mint/admin-checkin — el STAFF ficha la ENTRADA de un cliente que enseña su
-// "ID Socio (QR)". Misma lógica exacta que /entry (openSession + nivel por nº de visitas),
-// pero autenticado y SIN el límite del endpoint público (el staff ficha en ráfaga al
-// abrir el local). Para clientes sin cámara o poco habituados: no usan su móvil para nada.
+// "ID Socio (QR)". Misma lógica exacta que /entry, pero autenticado y SIN el límite del
+// endpoint público. Para clientes sin cámara o poco habituados: no usan su móvil.
 router.post('/admin-checkin', requireAuth, (req, res) => {
   const { walletAddress } = req.body;
   if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
     return res.status(400).json({ error: 'Dirección de wallet no válida' });
   }
   try {
-    const { getVisitCount, openSession } = require('../db/database');
-    const result = openSession(walletAddress);
-    const visitCount = getVisitCount(walletAddress);
-    let levelUp = null;
-    if (result.counted) {
-      try { levelUp = awardLevelByVisits({ walletAddress, visitCount, ipAddress: req.ip }); }
-      catch (e) { console.error('Error otorgando nivel en /admin-checkin:', e.message); }
-    }
-    return res.json({
-      success: true,
-      action: 'entry',
-      isNew: visitCount === 1 && result.counted,
-      visitCount,
-      counted: !!result.counted,
-      hasEventNow: result.hasEventNow !== false,
-      levelUp
-    });
+    return res.json(performCheckin(walletAddress, req.ip));
   } catch (error) {
     console.error('Error en /admin-checkin:', error.message);
     res.status(500).json({ error: 'Error procesando entrada' });
@@ -408,3 +414,4 @@ router.get('/history', (req, res) => {
 
 
 module.exports = router;
+module.exports.performCheckin = performCheckin;
