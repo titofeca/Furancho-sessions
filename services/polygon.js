@@ -1,9 +1,31 @@
 require('dotenv').config();
 const { ethers } = require('ethers');
 
-const POLYGON_RPC   = process.env.POLYGON_RPC_URL || 'https://1rpc.io/matic';
+// RPCs de Polygon a probar EN ORDEN. POLYGON_RPC_URL puede ser uno o varios
+// separados por comas (p. ej. una clave dedicada de Alchemy/Infura primero).
+// Siempre añadimos varios RPC públicos de respaldo para no depender de un único
+// proveedor: 1rpc.io gratis se queda sin cuota en eventos con muchos mints
+// ("usage limit reached") y entonces fallan tanto leer el saldo como mintear.
+// Endpoints públicos verificados que responden bien (sin clave). polygon-rpc.com
+// se deja como último recurso por compatibilidad aunque a veces limita.
+const RPC_FALLBACKS = [
+  'https://polygon-bor-rpc.publicnode.com',
+  'https://polygon.drpc.org',
+  'https://polygon-rpc.com'
+];
+const RPC_URLS = [
+  ...((process.env.POLYGON_RPC_URL || '').split(',').map(s => s.trim()).filter(Boolean)),
+  ...RPC_FALLBACKS
+].filter((u, i, arr) => arr.indexOf(u) === i); // sin duplicados
+const POLYGON_RPC   = RPC_URLS[0]; // compatibilidad / logs
+const POLYGON_CHAIN_ID = 137; // red fija → evita la llamada eth_chainId por provider
 const MINTER_KEY    = process.env.MINTER_PRIVATE_KEY;
 const CONTRACT_ADDR = process.env.NFT_CONTRACT_ADDRESS;
+
+// Crea un provider con la red fijada (menos llamadas RPC, sin "detect network").
+function makeProvider(url) {
+  return new ethers.JsonRpcProvider(url, POLYGON_CHAIN_ID, { staticNetwork: true });
+}
 
 // Token IDs en el contrato ERC-1155 (1-indexed: 1=Cautivo, 2=Cunqueiro, 3=Larpeiro, 4=Presidente)
 const TOKEN_IDS = { 1: 1, 2: 2, 3: 3, 4: 4 };
@@ -22,7 +44,48 @@ const DEMO_MODE = process.env.DEMO_MODE === 'true'
 if (DEMO_MODE && process.env.DEMO_MODE !== 'true') {
   console.warn('[Polygon] ⚠️  DEMO_MODE activo por keys ausentes — MINTER_PRIVATE_KEY o NFT_CONTRACT_ADDRESS no configuradas. Los mints Nv3/Nv4 serán simulados hasta que las añadas en Railway.');
 } else if (!DEMO_MODE) {
-  console.log('[Polygon] ✅ Modo producción Polygon activo — los mints Nv3/Nv4 van a la blockchain real.');
+  console.log(`[Polygon] ✅ Modo producción Polygon activo — los mints Nv3/Nv4 van a la blockchain real. RPCs con respaldo: ${RPC_URLS.length}`);
+}
+
+// Evita que un RPC caído/colgado nos deje esperando para siempre.
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout RPC ${label || ''} (${ms}ms)`)), ms))
+  ]);
+}
+
+// Ejecuta fn(provider) probando cada RPC en orden hasta que uno responda.
+// Para LECTURAS (saldo, balance on-chain, receipts) reintentar en otro RPC es seguro.
+async function withProvider(fn, timeoutMs = 8000) {
+  let lastErr;
+  for (const url of RPC_URLS) {
+    try {
+      const provider = makeProvider(url);
+      return await withTimeout(fn(provider), timeoutMs, url);
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error('Ningún RPC de Polygon respondió');
+}
+
+// Devuelve un signer sobre el PRIMER RPC que responde a un ping de salud.
+// Para ENVIAR el mint: así no intentamos firmar/enviar contra un RPC caído o
+// rate-limitado. Si el envío fallara después, el mint queda 'failed' y se recupera
+// con el backfill (comprueba el saldo on-chain antes de regastar gas).
+async function getHealthySigner() {
+  let lastErr;
+  for (const url of RPC_URLS) {
+    try {
+      const provider = makeProvider(url);
+      await withTimeout(provider.getBlockNumber(), 4000, url); // ping de salud
+      return new ethers.Wallet(MINTER_KEY, provider);
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error('Ningún RPC de Polygon respondió');
 }
 
 // Mintea por nivel (1-4) o por tokenId directo (logros, token >= 100). Si se pasa
@@ -43,8 +106,7 @@ async function mintNFT({ walletAddress, level, levelName, tokenId }) {
 
   if (id == null) throw new Error(`Token ID no configurado (level=${level}, tokenId=${tokenId})`);
 
-  const provider = new ethers.JsonRpcProvider(POLYGON_RPC);
-  const signer   = new ethers.Wallet(MINTER_KEY, provider);
+  const signer   = await getHealthySigner();
   const contract = new ethers.Contract(CONTRACT_ADDR, ABI, signer);
 
   console.log(`[Polygon] Minting token ${id} → ${walletAddress}`);
@@ -72,25 +134,27 @@ async function getMinterBalance() {
   if (DEMO_MODE) {
     return { demo: true, address: null, balance: null };
   }
-  const provider = new ethers.JsonRpcProvider(POLYGON_RPC);
-  const wallet = new ethers.Wallet(MINTER_KEY, provider);
-  const balanceWei = await provider.getBalance(wallet.address);
-  return {
-    demo: false,
-    address: wallet.address,
-    balance: parseFloat(ethers.formatEther(balanceWei))
-  };
+  return withProvider(async (provider) => {
+    const wallet = new ethers.Wallet(MINTER_KEY, provider);
+    const balanceWei = await provider.getBalance(wallet.address);
+    return {
+      demo: false,
+      address: wallet.address,
+      balance: parseFloat(ethers.formatEther(balanceWei))
+    };
+  });
 }
 
 // Saldo on-chain de un token para una wallet (lectura, sin gas). En DEMO devuelve null.
 // Sirve para el backfill: saltar lo que ya está minteado y no malgastar gas en reverts.
 async function getOnchainBalance(walletAddress, tokenId) {
   if (DEMO_MODE) return null;
-  const provider = new ethers.JsonRpcProvider(POLYGON_RPC);
-  const abi = ['function balanceOf(address,uint256) view returns (uint256)'];
-  const contract = new ethers.Contract(CONTRACT_ADDR, abi, provider);
-  const bal = await contract.balanceOf(walletAddress, tokenId);
-  return Number(bal);
+  return withProvider(async (provider) => {
+    const abi = ['function balanceOf(address,uint256) view returns (uint256)'];
+    const contract = new ethers.Contract(CONTRACT_ADDR, abi, provider);
+    const bal = await contract.balanceOf(walletAddress, tokenId);
+    return Number(bal);
+  });
 }
 
 async function getMintStatus(txHash) {
@@ -98,9 +162,10 @@ async function getMintStatus(txHash) {
     return { status: 'success' };
   }
   try {
-    const provider = new ethers.JsonRpcProvider(POLYGON_RPC);
-    const receipt  = await provider.getTransactionReceipt(txHash);
-    return { status: receipt ? (receipt.status === 1 ? 'success' : 'failed') : 'pending' };
+    return await withProvider(async (provider) => {
+      const receipt = await provider.getTransactionReceipt(txHash);
+      return { status: receipt ? (receipt.status === 1 ? 'success' : 'failed') : 'pending' };
+    });
   } catch {
     return { status: 'unknown' };
   }
