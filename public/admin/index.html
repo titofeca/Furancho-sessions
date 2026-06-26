@@ -1056,6 +1056,25 @@
         </div>
       </div>
 
+      <!-- Logros NFT especiales (holders) + Aforo por nivel AHORA (día de evento) -->
+      <div class="glass-card" style="margin-bottom:20px;">
+        <div class="card-header" style="margin-bottom:12px;">
+          <span class="card-title">🎟️ Logros NFT especiales</span>
+          <button class="btn-download" onclick="loadAchievementStats(); loadPresentByLevel();" style="font-size:11px; padding:6px 12px;">↻</button>
+        </div>
+        <div id="achievement-stats-list" style="display:flex; flex-direction:column; gap:8px;">
+          <p style="font-size:12px; color:var(--text-muted);">Cargando…</p>
+        </div>
+
+        <div style="margin-top:18px; padding-top:14px; border-top:1px solid rgba(42,21,9,0.1);">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+            <span class="card-title" style="font-size:14px;">🟢 En el local ahora <span id="present-total" style="color:var(--wine); font-weight:900;"></span></span>
+            <span style="font-size:10px; color:var(--text-muted);">por nivel y logro</span>
+          </div>
+          <div id="present-by-level-list"><p style="font-size:12px; color:var(--text-muted);">Cargando…</p></div>
+        </div>
+      </div>
+
       <!-- Gráfica de entradas por hora (tiempo real) -->
       <div class="glass-card" style="margin-bottom:20px;" id="hourly-chart-card">
         <div class="card-header" style="margin-bottom:14px;">
@@ -2487,6 +2506,8 @@
         loadPeakHours();
         loadVipBadge();
         loadHourlyChart();
+        loadAchievementStats();
+        loadPresentByLevel();
         connectAdminSse();
       } else {
         errorDiv.style.display = 'block';
@@ -2602,7 +2623,7 @@
     }, 0);
     if (pageId === 'events') loadEventsPage();
     if (pageId === 'messages') { loadMsgRsvpEvents(); loadScheduledMessages(); loadAchievementFilterOptions(); }
-    if (pageId === 'dashboard') { loadStats(); loadHourlyChart(); }
+    if (pageId === 'dashboard') { loadStats(); loadHourlyChart(); loadAchievementStats(); loadPresentByLevel(); }
     loadVipBadge();
     if (pageId === 'holders') {
       loadVisits('__totales__');
@@ -2735,6 +2756,50 @@
     } catch(e) {
       document.getElementById('visits-tbody').innerHTML = `<div style="color:red; padding:16px; text-align:center; background:var(--surface); border-radius:14px;">Error: ${e.message}</div>`;
     }
+  }
+
+  // ==================== LOGROS NFT + AFORO POR NIVEL ====================
+  async function loadAchievementStats() {
+    const el = document.getElementById('achievement-stats-list');
+    if (!el) return;
+    try {
+      const data = await fetch('/api/admin/achievement-stats', { headers: authHeaders() }).then(r => r.json());
+      if (!Array.isArray(data) || !data.length) { el.innerHTML = '<p style="font-size:12px; color:var(--text-muted);">Aún no hay logros especiales configurados.</p>'; return; }
+      el.innerHTML = data.map(a => `
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; background:rgba(196,151,58,0.07); border:1px solid rgba(196,151,58,0.2); border-radius:12px;">
+          <div style="min-width:0;">
+            <p style="font-size:13px; font-weight:800; color:var(--wine); margin:0;">🎟️ ${a.name}</p>
+            <p style="font-size:10.5px; color:var(--text-muted); margin:2px 0 0;">${a.edition || ''} · token ${a.tokenId}</p>
+          </div>
+          <div style="text-align:right; flex-shrink:0;">
+            <div style="font-size:24px; font-weight:900; color:var(--wine); line-height:1;">${a.total}</div>
+            <div style="font-size:9.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px;">lo tienen${a.pending ? ` · ${a.pending} en cola` : ''}</div>
+          </div>
+        </div>`).join('');
+    } catch (e) { el.innerHTML = '<p style="font-size:12px; color:#ef4444;">Error cargando logros.</p>'; }
+  }
+
+  async function loadPresentByLevel() {
+    const el = document.getElementById('present-by-level-list');
+    const totalEl = document.getElementById('present-total');
+    if (!el) return;
+    try {
+      const d = await fetch('/api/admin/present-by-level', { headers: authHeaders() }).then(r => r.json());
+      if (totalEl) totalEl.textContent = `(${d.total})`;
+      const names = { 1: 'Cautivo', 2: 'Cunqueiro', 3: 'Larpeiro', 4: 'Presidente' };
+      const lvlCards = [1, 2, 3, 4].map(n => `
+        <div style="flex:1; min-width:62px; text-align:center; background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:12px; padding:10px 6px;">
+          <div style="font-size:22px; font-weight:900; color:var(--wine);">${(d.byLevel && d.byLevel[n]) || 0}</div>
+          <div style="font-size:9.5px; color:var(--text-muted); font-weight:700;">Nv${n}</div>
+          <div style="font-size:9px; color:var(--text-muted);">${names[n]}</div>
+        </div>`).join('');
+      const achLines = (d.byAchievement || []).filter(a => a.count > 0).map(a =>
+        `<span style="display:inline-block; background:rgba(196,151,58,0.12); color:var(--wine); border:1px solid rgba(196,151,58,0.3); border-radius:100px; padding:3px 10px; font-size:11px; font-weight:700; margin:3px 4px 0 0;">🎟️ ${a.name}: ${a.count}</span>`).join('');
+      el.innerHTML = `<div style="display:flex; gap:8px;">${lvlCards}</div>` +
+        (d.total === 0
+          ? `<p style="font-size:11.5px; color:var(--text-muted); text-align:center; margin:10px 0 0;">Nadie fichado en el local ahora mismo (fuera de evento o sin entradas).</p>`
+          : (achLines ? `<div style="margin-top:10px;">${achLines}</div>` : ''));
+    } catch (e) { el.innerHTML = '<p style="font-size:12px; color:#ef4444;">Error cargando aforo por nivel.</p>'; }
   }
 
   // ==================== STATS ====================
@@ -3887,7 +3952,7 @@
 
   // Auto-refresh stats cada 30 segundos
   setInterval(() => {
-    if (AUTH_TOKEN) loadStats();
+    if (AUTH_TOKEN) { loadStats(); loadPresentByLevel(); }
   }, 30000);
 
   // ==================== RAFFLES ====================

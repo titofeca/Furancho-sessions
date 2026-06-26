@@ -77,8 +77,30 @@ function metadataForToken(tokenId) {
   };
 }
 
+// Cuántas wallets DISTINTAS tienen cada logro NFT especial (para el panel admin).
+// minted = ya en wallet (status success) · pending = en cola de minteo · total = no fallidos.
+function getAchievementStats() {
+  const rows = db.prepare(`
+    SELECT achievement_id,
+      COUNT(DISTINCT CASE WHEN status = 'success' THEN LOWER(wallet_address) END) AS minted,
+      COUNT(DISTINCT CASE WHEN status = 'pending' THEN LOWER(wallet_address) END) AS pending,
+      COUNT(DISTINCT CASE WHEN status != 'failed' THEN LOWER(wallet_address) END) AS total
+    FROM achievement_mints GROUP BY achievement_id
+  `).all();
+  const byId = {};
+  rows.forEach(r => { byId[r.achievement_id] = r; });
+  return ACHIEVEMENTS.map(a => {
+    const s = byId[a.id] || {};
+    return {
+      id: a.id, name: a.name, edition: a.edition || null, tokenId: a.tokenId,
+      minted: s.minted || 0, pending: s.pending || 0, total: s.total || 0
+    };
+  });
+}
+
 module.exports = {
   list, getById, getByTokenId,
   walletMeetsRule, walletUnlocked, metadataForToken,
+  getAchievementStats,
   ACHIEVEMENTS
 };

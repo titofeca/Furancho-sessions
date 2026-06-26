@@ -510,10 +510,32 @@ function getVisitStats() {
   };
 }
 
+// Presentes AHORA en el local, desglosados por NIVEL efectivo y por LOGRO NFT.
+// "Presente" = misma definición que el aforo en vivo / elegibles de sorteo
+// (fichó entrada en la ventana del evento y no ha fichado salida).
+function getPresentByLevel() {
+  const { getEligibleRaffleParticipants } = require('../db/database');
+  const present = (getEligibleRaffleParticipants() || []).map(w => String(w).toLowerCase());
+  const byLevel = { 1: 0, 2: 0, 3: 0, 4: 0 };
+  const byAchievement = {};
+  if (!present.length) return { total: 0, byLevel, byAchievement };
+  const presentSet = new Set(present);
+  // Nivel efectivo: MAX nivel minteado; sin mint = Nv1 implícito.
+  const lvlRows = db.prepare(`SELECT LOWER(wallet_address) w, MAX(level) lvl FROM mints WHERE status != 'failed' GROUP BY LOWER(wallet_address)`).all();
+  const lvlMap = {};
+  lvlRows.forEach(r => { lvlMap[r.w] = r.lvl; });
+  present.forEach(w => { const lvl = lvlMap[w] || 1; if (byLevel[lvl] != null) byLevel[lvl]++; });
+  // Logros NFT presentes (no fallidos).
+  const achRows = db.prepare(`SELECT achievement_id, LOWER(wallet_address) w FROM achievement_mints WHERE status != 'failed'`).all();
+  achRows.forEach(r => { if (presentSet.has(r.w)) byAchievement[r.achievement_id] = (byAchievement[r.achievement_id] || 0) + 1; });
+  return { total: present.length, byLevel, byAchievement };
+}
+
 module.exports = {
   getRealEvents,
   getOverview,
   getActiveNow,
+  getPresentByLevel,
   getEventDetail,
   getTotalsDetail,
   getAttendanceByDate,

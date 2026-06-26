@@ -194,6 +194,24 @@ router.get('/staff-code', requireAuth, (req, res) => {
   res.json({ code: process.env.STAFF_CODE || 'camareros', isDefault: !process.env.STAFF_CODE });
 });
 
+// GET /api/admin/achievement-stats — cuántas wallets tienen cada logro NFT especial
+router.get('/achievement-stats', requireAuth, (req, res) => {
+  try {
+    res.json(require('../services/achievements').getAchievementStats());
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/admin/present-by-level — presentes AHORA en el local, por nivel y por logro
+// (para el día del evento). Delega en services/metrics (fuente única de analítica).
+router.get('/present-by-level', requireAuth, (req, res) => {
+  try {
+    const data = require('../services/metrics').getPresentByLevel();
+    const cat = require('../services/achievements').getAchievementStats();
+    const byAchievement = cat.map(a => ({ id: a.id, name: a.name, edition: a.edition, count: data.byAchievement[a.id] || 0 }));
+    res.json({ total: data.total, byLevel: data.byLevel, byAchievement });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // GET /api/admin/debug-push
 router.get('/debug-push', requireAuth, (req, res) => {
   try {
