@@ -6482,9 +6482,11 @@
           { facingMode: 'environment' },
           config,
           (decodedText) => {
-            // Extrae wallet del QR (puede ser URL con ?inspect=0x... o dirección directa)
+            // Extrae la wallet del QR: admite el ?inspect= del admin, el ?restore= del
+            // "ID Socio (QR)" del cliente, o una dirección 0x suelta. Coge la primera
+            // dirección 0x que aparezca, sea cual sea el formato de la URL.
             let wallet = decodedText.trim();
-            const match = wallet.match(/[?&]inspect=(0x[a-fA-F0-9]{40})/);
+            const match = wallet.match(/(0x[a-fA-F0-9]{40})/);
             if (match) wallet = match[1];
             if (!/^0x[a-fA-F0-9]{40}$/.test(wallet)) {
               statusEl.textContent = '⚠️ QR no reconocido como wallet Furancheiro';
@@ -6619,6 +6621,16 @@
           ${tapasDayRows}
         </div>` : `<div style="font-size:13px;color:var(--text-muted);text-align:center;padding:10px;">Sin historial de tapas registrado</div>`}
 
+        <!-- 🍷 Fichaje asistido por el staff (el cliente no usa cámara) -->
+        <div style="margin-top:16px; padding:14px; background:rgba(139,25,24,0.05); border:1.5px solid rgba(139,25,24,0.2); border-radius:14px;">
+          <p style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--wine);margin:0 0 8px;">🍷 Fichar a este cliente</p>
+          ${d.activeNow
+            ? `<button id="scan-fichar-btn" onclick="doScanCheckout('${d.walletAddress}')" style="width:100%;background:rgba(139,25,24,0.1);color:var(--wine);border:1.5px solid rgba(139,25,24,0.3);border-radius:12px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:'Outfit',sans-serif;">🚪 Fichar SALIDA</button>`
+            : `<button id="scan-fichar-btn" onclick="doScanCheckin('${d.walletAddress}')" style="width:100%;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:'Outfit',sans-serif;">🍷 Fichar ENTRADA</button>`}
+          <p style="font-size:10.5px;color:var(--text-muted);margin:8px 0 0;line-height:1.4;">El cliente solo enseña su <strong>🪪 ID Socio (QR)</strong> y tú lo escaneas — queda fichado sin usar su cámara.</p>
+          <div id="scan-fichar-result" style="margin-top:8px;"></div>
+        </div>
+
         <!-- ⚡ Acciones sobre este furancheiro -->
         <div style="margin-top:16px; padding-top:14px; border-top:1px solid rgba(42,21,9,0.1);">
           <p style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--gold);margin:0 0 8px;">⚡ Acciones</p>
@@ -6642,6 +6654,57 @@
         </button>
       </div>
     `;
+  }
+
+  // ===== Fichaje asistido por el staff =====
+  async function doScanCheckin(wallet) {
+    const btn = document.getElementById('scan-fichar-btn');
+    const out = document.getElementById('scan-fichar-result');
+    if (btn) { btn.disabled = true; btn.textContent = 'Fichando entrada…'; }
+    try {
+      const r = await fetch('/api/mint/admin-checkin', {
+        method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: wallet })
+      }).then(r => r.json());
+      if (r.success) {
+        let msg;
+        if (r.isNew) msg = '🎉 Entrada fichada — ¡primera visita registrada!';
+        else if (r.counted) msg = `✅ Entrada fichada — visita #${r.visitCount}.`;
+        else if (r.hasEventNow === false) msg = '✅ Entrada fichada — hoy no hay sesión en agenda, la visita no suma.';
+        else msg = `✅ Entrada fichada — la visita de esta semana ya estaba contada (lleva ${r.visitCount}).`;
+        if (out) out.innerHTML = `<span style="color:#16a34a;font-weight:700;font-size:12.5px;">${msg}</span>`;
+        if (btn) { btn.textContent = '✅ Entrada fichada'; btn.style.background = 'rgba(22,163,74,0.15)'; btn.style.color = '#15803d'; }
+      } else {
+        if (out) out.innerHTML = `<span style="color:var(--wine);font-weight:700;font-size:12.5px;">⚠️ ${r.error || 'No se pudo fichar'}</span>`;
+        if (btn) { btn.disabled = false; btn.textContent = '🍷 Fichar ENTRADA'; }
+      }
+    } catch (e) {
+      if (out) out.innerHTML = `<span style="color:var(--wine);font-weight:700;font-size:12.5px;">Error de red al fichar.</span>`;
+      if (btn) { btn.disabled = false; btn.textContent = '🍷 Fichar ENTRADA'; }
+    }
+  }
+
+  async function doScanCheckout(wallet) {
+    const btn = document.getElementById('scan-fichar-btn');
+    const out = document.getElementById('scan-fichar-result');
+    if (btn) { btn.disabled = true; btn.textContent = 'Fichando salida…'; }
+    try {
+      const r = await fetch('/api/mint/admin-checkout', {
+        method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: wallet })
+      }).then(r => r.json());
+      if (r.success) {
+        const msg = r.action === 'no_session' ? '✅ No tenía entrada abierta — todo en orden.' : '🚪 Salida fichada. ¡Hasta la próxima, ho!';
+        if (out) out.innerHTML = `<span style="color:#16a34a;font-weight:700;font-size:12.5px;">${msg}</span>`;
+        if (btn) { btn.textContent = '✅ Salida fichada'; }
+      } else {
+        if (out) out.innerHTML = `<span style="color:var(--wine);font-weight:700;font-size:12.5px;">⚠️ ${r.error || 'No se pudo fichar salida'}</span>`;
+        if (btn) { btn.disabled = false; btn.textContent = '🚪 Fichar SALIDA'; }
+      }
+    } catch (e) {
+      if (out) out.innerHTML = `<span style="color:var(--wine);font-weight:700;font-size:12.5px;">Error de red.</span>`;
+      if (btn) { btn.disabled = false; btn.textContent = '🚪 Fichar SALIDA'; }
+    }
   }
 
   // ===== Acciones del menú del escaneo admin =====

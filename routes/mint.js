@@ -15,6 +15,7 @@ const mintLimiter = rateLimit({
 const { Wallet } = require('ethers');
 const { insertMint, updateMintStatus, checkDuplicate } = require('../db/database');
 const { sendNftApprovalEmail } = require('../services/notifications');
+const { requireAuth } = require('./admin'); // para el fichaje asistido por el staff
 
 const LEVEL_NAMES = {
   1: 'Cautivo',
@@ -139,6 +140,56 @@ router.post('/exit', mintLimiter, (req, res) => {
   } catch (e) {
     _exitLocks.delete(walletAddress.toLowerCase());
     console.error('Error en /exit:', e.message);
+    res.status(500).json({ error: 'Error al registrar salida' });
+  }
+});
+
+// POST /api/mint/admin-checkin — el STAFF ficha la ENTRADA de un cliente que enseña su
+// "ID Socio (QR)". Misma lógica exacta que /entry (openSession + nivel por nº de visitas),
+// pero autenticado y SIN el límite del endpoint público (el staff ficha en ráfaga al
+// abrir el local). Para clientes sin cámara o poco habituados: no usan su móvil para nada.
+router.post('/admin-checkin', requireAuth, (req, res) => {
+  const { walletAddress } = req.body;
+  if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
+    return res.status(400).json({ error: 'Dirección de wallet no válida' });
+  }
+  try {
+    const { getVisitCount, openSession } = require('../db/database');
+    const result = openSession(walletAddress);
+    const visitCount = getVisitCount(walletAddress);
+    let levelUp = null;
+    if (result.counted) {
+      try { levelUp = awardLevelByVisits({ walletAddress, visitCount, ipAddress: req.ip }); }
+      catch (e) { console.error('Error otorgando nivel en /admin-checkin:', e.message); }
+    }
+    return res.json({
+      success: true,
+      action: 'entry',
+      isNew: visitCount === 1 && result.counted,
+      visitCount,
+      counted: !!result.counted,
+      hasEventNow: result.hasEventNow !== false,
+      levelUp
+    });
+  } catch (error) {
+    console.error('Error en /admin-checkin:', error.message);
+    res.status(500).json({ error: 'Error procesando entrada' });
+  }
+});
+
+// POST /api/mint/admin-checkout — el STAFF ficha la SALIDA de un cliente. Igual que /exit.
+router.post('/admin-checkout', requireAuth, (req, res) => {
+  const { walletAddress } = req.body;
+  if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress))
+    return res.status(400).json({ error: 'Falta walletAddress' });
+  try {
+    const { closeSession, db } = require('../db/database');
+    const activeSession = db.prepare(`SELECT id FROM sessions WHERE LOWER(wallet_address) = LOWER(?) AND exit_time IS NULL LIMIT 1`).get(walletAddress);
+    if (!activeSession) return res.json({ success: true, action: 'no_session' });
+    closeSession(walletAddress);
+    return res.json({ success: true, action: 'exit' });
+  } catch (e) {
+    console.error('Error en /admin-checkout:', e.message);
     res.status(500).json({ error: 'Error al registrar salida' });
   }
 });
