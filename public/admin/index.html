@@ -1845,12 +1845,17 @@
 
           <!-- Ganador + aceptación -->
           <div id="raffle-winner-box" style="display:none; margin-top:20px;">
-            <p style="font-size:10px; text-transform:uppercase; letter-spacing:2px; color:#15803d; margin-bottom:4px;">Ganador seleccionado</p>
+            <p style="font-size:10px; text-transform:uppercase; letter-spacing:2px; color:#15803d; margin-bottom:4px;">Código del ganador</p>
             <p class="raffle-winner-code" id="raffle-winner-code">----</p>
+
+            <!-- Recordatorio del flujo (siempre visible) -->
+            <p style="font-size:11px; color:var(--text-muted); line-height:1.45; margin:6px 0 0; background:rgba(42,21,9,0.04); border-radius:8px; padding:8px 10px;">
+              ℹ️ Tú <strong>no</strong> aceptas el premio: lo acepta <strong>el ganador en su móvil</strong>. Cuando lo acepte, entrégaselo y pulsa <strong>Confirmar entrega</strong>.
+            </p>
 
             <!-- Countdown de aceptación -->
             <div id="acceptance-countdown-wrap" style="margin:14px 0; text-align:center;">
-              <p style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">Esperando que el ganador acepte</p>
+              <p style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">El ganador lo acepta en su móvil…</p>
               <div style="font-size:32px; font-weight:700; color:var(--gold);" id="acceptance-countdown">90</div>
               <div style="height:4px; background:rgba(42,21,9,0.08); border-radius:100px; margin-top:8px; overflow:hidden;">
                 <div id="acceptance-progress" style="height:100%; background:linear-gradient(90deg,var(--wine),var(--gold)); width:100%; transition:width 1s linear;"></div>
@@ -1859,8 +1864,8 @@
 
             <!-- Aceptado -->
             <div id="accepted-banner" style="display:none; background:rgba(196,151,58,0.15); border:1.5px solid #C4973A; border-radius:14px; padding:12px 16px; margin-bottom:12px; text-align:center;">
-              <p style="color:#7A5A00; font-weight:700; font-size:14px;">✅ ¡Premio aceptado por el ganador!</p>
-              <p style="font-size:11px; color:var(--text-muted); margin-top:4px;">Entrega el premio y confirma a continuación.</p>
+              <p style="color:#7A5A00; font-weight:700; font-size:14px;">🏆 ¡El ganador aceptó el premio!</p>
+              <p style="font-size:11px; color:var(--text-muted); margin-top:4px;">Ya es suyo: entrégaselo y pulsa <strong>Confirmar entrega</strong>.</p>
             </div>
 
             <!-- Botón confirmar entrega -->
@@ -1868,7 +1873,7 @@
               <input type="hidden" id="collect-raffle-id" value="">
               <button onclick="confirmPrizeDelivery()"
                 style="width:100%; padding:14px; background:linear-gradient(135deg,#4ade80,#16a34a); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer;">
-                ✅ Premio entregado — confirmar
+                ✅ Confirmar entrega del premio
               </button>
             </div>
 
@@ -4084,8 +4089,8 @@
 
       setTimeout(() => {
         clearInterval(interval);
-        document.getElementById('raffle-status-title').textContent = '⏳ Esperando aceptación del ganador';
-        document.getElementById('raffle-status-desc').textContent = `Código: ${data.verificationCode} · Premio: ${prize}`;
+        document.getElementById('raffle-status-title').textContent = '⏳ El ganador acepta en su móvil';
+        document.getElementById('raffle-status-desc').textContent = `Código del ganador: ${data.verificationCode} · ${prize}`;
         document.getElementById('raffle-winner-box').style.display = 'block';
         document.getElementById('raffle-winner-code').textContent = data.verificationCode;
         document.getElementById('collect-raffle-id').value = data.raffleId;
@@ -4118,7 +4123,7 @@
                 document.getElementById('accepted-banner').style.display = 'block';
                 document.getElementById('collect-btn-wrap').style.display = 'block';
                 document.getElementById('reject-btn-wrap').style.display = 'none';
-                document.getElementById('raffle-status-title').textContent = '✅ ¡Premio aceptado!';
+                document.getElementById('raffle-status-title').textContent = '🏆 Aceptado — entrégalo y confirma';
                 showToast('🏆 El ganador aceptó el premio');
               }
             } catch(_) {}
@@ -4450,8 +4455,8 @@
 
       setTimeout(() => {
         clearInterval(interval);
-        document.getElementById('raffle-status-title').textContent = '⏳ Esperando aceptación del ganador';
-        document.getElementById('raffle-status-desc').textContent = `Código: ${data.verificationCode} · Premio: ${prize}`;
+        document.getElementById('raffle-status-title').textContent = '⏳ El ganador acepta en su móvil';
+        document.getElementById('raffle-status-desc').textContent = `Código del ganador: ${data.verificationCode} · ${prize}`;
         document.getElementById('raffle-winner-box').style.display = 'block';
         document.getElementById('raffle-winner-code').textContent = data.verificationCode;
         document.getElementById('start-raffle-btn').disabled = false;
@@ -4480,7 +4485,7 @@
                 document.getElementById('accepted-banner').style.display = 'block';
                 document.getElementById('collect-btn-wrap').style.display = 'block';
                 document.getElementById('reject-btn-wrap').style.display = 'none';
-                document.getElementById('raffle-status-title').textContent = '✅ ¡Premio aceptado!';
+                document.getElementById('raffle-status-title').textContent = '🏆 Aceptado — entrégalo y confirma';
                 showToast('🏆 El ganador aceptó el premio');
               }
             } catch(_) {}

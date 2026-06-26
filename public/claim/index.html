@@ -2036,6 +2036,10 @@
           <p style="font-size:11px; color:var(--text-muted); margin-top:8px;">Enseña este código al staff para que te den lo tuyo.</p>
         </div>
 
+        <!-- Resultado DURADERO de "no ganaste" — queda visible en el perfil tras el sorteo
+             (antes solo salía en el modal y al cerrarlo desaparecía). Lo rellena renderPrizes(). -->
+        <div id="raffle-result-banner" style="display:none; margin-bottom:12px;"></div>
+
         <!-- Premios de esta noche — visible directamente en el perfil tras fichar -->
         <div id="tonight-prizes-card" style="display:none; margin-bottom:16px; background:linear-gradient(135deg,rgba(196,151,58,0.12),rgba(139,25,24,0.06)); border:2px solid rgba(196,151,58,0.5); border-radius:20px; padding:16px; position:relative; overflow:hidden;">
           <div style="position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--wine),var(--gold),var(--wine));"></div>
@@ -2376,7 +2380,7 @@
       <div style="font-size: 64px; margin-bottom: 12px;" id="raffle-loser-emoji">😤</div>
       <h2 id="raffle-loser-title" style="font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 700; color: #ef4444; margin-bottom: 10px;">No te ha tocado esta vez</h2>
       <p id="raffle-loser-msg" style="font-size: 15px; color: var(--text-muted); margin-bottom: 28px; font-weight: 300; line-height: 1.6;">El premio de <strong id="raffle-loser-prize" style="color:var(--text);"></strong> se lo ha llevado otro furancheiro.<br>¡Sigue disfrutando de la noche!</p>
-      <button onclick="document.getElementById('raffle-modal').style.display='none'; document.body.style.overflow='auto';" style="background: rgba(0,0,0,0.05); color: var(--text); border: 1px solid rgba(0,0,0,0.1); padding: 12px 24px; border-radius: 50px; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; max-width: 240px; margin: 0 auto; width: 100%;">Cerrar</button>
+      <button onclick="document.getElementById('raffle-modal').style.display='none'; document.body.style.overflow='auto';" style="background: rgba(0,0,0,0.05); color: var(--text); border: 1px solid rgba(0,0,0,0.1); padding: 12px 24px; border-radius: 50px; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; max-width: 240px; margin: 0 auto; width: 100%;">Entendido, ho 🍷</button>
     </div>
 
     <style>
@@ -3882,8 +3886,8 @@
         return `<div style="display:flex; align-items:center; gap:10px; padding:10px 12px; background:${c.bg}; border:1px solid ${c.border}; border-radius:12px; ${done ? 'opacity:0.55;' : ''}">
           <div style="width:9px; height:9px; border-radius:50%; background:${c.dot}; flex-shrink:0;"></div>
           <span style="font-size:13px; font-weight:800; color:var(--wine); flex-shrink:0; width:40px;">${s.scheduled_time || '—'}</span>
-          <span style="font-size:14px; color:var(--text); flex:1; font-weight:600; ${done ? 'text-decoration:line-through;' : ''}">🎁 ${s.prize}</span>
-          ${done ? `<span style="font-size:10px; color:#16a34a; font-weight:700; background:rgba(74,222,128,0.12); padding:2px 7px; border-radius:20px; flex-shrink:0;">✓ Hecho</span>` : ''}
+          <span style="font-size:14px; color:var(--text); flex:1; font-weight:600;">🎁 ${s.prize}</span>
+          ${done ? `<span style="font-size:10px; color:#16a34a; font-weight:700; background:rgba(74,222,128,0.12); padding:2px 7px; border-radius:20px; flex-shrink:0;">✓ Sorteado</span>` : ''}
         </div>`;
       };
 
@@ -3963,6 +3967,32 @@
         }
       } else if (!pendingRaffle && _acceptRaffleId) {
         hideAcceptBanner();
+      }
+
+      // ── Resultado DURADERO de "no ganaste" (banner fijo en el perfil) ──────────
+      // El que participó en un sorteo de esta noche y no le tocó debe seguir viendo
+      // un aviso claro aunque cierre el modal o recargue. Mensaje contextual:
+      // si quedan sorteos programados → "el próximo será"; si no → "otra vez será".
+      // Se recalcula en cada render (carga inicial + cada evento SSE) para no quedar obsoleto.
+      const resultBanner = document.getElementById('raffle-result-banner');
+      if (resultBanner) {
+        const lostTonight = todayRaffles.filter(r => r.is_winner !== 1);
+        if (lostTonight.length && !pendingRaffle) {
+          const lastLost = lostTonight[0]; // el más reciente (history viene ordenado desc)
+          const tagline = remaining > 0
+            ? `<strong style="color:var(--wine);">El próximo será</strong> — sigues en el bombo, ho. 🍷`
+            : `<strong style="color:var(--wine);">Otra vez será, rapaz.</strong> 🍷`;
+          resultBanner.innerHTML = `
+            <div style="background:rgba(139,25,24,0.04); border:1.5px dashed rgba(139,25,24,0.22); border-radius:16px; padding:14px 16px; text-align:center;">
+              <div style="font-size:26px; margin-bottom:6px;">🎲</div>
+              <p style="font-size:13px; font-weight:700; color:var(--text); margin:0 0 4px; line-height:1.4;">El sorteo de <strong style="color:var(--wine);">${lastLost.prize}</strong> se lo llevó otro furancheiro.</p>
+              <p style="font-size:12px; color:var(--text-muted); margin:0; line-height:1.5;">${tagline}</p>
+            </div>`;
+          resultBanner.style.display = 'block';
+        } else {
+          resultBanner.innerHTML = '';
+          resultBanner.style.display = 'none';
+        }
       }
 
       // Evento de esta noche
@@ -4098,94 +4128,83 @@
           : `<span style="color:var(--text-muted);">🎲 Sorteo activo</span>`,
       };
 
-      let itemsToRender = history;
-      let showToggle = false;
-      if (history.length > 6) {
-        showToggle = true;
-        if (!_prizesExpanded) {
-          itemsToRender = history.slice(0, 6);
-        }
-      }
+      // Dos bloques claros: lo que GANÉ (vivo, siempre visible) y lo que NO me tocó
+      // (apagado, en lista desplegable colapsada). Así se ve de un vistazo lo ganado.
+      const wonItems    = history.filter(r => r.is_winner === 1 && r.status !== 'rejected');
+      const notWonItems = history.filter(r => !(r.is_winner === 1 && r.status !== 'rejected'));
 
-      // Ordenar: ganados primero (vivid), luego no ganados (apagado)
-      const sortedItems = [
-        ...itemsToRender.filter(r => r.is_winner === 1 && r.status !== 'rejected'),
-        ...itemsToRender.filter(r => !(r.is_winner === 1 && r.status !== 'rejected'))
-      ];
-
-      list.innerHTML = sortedItems.map((r) => {
-        const won = r.is_winner === 1;
-        const isWin = won && r.status !== 'rejected';
+      // --- Constructor de TARJETA GANADA (color vivo) ---
+      const renderWonCard = (r) => {
         const dateObj = r.created_at ? new Date(r.created_at.replace(' ','T')+'Z') : new Date();
         const dateStr = dateObj.toLocaleDateString('es-ES', {day:'numeric', month:'short', year:'numeric'});
         const isWeekly = r.is_weekly === 1;
+        const isCollected = r.status === 'collected';
+        const bg = isCollected
+          ? 'linear-gradient(135deg, rgba(22,163,74,0.12) 0%, rgba(22,163,74,0.06) 100%)'
+          : 'linear-gradient(135deg, rgba(196,151,58,0.15) 0%, rgba(196,151,58,0.07) 100%)';
+        const borderColor = isCollected ? 'rgba(22,163,74,0.4)' : 'rgba(196,151,58,0.45)';
+        const accentColor = isCollected ? '#16a34a' : 'var(--gold)';
+        const statusLabel = isCollected ? '✅ Recogido' : '🏆 Ganado';
+        const icon = isWeekly ? '🔑' : '🏆';
 
-        // === TARJETA GANADA (color vivo) ===
-        if (isWin) {
-          const isCollected = r.status === 'collected';
-          const bg = isCollected
-            ? 'linear-gradient(135deg, rgba(22,163,74,0.12) 0%, rgba(22,163,74,0.06) 100%)'
-            : 'linear-gradient(135deg, rgba(196,151,58,0.15) 0%, rgba(196,151,58,0.07) 100%)';
-          const borderColor = isCollected ? 'rgba(22,163,74,0.4)' : 'rgba(196,151,58,0.45)';
-          const accentColor = isCollected ? '#16a34a' : 'var(--gold)';
-          const statusLabel = isCollected ? '✅ Recogido' : '🏆 Ganado';
-          const icon = isWeekly ? '🔑' : '🏆';
-
-          // Botón descargar bono
-          const bonoStyle = `display:inline-block; margin-top:8px; padding:5px 12px; background:rgba(196,151,58,0.1); border:1.5px solid var(--gold); color:var(--gold); border-radius:50px; font-size:11px; font-weight:700; text-decoration:none;`;
-          let bonoBtn = '';
-          if (isWeekly && isWin && r.verification_code && r.weekly_week) {
-            // Ganador de la Chave Semanal: bono PDF con el premio y su código
-            bonoBtn = `<a href="/api/pdf/weekly/${encodeURIComponent(r.weekly_week)}?wallet=${encodeURIComponent(userWalletAddress)}" target="_blank" style="${bonoStyle}">📄 Descargar bono PDF</a>`;
-          } else if (['accepted','collected'].includes(r.status) && r.prize_image) {
-            bonoBtn = `<a href="/api/pdf/premio/${r.id}?wallet=${encodeURIComponent(userWalletAddress)}" target="_blank" style="${bonoStyle}">📄 Descargar bono</a>`;
-          }
-
-          return `
-            <div style="background:${bg}; border:1.5px solid ${borderColor}; border-radius:12px; padding:10px 12px; margin-bottom:6px; position:relative; overflow:hidden;">
-              <div style="position:absolute; top:0; left:0; bottom:0; width:3px; background:${accentColor}; border-radius:3px 0 0 3px;"></div>
-              <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px; padding-left:6px;">
-                <div style="flex:1;">
-                  <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
-                    <span style="font-size:16px;">${icon}</span>
-                    <span style="font-size:11px; font-weight:800; color:${accentColor}; text-transform:uppercase; letter-spacing:0.8px;">${statusLabel}</span>
-                    ${isWeekly ? `<span style="font-size:9px; background:rgba(196,151,58,0.15); color:var(--gold); padding:1px 6px; border-radius:100px; font-weight:700;">Chave</span>` : ''}
-                  </div>
-                  <p style="font-size:12px; font-weight:700; color:var(--text); margin:0 0 2px; line-height:1.3;">${r.prize}</p>
-                  ${(() => {
-                    if (!r.establishment) return '';
-                    const estInfo = getEstablishmentData(r.establishment);
-                    return `
-                      <div style="margin-top:6px; border-left:2px solid var(--gold); padding-left:8px; margin-bottom:6px; text-align:left;">
-                        <p style="font-size:10px; color:var(--wine); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin:0 0 2px;">
-                          ${estInfo.name}
-                        </p>
-                        <p style="font-size:11px; color:var(--text-muted); font-style:italic; line-height:1.35; margin:0 0 4px;">
-                          "${estInfo.story}"
-                        </p>
-                        <div style="margin-top:4px;">
-                          <a href="${estInfo.mapsUrl}" target="_blank" style="display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:700; color:var(--wine); text-decoration:none; background:rgba(139,25,24,0.05); padding:2px 8px; border-radius:50px; border:1px solid rgba(139,25,24,0.12);">
-                            📍 Ver en mapa
-                          </a>
-                        </div>
-                      </div>
-                    `;
-                  })()}
-                  ${isWin && r.verification_code ? `<div style="font-family:monospace; font-size:18px; font-weight:800; letter-spacing:4px; color:var(--wine); margin-top:5px; background:rgba(139,25,24,0.06); border-radius:8px; padding:4px 8px; display:inline-block;">${r.verification_code}</div>` : ''}
-                  ${bonoBtn}
-                </div>
-                <span style="font-size:10px; color:var(--text-muted); flex-shrink:0; text-align:right;">${dateStr}</span>
-              </div>
-            </div>
-          `;
+        // Botón descargar bono
+        const bonoStyle = `display:inline-block; margin-top:8px; padding:5px 12px; background:rgba(196,151,58,0.1); border:1.5px solid var(--gold); color:var(--gold); border-radius:50px; font-size:11px; font-weight:700; text-decoration:none;`;
+        let bonoBtn = '';
+        if (isWeekly && r.verification_code && r.weekly_week) {
+          // Ganador de la Chave Semanal: bono PDF con el premio y su código
+          bonoBtn = `<a href="/api/pdf/weekly/${encodeURIComponent(r.weekly_week)}?wallet=${encodeURIComponent(userWalletAddress)}" target="_blank" style="${bonoStyle}">📄 Descargar bono PDF</a>`;
+        } else if (['accepted','collected'].includes(r.status) && r.prize_image) {
+          bonoBtn = `<a href="/api/pdf/premio/${r.id}?wallet=${encodeURIComponent(userWalletAddress)}" target="_blank" style="${bonoStyle}">📄 Descargar bono</a>`;
         }
 
-        // === TARJETA NO GANADA (apagada / gris) ===
-        const pendingAccept = r.status === 'pending_acceptance' && won;
+        return `
+          <div style="background:${bg}; border:1.5px solid ${borderColor}; border-radius:12px; padding:10px 12px; margin-bottom:6px; position:relative; overflow:hidden;">
+            <div style="position:absolute; top:0; left:0; bottom:0; width:3px; background:${accentColor}; border-radius:3px 0 0 3px;"></div>
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px; padding-left:6px;">
+              <div style="flex:1;">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+                  <span style="font-size:16px;">${icon}</span>
+                  <span style="font-size:11px; font-weight:800; color:${accentColor}; text-transform:uppercase; letter-spacing:0.8px;">${statusLabel}</span>
+                  ${isWeekly ? `<span style="font-size:9px; background:rgba(196,151,58,0.15); color:var(--gold); padding:1px 6px; border-radius:100px; font-weight:700;">Chave</span>` : ''}
+                </div>
+                <p style="font-size:12px; font-weight:700; color:var(--text); margin:0 0 2px; line-height:1.3;">${r.prize}</p>
+                ${(() => {
+                  if (!r.establishment) return '';
+                  const estInfo = getEstablishmentData(r.establishment);
+                  return `
+                    <div style="margin-top:6px; border-left:2px solid var(--gold); padding-left:8px; margin-bottom:6px; text-align:left;">
+                      <p style="font-size:10px; color:var(--wine); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin:0 0 2px;">
+                        ${estInfo.name}
+                      </p>
+                      <p style="font-size:11px; color:var(--text-muted); font-style:italic; line-height:1.35; margin:0 0 4px;">
+                        "${estInfo.story}"
+                      </p>
+                      <div style="margin-top:4px;">
+                        <a href="${estInfo.mapsUrl}" target="_blank" style="display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:700; color:var(--wine); text-decoration:none; background:rgba(139,25,24,0.05); padding:2px 8px; border-radius:50px; border:1px solid rgba(139,25,24,0.12);">
+                          📍 Ver en mapa
+                        </a>
+                      </div>
+                    </div>
+                  `;
+                })()}
+                ${r.verification_code ? `<div style="font-family:monospace; font-size:18px; font-weight:800; letter-spacing:4px; color:var(--wine); margin-top:5px; background:rgba(139,25,24,0.06); border-radius:8px; padding:4px 8px; display:inline-block;">${r.verification_code}</div>` : ''}
+                ${bonoBtn}
+              </div>
+              <span style="font-size:10px; color:var(--text-muted); flex-shrink:0; text-align:right;">${dateStr}</span>
+            </div>
+          </div>
+        `;
+      };
+
+      // --- Constructor de TARJETA NO GANADA (apagada / gris) ---
+      const renderLostCard = (r) => {
+        const dateObj = r.created_at ? new Date(r.created_at.replace(' ','T')+'Z') : new Date();
+        const dateStr = dateObj.toLocaleDateString('es-ES', {day:'numeric', month:'short', year:'numeric'});
+        const isWeekly = r.is_weekly === 1;
+        const won = r.is_winner === 1;
         const wonButLate = won && (r.status === 'rejected');
         const icon = wonButLate ? '🍷' : isWeekly ? '🔑' : '🎲';
-        const statusLabel = wonButLate ? 'Te tocó — tarde' : r.status === 'pending_acceptance' ? 'Pendiente...' : 'Participé';
-
+        const statusLabel = wonButLate ? 'Te tocó — tarde' : r.status === 'pending_acceptance' ? 'Pendiente...' : 'No me tocó';
         return `
           <div style="background:rgba(42,21,9,0.02); border:1px solid rgba(42,21,9,0.07); border-radius:12px; padding:9px 12px; margin-bottom:5px; filter:${wonButLate ? 'none' : 'grayscale(30%)'}; opacity:${wonButLate ? '0.75' : '0.65'};">
             <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
@@ -4200,19 +4219,25 @@
             </div>
           </div>
         `;
-      }).join('');
+      };
 
-      if (showToggle) {
-        const remainingCount = history.length - 6;
-        const toggleText = _prizesExpanded
-          ? 'Ver menos ▴'
-          : `Ver todos los sorteos (+${remainingCount}) ▾`;
-        list.innerHTML += `
-          <button onclick="togglePrizesExpanded()" style="width:100%; margin-top:4px; padding:10px; background:transparent; border:1px dashed rgba(139,25,24,0.3); border-radius:12px; color:var(--wine); font-family:'Outfit',sans-serif; font-size:12px; font-weight:600; cursor:pointer;">
-            ${toggleText}
-          </button>
-        `;
+      let prizesHtml = '';
+      // Bloque "ganados" — siempre visible
+      if (wonItems.length) {
+        prizesHtml += wonItems.map(renderWonCard).join('');
       }
+      // Bloque "no me tocaron" — lista desplegable colapsada por defecto
+      if (notWonItems.length) {
+        prizesHtml += `
+          <button onclick="togglePrizesExpanded()" style="width:100%; margin-top:${wonItems.length ? '8' : '0'}px; margin-bottom:6px; padding:11px 13px; background:rgba(42,21,9,0.03); border:1px solid rgba(42,21,9,0.1); border-radius:12px; color:var(--text-muted); font-family:'Outfit',sans-serif; font-size:12px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+            <span>🎲 Premios que no me tocaron (${notWonItems.length})</span>
+            <span style="flex-shrink:0;">${_prizesExpanded ? '▴' : '▾'}</span>
+          </button>`;
+        if (_prizesExpanded) {
+          prizesHtml += notWonItems.map(renderLostCard).join('');
+        }
+      }
+      list.innerHTML = prizesHtml;
 
       // Historial compacto en my-history-section (REEMPLAZADO por nuevo diseño de tarjetas)
       const histSection = document.getElementById('my-history-section');
