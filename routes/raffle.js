@@ -16,7 +16,7 @@ const {
   getWeeklyMessageViewCount, getWeeklyMessageViewCounts
 } = require('../db/database');
 const { requireAuth } = require('./admin');
-const { sendPushToAll, sendPushToWallet } = require('../services/push');
+const { sendPushToAll, sendPushToWallet, sendPushToWallets } = require('../services/push');
 const { notifyQueue } = require('../services/polygon');
 
 // Configuración de upload de imágenes de premio
@@ -264,7 +264,9 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
 
   // Solo enviar SSE a los elegibles (quienes ficharon entrada hoy)
   broadcastToEligible('raffle_start', { duration: 10, prize: displayPrize, raffleId, type }, eligibleSet);
-  sendPushToAll('🎰 ¡Sorteo en Furancho!', `¡Abre la app ahora!`, { url: '/claim' });
+  // Push SOLO a los fichados en el local — nunca a gente en casa. Texto neutro:
+  // es un AVISO de que empieza el sorteo, no de que les haya tocado.
+  sendPushToWallets([...eligibleSet], '🎰 ¡Empieza el sorteo en el Furancho!', 'Abre la app para entrar al bombo y ver si te toca, neno 🍷', { url: '/claim' });
 
   setTimeout(() => {
     const resultData = { winnerWallet, verificationCode, prize, raffleId, acceptWindow: 600, type,

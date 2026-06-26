@@ -467,8 +467,8 @@ function scheduleAutoRaffles() {
     const in15Time = `${String(in15.getHours()).padStart(2,'0')}:${String(in15.getMinutes()).padStart(2,'0')}`;
 
     try {
-      const { db } = require('./db/database');
-      const { sendPushToAll } = require('./services/push');
+      const { db, getEligibleRaffleParticipants } = require('./db/database');
+      const { sendPushToWallets } = require('./services/push');
 
       // ── Avisos 15 min antes ──────────────────────────────────────────────
       const upcoming = db.prepare(
@@ -478,13 +478,20 @@ function scheduleAutoRaffles() {
       upcoming.forEach(s => {
         if (!_notifiedRaffleIds.has(s.id)) {
           _notifiedRaffleIds.add(s.id);
-          const prizeName = s.hide_name ? 'Sorpresa 🎁' : s.prize;
-          sendPushToAll(
+          // Solo a quien está en el local con entrada fichada — nunca a gente en casa.
+          const eligible = getEligibleRaffleParticipants();
+          if (!eligible.length) {
+            console.log(`[AutoRaffle] 🔕 Aviso 15min de #${s.id} omitido: nadie fichado en el local`);
+            return;
+          }
+          // Texto NEUTRO: no repetimos el texto del premio (hacía pensar que les había tocado).
+          sendPushToWallets(
+            eligible,
             '⏰ ¡Sorteo en 15 minutos!',
-            `${prizeName} — abre la app para estar listo, neno 🍷`,
+            'Prepárate, que en nada sorteamos premio en el local. Ten la app a mano para entrar al bombo, neno 🍷',
             { url: '/claim' }
           );
-          console.log(`[AutoRaffle] 🔔 Aviso 15min enviado para sorteo #${s.id}: "${s.prize}"`);
+          console.log(`[AutoRaffle] 🔔 Aviso 15min enviado a ${eligible.length} fichado(s) para sorteo #${s.id}`);
         }
       });
 
