@@ -620,6 +620,7 @@ router.get('/scheduled', (req, res) => {
 
     const raffles = getScheduledRaffles(date);
     const elig = require('../services/eligibility');
+    const { db } = require('../db/database');
 
     // Enmascarar premios si no está fichado hoy o si hide_name es true y no se ha lanzado.
     // Además adjuntar el requisito de elegibilidad (nivel/logro) y si ESTA wallet lo cumple,
@@ -627,10 +628,19 @@ router.get('/scheduled', (req, res) => {
     const processed = raffles.map(r => {
       const criteria = { minLevel: r.participant_level, requiredAchievement: r.required_achievement };
       const e = wallet ? elig.checkEligibility(wallet, criteria) : { eligible: null, reason: null };
+      // Para un premio YA sorteado: ¿le tocó a ESTA wallet? (para marcarlo en la propia lista)
+      let you_won = null;
+      if (wallet && r.status === 'launched' && r.raffle_id) {
+        try {
+          const w = db.prepare(`SELECT winner_wallet FROM raffles WHERE id = ?`).get(r.raffle_id);
+          if (w && w.winner_wallet) you_won = w.winner_wallet.toLowerCase() === wallet.toLowerCase();
+        } catch (_) {}
+      }
       const meta = {
         requirement_label: elig.requirementLabel(criteria),
         eligible: wallet ? e.eligible : null,
-        eligibility_reason: e.reason
+        eligibility_reason: e.reason,
+        you_won
       };
       const isPending = r.status === 'pending';
       const shouldHide = !isEligible || (r.hide_name && isPending);

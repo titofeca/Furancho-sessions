@@ -2036,10 +2036,6 @@
           <p style="font-size:11px; color:var(--text-muted); margin-top:8px;">Enseña este código al staff para que te den lo tuyo.</p>
         </div>
 
-        <!-- Resultado DURADERO de "no ganaste" — queda visible en el perfil tras el sorteo
-             (antes solo salía en el modal y al cerrarlo desaparecía). Lo rellena renderPrizes(). -->
-        <div id="raffle-result-banner" style="display:none; margin-bottom:12px;"></div>
-
         <!-- Premios de esta noche — visible directamente en el perfil tras fichar -->
         <div id="tonight-prizes-card" style="display:none; margin-bottom:16px; background:linear-gradient(135deg,rgba(196,151,58,0.12),rgba(139,25,24,0.06)); border:2px solid rgba(196,151,58,0.5); border-radius:20px; padding:16px; position:relative; overflow:hidden;">
           <div style="position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--wine),var(--gold),var(--wine));"></div>
@@ -3883,11 +3879,27 @@
       const renderItem = (s) => {
         const c = statusColors[s.status] || statusColors.pending;
         const done = s.status === 'launched';
-        return `<div style="display:flex; align-items:center; gap:10px; padding:10px 12px; background:${c.bg}; border:1px solid ${c.border}; border-radius:12px; ${done ? 'opacity:0.55;' : ''}">
+        // Resultado por-cliente del premio ya sorteado (viene del backend: s.you_won).
+        // Así queda claro en la PROPIA lista si te tocó o no, sin banner aparte.
+        const won = done && s.you_won === true;
+        const lost = done && s.you_won === false;
+        // El que ganó se ve resaltado; el que no, atenuado pero legible.
+        const rowOpacity = won ? '1' : done ? '0.6' : '1';
+        let badge = '';
+        if (won) {
+          badge = `<span style="font-size:10px; color:#fff; font-weight:800; background:var(--wine); padding:3px 9px; border-radius:20px; flex-shrink:0;">🏆 ¡Te tocó!</span>`;
+        } else if (lost) {
+          badge = `<span style="font-size:10px; color:var(--text-muted); font-weight:700; background:rgba(42,21,9,0.06); padding:3px 9px; border-radius:20px; flex-shrink:0;">No te tocó</span>`;
+        } else if (done) {
+          badge = `<span style="font-size:10px; color:#16a34a; font-weight:700; background:rgba(74,222,128,0.12); padding:2px 7px; border-radius:20px; flex-shrink:0;">✓ Sorteado</span>`;
+        }
+        const prizeWeight = won ? '800' : '600';
+        const prizeColor = won ? 'var(--wine)' : 'var(--text)';
+        return `<div style="display:flex; align-items:center; gap:10px; padding:10px 12px; background:${won ? 'rgba(139,25,24,0.06)' : c.bg}; border:1px solid ${won ? 'rgba(139,25,24,0.25)' : c.border}; border-radius:12px; opacity:${rowOpacity};">
           <div style="width:9px; height:9px; border-radius:50%; background:${c.dot}; flex-shrink:0;"></div>
           <span style="font-size:13px; font-weight:800; color:var(--wine); flex-shrink:0; width:40px;">${s.scheduled_time || '—'}</span>
-          <span style="font-size:14px; color:var(--text); flex:1; font-weight:600;">🎁 ${s.prize}</span>
-          ${done ? `<span style="font-size:10px; color:#16a34a; font-weight:700; background:rgba(74,222,128,0.12); padding:2px 7px; border-radius:20px; flex-shrink:0;">✓ Sorteado</span>` : ''}
+          <span style="font-size:14px; color:${prizeColor}; flex:1; font-weight:${prizeWeight};">🎁 ${s.prize}</span>
+          ${badge}
         </div>`;
       };
 
@@ -3967,32 +3979,6 @@
         }
       } else if (!pendingRaffle && _acceptRaffleId) {
         hideAcceptBanner();
-      }
-
-      // ── Resultado DURADERO de "no ganaste" (banner fijo en el perfil) ──────────
-      // El que participó en un sorteo de esta noche y no le tocó debe seguir viendo
-      // un aviso claro aunque cierre el modal o recargue. Mensaje contextual:
-      // si quedan sorteos programados → "el próximo será"; si no → "otra vez será".
-      // Se recalcula en cada render (carga inicial + cada evento SSE) para no quedar obsoleto.
-      const resultBanner = document.getElementById('raffle-result-banner');
-      if (resultBanner) {
-        const lostTonight = todayRaffles.filter(r => r.is_winner !== 1);
-        if (lostTonight.length && !pendingRaffle) {
-          const lastLost = lostTonight[0]; // el más reciente (history viene ordenado desc)
-          const tagline = remaining > 0
-            ? `<strong style="color:var(--wine);">El próximo será</strong> — sigues en el bombo, ho. 🍷`
-            : `<strong style="color:var(--wine);">Otra vez será, rapaz.</strong> 🍷`;
-          resultBanner.innerHTML = `
-            <div style="background:rgba(139,25,24,0.04); border:1.5px dashed rgba(139,25,24,0.22); border-radius:16px; padding:14px 16px; text-align:center;">
-              <div style="font-size:26px; margin-bottom:6px;">🎲</div>
-              <p style="font-size:13px; font-weight:700; color:var(--text); margin:0 0 4px; line-height:1.4;">El sorteo de <strong style="color:var(--wine);">${lastLost.prize}</strong> se lo llevó otro furancheiro.</p>
-              <p style="font-size:12px; color:var(--text-muted); margin:0; line-height:1.5;">${tagline}</p>
-            </div>`;
-          resultBanner.style.display = 'block';
-        } else {
-          resultBanner.innerHTML = '';
-          resultBanner.style.display = 'none';
-        }
       }
 
       // Evento de esta noche
@@ -4782,6 +4768,9 @@
         if (statusText) statusText.textContent = 'El bombo ya quiere sonar...';
         renderPrizes();
       }
+      // Refrescar la agenda "Premios de esta noche" para marcar en la propia lista
+      // si este premio te tocó o no (el resultado vive ahí, no en un banner aparte).
+      if (typeof loadTonightPrizes === 'function') loadTonightPrizes();
     }
 
     function connectRaffle() {
