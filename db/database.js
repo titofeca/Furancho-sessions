@@ -535,14 +535,22 @@ function updateAchievementMintStatus(id, status, txHash = null, costMatic = null
 
 // Candidatos a BACKFILL on-chain: registros marcados 'success' pero que se mintearon en
 // modo demo (txHash 'demo_' o nulo). Solo Nv3/Nv4 (Nv1/Nv2 son off-chain por diseño).
+// NFTs Nv3/Nv4 que DEBERÍAN estar on-chain pero no constan con tx real: los de
+// época demo (success sin tx) Y los que quedaron en 'failed' (p.ej. el RPC se
+// saturó a mitad de mint). El backfill comprueba el saldo on-chain antes de
+// regastar gas, así que incluir los fallidos es seguro (si ya están, los salta).
 function getDemoLevelMints() {
   return db.prepare(`SELECT id, wallet_address, level, level_name FROM mints
-    WHERE level >= 3 AND status = 'success' AND (crossmint_action_id IS NULL OR crossmint_action_id LIKE 'demo_%')
+    WHERE level >= 3 AND (
+      (status = 'success' AND (crossmint_action_id IS NULL OR crossmint_action_id LIKE 'demo_%'))
+      OR status = 'failed'
+    )
     ORDER BY id ASC`).all();
 }
 function getDemoAchievementMints() {
   return db.prepare(`SELECT id, wallet_address, achievement_id, token_id FROM achievement_mints
-    WHERE status = 'success' AND (tx_hash IS NULL OR tx_hash LIKE 'demo_%')
+    WHERE (status = 'success' AND (tx_hash IS NULL OR tx_hash LIKE 'demo_%'))
+      OR status = 'failed'
     ORDER BY id ASC`).all();
 }
 
