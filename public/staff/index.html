@@ -69,6 +69,7 @@
     <div class="icon" id="result-icon"></div>
     <h3 id="result-title"></h3>
     <p id="result-msg"></p>
+    <div id="result-next" style="display:none; margin-top:16px; background:rgba(139,25,24,0.06); border:1px solid rgba(139,25,24,0.2); border-radius:14px; padding:12px 16px; font-size:14px; color:var(--text); max-width:340px;"></div>
     <div class="who" id="result-who"></div>
     <button onclick="resumeScan()">Escanear al siguiente ➜</button>
   </div>
@@ -82,6 +83,15 @@
       if (code) startScanner();
       else showGate();
     });
+
+    // Hitos visita→nivel (1→Nv1, 2→Nv2, 4→Nv3, 12→Nv4). Cuántas visitas faltan al siguiente.
+    function nextLevelInfo(visitCount){
+      const milestones = [ {v:1,l:1,n:'Cautivo'}, {v:2,l:2,n:'O Cunqueiro'}, {v:4,l:3,n:'O Larpeiro'}, {v:12,l:4,n:'O Presidente'} ];
+      const vc = visitCount || 0;
+      const next = milestones.find(m => m.v > vc);
+      if (!next) return { max: true };
+      return { max: false, remaining: next.v - vc, level: next.l, name: next.n };
+    }
 
     function showGate(){
       document.getElementById('gate').style.display = 'block';
@@ -183,6 +193,13 @@
       icon.style.background = bg; icon.textContent = ic;
       title.textContent = t; msg.textContent = m;
       who.textContent = `${wallet.slice(0,6)}…${wallet.slice(-4)}`;
+      // Cuánto le falta para el siguiente nivel — para decírselo al cliente
+      const nextEl = document.getElementById('result-next');
+      if (nextEl){
+        const nx = nextLevelInfo(d.visitCount);
+        if (nx.max){ nextEl.innerHTML = '👑 <strong>Nivel máximo</strong> — ya es O Presidente, ho.'; nextEl.style.display = 'block'; }
+        else { nextEl.innerHTML = `⬆️ Le falta${nx.remaining !== 1 ? 'n' : ''} <strong style="color:var(--wine);">${nx.remaining} visita${nx.remaining !== 1 ? 's' : ''}</strong> para <strong style="color:var(--wine);">Nv${nx.level} · ${nx.name}</strong>`; nextEl.style.display = 'block'; }
+      }
       document.getElementById('result').style.display = 'flex';
       // Auto-volver al escáner a los 3s
       clearTimeout(window._resultTimer);

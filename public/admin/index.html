@@ -6654,6 +6654,15 @@
     }
   }
 
+  // Hitos visita→nivel (1→Nv1, 2→Nv2, 4→Nv3, 12→Nv4). Cuántas visitas faltan al siguiente.
+  function nextLevelInfo(visitCount) {
+    const milestones = [ {v:1,l:1,n:'Cautivo'}, {v:2,l:2,n:'O Cunqueiro'}, {v:4,l:3,n:'O Larpeiro'}, {v:12,l:4,n:'O Presidente'} ];
+    const vc = visitCount || 0;
+    const next = milestones.find(m => m.v > vc);
+    if (!next) return { max: true };
+    return { max: false, remaining: next.v - vc, level: next.l, name: next.n };
+  }
+
   function renderScanResult(d) {
     const resultDiv = document.getElementById('scanner-result');
     window._scanData = d; // para las acciones del menú (visitas, logros, etc.)
@@ -6716,6 +6725,13 @@
             <div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Tapas históricas</div>
           </div>
         </div>
+
+        <!-- Cuánto le falta para el siguiente nivel (para decírselo al cliente) -->
+        ${(() => {
+          const nx = nextLevelInfo(d.visitCount);
+          if (nx.max) return `<div style="background:rgba(196,151,58,0.1);border:1px solid rgba(196,151,58,0.3);border-radius:12px;padding:11px 13px;margin-bottom:14px;font-size:13px;font-weight:700;color:var(--wine);text-align:center;">👑 Nivel máximo — ya es O Presidente, ho.</div>`;
+          return `<div style="background:rgba(139,25,24,0.06);border:1px solid rgba(139,25,24,0.2);border-radius:12px;padding:11px 13px;margin-bottom:14px;font-size:13px;color:var(--text);text-align:center;">⬆️ Le falta${nx.remaining !== 1 ? 'n' : ''} <strong style="color:var(--wine);">${nx.remaining} visita${nx.remaining !== 1 ? 's' : ''}</strong> para <strong style="color:var(--wine);">Nv${nx.level} · ${nx.name}</strong></div>`;
+        })()}
 
         <!-- Última visita -->
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">
