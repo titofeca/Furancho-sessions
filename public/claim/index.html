@@ -3389,7 +3389,7 @@
                 <div style="flex:1; text-align:left; display:flex; justify-content:space-between; align-items:center; gap:8px;">
                   <div>
                     <p style="font-size:15px; font-weight:600; color:var(--text); margin:0;">${ev.title}</p>
-                    <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0;">👥 ${ev.rsvp_count + baseline} con ganas de caer</p>
+                    <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0;">🕒 19:30 – 22:30 h · 👥 ${ev.rsvp_count + baseline} con ganas de caer</p>
                   </div>
                   ${badgesHTML}
                 </div>
@@ -6207,8 +6207,10 @@
     const cleanDesc = description.replace(/\n/g, '\\n').replace(/'/g, "\\'").replace(/"/g, '\\"');
     const [year, month, day] = eventDate.split('-');
     
+    // Horario informado al cliente: 19:30–22:30 (independiente de la ventana interna
+    // 19:00–23:59 que usan sorteos/fichajes, que NO se toca).
     const start = `${year}${month}${day}T193000`;
-    const end = `${year}${month}${day}T233000`;
+    const end = `${year}${month}${day}T223000`;
     
     const icsContent = [
       'BEGIN:VCALENDAR',
