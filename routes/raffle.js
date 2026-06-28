@@ -266,7 +266,11 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
   broadcastToEligible('raffle_start', { duration: 10, prize: displayPrize, raffleId, type }, eligibleSet);
   // Push SOLO a los fichados en el local — nunca a gente en casa. Texto neutro:
   // es un AVISO de que empieza el sorteo, no de que les haya tocado.
-  sendPushToWallets([...eligibleSet], '🎰 ¡Empieza el sorteo en el Furancho!', 'Abre la app para entrar al bombo y ver si te toca, neno 🍷', { url: '/claim' });
+  sendPushToWallets([...eligibleSet], '🎰 ¡Empieza el sorteo en el Furancho!', 'Abre la app para entrar al bombo y ver si te toca, neno 🍷', {
+    url: '/claim',
+    image: prizeImage || '/assets/logo.png',
+    actions: [{ action: 'open', title: 'Entrar al bombo 🎲' }],
+  });
 
   setTimeout(() => {
     const resultData = { winnerWallet, verificationCode, prize, raffleId, acceptWindow: 600, type,
@@ -1125,7 +1129,11 @@ router.post('/admin/weekly/draw', requireAuth, (req, res) => {
     sendPushToAll(
       `🔑 ¡Chave Semanal sorteada!`,
       `Ya hay ganador de ${result.prize}. Abre la app: si te tocó, tienes hasta las 23:00 de hoy para confirmar, ho.`,
-      { url: '/claim' }
+      {
+        url: '/claim',
+        image: '/assets/logo.png',
+        actions: [{ action: 'open', title: '¿Me tocó? 🔑' }],
+      }
     );
 
     // SSE: Notificar en tiempo real al ganador específico (si está conectado).

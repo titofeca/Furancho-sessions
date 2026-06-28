@@ -310,12 +310,13 @@ router.post('/send-message', requireAuth, async (req, res) => {
   console.log(`[MESSAGE] Mensaje publicado. Destinatarios estimados: ${wallets.length}${checkedInOnly ? ' (solo fichados en local)' : ''}`);
 
   // Push a móviles con pantalla apagada
+  const pushData = { url: '/claim', image: '/assets/logo.png' };
   if (checkedInOnly || isAchFilter) {
-    sendPushToWallets(wallets, `📢 ${subject}`, body, { url: '/claim' });
+    sendPushToWallets(wallets, `📢 ${subject}`, body, pushData);
   } else if (levelFilter && levelFilter.startsWith('0x')) {
-    sendPushToWallet(levelFilter, `✉️ Mensaje privado: ${subject}`, body, { url: '/claim' });
+    sendPushToWallet(levelFilter, `✉️ Mensaje privado: ${subject}`, body, pushData);
   } else {
-    sendPushToAll(`📢 ${subject}`, body, { url: '/claim' });
+    sendPushToAll(`📢 ${subject}`, body, pushData);
   }
 
   return res.json({
