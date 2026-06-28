@@ -1126,6 +1126,26 @@ const EVENT_SEED = [
     title: 'Furancho Sessions — 2 Julio',
     description: 'Algo está preparándose. No podemos decir mucho… solo que merece la pena estar. Apúntate y descúbrelo.'
   },
+  {
+    date: '2026-07-09',
+    title: 'Furancho Sessions — 9 Julio',
+    description: 'Seguimos con el furancho en marcha. Aún no soltamos prenda, pero promete. Apúntate y lo ves, neno.'
+  },
+  {
+    date: '2026-07-16',
+    title: 'Furancho Sessions — 16 Julio',
+    description: 'Otra noche de las buenas en camino. No adelantamos detalles todavía… reserva tu sitio y lo descubres.'
+  },
+  {
+    date: '2026-07-23',
+    title: 'Furancho Sessions — 23 Julio',
+    description: 'Se viene noche de furancho. Mejor no contar mucho: ven y lo ves en directo, carallo.'
+  },
+  {
+    date: '2026-07-30',
+    title: 'Furancho Sessions — 30 Julio',
+    description: 'Cerramos julio por todo lo alto. Lo que preparamos se disfruta mejor en persona. Apúntate.'
+  },
 ];
 
 // Fechas cuya descripción debe actualizarse aunque ya exista en BD (cuando cambias el texto desde aquí).
