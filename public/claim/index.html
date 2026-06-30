@@ -2335,9 +2335,16 @@
     <div id="raffle-winner" style="display: none; width: 100%; max-width: 360px;">
       <span class="raffle-winner-emoji">🏆</span>
       <h2 class="raffle-winner-title" id="raffle-winner-title">¡TE TOCÓ, NENO! 🍷</h2>
-      <!-- Imagen del establecimiento -->
+      <!-- Imagen del establecimiento / Logos de la rifa local -->
       <div id="raffle-prize-image-wrap" style="display:none; margin-bottom:14px;">
-        <img id="raffle-prize-image" src="" style="max-height:90px; max-width:160px; border-radius:12px; border:2px solid var(--gold); object-fit:contain;" />
+        <div id="raffle-single-logo-wrap" style="display:block; text-align:center;">
+          <img id="raffle-prize-image" src="" style="max-height:90px; max-width:160px; border-radius:12px; border:2px solid var(--gold); object-fit:contain;" />
+        </div>
+        <div id="raffle-local-logos-wrap" style="display:none; align-items:center; justify-content:center; gap:16px;">
+          <img src="/assets/logo.png" style="max-height:60px; max-width:100px; object-fit:contain; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.1));" />
+          <span style="font-size:20px; color:var(--gold); font-weight:bold;">×</span>
+          <img id="raffle-prize-image-local" src="" style="max-height:60px; max-width:100px; border-radius:8px; border:1.5px solid var(--gold); object-fit:contain; background:#fff; padding:2px; box-shadow: 0 2px 6px rgba(0,0,0,0.08);" />
+        </div>
       </div>
       <!-- Establecimiento -->
       <p id="raffle-establishment" style="display:none; font-size:12px; text-transform:uppercase; letter-spacing:2px; color:var(--wine); font-weight:700; margin-bottom:6px;"></p>
@@ -2355,6 +2362,16 @@
       <p style="font-size: 15px; color: var(--text); margin-bottom: 8px; font-weight: 300;">Premio: <strong id="raffle-winner-prize" style="font-weight: 700; color: var(--gold);"></strong></p>
       <!-- Detalles del premio -->
       <p id="raffle-prize-details" style="display:none; font-size:13px; color:var(--text-muted); font-style:italic; margin-bottom:16px; line-height:1.5;"></p>
+      <!-- Condiciones del premio local -->
+      <div id="raffle-local-conditions" style="display:none; margin:16px 0; background:rgba(42,21,9,0.03); border:1px solid rgba(42,21,9,0.08); border-radius:14px; padding:12px 14px; text-align:left;">
+        <p style="font-size:10px; font-weight:800; text-transform:uppercase; color:var(--wine); letter-spacing:1px; margin-bottom:8px; border-bottom:1px dashed rgba(139,25,24,0.1); padding-bottom:4px; text-align:center;">📋 CONDICIONES DEL PREMIO</p>
+        <div style="display:grid; grid-template-columns:1fr; gap:6px; font-size:12.5px; color:var(--text);">
+          <div id="cond-people-wrap" style="display:flex; justify-content:space-between;">👥 <span>Personas:</span> <strong id="cond-people"></strong></div>
+          <div id="cond-validity-wrap" style="display:flex; justify-content:space-between;">📅 <span>Validez:</span> <strong id="cond-validity" style="color:var(--wine);"></strong></div>
+          <div id="cond-days-wrap" style="display:flex; justify-content:space-between;">🗓️ <span>Días válidos:</span> <strong id="cond-days"></strong></div>
+          <div id="cond-hours-wrap" style="display:flex; justify-content:space-between;">🕒 <span>Horario:</span> <strong id="cond-hours"></strong></div>
+        </div>
+      </div>
       <div class="raffle-winner-box">
         <p class="raffle-code-label">Tu código</p>
         <p class="raffle-code" id="raffle-code">----</p>
@@ -4173,6 +4190,20 @@
                     </div>
                   `;
                 })()}
+                ${(() => {
+                  if (!r.people && !r.validity && !r.days && !r.hours) return '';
+                  return `
+                    <div style="margin-top:6px; background:rgba(0,0,0,0.02); border:1px solid rgba(0,0,0,0.05); border-radius:8px; padding:8px; font-size:11px; color:var(--text-muted); text-align:left; max-width:280px;">
+                      <p style="font-size:9px; font-weight:800; color:var(--wine); letter-spacing:0.8px; margin:0 0 4px; text-transform:uppercase;">Condiciones de validez:</p>
+                      <div style="display:grid; grid-template-columns:1fr; gap:3px; font-size:11px;">
+                        ${r.people ? `<div>👥 <strong>Personas:</strong> ${r.people}</div>` : ''}
+                        ${r.validity ? `<div>📅 <strong>Validez:</strong> <span style="color:var(--wine); font-weight:700;">${r.validity}</span></div>` : ''}
+                        ${r.days ? `<div>🗓️ <strong>Días:</strong> ${r.days}</div>` : ''}
+                        ${r.hours ? `<div>🕒 <strong>Horario:</strong> ${r.hours}</div>` : ''}
+                      </div>
+                    </div>
+                  `;
+                })()}
                 ${r.verification_code ? `<div style="font-family:monospace; font-size:18px; font-weight:800; letter-spacing:4px; color:var(--wine); margin-top:5px; background:rgba(139,25,24,0.06); border-radius:8px; padding:4px 8px; display:inline-block;">${r.verification_code}</div>` : ''}
                 ${bonoBtn}
               </div>
@@ -4710,9 +4741,24 @@
         const isLocal = data.type === 'local';
         const prizeImgWrap = document.getElementById('raffle-prize-image-wrap');
         const prizeImg = document.getElementById('raffle-prize-image');
-        if (isLocal && data.prizeImage && prizeImgWrap && prizeImg) {
-          prizeImg.src = data.prizeImage; prizeImgWrap.style.display = 'block';
-        } else if (prizeImgWrap) prizeImgWrap.style.display = 'none';
+        const prizeImgLocal = document.getElementById('raffle-prize-image-local');
+        const singleLogoWrap = document.getElementById('raffle-single-logo-wrap');
+        const localLogosWrap = document.getElementById('raffle-local-logos-wrap');
+
+        if (isLocal && data.prizeImage && prizeImgWrap) {
+          if (prizeImgLocal) prizeImgLocal.src = data.prizeImage;
+          if (singleLogoWrap) singleLogoWrap.style.display = 'none';
+          if (localLogosWrap) localLogosWrap.style.display = 'flex';
+          prizeImgWrap.style.display = 'block';
+        } else if (data.prizeImage && prizeImgWrap && prizeImg) {
+          prizeImg.src = data.prizeImage;
+          if (singleLogoWrap) singleLogoWrap.style.display = 'block';
+          if (localLogosWrap) localLogosWrap.style.display = 'none';
+          prizeImgWrap.style.display = 'block';
+        } else if (prizeImgWrap) {
+          prizeImgWrap.style.display = 'none';
+        }
+
         const estEl = document.getElementById('raffle-establishment');
         const storyBox = document.getElementById('raffle-establishment-story-box');
         const storyText = document.getElementById('raffle-establishment-story');
@@ -4739,6 +4785,33 @@
         const detailsEl = document.getElementById('raffle-prize-details');
         if (isLocal && data.prizeDetails && detailsEl) { detailsEl.textContent = data.prizeDetails; detailsEl.style.display = 'block'; }
         else if (detailsEl) detailsEl.style.display = 'none';
+
+        const condBox = document.getElementById('raffle-local-conditions');
+        if (isLocal && (data.people || data.validity || data.days || data.hours) && condBox) {
+          const pEl = document.getElementById('cond-people');
+          const pWrap = document.getElementById('cond-people-wrap');
+          if (data.people) { pEl.textContent = data.people; pWrap.style.display = 'flex'; }
+          else { pWrap.style.display = 'none'; }
+
+          const vEl = document.getElementById('cond-validity');
+          const vWrap = document.getElementById('cond-validity-wrap');
+          if (data.validity) { vEl.textContent = data.validity; vWrap.style.display = 'flex'; }
+          else { vWrap.style.display = 'none'; }
+
+          const dEl = document.getElementById('cond-days');
+          const dWrap = document.getElementById('cond-days-wrap');
+          if (data.days) { dEl.textContent = data.days; dWrap.style.display = 'flex'; }
+          else { dWrap.style.display = 'none'; }
+
+          const hEl = document.getElementById('cond-hours');
+          const hWrap = document.getElementById('cond-hours-wrap');
+          if (data.hours) { hEl.textContent = data.hours; hWrap.style.display = 'flex'; }
+          else { hWrap.style.display = 'none'; }
+
+          condBox.style.display = 'block';
+        } else if (condBox) {
+          condBox.style.display = 'none';
+        }
 
         window._currentRaffleId = data.raffleId;
         window._currentRaffleType = data.type || 'night';

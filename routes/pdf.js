@@ -360,7 +360,31 @@ router.get('/premio/:id', async (req, res) => {
 
     // ── Imagen del establecimiento (si existe) ───────────────────────────────────
     let y = 178;
-    if (raffle.prize_image) {
+    if (raffle.type === 'local' && raffle.prize_image) {
+      try {
+        const imgPath = path.join(__dirname, '..', 'public', raffle.prize_image.replace(/^\//, ''));
+        if (fs.existsSync(imgPath)) {
+          const imgSize = 70;
+          const totalWidth = imgSize + 30 + imgSize;
+          const startX = (W - totalWidth) / 2;
+
+          // Furancho Logo (left)
+          try { doc.image(LOGO_PATH, startX, y - 5, { width: 34, height: 60 }); } catch(_) {}
+
+          // 'X' in the middle
+          doc.fillColor(GOLD).fontSize(20).font('Helvetica-Bold')
+             .text('x', startX + 44, y + 12, { width: 20, align: 'center' });
+
+          // Local Logo (right)
+          const localX = startX + 74;
+          doc.roundedRect(localX - 4, y - 4, imgSize + 8, imgSize + 8, 8).fill('#FFFFFF');
+          doc.roundedRect(localX - 5, y - 5, imgSize + 10, imgSize + 10, 9).stroke(GOLD).lineWidth(1);
+          doc.image(imgPath, localX, y, { width: imgSize, height: imgSize, fit: [imgSize, imgSize] });
+
+          y += imgSize + 20;
+        }
+      } catch(_) { y += 10; }
+    } else if (raffle.prize_image) {
       try {
         const imgPath = path.join(__dirname, '..', 'public', raffle.prize_image.replace(/^\//, ''));
         if (fs.existsSync(imgPath)) {
@@ -391,6 +415,43 @@ router.get('/premio/:id', async (req, res) => {
       doc.fillColor(WINE).fontSize(12).font('Helvetica-Oblique')
          .text(raffle.prize_details, 60, y, { align: 'center', width: W - 120, lineGap: 4 });
       y += doc.heightOfString(raffle.prize_details, { width: W - 120, fontSize: 12 }) + 18;
+    }
+
+    // ── Condiciones de Validez (si existen) ──────────────────────────────────────
+    const hasConds = raffle.people || raffle.validity || raffle.days || raffle.hours;
+    if (hasConds) {
+      let boxHeight = 24;
+      if (raffle.people) boxHeight += 16;
+      if (raffle.validity) boxHeight += 16;
+      if (raffle.days) boxHeight += 16;
+      if (raffle.hours) boxHeight += 16;
+
+      doc.roundedRect(60, y, W - 120, boxHeight, 10).fill('#FFFFFF');
+      doc.roundedRect(60, y, W - 120, boxHeight, 10).stroke(GOLD).lineWidth(1);
+
+      doc.fillColor(WINE).fontSize(9).font('Helvetica-Bold')
+         .text('CONDICIONES DE VALIDEZ', 75, y + 10, { characterSpacing: 1 });
+
+      let condY = y + 26;
+      doc.fillColor(DARK).fontSize(9).font('Helvetica');
+
+      if (raffle.people) {
+        doc.font('Helvetica-Bold').text('Personas: ', 75, condY).font('Helvetica').text(raffle.people, 160, condY);
+        condY += 16;
+      }
+      if (raffle.validity) {
+        doc.font('Helvetica-Bold').text('Validez: ', 75, condY).font('Helvetica').text(raffle.validity, 160, condY);
+        condY += 16;
+      }
+      if (raffle.days) {
+        doc.font('Helvetica-Bold').text('Días válidos: ', 75, condY).font('Helvetica').text(raffle.days, 160, condY);
+        condY += 16;
+      }
+      if (raffle.hours) {
+        doc.font('Helvetica-Bold').text('Horarios: ', 75, condY).font('Helvetica').text(raffle.hours, 160, condY);
+      }
+
+      y += boxHeight + 18;
     }
 
     // ── Línea decorativa ─────────────────────────────────────────────────────────

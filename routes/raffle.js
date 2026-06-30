@@ -144,7 +144,8 @@ router.get('/stream', (req, res) => {
         // clientes vean el resultado a la vez
         const elapsed = Math.floor((Date.now() - activeRaffle.startedAt) / 1000);
         res.write(`event: raffle_start\ndata: ${JSON.stringify({
-          duration: Math.max(1, 10 - elapsed), prize: activeRaffle.displayPrize, raffleId: activeRaffle.raffleId, type: activeRaffle.type
+          duration: Math.max(1, 10 - elapsed), prize: activeRaffle.displayPrize, raffleId: activeRaffle.raffleId, type: activeRaffle.type,
+          validity: activeRaffle.validity || null, people: activeRaffle.people || null, hours: activeRaffle.hours || null, days: activeRaffle.days || null
         })}\n\n`);
       } else if (activeRaffle.phase === 'result') {
         res.write(`event: raffle_result\ndata: ${JSON.stringify({
@@ -152,7 +153,8 @@ router.get('/stream', (req, res) => {
           prize: activeRaffle.prize, raffleId: activeRaffle.raffleId,
           acceptWindow: Math.max(0, activeRaffle.acceptWindow - Math.floor((Date.now() - activeRaffle.resultAt) / 1000)),
           type: activeRaffle.type, prizeDetails: activeRaffle.prizeDetails || null,
-          prizeImage: activeRaffle.prizeImage || null, establishment: activeRaffle.establishment || null
+          prizeImage: activeRaffle.prizeImage || null, establishment: activeRaffle.establishment || null,
+          validity: activeRaffle.validity || null, people: activeRaffle.people || null, hours: activeRaffle.hours || null, days: activeRaffle.days || null
         })}\n\n`);
       }
       if (typeof res.flush === 'function') res.flush();
@@ -176,7 +178,7 @@ router.get('/stream', (req, res) => {
 });
 
 // ── FUNCIÓN CENTRAL DE LANZAMIENTO (usada por /start, /launch-scheduled y auto-launcher) ────
-function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel = null, prizeDetails = null, prizeImage = null, establishment = null, hideName = false, scheduledId = null, requiredAchievement = null }) {
+function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel = null, prizeDetails = null, prizeImage = null, establishment = null, hideName = false, scheduledId = null, requiredAchievement = null, validity = null, people = null, hours = null, days = null }) {
   const sanitizedTargetLevel = targetLevel ? parseInt(targetLevel) : null;
   if (sanitizedTargetLevel && ![2, 3, 4].includes(sanitizedTargetLevel)) {
     throw new Error('Nivel de destino no válido. Debe ser 2, 3 o 4.');
@@ -248,7 +250,7 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
   let verificationCode = '';
   for (let i = 0; i < 4; i++) verificationCode += chars.charAt(Math.floor(Math.random() * chars.length));
 
-  const raffleId = insertRaffle(prize, winnerWallet, verificationCode, eligibleWallets, sanitizedTargetLevel, prizeDetails, prizeImage, establishment, type, hideName ? 1 : 0, sanitizedParticipantLevel);
+  const raffleId = insertRaffle(prize, winnerWallet, verificationCode, eligibleWallets, sanitizedTargetLevel, prizeDetails, prizeImage, establishment, type, hideName ? 1 : 0, sanitizedParticipantLevel, validity, people, hours, days);
   if (scheduledId) { try { linkScheduledRaffle(parseInt(scheduledId), raffleId); } catch(_) {} }
 
   const displayPrize = hideName ? 'Sorpresa 🎁' : prize;
@@ -259,11 +261,12 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
     raffleId, prize, displayPrize, type, phase: 'start',
     eligibleWallets: eligibleSet,
     prizeDetails: prizeDetails || null, prizeImage: prizeImage || null, establishment: establishment || null,
+    validity: validity || null, people: people || null, hours: hours || null, days: days || null,
     startedAt: Date.now()
   };
 
   // Solo enviar SSE a los elegibles (quienes ficharon entrada hoy)
-  broadcastToEligible('raffle_start', { duration: 10, prize: displayPrize, raffleId, type }, eligibleSet);
+  broadcastToEligible('raffle_start', { duration: 10, prize: displayPrize, raffleId, type, validity, people, hours, days }, eligibleSet);
   // Push SOLO a los fichados en el local — nunca a gente en casa. Texto neutro:
   // es un AVISO de que empieza el sorteo, no de que les haya tocado.
   sendPushToWallets([...eligibleSet], '🎰 ¡Empieza el sorteo en el Furancho!', 'Abre la app para entrar al bombo y ver si te toca, neno 🍷', {
@@ -274,7 +277,8 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
 
   setTimeout(() => {
     const resultData = { winnerWallet, verificationCode, prize, raffleId, acceptWindow: 600, type,
-      prizeDetails: prizeDetails || null, prizeImage: prizeImage || null, establishment: establishment || null };
+      prizeDetails: prizeDetails || null, prizeImage: prizeImage || null, establishment: establishment || null,
+      validity: validity || null, people: people || null, hours: hours || null, days: days || null };
     broadcastToEligible('raffle_result', resultData, eligibleSet);
     // Actualizar estado activo con resultado
     if (activeRaffle?.raffleId === raffleId) {
@@ -308,10 +312,10 @@ router.post('/upload-image', requireAuth, upload.single('image'), (req, res) => 
 
 // POST /api/raffle/start — admin lanza sorteo manualmente con todos los datos
 router.post('/start', requireAuth, (req, res) => {
-  const { prize, scheduledId, targetLevel, participantLevel, prizeDetails, prizeImage, establishment, type, hideName, requiredAchievement } = req.body;
+  const { prize, scheduledId, targetLevel, participantLevel, prizeDetails, prizeImage, establishment, type, hideName, requiredAchievement, validity, people, hours, days } = req.body;
   if (!prize) return res.status(400).json({ error: 'Falta el nombre del premio' });
   try {
-    const result = doLaunch({ prize, type: type || 'night', targetLevel, participantLevel, prizeDetails, prizeImage, establishment, hideName: !!hideName, scheduledId, requiredAchievement: requiredAchievement || null });
+    const result = doLaunch({ prize, type: type || 'night', targetLevel, participantLevel, prizeDetails, prizeImage, establishment, hideName: !!hideName, scheduledId, requiredAchievement: requiredAchievement || null, validity, people, hours, days });
     return res.json({ success: true, ...result });
   } catch(e) {
     return res.status(400).json({ error: e.message });
@@ -328,7 +332,8 @@ router.post('/launch-scheduled/:id', requireAuth, (req, res) => {
     const result = doLaunch({
       prize: s.prize, type: s.type || 'night', targetLevel: s.target_level, participantLevel: s.participant_level,
       prizeDetails: s.prize_details, prizeImage: s.prize_image, establishment: s.establishment,
-      hideName: s.hide_name ? true : false, scheduledId: s.id, requiredAchievement: s.required_achievement || null
+      hideName: s.hide_name ? true : false, scheduledId: s.id, requiredAchievement: s.required_achievement || null,
+      validity: s.validity, people: s.people, hours: s.hours, days: s.days
     });
     return res.json({ success: true, ...result });
   } catch(e) {
@@ -581,10 +586,12 @@ router.get('/active', (req, res) => {
       winnerWallet: activeRaffle.winnerWallet, verificationCode: activeRaffle.verificationCode,
       prize: activeRaffle.prize, raffleId: activeRaffle.raffleId, acceptWindow: remaining,
       type: activeRaffle.type, prizeDetails: activeRaffle.prizeDetails,
-      prizeImage: activeRaffle.prizeImage, establishment: activeRaffle.establishment });
+      prizeImage: activeRaffle.prizeImage, establishment: activeRaffle.establishment,
+      validity: activeRaffle.validity || null, people: activeRaffle.people || null, hours: activeRaffle.hours || null, days: activeRaffle.days || null });
   }
   return res.json({ active: true, phase: 'start', prize: activeRaffle.displayPrize,
-    raffleId: activeRaffle.raffleId, type: activeRaffle.type });
+    raffleId: activeRaffle.raffleId, type: activeRaffle.type,
+    validity: activeRaffle.validity || null, people: activeRaffle.people || null, hours: activeRaffle.hours || null, days: activeRaffle.days || null });
 });
 
 // GET /api/raffle/prizes — lista de premios preset
@@ -654,7 +661,11 @@ router.get('/scheduled', (req, res) => {
           prize: 'Sorpresa 🎁',
           prize_details: null,
           prize_image: null,
-          establishment: r.establishment && !isEligible ? null : r.establishment
+          establishment: r.establishment && !isEligible ? null : r.establishment,
+          validity: null,
+          people: null,
+          hours: null,
+          days: null
         };
       }
       return { ...r, ...meta };
@@ -671,7 +682,7 @@ router.get('/scheduled/all', requireAuth, (req, res) => {
 
 // POST /api/raffle/scheduled — admin, crear sorteo programado
 router.post('/scheduled', requireAuth, (req, res) => {
-  const { eventDate, scheduledTime, prize, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment, requiredAchievement } = req.body;
+  const { eventDate, scheduledTime, prize, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment, requiredAchievement, validity, people, hours, days } = req.body;
   if (!eventDate || !scheduledTime || !prize)
     return res.status(400).json({ error: 'Faltan campos: eventDate, scheduledTime, prize' });
   try {
@@ -684,7 +695,11 @@ router.post('/scheduled', requireAuth, (req, res) => {
       prizeDetails: prizeDetails || null,
       prizeImage: prizeImage || null,
       establishment: establishment || null,
-      requiredAchievement: requiredAchievement || null
+      requiredAchievement: requiredAchievement || null,
+      validity: validity || null,
+      people: people || null,
+      hours: hours || null,
+      days: days || null
     });
     res.json({ success: true, id });
   } catch(e) { res.status(400).json({ error: e.message }); }
@@ -692,13 +707,14 @@ router.post('/scheduled', requireAuth, (req, res) => {
 
 // PATCH /api/raffle/scheduled/:id — admin, editar
 router.patch('/scheduled/:id', requireAuth, (req, res) => {
-  const { eventDate, scheduledTime, prize, status, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment, requiredAchievement } = req.body;
+  const { eventDate, scheduledTime, prize, status, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment, requiredAchievement, validity, people, hours, days } = req.body;
   try {
     updateScheduledRaffle(parseInt(req.params.id), {
       eventDate, scheduledTime, prize, status,
       targetLevel: targetLevel !== undefined ? (targetLevel ? parseInt(targetLevel) : null) : undefined,
       participantLevel: participantLevel !== undefined ? (participantLevel ? parseInt(participantLevel) : null) : undefined,
-      type, hideName, prizeDetails, prizeImage, establishment, requiredAchievement
+      type, hideName, prizeDetails, prizeImage, establishment, requiredAchievement,
+      validity, people, hours, days
     });
     res.json({ success: true });
   } catch(e) { res.status(400).json({ error: e.message }); }
@@ -722,15 +738,43 @@ router.get('/voucher/:id', (req, res) => {
     if (raffle.winner_wallet.toLowerCase() !== wallet.toLowerCase()) return res.status(403).send('Acceso denegado');
     if (!['accepted','collected'].includes(raffle.status)) return res.status(400).send('Premio no aceptado aún');
 
-    const prizeImgHtml = raffle.prize_image
-      ? `<div style="margin-bottom:12px;"><img src="${raffle.prize_image}" style="max-height:80px;max-width:160px;object-fit:contain;border-radius:10px;" alt="Logo" /></div>`
-      : '';
+    let prizeImgHtml = '';
+    if (raffle.type === 'local' && raffle.prize_image) {
+      prizeImgHtml = `
+        <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin:0 auto 16px;">
+          <img src="/assets/logo.png" alt="Furancho Sessions" style="max-height:50px; object-fit:contain;"/>
+          <span style="font-size:20px; color:#c4973a; font-weight:700; opacity:0.8;">×</span>
+          <img src="${raffle.prize_image}" alt="Logo Local" style="max-height:50px; max-width:100px; object-fit:contain; border-radius:8px; border:1.5px solid #c4973a; background:#fff; padding:2px;"/>
+        </div>
+      `;
+    } else {
+      prizeImgHtml = raffle.prize_image
+        ? `<div style="margin-bottom:12px;"><img src="${raffle.prize_image}" style="max-height:80px;max-width:160px;object-fit:contain;border-radius:10px;" alt="Logo" /></div>`
+        : '';
+    }
+
     const establishmentHtml = raffle.establishment
       ? `<p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#8B1918;margin:4px 0 0;">${raffle.establishment}</p>`
       : '';
     const detailsHtml = raffle.prize_details
       ? `<div style="margin:12px auto;max-width:340px;background:#f9f4ec;border:1px dashed rgba(139,25,24,0.25);border-radius:12px;padding:12px 16px;text-align:left;"><p style="font-size:12px;color:#7A6A5A;line-height:1.6;margin:0;">${raffle.prize_details}</p></div>`
       : '';
+
+    let conditionsHtml = '';
+    if (raffle.people || raffle.validity || raffle.days || raffle.hours) {
+      conditionsHtml = `
+        <div style="margin:16px auto; max-width:340px; background:#fcfaf7; border:1.5px solid rgba(139,25,24,0.15); border-radius:14px; padding:14px; text-align:left; font-size:12px;">
+          <p style="font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; color:#8B1918; margin-bottom:10px; border-bottom:1px dashed rgba(139,25,24,0.15); padding-bottom:6px; text-align:center;">📋 CONDICIONES DE VALIDEZ</p>
+          <div style="display:grid; grid-template-columns:1fr; gap:6px; color:#2A1509;">
+            ${raffle.people ? `<div style="display:flex; justify-content:space-between;"><strong>👥 Personas:</strong> <span>${raffle.people}</span></div>` : ''}
+            ${raffle.validity ? `<div style="display:flex; justify-content:space-between;"><strong>📅 Validez:</strong> <span style="color:#8B1918; font-weight:700;">${raffle.validity}</span></div>` : ''}
+            ${raffle.days ? `<div style="display:flex; justify-content:space-between;"><strong>🗓️ Días válidos:</strong> <span>${raffle.days}</span></div>` : ''}
+            ${raffle.hours ? `<div style="display:flex; justify-content:space-between;"><strong>🕒 Horario:</strong> <span>${raffle.hours}</span></div>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
     const dateStr = new Date((raffle.accepted_at || raffle.created_at).replace(' ', 'T') + 'Z')
       .toLocaleDateString('es-ES', { day:'numeric', month:'long', year:'numeric' });
 
@@ -765,6 +809,7 @@ router.get('/voucher/:id', (req, res) => {
       ${establishmentHtml}
       <h1 style="font-family:'Playfair Display',serif;font-size:26px;font-weight:900;color:#8B1918;margin:12px 0 6px;line-height:1.2;">${raffle.prize}</h1>
       ${detailsHtml}
+      ${conditionsHtml}
       <p style="font-size:12px;color:#7A6A5A;margin-top:10px;">Otorgado el ${dateStr}</p>
       <div class="code-box">
         <p style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,.7);margin-bottom:4px;">Código de verificación</p>

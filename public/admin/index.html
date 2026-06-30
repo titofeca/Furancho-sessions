@@ -1758,6 +1758,28 @@
         <div id="sched-local-extra" style="display:none; margin-bottom:8px;">
           <input type="text" class="input-field" id="sched-establishment" placeholder="Ej: Taberna O Pazo, Pulpería de Manolo..." style="margin-bottom:8px; font-size:14px;" />
           <textarea class="input-field" id="sched-details" placeholder="Ej: Vale por 1 menú para 2 personas. Válido lunes a jueves. Caduca en 30 días." rows="2" style="font-size:13px; resize:vertical; font-family:'Outfit',sans-serif; margin-bottom:8px;"></textarea>
+          
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
+            <div>
+              <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">👥 Personas</label>
+              <input type="text" class="input-field" id="sched-people" placeholder="Ej: 2 personas" style="margin:0; font-size:13px;" />
+            </div>
+            <div>
+              <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">📅 Validez/Caducidad</label>
+              <input type="text" class="input-field" id="sched-validity" placeholder="Ej: 30 días" style="margin:0; font-size:13px;" />
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
+            <div>
+              <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">🗓️ Días válidos</label>
+              <input type="text" class="input-field" id="sched-days" placeholder="Ej: Dom a Jue" style="margin:0; font-size:13px;" />
+            </div>
+            <div>
+              <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">🕒 Horarios válidos</label>
+              <input type="text" class="input-field" id="sched-hours" placeholder="Ej: 13:00 a 16:00" style="margin:0; font-size:13px;" />
+            </div>
+          </div>
+
           <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:5px;">📷 Logo del local colaborador</label>
           <label for="sched-image-input" style="display:block; background:var(--surface); border:1.5px dashed var(--border); border-radius:12px; padding:9px 16px; font-size:12px; color:var(--text-muted); cursor:pointer; text-align:center;">📁 Seleccionar imagen (JPG/PNG)</label>
           <input type="file" id="sched-image-input" accept="image/jpeg,image/jpg,image/png,image/webp" style="display:none;" onchange="uploadSchedImage(this)" />
@@ -4058,6 +4080,7 @@
               <span style="font-size:11px; color:var(--text-muted);">${dateStr}</span>
               <span style="font-size:10px; font-weight:700; padding:2px 7px; border-radius:100px; background:${typeBg[t]||typeBg.night}; color:${typeColor[t]||typeColor.night};">${typeLabel[t]||typeLabel.night}</span>
               <span style="font-size:10px; color:${statusColor[r.status]||'var(--text-muted)'};">${statusLabel[r.status]||r.status}</span>
+              ${(r.people || r.validity || r.days || r.hours) ? `<span style="font-size:9px; background:rgba(22,163,74,0.15); color:#16a34a; padding:1px 6px; border-radius:100px; font-weight:700;">📋 condiciones</span>` : ''}
             </div>
             <p style="font-size:13px; font-weight:600; color:var(--text); margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${prizeDisplay} ${extraInfo}</p>
           </div>
@@ -4131,11 +4154,16 @@
     const participantLevel = document.getElementById('sched-participant-level')?.value || null;
     const requiredAchievement = document.getElementById('sched-required-achievement')?.value || null;
 
+    const people   = type === 'local' ? (document.getElementById('sched-people')?.value.trim() || null) : null;
+    const validity = type === 'local' ? (document.getElementById('sched-validity')?.value.trim() || null) : null;
+    const days     = type === 'local' ? (document.getElementById('sched-days')?.value.trim() || null) : null;
+    const hours    = type === 'local' ? (document.getElementById('sched-hours')?.value.trim() || null) : null;
+
     if (!date || !time || !prize) return showToast('Completa fecha, hora y nombre del premio', true);
     try {
       const res = await fetch('/api/raffle/scheduled', {
         method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventDate: date, scheduledTime: time, prize, type, hideName, establishment, prizeDetails, prizeImage, participantLevel, requiredAchievement })
+        body: JSON.stringify({ eventDate: date, scheduledTime: time, prize, type, hideName, establishment, prizeDetails, prizeImage, participantLevel, requiredAchievement, validity, people, hours, days })
       });
       const data = await res.json();
       if (data.success) {
@@ -4143,6 +4171,10 @@
         if (document.getElementById('sched-hide-name')) document.getElementById('sched-hide-name').checked = false;
         if (document.getElementById('sched-establishment')) document.getElementById('sched-establishment').value = '';
         if (document.getElementById('sched-details')) document.getElementById('sched-details').value = '';
+        if (document.getElementById('sched-people')) document.getElementById('sched-people').value = '';
+        if (document.getElementById('sched-validity')) document.getElementById('sched-validity').value = '';
+        if (document.getElementById('sched-days')) document.getElementById('sched-days').value = '';
+        if (document.getElementById('sched-hours')) document.getElementById('sched-hours').value = '';
         if (document.getElementById('sched-participant-level')) document.getElementById('sched-participant-level').value = '';
         if (document.getElementById('sched-required-achievement')) document.getElementById('sched-required-achievement').value = '';
         clearSchedImage();
