@@ -17,6 +17,24 @@ const CREAM   = '#F2EDE3';
 const DARK    = '#1C0E06';
 const MUTED   = '#7A6A5A';
 
+// pdfkit solo puede incrustar JPEG y PNG (no webp/gif/etc). Devuelve la ruta
+// absoluta del fichero si existe y es incrustable; si no, null (y se omite sin
+// romper el PDF). Así el logo del local solo se dibuja cuando es válido.
+function embeddableImagePath(publicUrl) {
+  if (!publicUrl) return null;
+  try {
+    const p = path.join(__dirname, '..', 'public', String(publicUrl).replace(/^\//, ''));
+    if (!fs.existsSync(p)) return null;
+    const fd = fs.openSync(p, 'r');
+    const buf = Buffer.alloc(4);
+    fs.readSync(fd, buf, 0, 4, 0);
+    fs.closeSync(fd);
+    const isJpeg = buf[0] === 0xff && buf[1] === 0xd8;
+    const isPng = buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47;
+    return (isJpeg || isPng) ? p : null;
+  } catch (_) { return null; }
+}
+
 // ─── Helper: genera el PDF en el stream de respuesta ─────────────────────────
 
 async function buildQrPdf(res, { filename, qrUrl, qrColor, headline, subheadline, tagline, footerNote }) {
@@ -359,8 +377,8 @@ function buildPremioPdf(doc, raffle, opts) {
     doc.rect(0, 0, W, 120).fill(WINE);
     doc.rect(0, 120, W, 4).fill(GOLD);
 
-    // ── Logo ─────────────────────────────────────────────────────────────────────
-    try { doc.image(LOGO_PATH, (W - 52) / 2, 10, { width: 52, height: 92 }); } catch(_) {}
+    // ── Logo ─── (fit preserva la proporción real del logo; nunca lo estira) ─────
+    try { doc.image(LOGO_PATH, (W - 76) / 2, 22, { fit: [76, 76], align: 'center', valign: 'center' }); } catch(_) {}
 
     // ── FURANCHO SESSIONS ────────────────────────────────────────────────────────
     doc.fillColor(MUTED).fontSize(9).font('Helvetica')
@@ -372,41 +390,41 @@ function buildPremioPdf(doc, raffle, opts) {
 
     // ── Imagen del establecimiento (si existe) ───────────────────────────────────
     let y = 178;
-    if (raffle.type === 'local' && raffle.prize_image) {
+    if (raffle.type === 'local' && raffle.prize_image && embeddableImagePath(raffle.prize_image)) {
       try {
-        const imgPath = path.join(__dirname, '..', 'public', raffle.prize_image.replace(/^\//, ''));
-        if (fs.existsSync(imgPath)) {
-          const imgSize = 70;
-          const totalWidth = imgSize + 30 + imgSize;
-          const startX = (W - totalWidth) / 2;
+        const imgPath = embeddableImagePath(raffle.prize_image);
+        const boxL = 70;   // caja del logo del local
+        const fLogo = 54;  // logo Furancho (cuadrado)
+        const xW = 22;     // ancho del glifo "×"
+        const gap = 14;
+        const totalWidth = fLogo + gap + xW + gap + boxL;
+        const startX = (W - totalWidth) / 2;
 
-          // Furancho Logo (left)
-          try { doc.image(LOGO_PATH, startX, y - 5, { width: 34, height: 60 }); } catch(_) {}
+        // Furancho (izquierda), centrado verticalmente respecto a la caja del local
+        try { doc.image(LOGO_PATH, startX, y + (boxL - fLogo) / 2, { fit: [fLogo, fLogo], align: 'center', valign: 'center' }); } catch(_) {}
 
-          // 'X' in the middle
-          doc.fillColor(GOLD).fontSize(20).font('Helvetica-Bold')
-             .text('x', startX + 44, y + 12, { width: 20, align: 'center' });
+        // "×" en el centro
+        doc.fillColor(GOLD).fontSize(20).font('Helvetica-Bold')
+           .text('×', startX + fLogo + gap, y + boxL / 2 - 12, { width: xW, align: 'center' });
 
-          // Local Logo (right)
-          const localX = startX + 74;
-          doc.roundedRect(localX - 4, y - 4, imgSize + 8, imgSize + 8, 8).fill('#FFFFFF');
-          doc.roundedRect(localX - 5, y - 5, imgSize + 10, imgSize + 10, 9).stroke(GOLD).lineWidth(1);
-          doc.image(imgPath, localX, y, { width: imgSize, height: imgSize, fit: [imgSize, imgSize] });
+        // Logo del local (derecha), con marco y proporción preservada (fit)
+        const localX = startX + fLogo + gap + xW + gap;
+        doc.roundedRect(localX - 4, y - 4, boxL + 8, boxL + 8, 8).fill('#FFFFFF');
+        doc.roundedRect(localX - 5, y - 5, boxL + 10, boxL + 10, 9).stroke(GOLD).lineWidth(1);
+        doc.image(imgPath, localX, y, { fit: [boxL, boxL], align: 'center', valign: 'center' });
 
-          y += imgSize + 20;
-        }
+        y += boxL + 22;
       } catch(_) { y += 10; }
-    } else if (raffle.prize_image) {
+    } else if (raffle.prize_image && embeddableImagePath(raffle.prize_image)) {
       try {
-        const imgPath = path.join(__dirname, '..', 'public', raffle.prize_image.replace(/^\//, ''));
-        if (fs.existsSync(imgPath)) {
-          const imgSize = 110;
-          const imgX = (W - imgSize) / 2;
-          doc.roundedRect(imgX - 6, y - 6, imgSize + 12, imgSize + 12, 12).fill('#FFFFFF');
-          doc.roundedRect(imgX - 7, y - 7, imgSize + 14, imgSize + 14, 13).stroke(GOLD).lineWidth(1.5);
-          doc.image(imgPath, imgX, y, { width: imgSize, height: imgSize, fit: [imgSize, imgSize] });
-          y += imgSize + 20;
-        }
+        const imgPath = embeddableImagePath(raffle.prize_image);
+        const imgSize = 110;
+        const imgX = (W - imgSize) / 2;
+        doc.roundedRect(imgX - 6, y - 6, imgSize + 12, imgSize + 12, 12).fill('#FFFFFF');
+        doc.roundedRect(imgX - 7, y - 7, imgSize + 14, imgSize + 14, 13).stroke(GOLD).lineWidth(1.5);
+        // fit preserva la proporción del logo dentro de la caja (no lo deforma)
+        doc.image(imgPath, imgX, y, { fit: [imgSize, imgSize], align: 'center', valign: 'center' });
+        y += imgSize + 20;
       } catch(_) { y += 10; }
     }
 
