@@ -34,8 +34,10 @@ const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB máx
   fileFilter: (req, file, cb) => {
-    if (/image\/(jpeg|jpg|png|webp)/.test(file.mimetype)) cb(null, true);
-    else cb(new Error('Solo se permiten imágenes JPG/PNG'));
+    // Solo JPG/PNG: son los formatos que se pueden incrustar en el PDF del bono.
+    // (webp se ve en el navegador pero pdfkit no lo soporta → logo ausente en el PDF)
+    if (/image\/(jpeg|jpg|png)/.test(file.mimetype)) cb(null, true);
+    else cb(new Error('Solo se permiten imágenes JPG o PNG (el webp no sale en el PDF del bono)'));
   }
 });
 

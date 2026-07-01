@@ -1788,7 +1788,7 @@
 
           <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:5px;">📷 Logo del local colaborador</label>
           <label for="sched-image-input" style="display:block; background:var(--surface); border:1.5px dashed var(--border); border-radius:12px; padding:9px 16px; font-size:12px; color:var(--text-muted); cursor:pointer; text-align:center;">📁 Seleccionar imagen (JPG/PNG)</label>
-          <input type="file" id="sched-image-input" accept="image/jpeg,image/jpg,image/png,image/webp" style="display:none;" onchange="uploadSchedImage(this)" />
+          <input type="file" id="sched-image-input" accept="image/jpeg,image/jpg,image/png" style="display:none;" onchange="uploadSchedImage(this)" />
           <div id="sched-image-preview" style="display:none; margin-top:6px; text-align:center;">
             <img id="sched-image-thumb" src="" style="max-height:60px; max-width:100%; border-radius:8px; border:1.5px solid var(--border);" />
             <button onclick="clearSchedImage()" style="display:block; margin:4px auto 0; font-size:11px; color:#ef4444; background:none; border:none; cursor:pointer;">✕ Quitar logo</button>
@@ -1885,7 +1885,7 @@
           <textarea class="input-field" id="raffle-prize-details" placeholder="Ej: Vale por 1 menú para 2 personas. Válido lunes a jueves. Caduca en 30 días." rows="2" style="font-size:13px; resize:vertical; margin-bottom:8px; font-family:'Outfit',sans-serif;"></textarea>
           <label style="display:block; font-size:12px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">📷 Logo o foto del local</label>
           <label for="raffle-image-input" style="display:block; background:var(--surface); border:1.5px dashed var(--border); border-radius:12px; padding:10px 18px; font-size:13px; color:var(--text-muted); cursor:pointer; text-align:center;">📁 Seleccionar imagen (JPG/PNG)</label>
-          <input type="file" id="raffle-image-input" accept="image/jpeg,image/jpg,image/png,image/webp" style="display:none;" onchange="previewPrizeImage(this)" />
+          <input type="file" id="raffle-image-input" accept="image/jpeg,image/jpg,image/png" style="display:none;" onchange="previewPrizeImage(this)" />
           <div id="raffle-image-preview" style="display:none; margin-top:8px; text-align:center;">
             <img id="raffle-image-thumb" src="" style="max-height:80px; max-width:100%; border-radius:10px; border:1.5px solid var(--border);" />
             <button onclick="clearPrizeImage()" style="display:block; margin:6px auto 0; font-size:11px; color:#ef4444; background:none; border:none; cursor:pointer;">✕ Quitar imagen</button>
