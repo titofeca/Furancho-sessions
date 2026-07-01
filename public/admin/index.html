@@ -1756,7 +1756,13 @@
 
         <!-- Campos extra para Local Colaborador -->
         <div id="sched-local-extra" style="display:none; margin-bottom:8px;">
-          <input type="text" class="input-field" id="sched-establishment" placeholder="Ej: Taberna O Pazo, Pulpería de Manolo..." style="margin-bottom:8px; font-size:14px;" />
+          <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:5px;">🏪 Local de la Ruta Furancheira</label>
+          <select class="input-field" id="sched-establishment-select" onchange="onSchedEstablishmentChange()" style="margin-bottom:8px; font-size:14px;">
+            <option value="">— Elige un local de la ruta —</option>
+            <option value="__other__">✍️ Otro (escribir a mano)</option>
+          </select>
+          <input type="text" class="input-field" id="sched-establishment" placeholder="Nombre del local (escríbelo a mano)" style="display:none; margin-bottom:8px; font-size:14px;" />
+          <p style="font-size:10px; color:var(--text-muted); margin:-2px 0 8px; line-height:1.4;">Si eliges un local de la ruta, el cliente verá su ubicación en la app. Con "Otro" no habrá enlace de mapa.</p>
           <textarea class="input-field" id="sched-details" placeholder="Ej: Vale por 1 menú para 2 personas. Válido lunes a jueves. Caduca en 30 días." rows="2" style="font-size:13px; resize:vertical; font-family:'Outfit',sans-serif; margin-bottom:8px;"></textarea>
           
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
@@ -1809,7 +1815,8 @@
           </select>
         </div>
 
-        <button onclick="addScheduled()" style="width:100%; background:var(--wine); color:#fff; border:none; border-radius:12px; padding:11px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; margin-bottom:14px;">+ Programar sorteo</button>
+        <button id="sched-submit-btn" onclick="addScheduled()" style="width:100%; background:var(--wine); color:#fff; border:none; border-radius:12px; padding:11px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; margin-bottom:6px;">+ Programar sorteo</button>
+        <button id="sched-cancel-edit-btn" onclick="clearScheduledForm()" style="display:none; width:100%; background:transparent; color:var(--text-muted); border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; padding:9px; font-size:12px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; margin-bottom:14px;">Cancelar edición</button>
 
         <!-- Lista de sorteos programados -->
         <div id="scheduled-list" style="display:flex; flex-direction:column; gap:8px;">
@@ -2651,7 +2658,7 @@
       loadVisits('__totales__');
       loadAnalyticsPage();
     }
-    if (pageId === 'raffles') { loadAchievementFilterOptions(); loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); loadScheduled(); loadWeeklyRaffleAdmin(); loadPartnersAdmin(); }
+    if (pageId === 'raffles') { loadAchievementFilterOptions(); loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); loadScheduled(); loadWeeklyRaffleAdmin(); loadPartnersAdmin(); populateSchedEstablishmentSelect(); }
     if (pageId === 'scanner') { stopScanner(); document.getElementById('scanner-result').style.display='none'; document.getElementById('scanner-status').textContent=''; }
     if (pageId === 'nfts') loadNftsPage();
     if (pageId === 'qrcodes') loadStaffCode();
@@ -3981,6 +3988,44 @@
   let _acceptanceInterval = null;
   let currentRaffleType = 'night';
   let currentSchedType = 'night';
+  let scheduledRowsById = {};
+  let editingScheduledId = null;
+
+  // Abre un recurso protegido de admin (bono HTML o PDF) en pestaña nueva,
+  // enviando la cabecera de auth (requireAuth no acepta token por querystring).
+  async function openAdminBlob(url) {
+    try {
+      const res = await fetch(url, { headers: authHeaders() });
+      if (!res.ok) { showToast('No se pudo abrir la vista previa', true); return; }
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    } catch(e) { showToast('Error abriendo la vista previa', true); }
+  }
+
+  // Rellena el desplegable de local con los establecimientos de Ruta Furancheira.
+  async function populateSchedEstablishmentSelect() {
+    const sel = document.getElementById('sched-establishment-select');
+    if (!sel) return;
+    try {
+      const partners = await fetch('/api/admin/partners', { headers: authHeaders() }).then(r => r.json());
+      const cur = sel.value;
+      const opts = (Array.isArray(partners) ? partners : [])
+        .map(p => `<option value="${p.name.replace(/"/g,'&quot;')}">${p.name}${p.visible ? '' : ' (oculto)'}</option>`).join('');
+      sel.innerHTML = `<option value="">— Elige un local de la ruta —</option>${opts}<option value="__other__">✍️ Otro (escribir a mano)</option>`;
+      sel.value = cur;
+    } catch(e) {}
+  }
+
+  // Muestra el input manual solo cuando se elige "Otro".
+  function onSchedEstablishmentChange() {
+    const sel = document.getElementById('sched-establishment-select');
+    const input = document.getElementById('sched-establishment');
+    if (!sel || !input) return;
+    if (sel.value === '__other__') { input.style.display = 'block'; input.focus(); }
+    else { input.style.display = 'none'; }
+  }
 
   function setRaffleType(type) {
     currentRaffleType = type;
@@ -4066,33 +4111,46 @@
       const typeLabel = { night:'🎁 Noche', local:'🏪 Local', chave:'🔑 Chave' };
       const typeBg = { night:'rgba(139,25,24,0.07)', local:'rgba(196,151,58,0.1)', chave:'rgba(196,151,58,0.15)' };
       const typeColor = { night:'var(--wine)', local:'var(--gold)', chave:'var(--gold)' };
+      scheduledRowsById = {};
       container.innerHTML = rows.map(r => {
+        scheduledRowsById[r.id] = r;
         const d = new Date(r.event_date + 'T12:00:00');
         const dateStr = `${days[d.getDay()]} ${d.getDate()} ${d.toLocaleString('es-ES',{month:'short'})}`;
         const isPending = r.status === 'pending';
         const t = r.type || 'night';
         const prizeDisplay = r.hide_name && isPending ? '🎁 Sorpresa' : r.prize;
         const extraInfo = r.establishment ? `<span style="font-size:11px; color:var(--text-muted);">· ${r.establishment}</span>` : '';
-        return `<div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 14px; display:flex; align-items:center; gap:10px;">
-          <div style="flex:1; min-width:0;">
-            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:3px;">
-              <span style="font-size:12px; font-weight:700; color:var(--wine);">${r.scheduled_time}</span>
-              <span style="font-size:11px; color:var(--text-muted);">${dateStr}</span>
-              <span style="font-size:10px; font-weight:700; padding:2px 7px; border-radius:100px; background:${typeBg[t]||typeBg.night}; color:${typeColor[t]||typeColor.night};">${typeLabel[t]||typeLabel.night}</span>
-              <span style="font-size:10px; color:${statusColor[r.status]||'var(--text-muted)'};">${statusLabel[r.status]||r.status}</span>
-              ${(r.people || r.validity || r.days || r.hours) ? `<span style="font-size:9px; background:rgba(22,163,74,0.15); color:#16a34a; padding:1px 6px; border-radius:100px; font-weight:700;">📋 condiciones</span>` : ''}
+        const btnStyle = 'padding:5px 10px; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer; font-family:\'Outfit\',sans-serif;';
+        return `<div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 14px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="flex:1; min-width:0;">
+              <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:3px;">
+                <span style="font-size:12px; font-weight:700; color:var(--wine);">${r.scheduled_time}</span>
+                <span style="font-size:11px; color:var(--text-muted);">${dateStr}</span>
+                <span style="font-size:10px; font-weight:700; padding:2px 7px; border-radius:100px; background:${typeBg[t]||typeBg.night}; color:${typeColor[t]||typeColor.night};">${typeLabel[t]||typeLabel.night}</span>
+                <span style="font-size:10px; color:${statusColor[r.status]||'var(--text-muted)'};">${statusLabel[r.status]||r.status}</span>
+                ${(r.people || r.validity || r.days || r.hours) ? `<span style="font-size:9px; background:rgba(22,163,74,0.15); color:#16a34a; padding:1px 6px; border-radius:100px; font-weight:700;">📋 condiciones</span>` : ''}
+              </div>
+              <p style="font-size:13px; font-weight:600; color:var(--text); margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${prizeDisplay} ${extraInfo}</p>
             </div>
-            <p style="font-size:13px; font-weight:600; color:var(--text); margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${prizeDisplay} ${extraInfo}</p>
+            <div style="display:flex; gap:6px; flex-shrink:0;">
+              ${isPending ? `<button onclick="launchScheduled(${r.id}, this)"
+                style="${btnStyle} background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none;">
+                ▶ Lanzar
+              </button>` : ''}
+              <button onclick="deleteScheduled(${r.id}, this)"
+                style="${btnStyle} background:rgba(139,25,24,0.08); color:var(--wine); border:1px solid rgba(139,25,24,0.2);">
+                ✕
+              </button>
+            </div>
           </div>
-          <div style="display:flex; gap:6px; flex-shrink:0;">
-            ${isPending ? `<button onclick="launchScheduled(${r.id}, this)"
-              style="padding:5px 10px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">
-              ▶ Lanzar
-            </button>` : ''}
-            <button onclick="deleteScheduled(${r.id}, this)"
-              style="padding:5px 10px; background:rgba(139,25,24,0.08); color:var(--wine); border:1px solid rgba(139,25,24,0.2); border-radius:8px; font-size:11px; cursor:pointer; font-family:'Outfit',sans-serif;">
-              ✕
-            </button>
+          <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
+            ${isPending ? `<button onclick="editScheduled(${r.id})"
+              style="${btnStyle} background:rgba(196,151,58,0.12); color:var(--gold); border:1px solid rgba(196,151,58,0.35);">✎ Editar</button>` : ''}
+            <button onclick="openAdminBlob('/api/raffle/scheduled/${r.id}/voucher-preview')"
+              style="${btnStyle} background:rgba(42,21,9,0.05); color:var(--text-muted); border:1px solid rgba(42,21,9,0.15);">👁 Ver bono</button>
+            <button onclick="openAdminBlob('/api/pdf/premio-preview/${r.id}')"
+              style="${btnStyle} background:rgba(42,21,9,0.05); color:var(--text-muted); border:1px solid rgba(42,21,9,0.15);">⬇ PDF</button>
           </div>
         </div>`;
       }).join('');
@@ -4148,7 +4206,13 @@
     const prize = document.getElementById('sched-prize').value.trim();
     const type  = currentSchedType || 'night';
     const hideName = (type === 'night' || type === 'vip') && document.getElementById('sched-hide-name')?.checked;
-    const establishment    = type === 'local' ? (document.getElementById('sched-establishment')?.value.trim() || null) : null;
+    let establishment = null;
+    if (type === 'local') {
+      const estSel = document.getElementById('sched-establishment-select');
+      if (estSel && estSel.value === '__other__') establishment = document.getElementById('sched-establishment')?.value.trim() || null;
+      else if (estSel && estSel.value) establishment = estSel.value;
+      else establishment = document.getElementById('sched-establishment')?.value.trim() || null;
+    }
     const prizeDetails     = type === 'local' ? (document.getElementById('sched-details')?.value.trim() || null) : null;
     const prizeImage       = type === 'local' ? (document.getElementById('sched-image-url')?.value || null) : null;
     const participantLevel = document.getElementById('sched-participant-level')?.value || null;
@@ -4160,28 +4224,82 @@
     const hours    = type === 'local' ? (document.getElementById('sched-hours')?.value.trim() || null) : null;
 
     if (!date || !time || !prize) return showToast('Completa fecha, hora y nombre del premio', true);
+    const editing = editingScheduledId != null;
+    const url = editing ? `/api/raffle/scheduled/${editingScheduledId}` : '/api/raffle/scheduled';
+    const method = editing ? 'PATCH' : 'POST';
     try {
-      const res = await fetch('/api/raffle/scheduled', {
-        method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      const res = await fetch(url, {
+        method, headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ eventDate: date, scheduledTime: time, prize, type, hideName, establishment, prizeDetails, prizeImage, participantLevel, requiredAchievement, validity, people, hours, days })
       });
       const data = await res.json();
       if (data.success) {
-        document.getElementById('sched-prize').value = '';
-        if (document.getElementById('sched-hide-name')) document.getElementById('sched-hide-name').checked = false;
-        if (document.getElementById('sched-establishment')) document.getElementById('sched-establishment').value = '';
-        if (document.getElementById('sched-details')) document.getElementById('sched-details').value = '';
-        if (document.getElementById('sched-people')) document.getElementById('sched-people').value = '';
-        if (document.getElementById('sched-validity')) document.getElementById('sched-validity').value = '';
-        if (document.getElementById('sched-days')) document.getElementById('sched-days').value = '';
-        if (document.getElementById('sched-hours')) document.getElementById('sched-hours').value = '';
-        if (document.getElementById('sched-participant-level')) document.getElementById('sched-participant-level').value = '';
-        if (document.getElementById('sched-required-achievement')) document.getElementById('sched-required-achievement').value = '';
-        clearSchedImage();
-        showToast('✅ Sorteo programado — recuerda lanzarlo manualmente');
+        clearScheduledForm();
+        showToast(editing ? '✅ Sorteo actualizado' : '✅ Sorteo programado — recuerda lanzarlo manualmente');
         loadScheduled();
       } else showToast(data.error || 'Error', true);
     } catch(e) { showToast('Error', true); }
+  }
+
+  // Rellena el formulario con un sorteo existente para editarlo (PATCH al guardar).
+  async function editScheduled(id) {
+    const r = scheduledRowsById[id];
+    if (!r) return;
+    editingScheduledId = id;
+    setSchedType(r.type || 'night');
+    document.getElementById('sched-date').value = r.event_date || '';
+    document.getElementById('sched-time').value = r.scheduled_time || '';
+    document.getElementById('sched-prize').value = r.prize || '';
+    if (document.getElementById('sched-hide-name')) document.getElementById('sched-hide-name').checked = !!r.hide_name;
+    if (document.getElementById('sched-details')) document.getElementById('sched-details').value = r.prize_details || '';
+    if (document.getElementById('sched-people')) document.getElementById('sched-people').value = r.people || '';
+    if (document.getElementById('sched-validity')) document.getElementById('sched-validity').value = r.validity || '';
+    if (document.getElementById('sched-days')) document.getElementById('sched-days').value = r.days || '';
+    if (document.getElementById('sched-hours')) document.getElementById('sched-hours').value = r.hours || '';
+    if (document.getElementById('sched-participant-level')) document.getElementById('sched-participant-level').value = r.participant_level || '';
+    if (document.getElementById('sched-required-achievement')) document.getElementById('sched-required-achievement').value = r.required_achievement || '';
+
+    // Local: imagen y desplegable de establecimiento
+    if (r.prize_image) {
+      document.getElementById('sched-image-url').value = r.prize_image;
+      document.getElementById('sched-image-thumb').src = r.prize_image;
+      document.getElementById('sched-image-preview').style.display = 'block';
+    } else { clearSchedImage(); }
+
+    await populateSchedEstablishmentSelect();
+    const estSel = document.getElementById('sched-establishment-select');
+    const estInput = document.getElementById('sched-establishment');
+    if (estSel && estInput) {
+      const known = r.establishment && Array.from(estSel.options).some(o => o.value === r.establishment);
+      if (known) { estSel.value = r.establishment; estInput.style.display = 'none'; estInput.value = ''; }
+      else if (r.establishment) { estSel.value = '__other__'; estInput.style.display = 'block'; estInput.value = r.establishment; }
+      else { estSel.value = ''; estInput.style.display = 'none'; estInput.value = ''; }
+    }
+
+    document.getElementById('sched-submit-btn').textContent = '💾 Guardar cambios';
+    document.getElementById('sched-cancel-edit-btn').style.display = 'block';
+    document.getElementById('sched-date').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  // Limpia el formulario y sale del modo edición.
+  function clearScheduledForm() {
+    editingScheduledId = null;
+    document.getElementById('sched-prize').value = '';
+    if (document.getElementById('sched-hide-name')) document.getElementById('sched-hide-name').checked = false;
+    if (document.getElementById('sched-establishment')) { document.getElementById('sched-establishment').value = ''; document.getElementById('sched-establishment').style.display = 'none'; }
+    if (document.getElementById('sched-establishment-select')) document.getElementById('sched-establishment-select').value = '';
+    if (document.getElementById('sched-details')) document.getElementById('sched-details').value = '';
+    if (document.getElementById('sched-people')) document.getElementById('sched-people').value = '';
+    if (document.getElementById('sched-validity')) document.getElementById('sched-validity').value = '';
+    if (document.getElementById('sched-days')) document.getElementById('sched-days').value = '';
+    if (document.getElementById('sched-hours')) document.getElementById('sched-hours').value = '';
+    if (document.getElementById('sched-participant-level')) document.getElementById('sched-participant-level').value = '';
+    if (document.getElementById('sched-required-achievement')) document.getElementById('sched-required-achievement').value = '';
+    clearSchedImage();
+    const submit = document.getElementById('sched-submit-btn');
+    if (submit) submit.textContent = '+ Programar sorteo';
+    const cancel = document.getElementById('sched-cancel-edit-btn');
+    if (cancel) cancel.style.display = 'none';
   }
 
   async function deleteScheduled(id, btn) {

@@ -633,6 +633,12 @@ router.get('/scheduled', (req, res) => {
     const elig = require('../services/eligibility');
     const { db } = require('../db/database');
 
+    // Ubicación del local: si el nombre coincide con un local VISIBLE de Ruta
+    // Furancheira, adjuntamos su enlace de mapa para que el cliente pueda llegar.
+    const partners = db.prepare(`SELECT name, maps_url FROM partner_establishments WHERE visible = 1`).all();
+    const mapsByName = new Map(partners.map(p => [p.name.toLowerCase().trim(), p.maps_url]));
+    const mapsFor = (name) => (name ? (mapsByName.get(name.toLowerCase().trim()) || null) : null);
+
     // Enmascarar premios si no está fichado hoy o si hide_name es true y no se ha lanzado.
     // Además adjuntar el requisito de elegibilidad (nivel/logro) y si ESTA wallet lo cumple,
     // para que pueda "ver el sorteo pero no entrar" con un motivo.
@@ -656,19 +662,21 @@ router.get('/scheduled', (req, res) => {
       const isPending = r.status === 'pending';
       const shouldHide = !isEligible || (r.hide_name && isPending);
       if (isPending && shouldHide) {
+        const est = r.establishment && !isEligible ? null : r.establishment;
         return {
           ...r, ...meta,
           prize: 'Sorpresa 🎁',
           prize_details: null,
           prize_image: null,
-          establishment: r.establishment && !isEligible ? null : r.establishment,
+          establishment: est,
+          maps_url: mapsFor(est),
           validity: null,
           people: null,
           hours: null,
           days: null
         };
       }
-      return { ...r, ...meta };
+      return { ...r, ...meta, maps_url: mapsFor(r.establishment) };
     });
 
     res.json(processed);
@@ -728,58 +736,53 @@ router.delete('/scheduled/:id', requireAuth, (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/raffle/voucher/:id?wallet=0x... — bono descargable del ganador (HTML imprimible)
-router.get('/voucher/:id', (req, res) => {
-  const { wallet } = req.query;
-  if (!wallet) return res.status(400).send('Falta wallet');
-  try {
-    const raffle = getRaffleById(parseInt(req.params.id));
-    if (!raffle) return res.status(404).send('Sorteo no encontrado');
-    if (raffle.winner_wallet.toLowerCase() !== wallet.toLowerCase()) return res.status(403).send('Acceso denegado');
-    if (!['accepted','collected'].includes(raffle.status)) return res.status(400).send('Premio no aceptado aún');
-
-    let prizeImgHtml = '';
-    if (raffle.type === 'local' && raffle.prize_image) {
-      prizeImgHtml = `
+// Genera el HTML del bono. Reutilizable para el bono real del ganador y para la
+// VISTA PREVIA del admin (mismo diseño, con el código enmascarado y un aviso).
+// o: { prize, prize_details, prize_image, establishment, type, people, validity,
+//      days, hours, dateStr, codeHtml, previewBanner }
+function renderVoucherHtml(o) {
+  let prizeImgHtml = '';
+  if (o.type === 'local' && o.prize_image) {
+    prizeImgHtml = `
         <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin:0 auto 16px;">
           <img src="/assets/logo.png" alt="Furancho Sessions" style="max-height:50px; object-fit:contain;"/>
           <span style="font-size:20px; color:#c4973a; font-weight:700; opacity:0.8;">×</span>
-          <img src="${raffle.prize_image}" alt="Logo Local" style="max-height:50px; max-width:100px; object-fit:contain; border-radius:8px; border:1.5px solid #c4973a; background:#fff; padding:2px;"/>
+          <img src="${o.prize_image}" alt="Logo Local" style="max-height:50px; max-width:100px; object-fit:contain; border-radius:8px; border:1.5px solid #c4973a; background:#fff; padding:2px;"/>
         </div>
       `;
-    } else {
-      prizeImgHtml = raffle.prize_image
-        ? `<div style="margin-bottom:12px;"><img src="${raffle.prize_image}" style="max-height:80px;max-width:160px;object-fit:contain;border-radius:10px;" alt="Logo" /></div>`
-        : '';
-    }
-
-    const establishmentHtml = raffle.establishment
-      ? `<p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#8B1918;margin:4px 0 0;">${raffle.establishment}</p>`
+  } else {
+    prizeImgHtml = o.prize_image
+      ? `<div style="margin-bottom:12px;"><img src="${o.prize_image}" style="max-height:80px;max-width:160px;object-fit:contain;border-radius:10px;" alt="Logo" /></div>`
       : '';
-    const detailsHtml = raffle.prize_details
-      ? `<div style="margin:12px auto;max-width:340px;background:#f9f4ec;border:1px dashed rgba(139,25,24,0.25);border-radius:12px;padding:12px 16px;text-align:left;"><p style="font-size:12px;color:#7A6A5A;line-height:1.6;margin:0;">${raffle.prize_details}</p></div>`
-      : '';
+  }
 
-    let conditionsHtml = '';
-    if (raffle.people || raffle.validity || raffle.days || raffle.hours) {
-      conditionsHtml = `
+  const establishmentHtml = o.establishment
+    ? `<p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#8B1918;margin:4px 0 0;">${o.establishment}</p>`
+    : '';
+  const detailsHtml = o.prize_details
+    ? `<div style="margin:12px auto;max-width:340px;background:#f9f4ec;border:1px dashed rgba(139,25,24,0.25);border-radius:12px;padding:12px 16px;text-align:left;"><p style="font-size:12px;color:#7A6A5A;line-height:1.6;margin:0;">${o.prize_details}</p></div>`
+    : '';
+
+  let conditionsHtml = '';
+  if (o.people || o.validity || o.days || o.hours) {
+    conditionsHtml = `
         <div style="margin:16px auto; max-width:340px; background:#fcfaf7; border:1.5px solid rgba(139,25,24,0.15); border-radius:14px; padding:14px; text-align:left; font-size:12px;">
           <p style="font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; color:#8B1918; margin-bottom:10px; border-bottom:1px dashed rgba(139,25,24,0.15); padding-bottom:6px; text-align:center;">📋 CONDICIONES DE VALIDEZ</p>
           <div style="display:grid; grid-template-columns:1fr; gap:6px; color:#2A1509;">
-            ${raffle.people ? `<div style="display:flex; justify-content:space-between;"><strong>👥 Personas:</strong> <span>${raffle.people}</span></div>` : ''}
-            ${raffle.validity ? `<div style="display:flex; justify-content:space-between;"><strong>📅 Validez:</strong> <span style="color:#8B1918; font-weight:700;">${raffle.validity}</span></div>` : ''}
-            ${raffle.days ? `<div style="display:flex; justify-content:space-between;"><strong>🗓️ Días válidos:</strong> <span>${raffle.days}</span></div>` : ''}
-            ${raffle.hours ? `<div style="display:flex; justify-content:space-between;"><strong>🕒 Horario:</strong> <span>${raffle.hours}</span></div>` : ''}
+            ${o.people ? `<div style="display:flex; justify-content:space-between;"><strong>👥 Personas:</strong> <span>${o.people}</span></div>` : ''}
+            ${o.validity ? `<div style="display:flex; justify-content:space-between;"><strong>📅 Validez:</strong> <span style="color:#8B1918; font-weight:700;">${o.validity}</span></div>` : ''}
+            ${o.days ? `<div style="display:flex; justify-content:space-between;"><strong>🗓️ Días válidos:</strong> <span>${o.days}</span></div>` : ''}
+            ${o.hours ? `<div style="display:flex; justify-content:space-between;"><strong>🕒 Horario:</strong> <span>${o.hours}</span></div>` : ''}
           </div>
         </div>
       `;
-    }
+  }
 
-    const dateStr = new Date((raffle.accepted_at || raffle.created_at).replace(' ', 'T') + 'Z')
-      .toLocaleDateString('es-ES', { day:'numeric', month:'long', year:'numeric' });
+  const bannerHtml = o.previewBanner
+    ? `<div style="background:#c4973a;color:#2A1509;text-align:center;padding:8px 12px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;">👁 ${o.previewBanner}</div>`
+    : '';
 
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.send(`<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8"/>
@@ -800,6 +803,7 @@ router.get('/voucher/:id', (req, res) => {
 </head>
 <body>
   <div class="voucher">
+    ${bannerHtml}
     <div class="vh">
       <img src="/assets/logo.png" alt="Furancho Sessions" style="height:48px;margin-bottom:8px;"/>
       <p style="color:rgba(255,255,255,.7);font-size:11px;text-transform:uppercase;letter-spacing:2px;margin:0;">Bono Premio · Furancho Sessions</p>
@@ -807,14 +811,11 @@ router.get('/voucher/:id', (req, res) => {
     <div class="vb">
       ${prizeImgHtml}
       ${establishmentHtml}
-      <h1 style="font-family:'Playfair Display',serif;font-size:26px;font-weight:900;color:#8B1918;margin:12px 0 6px;line-height:1.2;">${raffle.prize}</h1>
+      <h1 style="font-family:'Playfair Display',serif;font-size:26px;font-weight:900;color:#8B1918;margin:12px 0 6px;line-height:1.2;">${o.prize}</h1>
       ${detailsHtml}
       ${conditionsHtml}
-      <p style="font-size:12px;color:#7A6A5A;margin-top:10px;">Otorgado el ${dateStr}</p>
-      <div class="code-box">
-        <p style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,.7);margin-bottom:4px;">Código de verificación</p>
-        <p class="code-text">${raffle.verification_code}</p>
-      </div>
+      <p style="font-size:12px;color:#7A6A5A;margin-top:10px;">${o.dateStr}</p>
+      ${o.codeHtml}
       <p style="font-size:12px;color:#7A6A5A;line-height:1.6;margin-top:4px;">Presenta este bono al staff del local colaborador.<br>El código garantiza la autenticidad del premio.</p>
     </div>
     <div class="vf">
@@ -824,8 +825,51 @@ router.get('/voucher/:id', (req, res) => {
     </div>
   </div>
 </body>
-</html>`);
+</html>`;
+}
+
+// GET /api/raffle/voucher/:id?wallet=0x... — bono descargable del ganador (HTML imprimible)
+router.get('/voucher/:id', (req, res) => {
+  const { wallet } = req.query;
+  if (!wallet) return res.status(400).send('Falta wallet');
+  try {
+    const raffle = getRaffleById(parseInt(req.params.id));
+    if (!raffle) return res.status(404).send('Sorteo no encontrado');
+    if (raffle.winner_wallet.toLowerCase() !== wallet.toLowerCase()) return res.status(403).send('Acceso denegado');
+    if (!['accepted','collected'].includes(raffle.status)) return res.status(400).send('Premio no aceptado aún');
+
+    const dateStr = 'Otorgado el ' + new Date((raffle.accepted_at || raffle.created_at).replace(' ', 'T') + 'Z')
+      .toLocaleDateString('es-ES', { day:'numeric', month:'long', year:'numeric' });
+
+    const codeHtml = `
+      <div class="code-box">
+        <p style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,.7);margin-bottom:4px;">Código de verificación</p>
+        <p class="code-text">${raffle.verification_code}</p>
+      </div>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(renderVoucherHtml({ ...raffle, dateStr, codeHtml }));
   } catch (e) { res.status(500).send('Error al generar bono'); }
+});
+
+// GET /api/raffle/scheduled/:id/voucher-preview — VISTA PREVIA del bono para el
+// admin, ANTES de sortear y SIN código real. Sirve para revisar que todo está bien.
+router.get('/scheduled/:id/voucher-preview', requireAuth, (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const s = db.prepare(`SELECT * FROM scheduled_raffles WHERE id = ?`).get(parseInt(req.params.id));
+    if (!s) return res.status(404).send('Sorteo no encontrado');
+
+    const codeHtml = `
+      <div class="code-box" style="background:#7A6A5A;">
+        <p style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,.7);margin-bottom:4px;">Código de verificación</p>
+        <p class="code-text">••••</p>
+      </div>
+      <p style="font-size:11px;color:#8B1918;font-weight:700;line-height:1.5;margin-top:2px;">🔒 El código real solo lo verá el ganador tras el sorteo.</p>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(renderVoucherHtml({ ...s, dateStr: 'Vista previa · aún sin sortear', codeHtml, previewBanner: 'Vista previa (admin) — no válido como bono' }));
+  } catch (e) { res.status(500).send('Error al generar la vista previa'); }
 });
 
 module.exports = router;

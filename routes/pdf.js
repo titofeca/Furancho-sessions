@@ -6,6 +6,8 @@ const QRCode = require('qrcode');
 const path = require('path');
 const fs = require('fs');
 
+const { requireAuth } = require('./admin'); // vista previa del bono solo para admin
+
 const LOGO_PATH = path.join(__dirname, '..', 'assets', 'logo.png');
 
 // Paleta corporativa
@@ -336,7 +338,17 @@ router.get('/premio/:id', async (req, res) => {
 
     const doc = new PDFDocument({ size: 'A4', margin: 0, info: { Title: `Premio Furancho — ${raffle.prize}`, Author: 'Furancho Sessions' } });
     doc.pipe(res);
+    buildPremioPdf(doc, raffle, {});
+    doc.end();
+  } catch(e) { res.status(500).send('Error generando PDF: ' + e.message); }
+});
 
+// Dibuja el bono de premio en el documento PDF. Reutilizable para el bono real
+// del ganador y para la VISTA PREVIA del admin (código oculto, sin ganador).
+// opts.preview: true → cabecera "vista previa", código "••••" y aviso.
+function buildPremioPdf(doc, raffle, opts) {
+  const preview = !!(opts && opts.preview);
+  {
     const W = doc.page.width;
     const H = doc.page.height;
 
@@ -354,9 +366,9 @@ router.get('/premio/:id', async (req, res) => {
     doc.fillColor(MUTED).fontSize(9).font('Helvetica')
        .text('FURANCHO SESSIONS', 0, 130, { align: 'center', characterSpacing: 3 });
 
-    // ── ¡PARABÉNS, GAÑADOR! ──────────────────────────────────────────────────────
+    // ── ¡PARABÉNS, GAÑADOR! / VISTA PREVIA ───────────────────────────────────────
     doc.fillColor(WINE).fontSize(13).font('Helvetica-Bold')
-       .text('¡PARABÉNS, GAÑADOR!', 0, 150, { align: 'center', characterSpacing: 1, width: W });
+       .text(preview ? 'VISTA PREVIA DO BONO' : '¡PARABÉNS, GAÑADOR!', 0, 150, { align: 'center', characterSpacing: 1, width: W });
 
     // ── Imagen del establecimiento (si existe) ───────────────────────────────────
     let y = 178;
@@ -464,19 +476,26 @@ router.get('/premio/:id', async (req, res) => {
     y += 16;
 
     doc.roundedRect((W - 140) / 2, y, 140, 52, 10).fill('#FFFFFF').stroke(GOLD).lineWidth(1.5);
-    doc.fillColor(WINE).fontSize(36).font('Helvetica-Bold')
-       .text(raffle.verification_code, 0, y + 10, { align: 'center', width: W, characterSpacing: 8 });
+    doc.fillColor(preview ? MUTED : WINE).fontSize(36).font('Helvetica-Bold')
+       .text(preview ? '••••' : raffle.verification_code, 0, y + 10, { align: 'center', width: W, characterSpacing: 8 });
     y += 70;
+
+    if (preview) {
+      doc.fillColor(WINE).fontSize(9).font('Helvetica-Bold')
+         .text('El código real solo lo verá el ganador tras el sorteo.', 0, y, { align: 'center', width: W });
+      y += 16;
+    }
 
     // ── Fecha ────────────────────────────────────────────────────────────────────
     const fecha = raffle.created_at ? raffle.created_at.slice(0, 10) : '';
     doc.fillColor(MUTED).fontSize(9).font('Helvetica')
-       .text(`Sorteo del ${fecha}  ·  Furancho Sessions 2026`, 0, y, { align: 'center', width: W });
+       .text(preview ? 'Furancho Sessions 2026' : `Sorteo del ${fecha}  ·  Furancho Sessions 2026`, 0, y, { align: 'center', width: W });
     y += 20;
 
     // ── Estado ───────────────────────────────────────────────────────────────────
-    const estadoTxt = raffle.status === 'collected' ? 'Premio entregado' : 'Pendiente de recoger';
-    const estadoColor = raffle.status === 'collected' ? '#22c55e' : WINE;
+    const estadoTxt = preview ? 'VISTA PREVIA — no válido como bono'
+      : (raffle.status === 'collected' ? 'Premio entregado' : 'Pendiente de recoger');
+    const estadoColor = preview ? GOLD : (raffle.status === 'collected' ? '#22c55e' : WINE);
     doc.fillColor(estadoColor).fontSize(10).font('Helvetica-Bold')
        .text(estadoTxt, 0, y, { align: 'center', width: W });
 
@@ -485,7 +504,24 @@ router.get('/premio/:id', async (req, res) => {
     doc.rect(0, H - 46, W, 4).fill(GOLD);
     doc.fillColor('#FFFFFF').fontSize(8).font('Helvetica').opacity(0.7)
        .text('furancho.sessions  ·  O Bo Viño, A Boa Compaña', 0, H - 26, { align: 'center', characterSpacing: 1 });
+    doc.opacity(1);
+  }
+}
 
+// ─── GET /api/pdf/premio-preview/:id — VISTA PREVIA (admin) del bono de un ──────
+// sorteo programado, ANTES de sortear y sin código real.
+router.get('/premio-preview/:id', requireAuth, async (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const s = db.prepare(`SELECT * FROM scheduled_raffles WHERE id = ?`).get(parseInt(req.params.id));
+    if (!s) return res.status(404).send('Sorteo no encontrado');
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="Furancho_Premio_preview_${s.id}.pdf"`);
+
+    const doc = new PDFDocument({ size: 'A4', margin: 0, info: { Title: `Vista previa — ${s.prize}`, Author: 'Furancho Sessions' } });
+    doc.pipe(res);
+    buildPremioPdf(doc, s, { preview: true });
     doc.end();
   } catch(e) { res.status(500).send('Error generando PDF: ' + e.message); }
 });
