@@ -122,6 +122,11 @@ app.get('/nft-metadata/:id', (req, res) => {
 
 // Archivos estáticos (assets y demás)
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
+// Imágenes de premio: primero el directorio PERSISTENTE (uploads del admin, volumen
+// Railway), y como fallback las versionadas en el repo (express.static hace passthrough
+// si no encuentra el archivo en el primero).
+const { UPLOADS_DIR } = require('./db/database');
+app.use('/prize-images', express.static(UPLOADS_DIR));
 app.use('/prize-images', express.static(path.join(__dirname, 'public', 'prize-images')));
 
 // Manifest dinámico para soportar aislamiento de sandbox PWA en iOS

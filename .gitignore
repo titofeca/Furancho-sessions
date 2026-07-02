@@ -4,6 +4,8 @@ furancho.db
 furancho.db-shm
 furancho.db-wal
 .admin_token_secret
+# Directorio persistente de imágenes subidas (uploads del admin en local)
+/prize-images/
 qr-output/
 *.log
 .DS_Store

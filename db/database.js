@@ -11,6 +11,12 @@ if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
 }
 
+// Directorio PERSISTENTE para imágenes subidas (logos de local, etc.). Vive junto
+// a la BD, en el volumen de Railway, para que NO se borren en cada deploy (el disco
+// de la app es efímero). En local cae junto al repo. Override con UPLOADS_DIR.
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(dbDir, 'prize-images');
+try { fs.mkdirSync(UPLOADS_DIR, { recursive: true }); } catch (_) {}
+
 console.log(`[DB] Base de datos en: ${DB_PATH}`);
 const db = new DatabaseSync(DB_PATH);
 
@@ -1908,6 +1914,7 @@ function hasEventOnThursday() {
 }
 
 module.exports = {
+  UPLOADS_DIR,
   hasEventOnThursday,
   openSession,
   closeSession,

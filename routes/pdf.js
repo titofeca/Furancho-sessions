@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 
 const { requireAuth } = require('./admin'); // vista previa del bono solo para admin
+const { UPLOADS_DIR } = require('../db/database');
 
 const LOGO_PATH = path.join(__dirname, '..', 'assets', 'logo.png');
 
@@ -17,22 +18,51 @@ const CREAM   = '#F2EDE3';
 const DARK    = '#1C0E06';
 const MUTED   = '#7A6A5A';
 
+// pdfkit usa fuentes WinAnsi (Helvetica): NO sabe pintar emojis ni símbolos fuera
+// de Latin-1 (salen como "Ø>ÝB"). Limpiamos el texto antes de escribirlo: pasamos
+// comillas/guiones tipográficos a ASCII y quitamos emojis y demás. Los acentos y
+// la ñ (≤ 0xFF) se conservan.
+function pdfSafe(s) {
+  if (s === null || s === undefined) return s;
+  return String(s)
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[–—]/g, '-')
+    .replace(/…/g, '...')
+    .replace(/[^\x00-\xFF]/g, '')   // fuera emojis y todo lo no Latin-1
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+}
+
+// Candidatos de ruta para una imagen /prize-images/... : primero el volumen
+// persistente (uploads del admin), luego la versión versionada en el repo.
+function imageCandidates(publicUrl) {
+  const rel = String(publicUrl).replace(/^\//, '');
+  if (rel.startsWith('prize-images/')) {
+    const fname = rel.slice('prize-images/'.length);
+    return [path.join(UPLOADS_DIR, fname), path.join(__dirname, '..', 'public', 'prize-images', fname)];
+  }
+  return [path.join(__dirname, '..', 'public', rel)];
+}
+
 // pdfkit solo puede incrustar JPEG y PNG (no webp/gif/etc). Devuelve la ruta
 // absoluta del fichero si existe y es incrustable; si no, null (y se omite sin
 // romper el PDF). Así el logo del local solo se dibuja cuando es válido.
 function embeddableImagePath(publicUrl) {
   if (!publicUrl) return null;
-  try {
-    const p = path.join(__dirname, '..', 'public', String(publicUrl).replace(/^\//, ''));
-    if (!fs.existsSync(p)) return null;
-    const fd = fs.openSync(p, 'r');
-    const buf = Buffer.alloc(4);
-    fs.readSync(fd, buf, 0, 4, 0);
-    fs.closeSync(fd);
-    const isJpeg = buf[0] === 0xff && buf[1] === 0xd8;
-    const isPng = buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47;
-    return (isJpeg || isPng) ? p : null;
-  } catch (_) { return null; }
+  for (const p of imageCandidates(publicUrl)) {
+    try {
+      if (!fs.existsSync(p)) continue;
+      const fd = fs.openSync(p, 'r');
+      const buf = Buffer.alloc(4);
+      fs.readSync(fd, buf, 0, 4, 0);
+      fs.closeSync(fd);
+      const isJpeg = buf[0] === 0xff && buf[1] === 0xd8;
+      const isPng = buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47;
+      if (isJpeg || isPng) return p;
+    } catch (_) { /* siguiente candidato */ }
+  }
+  return null;
 }
 
 // ─── Helper: genera el PDF en el stream de respuesta ─────────────────────────
@@ -432,20 +462,22 @@ function buildPremioPdf(doc, raffle, opts) {
     // ── Establecimiento ──────────────────────────────────────────────────────────
     if (raffle.establishment) {
       doc.fillColor(MUTED).fontSize(10).font('Helvetica-Bold')
-         .text(raffle.establishment.toUpperCase(), 40, y, { align: 'center', width: W - 80, characterSpacing: 2 });
+         .text(pdfSafe(raffle.establishment).toUpperCase(), 40, y, { align: 'center', width: W - 80, characterSpacing: 2 });
       y += 20;
     }
 
     // ── Título del premio ────────────────────────────────────────────────────────
+    const prizeTxt = pdfSafe(raffle.prize);
     doc.fillColor(DARK).fontSize(28).font('Helvetica-Bold')
-       .text(raffle.prize, 40, y, { align: 'center', width: W - 80, lineGap: 4 });
-    y += doc.heightOfString(raffle.prize, { width: W - 80, fontSize: 28 }) + 12;
+       .text(prizeTxt, 40, y, { align: 'center', width: W - 80, lineGap: 4 });
+    y += doc.heightOfString(prizeTxt, { width: W - 80, fontSize: 28 }) + 12;
 
     // ── Descripción del premio ───────────────────────────────────────────────────
-    if (raffle.prize_details) {
+    const detailsTxt = pdfSafe(raffle.prize_details);
+    if (detailsTxt) {
       doc.fillColor(WINE).fontSize(12).font('Helvetica-Oblique')
-         .text(raffle.prize_details, 60, y, { align: 'center', width: W - 120, lineGap: 4 });
-      y += doc.heightOfString(raffle.prize_details, { width: W - 120, fontSize: 12 }) + 18;
+         .text(detailsTxt, 60, y, { align: 'center', width: W - 120, lineGap: 4 });
+      y += doc.heightOfString(detailsTxt, { width: W - 120, fontSize: 12 }) + 18;
     }
 
     // ── Condiciones de Validez (si existen) ──────────────────────────────────────
@@ -471,11 +503,11 @@ function buildPremioPdf(doc, raffle, opts) {
       doc.fillColor(DARK).fontSize(9).font('Helvetica');
 
       if (raffle.people) {
-        doc.font('Helvetica-Bold').text('Personas: ', 75, condY).font('Helvetica').text(raffle.people, 160, condY);
+        doc.font('Helvetica-Bold').text('Personas: ', 75, condY).font('Helvetica').text(pdfSafe(raffle.people), 160, condY);
         condY += 16;
       }
       if (raffle.validity) {
-        doc.font('Helvetica-Bold').text('Validez: ', 75, condY).font('Helvetica').text(raffle.validity, 160, condY);
+        doc.font('Helvetica-Bold').text('Validez: ', 75, condY).font('Helvetica').text(pdfSafe(raffle.validity), 160, condY);
         condY += 16;
       }
       if (endDateStr) {
@@ -484,11 +516,11 @@ function buildPremioPdf(doc, raffle, opts) {
         condY += 16;
       }
       if (raffle.days) {
-        doc.font('Helvetica-Bold').text('Días válidos: ', 75, condY).font('Helvetica').text(raffle.days, 160, condY);
+        doc.font('Helvetica-Bold').text('Días válidos: ', 75, condY).font('Helvetica').text(pdfSafe(raffle.days), 160, condY);
         condY += 16;
       }
       if (raffle.hours) {
-        doc.font('Helvetica-Bold').text('Horarios: ', 75, condY).font('Helvetica').text(raffle.hours, 160, condY);
+        doc.font('Helvetica-Bold').text('Horarios: ', 75, condY).font('Helvetica').text(pdfSafe(raffle.hours), 160, condY);
       }
 
       y += boxHeight + 18;

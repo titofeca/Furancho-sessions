@@ -13,14 +13,15 @@ const {
   claimWeeklyRaffle, getWeeklyRaffleStatus, updateWeeklyPrize, drawWeeklyRaffle, collectWeeklyRaffle, collectWeeklyWinner, forfeitWeeklyRaffle,
   getWeeklyRaffleTargetWeek, forfeitExpiredWeeklyRaffles, isWeeklyWindowOpen,
   insertWeeklyChatMessage, getWeeklyChatMessages, markWeeklyChatRead, getWeeklyChatThreads,
-  getWeeklyMessageViewCount, getWeeklyMessageViewCounts
+  getWeeklyMessageViewCount, getWeeklyMessageViewCounts, UPLOADS_DIR
 } = require('../db/database');
 const { requireAuth } = require('./admin');
 const { sendPushToAll, sendPushToWallet, sendPushToWallets } = require('../services/push');
 const { notifyQueue } = require('../services/polygon');
 
-// Configuración de upload de imágenes de premio
-const uploadsDir = path.join(__dirname, '..', 'public', 'prize-images');
+// Configuración de upload de imágenes de premio. Se guardan en el directorio
+// PERSISTENTE (volumen de Railway), no en public/, para que no se borren al deployar.
+const uploadsDir = UPLOADS_DIR;
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
 const storage = multer.diskStorage({
