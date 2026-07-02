@@ -1672,7 +1672,7 @@ function getRaffleHistory() {
            winner_wallet, verification_code, created_at,
            collected, collected_at, collected_by, status, rejection_note, accepted_at, target_level,
            prize_details, prize_image, establishment, type, hide_name,
-           validity, people, hours, days
+           validity, people, hours, days, validity_end_date
     FROM raffles
     ORDER BY created_at DESC LIMIT 100
   `).all();

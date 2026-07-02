@@ -561,6 +561,22 @@ router.patch('/:id/collect', requireAuth, (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// PATCH /api/raffle/:id/fix — admin corrige datos de un sorteo ya lanzado
+// (validity_end_date, etc.) sin tocar la lógica del premio ni el ganador.
+router.patch('/:id/fix', requireAuth, (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const id = parseInt(req.params.id);
+    const raffle = db.prepare(`SELECT id FROM raffles WHERE id = ?`).get(id);
+    if (!raffle) return res.status(404).json({ error: 'Sorteo no encontrado' });
+    const { validityEndDate } = req.body;
+    if (validityEndDate !== undefined) {
+      db.prepare(`UPDATE raffles SET validity_end_date = ? WHERE id = ?`).run(validityEndDate || null, id);
+    }
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // POST /api/raffle/:id/redeem — CANJE en el local. Lo pulsa el staff en el móvil
 // del ganador. No requiere admin: verifica que la wallet sea la del ganador.
 // Idempotente: si ya estaba canjeado devuelve el estado sin re-marcar (evita doble canje).

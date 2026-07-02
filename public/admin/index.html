@@ -4995,6 +4995,21 @@
     } catch(e) { showToast('Error', true); btn.disabled = false; }
   }
 
+  async function fixRaffleDate(raffleId) {
+    const newDate = prompt('Nueva fecha límite (AAAA-MM-DD):', '2026-08-02');
+    if (!newDate || !/^\d{4}-\d{2}-\d{2}$/.test(newDate)) return;
+    try {
+      const res = await fetch(`/api/raffle/${raffleId}/fix`, {
+        method: 'PATCH',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ validityEndDate: newDate })
+      });
+      const data = await res.json();
+      if (data.success) { showToast('Fecha corregida'); loadRaffleHistory(); }
+      else showToast(data.error || 'Error', true);
+    } catch(e) { showToast('Error', true); }
+  }
+
   async function loadRaffleHistory() {
     const container = document.getElementById('raffle-history-list');
     if (!container) return;
@@ -5024,10 +5039,11 @@
               </div>
               ${r.establishment ? `<p style="font-size:10px; color:var(--wine); font-weight:600; margin:0 0 1px;">${r.establishment}</p>` : ''}
               <p style="font-size:10px; color:var(--text-muted); margin:0;">${r.wallet_masked} · ${when}</p>
+              ${r.validity_end_date ? `<p style="font-size:10px; color:var(--wine); margin:1px 0 0; font-weight:600;">Caduca: ${r.validity_end_date} <button onclick="fixRaffleDate(${r.id})" style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--gold);padding:0 2px;">✏️</button></p>` : ''}
               ${r.status === 'rejected' ? `<p style="font-size:10px; color:var(--text-muted); margin:2px 0 0; font-style:italic;">${r.rejection_note || 'Rechazado'}</p>` : ''}
             </div>
             <div style="text-align:right; flex-shrink:0; display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
-              <span style="font-family:monospace; font-size:13px; font-weight:900; letter-spacing:2px; color:${statusColor};">${r.status !== 'rejected' ? r.verification_code : '—'}</span>
+              <span style="font-family:monospace; font-size:15px; font-weight:900; letter-spacing:3px; color:${statusColor};">${r.status !== 'rejected' ? r.verification_code : '—'}</span>
               ${canCollect ? `<button onclick="collectHistoric(${r.id}, this)"
                 style="padding:5px 10px; background:rgba(196,151,58,0.15); border:1px solid #C4973A; border-radius:8px; font-size:11px; font-weight:700; color:#7A5A00; cursor:pointer; font-family:'Outfit',sans-serif;">
                 Entregar ✓</button>` : ''}
