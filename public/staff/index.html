@@ -59,7 +59,11 @@
       <p class="lead" style="text-align:center;">Pídele que abra su app y te enseñe su <strong>🪪 ID Socio (QR)</strong>. Apunta y se ficha solo.</p>
       <div id="reader"></div>
       <div class="scan-status" id="scan-status"></div>
-      <p class="scan-hint">Cada escaneo ficha la <strong>entrada</strong> del cliente para que entre en los sorteos.</p>
+      <!-- Respaldo si la cámara no enfoca (algunos Android): sacar foto al QR del cliente -->
+      <p class="scan-hint" style="margin-bottom:6px;">¿La cámara no enfoca? Sácale una foto al QR del cliente 👇</p>
+      <label for="staff-photo-input" style="display:block; box-sizing:border-box; border-radius:14px; padding:12px; width:100%; text-align:center; background:rgba(196,151,58,0.14); border:1.5px solid var(--gold); color:#8B6914; font-weight:700; cursor:pointer;">📸 Sacar foto al QR</label>
+      <input type="file" id="staff-photo-input" accept="image/*" capture="environment" style="display:none;" onchange="checkinFromPhoto(this)" />
+      <p class="scan-hint" style="margin-top:12px;">Cada escaneo ficha la <strong>entrada</strong> del cliente para que entre en los sorteos.</p>
       <div class="footer-link"><button onclick="logout()">Cambiar código / salir</button></div>
     </div>
   </div>
@@ -129,7 +133,13 @@
       try{
         if (scanner){ try { await scanner.stop(); } catch(e){} }
         scanner = new Html5Qrcode('reader');
-        const config = { fps: 10, qrbox: { width: 230, height: 230 } };
+        const config = {
+          fps: 10,
+          qrbox: { width: 240, height: 240 },
+          aspectRatio: 1.0,
+          // Detector nativo del móvil si existe: enfoca/decodifica mucho mejor en Android.
+          experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+        };
         const onScan = (decoded) => {
           const now = Date.now();
           const m = String(decoded).match(/(0x[a-fA-F0-9]{40})/);
@@ -154,6 +164,14 @@
         }catch(e){ /* fallback abajo */ }
         if (!started) await scanner.start({ facingMode:'environment' }, config, onScan, ()=>{});
         status.textContent = '';
+        // Forzar enfoque continuo (mejora el foco en muchos Android). Best-effort.
+        setTimeout(() => {
+          try {
+            const v = document.querySelector('#reader video');
+            const tr = v && v.srcObject && v.srcObject.getVideoTracks && v.srcObject.getVideoTracks()[0];
+            if (tr && tr.applyConstraints) tr.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(()=>{});
+          } catch(_) {}
+        }, 800);
       }catch(err){
         status.innerHTML = '⚠️ No se pudo abrir la cámara. Permite el acceso a cámara en el navegador y recarga.';
       }
@@ -211,6 +229,32 @@
       document.getElementById('result').style.display = 'none';
       document.getElementById('scan-status').textContent = '';
       processing = false;
+    }
+
+    // Respaldo por foto: si la cámara en vivo no enfoca, el camarero saca una FOTO
+    // al QR del cliente (la cámara nativa enfoca bien) y decodificamos la imagen.
+    async function checkinFromPhoto(input){
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const status = document.getElementById('scan-status');
+      status.textContent = '⌛ Leyendo la foto…';
+      try { if (scanner) await scanner.stop(); } catch(e){}
+      let tmp = document.getElementById('staff-temp-reader');
+      if (!tmp){ tmp = document.createElement('div'); tmp.id = 'staff-temp-reader'; tmp.style.display = 'none'; document.body.appendChild(tmp); }
+      try {
+        const qr = new Html5Qrcode('staff-temp-reader');
+        const decoded = await qr.scanFile(file, false);
+        try { await qr.clear(); } catch(e){}
+        const m = String(decoded).match(/(0x[a-fA-F0-9]{40})/);
+        if (!m){ status.textContent = '⚠️ Ese QR no es de un cliente Furancho'; startScanner(); return; }
+        processing = true; lastWallet = m[1]; lastAt = Date.now();
+        await doCheckin(m[1]);
+      } catch(err){
+        status.textContent = '⚠️ No vi ningún QR en la foto. Acércate y que salga nítido.';
+        startScanner();
+      } finally {
+        input.value = '';
+      }
     }
   </script>
 </body>

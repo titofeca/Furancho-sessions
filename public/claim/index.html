@@ -6538,73 +6538,25 @@
     try {
       if (clientHtml5QrScanner) { try { clientHtml5QrScanner.stop(); } catch(e){} }
       clientHtml5QrScanner = new Html5Qrcode('client-scanner-reader');
-      const config = { fps: 10, qrbox: { width: 220, height: 220 } };
-      
+      const config = {
+        fps: 10,
+        qrbox: { width: 240, height: 240 },
+        aspectRatio: 1.0,
+        // Usa el detector de códigos NATIVO del móvil si existe: en Android enfoca y
+        // decodifica mucho mejor/más rápido que el lector por software.
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+      };
+
       const successCallback = async (decodedText) => {
         try { await clientHtml5QrScanner.stop(); } catch(e){}
-        statusEl.textContent = 'Procesando fichaje...';
-        
-        const isExit = decodedText.includes('action=exit');
-        const url = isExit ? '/api/mint/exit' : '/api/mint/entry';
-        
-        try {
-          const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ walletAddress: userWalletAddress })
-          });
-          const data = await res.json();
-          
-          if (res.ok) {
-            modal.style.display = 'none';
-            if (isExit) {
-              userHasActiveSession = false;
-              updateFicharButtons();
-              if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-                subscribePush();
-              }
-              const exitTexts = [
-                '¡Hasta luego! No tardes en volver, ho.',
-                'Vete con el viento, rapaz.',
-                '¡Hasta el próximo Furancho, ho!',
-                'Cuidado con la puerta al salir.'
-              ];
-              showToast('🚪 ' + exitTexts[Math.floor(Math.random() * exitTexts.length)]);
-            } else {
-              userHasActiveSession = true;
-              updateFicharButtons();
-              if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-                subscribePush();
-              }
-              if (data.isNew) {
-                showToast('🎉 ¡Bienvenido a Furancho Sessions! Primera visita registrada.');
-              } else if (data.counted) {
-                showToast(`🍷 ¡Fichado! Entrada registrada. Visita #${data.visitCount}`);
-              } else if (data.hasEventNow === false) {
-                showToast('🍷 Entrada registrada — hoy no hay sesión en la agenda, así que la visita no suma, ho.');
-              } else {
-                showToast('✅ ¡Fichado! La visita de esta semana ya estaba contada — disfruta la noche, ho.');
-              }
-            }
-            setTimeout(async () => {
-              const refreshed = await fetch(`/api/mint/history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => null);
-              if (refreshed) {
-                userVisitCount = refreshed.visitCount || userVisitCount;
-                userClaimedLevels = refreshed.levels || userClaimedLevels;
-                userVisits = refreshed.visits || userVisits;
-                showProfileScreen(userVisitCount, userClaimedLevels);
-              }
-            }, 500);
-          } else {
-            statusEl.textContent = '❌ Error: ' + (data.error || 'fichaje denegado');
-            setTimeout(startClientScanner, 2500);
-          }
-        } catch (err) {
-          statusEl.textContent = '❌ Error de red al fichar.';
-          setTimeout(startClientScanner, 2500);
-        }
+        const ok = await doClientCheckin(decodedText).catch(() => {
+          const s = document.getElementById('client-scanner-status');
+          if (s) s.textContent = '❌ Error de red al fichar.';
+          return false;
+        });
+        if (!ok) setTimeout(startClientScanner, 2500);
       };
-      
+
       const errorCallback = (errorMessage) => {
         // Silencioso para frames sin QR
       };
@@ -6627,6 +6579,7 @@
           
           await clientHtml5QrScanner.start(cameraId, config, successCallback, errorCallback);
           statusEl.textContent = 'Apunta al código QR';
+          setTimeout(tryContinuousFocus, 800);
           return;
         }
       } catch (e) {
@@ -6636,7 +6589,8 @@
       // Fallback a facingMode directo
       await clientHtml5QrScanner.start({ facingMode: 'environment' }, config, successCallback, errorCallback);
       statusEl.textContent = 'Apunta al código QR';
-      
+      setTimeout(tryContinuousFocus, 800);
+
     } catch (err) {
       console.error(err);
       statusEl.innerHTML = `<span style="color:#ef4444; font-weight:700;">Error: ${err.message || err}</span><br><span style="font-size:11px; color:var(--text-muted); display:block; margin-top:5px;">Asegúrate de permitir el uso de cámara, usar un navegador compatible (Chrome/Safari) y que el sitio esté en HTTPS.</span>`;
@@ -6648,6 +6602,108 @@
     modal.style.display = 'none';
     if (clientHtml5QrScanner) {
       try { clientHtml5QrScanner.stop(); } catch(e){}
+    }
+  }
+
+  // Fuerza enfoque continuo en la cámara del escáner (mejora el foco en muchos Android).
+  // Best-effort: si el dispositivo no lo soporta, no pasa nada.
+  function tryContinuousFocus() {
+    try {
+      const video = document.querySelector('#client-scanner-reader video');
+      const track = video && video.srcObject && video.srcObject.getVideoTracks && video.srcObject.getVideoTracks()[0];
+      if (track && track.applyConstraints) {
+        track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {});
+      }
+    } catch (_) {}
+  }
+
+  // Fichaje a partir del texto del QR. Lo usan el escáner en vivo y el respaldo por
+  // foto: misma llamada al servidor (/api/mint/entry|exit) y mismo resultado.
+  async function doClientCheckin(decodedText) {
+    const statusEl = document.getElementById('client-scanner-status');
+    const modal = document.getElementById('client-scanner-modal');
+    if (statusEl) statusEl.textContent = 'Procesando fichaje...';
+
+    const isExit = decodedText.includes('action=exit');
+    const url = isExit ? '/api/mint/exit' : '/api/mint/entry';
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ walletAddress: userWalletAddress })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      if (statusEl) statusEl.textContent = '❌ Error: ' + (data.error || 'fichaje denegado');
+      return false;
+    }
+    if (modal) modal.style.display = 'none';
+
+    if (isExit) {
+      userHasActiveSession = false;
+      updateFicharButtons();
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') subscribePush();
+      const exitTexts = [
+        '¡Hasta luego! No tardes en volver, ho.',
+        'Vete con el viento, rapaz.',
+        '¡Hasta el próximo Furancho, ho!',
+        'Cuidado con la puerta al salir.'
+      ];
+      showToast('🚪 ' + exitTexts[Math.floor(Math.random() * exitTexts.length)]);
+    } else {
+      userHasActiveSession = true;
+      updateFicharButtons();
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') subscribePush();
+      if (data.isNew) {
+        showToast('🎉 ¡Bienvenido a Furancho Sessions! Primera visita registrada.');
+      } else if (data.counted) {
+        showToast(`🍷 ¡Fichado! Entrada registrada. Visita #${data.visitCount}`);
+      } else if (data.hasEventNow === false) {
+        showToast('🍷 Entrada registrada — hoy no hay sesión en la agenda, así que la visita no suma, ho.');
+      } else {
+        showToast('✅ ¡Fichado! La visita de esta semana ya estaba contada — disfruta la noche, ho.');
+      }
+    }
+    setTimeout(async () => {
+      const refreshed = await fetch(`/api/mint/history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => null);
+      if (refreshed) {
+        userVisitCount = refreshed.visitCount || userVisitCount;
+        userClaimedLevels = refreshed.levels || userClaimedLevels;
+        userVisits = refreshed.visits || userVisits;
+        showProfileScreen(userVisitCount, userClaimedLevels);
+      }
+    }, 500);
+    return true;
+  }
+
+  // Respaldo cuando la cámara en vivo NO enfoca (típico en algunos Android): el cliente
+  // saca una FOTO del QR con la cámara nativa (que enfoca bien) y decodificamos la imagen.
+  async function checkinFromPhoto(input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    if (!userWalletAddress) { showToast('⚠️ Regístrate primero, ho.'); input.value = ''; return; }
+    const statusEl = document.getElementById('client-scanner-status');
+    if (statusEl) statusEl.textContent = '⌛ Leyendo la foto…';
+    // Paramos el escáner en vivo para liberar la cámara mientras decodificamos.
+    try { if (clientHtml5QrScanner) await clientHtml5QrScanner.stop(); } catch (e) {}
+
+    let tempReader = document.getElementById('temp-qr-reader');
+    if (!tempReader) {
+      tempReader = document.createElement('div');
+      tempReader.id = 'temp-qr-reader';
+      tempReader.style.display = 'none';
+      document.body.appendChild(tempReader);
+    }
+    try {
+      const qr = new Html5Qrcode('temp-qr-reader');
+      const decodedText = await qr.scanFile(file, false);
+      try { await qr.clear(); } catch (e) {}
+      const ok = await doClientCheckin(decodedText);
+      if (!ok && statusEl) statusEl.textContent = '❌ No se pudo fichar. Inténtalo otra vez.';
+    } catch (err) {
+      if (statusEl) statusEl.textContent = '❌ No vi ningún QR en la foto. Acércate y que salga nítido, ho.';
+    } finally {
+      input.value = '';
     }
   }
 
@@ -7273,12 +7329,19 @@
     <div style="width:100%; max-width:360px; text-align:center; display:flex; flex-direction:column; gap:20px; box-sizing:border-box;">
       <h2 style="font-family:'Playfair Display',serif; font-size:24px; color:var(--wine); font-weight:900; margin:0;">Fichar Entrada</h2>
       <p style="font-size:14px; color:var(--text-muted); margin:0;">Apunta con la cámara al código QR del establecimiento</p>
-      
+
       <div id="client-scanner-reader" style="width:100%; max-width:280px; margin:0 auto; border-radius:18px; overflow:hidden; border:2.5px solid var(--wine); background:#000;"></div>
-      
+
       <div id="client-scanner-status" style="font-size:13px; font-weight:700; color:var(--wine); min-height:18px; margin:4px 0;"></div>
-      
-      <button onclick="stopClientScanner()" class="btn btn-ghost" style="margin-top:10px; border-radius:50px; padding:14px; width:100%; background:none; border:1.5px solid rgba(42,21,9,0.12); color:var(--text-muted); font-weight:700; cursor:pointer;">Cancelar</button>
+
+      <!-- Respaldo si la cámara no enfoca (típico en algunos Android): sacar una foto al QR -->
+      <div style="margin-top:2px;">
+        <p style="font-size:11px; color:var(--text-muted); margin:0 0 6px; line-height:1.4;">¿La cámara no enfoca? Sácale una foto al QR y lo leemos igual, ho 👇</p>
+        <label for="client-scanner-photo-input" style="display:block; border-radius:50px; padding:13px; width:100%; box-sizing:border-box; background:rgba(196,151,58,0.12); border:1.5px solid var(--gold); color:var(--gold); font-weight:700; cursor:pointer;">📸 Sacar foto al QR</label>
+        <input type="file" id="client-scanner-photo-input" accept="image/*" capture="environment" style="display:none;" onchange="checkinFromPhoto(this)" />
+      </div>
+
+      <button onclick="stopClientScanner()" class="btn btn-ghost" style="margin-top:8px; border-radius:50px; padding:14px; width:100%; background:none; border:1.5px solid rgba(42,21,9,0.12); color:var(--text-muted); font-weight:700; cursor:pointer;">Cancelar</button>
     </div>
   </div>
 
