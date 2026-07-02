@@ -4200,9 +4200,15 @@
         const dateStr = dateObj.toLocaleDateString('es-ES', {day:'numeric', month:'short', year:'numeric'});
         const isWeekly = r.is_weekly === 1;
         const isCollected = r.status === 'collected';
-        // Canjeable = premio ganado y aceptado, aún sin canjear (no la Chave, que
-        // tiene su propio flujo). El staff del local lo cierra desde el bono.
-        const isRedeemable = r.status === 'accepted' && !isWeekly;
+        // Caducidad: si hay fecha límite y ya pasó, el premio ya no se puede canjear.
+        const _todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD hora local
+        const isExpired = !!r.validity_end_date && !isCollected && _todayStr > r.validity_end_date;
+        const endDateStr = r.validity_end_date
+          ? new Date(r.validity_end_date + 'T00:00:00').toLocaleDateString('es-ES', { day:'numeric', month:'long', year:'numeric' })
+          : '';
+        // Canjeable = premio ganado y aceptado, aún sin canjear NI caducado (no la
+        // Chave, que tiene su propio flujo). El staff del local lo cierra desde el bono.
+        const isRedeemable = r.status === 'accepted' && !isWeekly && !isExpired;
         const collectedStr = r.collected_at
           ? new Date(r.collected_at.replace(' ', 'T') + 'Z').toLocaleString('es-ES', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })
           : '';
@@ -4255,20 +4261,21 @@
                   `;
                 })()}
                 ${(() => {
-                  if (!r.people && !r.validity && !r.days && !r.hours) return '';
+                  if (!r.people && !r.validity && !r.days && !r.hours && !endDateStr) return '';
                   return `
                     <div style="margin-top:6px; background:rgba(0,0,0,0.02); border:1px solid rgba(0,0,0,0.05); border-radius:8px; padding:8px; font-size:11px; color:var(--text-muted); text-align:left; max-width:280px;">
                       <p style="font-size:9px; font-weight:800; color:var(--wine); letter-spacing:0.8px; margin:0 0 4px; text-transform:uppercase;">Condiciones de validez:</p>
                       <div style="display:grid; grid-template-columns:1fr; gap:3px; font-size:11px;">
                         ${r.people ? `<div>👥 <strong>Personas:</strong> ${r.people}</div>` : ''}
                         ${r.validity ? `<div>📅 <strong>Validez:</strong> <span style="color:var(--wine); font-weight:700;">${r.validity}</span></div>` : ''}
+                        ${endDateStr ? `<div>⛔ <strong>Fecha límite:</strong> <span style="color:var(--wine); font-weight:700;">${endDateStr}</span></div>` : ''}
                         ${r.days ? `<div>🗓️ <strong>Días:</strong> ${r.days}</div>` : ''}
                         ${r.hours ? `<div>🕒 <strong>Horario:</strong> ${r.hours}</div>` : ''}
                       </div>
                     </div>
                   `;
                 })()}
-                ${!isCollected && r.verification_code ? `<div style="font-family:monospace; font-size:18px; font-weight:800; letter-spacing:4px; color:var(--wine); margin-top:5px; background:rgba(139,25,24,0.06); border-radius:8px; padding:4px 8px; display:inline-block;">${r.verification_code}</div>` : ''}
+                ${!isCollected && !isExpired && r.verification_code ? `<div style="font-family:monospace; font-size:18px; font-weight:800; letter-spacing:4px; color:var(--wine); margin-top:5px; background:rgba(139,25,24,0.06); border-radius:8px; padding:4px 8px; display:inline-block;">${r.verification_code}</div>` : ''}
                 ${isCollected ? `
                   <div style="margin-top:8px; display:flex; align-items:center; gap:8px; background:rgba(22,163,74,0.1); border:1.5px solid rgba(22,163,74,0.4); border-radius:10px; padding:8px 12px;">
                     <span style="font-size:20px;">✅</span>
@@ -4287,6 +4294,14 @@
                       ✅ Entregar premio (staff del local)
                     </button>
                     <p style="font-size:9.5px; color:var(--text-muted); margin:5px 0 0; line-height:1.35; text-align:center;">Lo pulsa el camarero al entregarlo. Cierra el bono para que no se pueda usar dos veces.</p>
+                  </div>` : ''}
+                ${isExpired ? `
+                  <div style="margin-top:8px; display:flex; align-items:center; gap:8px; background:rgba(139,25,24,0.07); border:1.5px solid rgba(139,25,24,0.3); border-radius:10px; padding:8px 12px;">
+                    <span style="font-size:20px;">⛔</span>
+                    <div style="text-align:left;">
+                      <p style="font-size:12px; font-weight:800; color:var(--wine); margin:0; letter-spacing:0.5px;">PREMIO CADUCADO</p>
+                      <p style="font-size:10px; color:var(--text-muted); margin:1px 0 0;">Venció el ${endDateStr} · ya no se puede canjear</p>
+                    </div>
                   </div>` : ''}
                 ${bonoBtn}
               </div>

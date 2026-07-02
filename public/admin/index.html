@@ -1785,6 +1785,11 @@
               <input type="text" class="input-field" id="sched-hours" placeholder="Ej: 13:00 a 16:00" style="margin:0; font-size:13px;" />
             </div>
           </div>
+          <div style="margin-bottom:8px;">
+            <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">⛔ Fecha límite de canje (opcional)</label>
+            <input type="date" class="input-field" id="sched-validity-end-date" style="margin:0; font-size:13px;" />
+            <p style="font-size:10px; color:var(--text-muted); margin:2px 0 0; line-height:1.35;">Pasada esta fecha, el botón "Entregar premio" se desactiva automáticamente. Déjalo vacío si el premio no caduca.</p>
+          </div>
 
           <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:5px;">📷 Logo del local colaborador</label>
           <label for="sched-image-input" style="display:block; background:var(--surface); border:1.5px dashed var(--border); border-radius:12px; padding:9px 16px; font-size:12px; color:var(--text-muted); cursor:pointer; text-align:center;">📁 Seleccionar logo (JPG, PNG o webp)</label>
@@ -4247,6 +4252,7 @@
     const validity = type === 'local' ? (document.getElementById('sched-validity')?.value.trim() || null) : null;
     const days     = type === 'local' ? (document.getElementById('sched-days')?.value.trim() || null) : null;
     const hours    = type === 'local' ? (document.getElementById('sched-hours')?.value.trim() || null) : null;
+    const validityEndDate = type === 'local' ? (document.getElementById('sched-validity-end-date')?.value || null) : null;
 
     if (!date || !time || !prize) return showToast('Completa fecha, hora y nombre del premio', true);
     const editing = editingScheduledId != null;
@@ -4255,7 +4261,7 @@
     try {
       const res = await fetch(url, {
         method, headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventDate: date, scheduledTime: time, prize, type, hideName, establishment, prizeDetails, prizeImage, participantLevel, requiredAchievement, validity, people, hours, days })
+        body: JSON.stringify({ eventDate: date, scheduledTime: time, prize, type, hideName, establishment, prizeDetails, prizeImage, participantLevel, requiredAchievement, validity, people, hours, days, validityEndDate })
       });
       const data = await res.json();
       if (data.success) {
@@ -4281,6 +4287,7 @@
     if (document.getElementById('sched-validity')) document.getElementById('sched-validity').value = r.validity || '';
     if (document.getElementById('sched-days')) document.getElementById('sched-days').value = r.days || '';
     if (document.getElementById('sched-hours')) document.getElementById('sched-hours').value = r.hours || '';
+    if (document.getElementById('sched-validity-end-date')) document.getElementById('sched-validity-end-date').value = r.validity_end_date || '';
     if (document.getElementById('sched-participant-level')) document.getElementById('sched-participant-level').value = r.participant_level || '';
     if (document.getElementById('sched-required-achievement')) document.getElementById('sched-required-achievement').value = r.required_achievement || '';
 
@@ -4318,6 +4325,7 @@
     if (document.getElementById('sched-validity')) document.getElementById('sched-validity').value = '';
     if (document.getElementById('sched-days')) document.getElementById('sched-days').value = '';
     if (document.getElementById('sched-hours')) document.getElementById('sched-hours').value = '';
+    if (document.getElementById('sched-validity-end-date')) document.getElementById('sched-validity-end-date').value = '';
     if (document.getElementById('sched-participant-level')) document.getElementById('sched-participant-level').value = '';
     if (document.getElementById('sched-required-achievement')) document.getElementById('sched-required-achievement').value = '';
     clearSchedImage();

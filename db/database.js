@@ -446,6 +446,9 @@ try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN validity TEXT`); } catch
 try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN people TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN hours TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN days TEXT`); } catch (_) {}
+// Fecha límite de canje (YYYY-MM-DD). Pasada esa fecha, el botón de canje se desactiva.
+try { db.exec(`ALTER TABLE raffles ADD COLUMN validity_end_date TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN validity_end_date TEXT`); } catch (_) {}
 // Número de serie del mint dentro de su nivel (1 = primero en alcanzar ese nivel)
 try { db.exec(`ALTER TABLE mints ADD COLUMN mint_serial INTEGER`); } catch (_) {}
 try { db.exec(`ALTER TABLE mints ADD COLUMN mint_cost_matic REAL`); } catch (_) {}
@@ -1572,14 +1575,14 @@ function autoCloseSessionsAfterEvent() {
 // Alias retrocompatible
 const autoCloseSessionsAt23 = autoCloseSessionsAfterEvent;
 
-function insertRaffle(prize, winnerWallet, verificationCode, participantWallets = [], targetLevel = null, prizeDetails = null, prizeImage = null, establishment = null, type = 'night', hideName = 0, participantLevel = null, validity = null, people = null, hours = null, days = null) {
+function insertRaffle(prize, winnerWallet, verificationCode, participantWallets = [], targetLevel = null, prizeDetails = null, prizeImage = null, establishment = null, type = 'night', hideName = 0, participantLevel = null, validity = null, people = null, hours = null, days = null, validityEndDate = null) {
   // Plazo de aceptación: 10s de animación + 600s de ventana de aceptación (debe coincidir
   // con acceptWindow en doLaunch — el sweeper de expiración usa este deadline)
   const deadline = new Date(Date.now() + 610000).toISOString().replace('T', ' ').slice(0, 19);
   const id = db.prepare(`
-    INSERT INTO raffles (prize, winner_wallet, verification_code, status, acceptance_deadline, target_level, prize_details, prize_image, establishment, type, hide_name, participant_level, validity, people, hours, days)
-    VALUES (?, ?, ?, 'pending_acceptance', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(prize, winnerWallet, verificationCode, deadline, targetLevel, prizeDetails, prizeImage, establishment, type, hideName ? 1 : 0, participantLevel || null, validity, people, hours, days).lastInsertRowid;
+    INSERT INTO raffles (prize, winner_wallet, verification_code, status, acceptance_deadline, target_level, prize_details, prize_image, establishment, type, hide_name, participant_level, validity, people, hours, days, validity_end_date)
+    VALUES (?, ?, ?, 'pending_acceptance', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(prize, winnerWallet, verificationCode, deadline, targetLevel, prizeDetails, prizeImage, establishment, type, hideName ? 1 : 0, participantLevel || null, validity, people, hours, days, validityEndDate || null).lastInsertRowid;
   if (participantWallets.length) {
     const stmt = db.prepare(`INSERT OR IGNORE INTO raffle_participants (raffle_id, wallet_address) VALUES (?, ?)`);
     participantWallets.forEach(w => stmt.run(id, w));
@@ -1615,7 +1618,7 @@ function collectRaffle(raffleId, adminNote) {
 // devuelve el estado sin volver a marcarlo. Solo el ganador (misma wallet) puede
 // cerrarlo, y solo si el premio fue aceptado antes.
 function redeemRaffleByWinner(raffleId, walletAddress) {
-  const raffle = db.prepare(`SELECT id, winner_wallet, status, prize, collected_at FROM raffles WHERE id = ?`).get(raffleId);
+  const raffle = db.prepare(`SELECT id, winner_wallet, status, prize, collected_at, validity_end_date FROM raffles WHERE id = ?`).get(raffleId);
   if (!raffle) throw new Error('Premio no encontrado');
   if (!raffle.winner_wallet || !walletAddress || raffle.winner_wallet.toLowerCase() !== walletAddress.toLowerCase()) {
     throw new Error('No eres el ganador de este premio');
@@ -1625,6 +1628,13 @@ function redeemRaffleByWinner(raffleId, walletAddress) {
   }
   if (raffle.status !== 'accepted') {
     throw new Error('Este premio no está listo para canjear');
+  }
+  // Caducidad: si hay fecha límite y ya pasó (hora de Madrid), no se puede canjear.
+  if (raffle.validity_end_date) {
+    const todayMadrid = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' }); // YYYY-MM-DD
+    if (todayMadrid > raffle.validity_end_date) {
+      throw new Error('Este premio ha caducado y ya no se puede canjear');
+    }
   }
   db.prepare(`
     UPDATE raffles SET collected = 1, status = 'collected', collected_at = datetime('now'), collected_by = 'Canjeado en local (staff)'
@@ -1670,12 +1680,13 @@ function getRaffleParticipation(walletAddress) {
            CASE WHEN LOWER(r.winner_wallet) = ? THEN r.validity ELSE NULL END as validity,
            CASE WHEN LOWER(r.winner_wallet) = ? THEN r.people ELSE NULL END as people,
            CASE WHEN LOWER(r.winner_wallet) = ? THEN r.hours ELSE NULL END as hours,
-           CASE WHEN LOWER(r.winner_wallet) = ? THEN r.days ELSE NULL END as days
+           CASE WHEN LOWER(r.winner_wallet) = ? THEN r.days ELSE NULL END as days,
+           CASE WHEN LOWER(r.winner_wallet) = ? THEN r.validity_end_date ELSE NULL END as validity_end_date
     FROM raffles r
     WHERE r.id IN (SELECT raffle_id FROM raffle_participants WHERE LOWER(wallet_address) = ?)
        OR LOWER(r.winner_wallet) = ?
     ORDER BY r.created_at DESC LIMIT 30
-  `).all(lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet);
+  `).all(lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet);
 }
 
 function getRaffleById(id) {
@@ -1705,12 +1716,12 @@ function getScheduledRaffles(eventDate) {
   return eventDate ? db.prepare(q).all(eventDate) : db.prepare(q).all();
 }
 
-function createScheduledRaffle({ eventDate, scheduledTime, prize, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment, requiredAchievement, validity, people, hours, days }) {
-  return db.prepare(`INSERT INTO scheduled_raffles (event_date, scheduled_time, prize, target_level, participant_level, type, hide_name, prize_details, prize_image, establishment, required_achievement, validity, people, hours, days) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .run(eventDate, scheduledTime, prize, targetLevel || null, participantLevel || null, type || 'night', hideName ? 1 : 0, prizeDetails || null, prizeImage || null, establishment || null, requiredAchievement || null, validity || null, people || null, hours || null, days || null).lastInsertRowid;
+function createScheduledRaffle({ eventDate, scheduledTime, prize, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment, requiredAchievement, validity, people, hours, days, validityEndDate }) {
+  return db.prepare(`INSERT INTO scheduled_raffles (event_date, scheduled_time, prize, target_level, participant_level, type, hide_name, prize_details, prize_image, establishment, required_achievement, validity, people, hours, days, validity_end_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(eventDate, scheduledTime, prize, targetLevel || null, participantLevel || null, type || 'night', hideName ? 1 : 0, prizeDetails || null, prizeImage || null, establishment || null, requiredAchievement || null, validity || null, people || null, hours || null, days || null, validityEndDate || null).lastInsertRowid;
 }
 
-function updateScheduledRaffle(id, { eventDate, scheduledTime, prize, status, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment, requiredAchievement, validity, people, hours, days }) {
+function updateScheduledRaffle(id, { eventDate, scheduledTime, prize, status, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment, requiredAchievement, validity, people, hours, days, validityEndDate }) {
   const fields = [], vals = [];
   if (eventDate !== undefined)       { fields.push('event_date = ?');        vals.push(eventDate); }
   if (scheduledTime !== undefined)   { fields.push('scheduled_time = ?');    vals.push(scheduledTime); }
@@ -1728,6 +1739,7 @@ function updateScheduledRaffle(id, { eventDate, scheduledTime, prize, status, ta
   if (people !== undefined)          { fields.push('people = ?');            vals.push(people); }
   if (hours !== undefined)           { fields.push('hours = ?');             vals.push(hours); }
   if (days !== undefined)            { fields.push('days = ?');              vals.push(days); }
+  if (validityEndDate !== undefined) { fields.push('validity_end_date = ?'); vals.push(validityEndDate || null); }
   if (!fields.length) return;
   vals.push(id);
   db.prepare(`UPDATE scheduled_raffles SET ${fields.join(', ')} WHERE id = ?`).run(...vals);
