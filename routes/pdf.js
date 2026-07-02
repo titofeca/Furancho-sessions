@@ -599,6 +599,31 @@ function buildPremioPdf(doc, raffle, opts) {
   }
 }
 
+// ─── GET /api/pdf/premio/:id/admin — PDF completo para admin (con código real) ──
+// No necesita wallet del ganador: solo requireAuth. Así el admin puede compartirlo
+// con el local colaborador sin depender del cliente.
+router.get('/premio/:id/admin', requireAuth, async (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const raffle = db.prepare(`
+      SELECT id, prize, winner_wallet, verification_code, created_at, status,
+             prize_details, prize_image, establishment, type,
+             validity, people, hours, days, validity_end_date
+      FROM raffles WHERE id = ?
+    `).get(parseInt(req.params.id));
+
+    if (!raffle) return res.status(404).send('Sorteo no encontrado');
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Furancho_Premio_${raffle.id}.pdf"`);
+
+    const doc = new PDFDocument({ size: 'A4', margin: 0, info: { Title: `Premio Furancho — ${raffle.prize}`, Author: 'Furancho Sessions' } });
+    doc.pipe(res);
+    buildPremioPdf(doc, raffle, {});
+    doc.end();
+  } catch(e) { res.status(500).send('Error generando PDF: ' + e.message); }
+});
+
 // ─── GET /api/pdf/premio-preview/:id — VISTA PREVIA (admin) del bono de un ──────
 // sorteo programado, ANTES de sortear y sin código real.
 router.get('/premio-preview/:id', requireAuth, async (req, res) => {
