@@ -4220,14 +4220,15 @@
         const statusLabel = isCollected ? '✅ Recogido' : '🏆 Ganado';
         const icon = isWeekly ? '🔑' : '🏆';
 
-        // Botón descargar bono
+        // Botón descargar bono. Los premios de LOCAL ya no tienen PDF para el
+        // cliente (el bono vive en su museo y el canje se hace con el botón verde;
+        // el PDF lo baja el admin para enviárselo al local). La Chave Semanal sí
+        // conserva su bono PDF porque tiene otro flujo de entrega.
         const bonoStyle = `display:inline-block; margin-top:8px; padding:5px 12px; background:rgba(196,151,58,0.1); border:1.5px solid var(--gold); color:var(--gold); border-radius:50px; font-size:11px; font-weight:700; text-decoration:none;`;
         let bonoBtn = '';
         if (isWeekly && r.verification_code && r.weekly_week) {
           // Ganador de la Chave Semanal: bono PDF con el premio y su código
           bonoBtn = `<a href="/api/pdf/weekly/${encodeURIComponent(r.weekly_week)}?wallet=${encodeURIComponent(userWalletAddress)}" target="_blank" style="${bonoStyle}">📄 Descargar bono PDF</a>`;
-        } else if (['accepted','collected'].includes(r.status) && r.prize_image) {
-          bonoBtn = `<a href="/api/pdf/premio/${r.id}?wallet=${encodeURIComponent(userWalletAddress)}" target="_blank" style="${bonoStyle}">📄 Descargar bono</a>`;
         }
 
         return `

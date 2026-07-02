@@ -338,7 +338,8 @@ router.get('/premio/:id', async (req, res) => {
     const { db } = require('../db/database');
     const raffle = db.prepare(`
       SELECT id, prize, winner_wallet, verification_code, created_at, status,
-             prize_details, prize_image, establishment
+             prize_details, prize_image, establishment, type,
+             validity, people, hours, days, validity_end_date
       FROM raffles WHERE id = ? AND status IN ('accepted','collected')
     `).get(parseInt(req.params.id));
 
@@ -448,11 +449,15 @@ function buildPremioPdf(doc, raffle, opts) {
     }
 
     // ── Condiciones de Validez (si existen) ──────────────────────────────────────
-    const hasConds = raffle.people || raffle.validity || raffle.days || raffle.hours;
+    const endDateStr = raffle.validity_end_date
+      ? new Date(raffle.validity_end_date + 'T00:00:00').toLocaleDateString('es-ES', { day:'numeric', month:'long', year:'numeric' })
+      : null;
+    const hasConds = raffle.people || raffle.validity || raffle.days || raffle.hours || endDateStr;
     if (hasConds) {
       let boxHeight = 24;
       if (raffle.people) boxHeight += 16;
       if (raffle.validity) boxHeight += 16;
+      if (endDateStr) boxHeight += 16;
       if (raffle.days) boxHeight += 16;
       if (raffle.hours) boxHeight += 16;
 
@@ -471,6 +476,11 @@ function buildPremioPdf(doc, raffle, opts) {
       }
       if (raffle.validity) {
         doc.font('Helvetica-Bold').text('Validez: ', 75, condY).font('Helvetica').text(raffle.validity, 160, condY);
+        condY += 16;
+      }
+      if (endDateStr) {
+        doc.font('Helvetica-Bold').text('Fecha límite: ', 75, condY).font('Helvetica').fillColor(WINE).text(endDateStr, 160, condY);
+        doc.fillColor(DARK);
         condY += 16;
       }
       if (raffle.days) {
@@ -508,7 +518,16 @@ function buildPremioPdf(doc, raffle, opts) {
     const fecha = raffle.created_at ? raffle.created_at.slice(0, 10) : '';
     doc.fillColor(MUTED).fontSize(9).font('Helvetica')
        .text(preview ? 'Furancho Sessions 2026' : `Sorteo del ${fecha}  ·  Furancho Sessions 2026`, 0, y, { align: 'center', width: W });
-    y += 20;
+    y += 16;
+
+    // ── Ganador (wallet enmascarada, solo bono real) ─────────────────────────────
+    if (!preview && raffle.winner_wallet) {
+      const wm = raffle.winner_wallet.slice(0, 6) + '…' + raffle.winner_wallet.slice(-4);
+      doc.fillColor(MUTED).fontSize(8).font('Helvetica')
+         .text('Ganador: ' + wm, 0, y, { align: 'center', width: W });
+      y += 14;
+    }
+    y += 4;
 
     // ── Estado ───────────────────────────────────────────────────────────────────
     const estadoTxt = preview ? 'VISTA PREVIA — no válido como bono'
@@ -516,12 +535,25 @@ function buildPremioPdf(doc, raffle, opts) {
     const estadoColor = preview ? GOLD : (raffle.status === 'collected' ? '#22c55e' : WINE);
     doc.fillColor(estadoColor).fontSize(10).font('Helvetica-Bold')
        .text(estadoTxt, 0, y, { align: 'center', width: W });
+    y += 24;
 
-    // ── Aviso: el canje se hace en la app, no con este papel ─────────────────────
-    if (!preview) {
-      doc.fillColor(MUTED).fontSize(7.5).font('Helvetica-Oblique')
-         .text('El canje se realiza en la app del cliente, pulsando "Entregar premio".\nEste documento por sí solo no cierra el premio.',
-               40, H - 76, { align: 'center', width: W - 80, lineGap: 2 });
+    // ── Instrucciones para el LOCAL (este PDF lo envía el admin al local) ─────────
+    {
+      const instrBody =
+        '1. El cliente te enseña este premio en su app (Furancho Sessions › Mis premios).\n' +
+        '2. Verás el botón verde "Entregar premio" y el sello "BONO EN VIVO" con la hora en marcha (así compruebas que es la app real y no una captura de pantalla).\n' +
+        '3. Pulsa tú ese botón al entregar el premio: el bono queda cerrado y no se puede volver a usar.\n' +
+        'Importante: no aceptes capturas de pantalla ni este PDF como canje. El premio SOLO se cierra desde la app del cliente.';
+      doc.fontSize(8).font('Helvetica');
+      const bodyH = doc.heightOfString(instrBody, { width: W - 150, lineGap: 3 });
+      const boxH = 26 + bodyH + 12;
+      doc.fillColor('#FBF6EC').roundedRect(60, y, W - 120, boxH, 10).fill();
+      doc.roundedRect(60, y, W - 120, boxH, 10).stroke(WINE).lineWidth(1);
+      doc.fillColor(WINE).fontSize(9).font('Helvetica-Bold')
+         .text('CÓMO CANJEAR EN EL LOCAL', 75, y + 10, { characterSpacing: 1 });
+      doc.fillColor(DARK).fontSize(8).font('Helvetica')
+         .text(instrBody, 75, y + 26, { width: W - 150, lineGap: 3 });
+      y += boxH + 6;
     }
 
     // ── Footer ───────────────────────────────────────────────────────────────────
