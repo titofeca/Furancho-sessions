@@ -74,11 +74,12 @@ router.post('/entry', mintLimiter, async (req, res) => {
   try {
     const { getVisitCount, openSession, getActiveEventWindow } = require('../db/database');
 
-    // Anti-picaresca: si el QR lleva fecha de evento (ev=YYYY-MM-DD), verificar que
-    // coincide con el evento activo de hoy. Si no coincide → fichaje abre sesión pero
-    // NO cuenta como visita (el QR es de otro día).
+    // Anti-picaresca: el QR DEBE llevar la fecha del evento (ev=YYYY-MM-DD) y
+    // coincidir con el evento activo. Sin fecha o fecha incorrecta → no cuenta.
     let evMismatch = false;
-    if (ev && /^\d{4}-\d{2}-\d{2}$/.test(ev)) {
+    if (!ev || !/^\d{4}-\d{2}-\d{2}$/.test(ev)) {
+      evMismatch = true;
+    } else {
       const win = getActiveEventWindow();
       if (!win || win.eventDayStr !== ev) {
         evMismatch = true;

@@ -1566,12 +1566,12 @@
         <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--gold); margin-bottom:4px;">⬇ Descargar PDFs para imprimir</p>
         <p style="font-size:12px; color:var(--text-muted); margin-bottom:18px;">Diseño corporativo con logo, colores Furancho y texto en galego. Listos para imprimir y colgar.</p>
         <div style="display:flex; flex-direction:column; gap:10px;">
-          <a href="/api/pdf/entrada" target="_blank"
+          <a id="entry-pdf-link" href="/api/pdf/entrada" target="_blank"
             style="display:flex; align-items:center; gap:12px; padding:14px 16px; background:#fff; border:1.5px solid rgba(46,204,113,0.3); border-radius:14px; text-decoration:none;">
             <span style="font-size:24px; flex-shrink:0;">🟢</span>
             <div style="flex:1;">
               <p style="font-size:13px; font-weight:700; color:#1C0E06; margin:0 0 2px 0;">QR Entrada — "¡Cheguei!"</p>
-              <p style="font-size:11px; color:#7A6A5A; margin:0;">PDF corporativo · escanear al llegar</p>
+              <p id="entry-pdf-subtitle" style="font-size:11px; color:#7A6A5A; margin:0;">PDF corporativo · selecciona sesión abajo</p>
             </div>
             <span style="font-size:12px; font-weight:700; color:#2ecc71; flex-shrink:0;">PDF ↓</span>
           </a>
@@ -2747,13 +2747,11 @@
       const dates = (Array.isArray(events) ? events : [])
         .map(e => ({ date: e.event_date, title: e.title || '' }))
         .sort((a, b) => b.date.localeCompare(a.date));
-      sel.innerHTML = '<option value="">(Sin fecha — QR genérico)</option>' +
-        dates.map(d => {
+      sel.innerHTML = dates.map(d => {
           const fmt = new Date(d.date + 'T12:00:00').toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric' });
           const label = d.title ? `${fmt} — ${d.title}` : fmt;
           return `<option value="${d.date}">${label}</option>`;
         }).join('');
-      // Preseleccionar el evento más cercano al hoy (futuro o hoy)
       const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
       const todayOrNext = dates.find(d => d.date >= today) || dates[0];
       if (todayOrNext) sel.value = todayOrNext.date;
@@ -2765,13 +2763,16 @@
     const img = document.getElementById('entry-qr-preview');
     const link = document.getElementById('entry-qr-download-link');
     const label = document.getElementById('entry-qr-date-label');
+    const pdfLink = document.getElementById('entry-pdf-link');
+    const pdfSub = document.getElementById('entry-pdf-subtitle');
     const date = sel ? sel.value : '';
-    const qs = date ? `?date=${date}` : '';
-    if (img) img.src = `/api/qr/entry${qs}`;
-    if (link) link.href = `/api/qr/entry/download${qs}`;
-    if (label) label.textContent = date
-      ? `Sesión del ${new Date(date + 'T12:00:00').toLocaleDateString('es-ES', { day:'2-digit', month:'long', year:'numeric' })}`
-      : 'Sin fecha (genérico)';
+    if (!date) return;
+    if (img) img.src = `/api/qr/entry?date=${date}`;
+    if (link) link.href = `/api/qr/entry/download?date=${date}`;
+    const fmtDate = new Date(date + 'T12:00:00').toLocaleDateString('es-ES', { day:'2-digit', month:'long', year:'numeric' });
+    if (label) label.textContent = `Sesión del ${fmtDate}`;
+    if (pdfLink) pdfLink.href = `/api/pdf/entrada?date=${date}`;
+    if (pdfSub) pdfSub.textContent = `PDF corporativo · sesión del ${fmtDate}`;
   }
 
   // ==================== VISITAS ====================
