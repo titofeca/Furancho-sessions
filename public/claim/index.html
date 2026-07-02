@@ -3958,6 +3958,48 @@
       }
     }
 
+    // Reloj en vivo del bono: los segundos corriendo demuestran que es la app real
+    // y no un pantallazo antiguo. El staff lo mira antes de entregar el premio.
+    let _furanchoClockTimer = null;
+    function ensureLiveClock() {
+      if (!document.getElementById('furancho-clock-style')) {
+        const st = document.createElement('style');
+        st.id = 'furancho-clock-style';
+        st.textContent = '@keyframes furanchoPulse{0%{box-shadow:0 0 0 0 rgba(22,163,74,0.5)}70%{box-shadow:0 0 0 6px rgba(22,163,74,0)}100%{box-shadow:0 0 0 0 rgba(22,163,74,0)}}';
+        document.head.appendChild(st);
+      }
+      if (_furanchoClockTimer) return;
+      const tick = () => {
+        const els = document.querySelectorAll('.furancho-live-clock');
+        if (!els.length) return;
+        const t = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        els.forEach(el => { el.textContent = t; });
+      };
+      tick();
+      _furanchoClockTimer = setInterval(tick, 1000);
+    }
+
+    // Canje del premio en el local: lo pulsa el STAFF en el móvil del cliente.
+    // Cierra el bono de forma irreversible para que no se pueda usar dos veces.
+    async function redeemPrize(id) {
+      const ok = confirm('✅ ENTREGAR PREMIO\n\nEsto CIERRA el bono y NO se puede deshacer.\nDebe pulsarlo el STAFF del local al entregar el premio.\n\n¿Confirmar entrega?');
+      if (!ok) return;
+      try {
+        const res = await fetch(`/api/raffle/${id}/redeem`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ wallet: userWalletAddress })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.alreadyCollected ? 'Este premio ya estaba canjeado' : '✅ Premio entregado · bono cerrado');
+          renderPrizes();
+        } else {
+          showToast(data.error || 'No se pudo canjear');
+        }
+      } catch (e) { showToast('Error de conexión'); }
+    }
+
     async function renderPrizes() {
       const stateEl  = document.getElementById('prizes-state-content');
       const list     = document.getElementById('prizes-list');
@@ -4158,6 +4200,12 @@
         const dateStr = dateObj.toLocaleDateString('es-ES', {day:'numeric', month:'short', year:'numeric'});
         const isWeekly = r.is_weekly === 1;
         const isCollected = r.status === 'collected';
+        // Canjeable = premio ganado y aceptado, aún sin canjear (no la Chave, que
+        // tiene su propio flujo). El staff del local lo cierra desde el bono.
+        const isRedeemable = r.status === 'accepted' && !isWeekly;
+        const collectedStr = r.collected_at
+          ? new Date(r.collected_at.replace(' ', 'T') + 'Z').toLocaleString('es-ES', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })
+          : '';
         const bg = isCollected
           ? 'linear-gradient(135deg, rgba(22,163,74,0.12) 0%, rgba(22,163,74,0.06) 100%)'
           : 'linear-gradient(135deg, rgba(196,151,58,0.15) 0%, rgba(196,151,58,0.07) 100%)';
@@ -4220,7 +4268,26 @@
                     </div>
                   `;
                 })()}
-                ${r.verification_code ? `<div style="font-family:monospace; font-size:18px; font-weight:800; letter-spacing:4px; color:var(--wine); margin-top:5px; background:rgba(139,25,24,0.06); border-radius:8px; padding:4px 8px; display:inline-block;">${r.verification_code}</div>` : ''}
+                ${!isCollected && r.verification_code ? `<div style="font-family:monospace; font-size:18px; font-weight:800; letter-spacing:4px; color:var(--wine); margin-top:5px; background:rgba(139,25,24,0.06); border-radius:8px; padding:4px 8px; display:inline-block;">${r.verification_code}</div>` : ''}
+                ${isCollected ? `
+                  <div style="margin-top:8px; display:flex; align-items:center; gap:8px; background:rgba(22,163,74,0.1); border:1.5px solid rgba(22,163,74,0.4); border-radius:10px; padding:8px 12px;">
+                    <span style="font-size:20px;">✅</span>
+                    <div style="text-align:left;">
+                      <p style="font-size:12px; font-weight:800; color:#16a34a; margin:0; letter-spacing:0.5px;">YA CANJEADO</p>
+                      ${collectedStr ? `<p style="font-size:10px; color:var(--text-muted); margin:1px 0 0;">Entregado el ${collectedStr}</p>` : ''}
+                    </div>
+                  </div>` : ''}
+                ${isRedeemable ? `
+                  <div style="margin-top:8px;">
+                    <div style="display:flex; align-items:center; gap:5px; font-size:10px; color:#16a34a; font-weight:700; margin-bottom:6px;">
+                      <span style="width:7px; height:7px; border-radius:50%; background:#16a34a; animation:furanchoPulse 1.6s infinite;"></span>
+                      BONO EN VIVO · <span class="furancho-live-clock" style="font-variant-numeric:tabular-nums;">--:--:--</span>
+                    </div>
+                    <button onclick="redeemPrize(${r.id})" style="width:100%; box-sizing:border-box; padding:11px; background:linear-gradient(135deg,#16a34a,#15803d); color:#fff; border:none; border-radius:10px; font-family:'Outfit',sans-serif; font-size:13px; font-weight:800; cursor:pointer; box-shadow:0 3px 10px rgba(22,163,74,0.3);">
+                      ✅ Entregar premio (staff del local)
+                    </button>
+                    <p style="font-size:9.5px; color:var(--text-muted); margin:5px 0 0; line-height:1.35; text-align:center;">Lo pulsa el camarero al entregarlo. Cierra el bono para que no se pueda usar dos veces.</p>
+                  </div>` : ''}
                 ${bonoBtn}
               </div>
               <span style="font-size:10px; color:var(--text-muted); flex-shrink:0; text-align:right;">${dateStr}</span>
@@ -4271,6 +4338,7 @@
         }
       }
       list.innerHTML = prizesHtml;
+      ensureLiveClock();
 
       // Historial compacto en my-history-section (REEMPLAZADO por nuevo diseño de tarjetas)
       const histSection = document.getElementById('my-history-section');

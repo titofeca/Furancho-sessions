@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const {
   getEligibleRaffleParticipants, insertRaffle, acceptRaffle, rejectRaffle,
-  collectRaffle, getRaffleHistory, getMyWins, getRaffleParticipation, getRaffleById,
+  collectRaffle, redeemRaffleByWinner, getRaffleHistory, getMyWins, getRaffleParticipation, getRaffleById,
   getPrizePresets, addPrizePreset, deletePrizePreset, getRaffleCountTonight,
   getScheduledRaffles, createScheduledRaffle, updateScheduledRaffle,
   deleteScheduledRaffle, linkScheduledRaffle, insertMint,
@@ -558,6 +558,26 @@ router.patch('/:id/collect', requireAuth, (req, res) => {
     }
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/raffle/:id/redeem — CANJE en el local. Lo pulsa el staff en el móvil
+// del ganador. No requiere admin: verifica que la wallet sea la del ganador.
+// Idempotente: si ya estaba canjeado devuelve el estado sin re-marcar (evita doble canje).
+router.post('/:id/redeem', (req, res) => {
+  const { wallet } = req.body;
+  if (!wallet) return res.status(400).json({ error: 'Falta la wallet' });
+  try {
+    const result = redeemRaffleByWinner(parseInt(req.params.id), wallet);
+    // Avisar por SSE al propio cliente para que la tarjeta se actualice al instante
+    const clientSSE = clients.find(c => c.walletAddress && c.walletAddress.toLowerCase() === wallet.toLowerCase());
+    if (clientSSE) {
+      try {
+        clientSSE.res.write(`event: prize_collected\ndata: ${JSON.stringify({ raffleId: req.params.id })}\n\n`);
+        if (typeof clientSSE.res.flush === 'function') clientSSE.res.flush();
+      } catch (_) {}
+    }
+    res.json({ success: true, ...result });
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 // GET /api/raffle/history — historial completo (admin)

@@ -1610,6 +1610,30 @@ function collectRaffle(raffleId, adminNote) {
   `).run(adminNote || null, raffleId);
 }
 
+// Canje del premio por el propio ganador (lo pulsa el staff del local en el móvil
+// del cliente). Es idempotente y a prueba de doble canje: si ya está canjeado,
+// devuelve el estado sin volver a marcarlo. Solo el ganador (misma wallet) puede
+// cerrarlo, y solo si el premio fue aceptado antes.
+function redeemRaffleByWinner(raffleId, walletAddress) {
+  const raffle = db.prepare(`SELECT id, winner_wallet, status, prize, collected_at FROM raffles WHERE id = ?`).get(raffleId);
+  if (!raffle) throw new Error('Premio no encontrado');
+  if (!raffle.winner_wallet || !walletAddress || raffle.winner_wallet.toLowerCase() !== walletAddress.toLowerCase()) {
+    throw new Error('No eres el ganador de este premio');
+  }
+  if (raffle.status === 'collected') {
+    return { alreadyCollected: true, collected_at: raffle.collected_at, prize: raffle.prize };
+  }
+  if (raffle.status !== 'accepted') {
+    throw new Error('Este premio no está listo para canjear');
+  }
+  db.prepare(`
+    UPDATE raffles SET collected = 1, status = 'collected', collected_at = datetime('now'), collected_by = 'Canjeado en local (staff)'
+    WHERE id = ? AND status = 'accepted'
+  `).run(raffleId);
+  const updated = db.prepare(`SELECT collected_at, prize FROM raffles WHERE id = ?`).get(raffleId);
+  return { alreadyCollected: false, collected_at: updated.collected_at, prize: updated.prize };
+}
+
 function getRaffleHistory() {
   return db.prepare(`
     SELECT id, prize,
@@ -1900,6 +1924,7 @@ module.exports = {
 
   insertRaffle,
   collectRaffle,
+  redeemRaffleByWinner,
   getRaffleHistory,
   getMyWins,
   getSessionAnalytics,
