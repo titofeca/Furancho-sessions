@@ -6630,10 +6630,13 @@
 
     const isExit = decodedText.includes('action=exit');
     const url = isExit ? '/api/mint/exit' : '/api/mint/entry';
+    // Anti-picaresca: extraer la fecha del evento del QR (ev=YYYY-MM-DD) y enviarla
+    const evMatch = decodedText.match(/[?&]ev=(\d{4}-\d{2}-\d{2})/);
+    const ev = evMatch ? evMatch[1] : undefined;
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ walletAddress: userWalletAddress })
+      body: JSON.stringify({ walletAddress: userWalletAddress, ev })
     });
     const data = await res.json();
 

@@ -917,7 +917,7 @@ function rejectMint(id) {
 }
 
 
-function openSession(walletAddress) {
+function openSession(walletAddress, evMismatch) {
   if (!walletAddress) return { opened: false, counted: false };
   const now = new Date();
   const madridTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
@@ -929,7 +929,6 @@ function openSession(walletAddress) {
   const existing = db.prepare(`SELECT id, entry_time, counted_as_visit FROM sessions WHERE LOWER(wallet_address) = LOWER(?) AND exit_time IS NULL ORDER BY entry_time DESC LIMIT 1`).get(walletAddress);
 
   if (existing) {
-    // Convertir la fecha de inicio de la sesión existente a fecha local Madrid
     const entryMadrid = new Date(new Date(existing.entry_time.replace(' ', 'T') + 'Z').toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
     const ey = entryMadrid.getFullYear();
     const em = String(entryMadrid.getMonth() + 1).padStart(2, '0');
@@ -937,24 +936,20 @@ function openSession(walletAddress) {
     const entryMadridDate = `${ey}-${em}-${ed}`;
 
     if (entryMadridDate !== todayMadrid) {
-      // Si la sesión es de otro día, la cerramos automáticamente estableciendo exit_time a ahora
       db.prepare(`UPDATE sessions SET exit_time = datetime('now'), duration_minutes = 60 WHERE id = ?`).run(existing.id);
       console.log(`[Session] Cerrada sesión huérfana de fecha anterior (${entryMadridDate}) para la wallet ${walletAddress}`);
     } else {
-      // Ya tiene sesión activa abierta hoy
       return { opened: false, counted: !!existing.counted_as_visit, alreadyOpen: true };
     }
   }
 
-  // La visita SOLO cuenta si hay evento en la agenda y la entrada cae dentro de su
-  // ventana horaria (con margen antes de la apertura para los que llegan pronto).
   const win = getActiveEventWindow();
   const inEventWindow = !!win && win.nowMs >= (win.startMs - EVENT_EARLY_MARGIN_MS) && win.nowMs <= win.endMs;
-
-  // Evitar exploit de acumulación: máximo una visita contada por semana natural
   const alreadyVisitedThisWeek = checkRecentVisit(walletAddress, 168);
 
-  const countedAsVisit = (inEventWindow && !alreadyVisitedThisWeek) ? 1 : 0;
+  // Anti-picaresca: si el QR lleva fecha y no coincide con el evento activo, no cuenta
+  const countedAsVisit = (inEventWindow && !alreadyVisitedThisWeek && !evMismatch) ? 1 : 0;
+  if (evMismatch) console.log(`[Session] QR de otro evento usado por ${walletAddress.slice(0,8)}… — fichaje sin visita`);
 
   db.prepare(`INSERT INTO sessions (wallet_address, counted_as_visit) VALUES (?, ?)`).run(walletAddress, countedAsVisit);
 

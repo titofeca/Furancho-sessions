@@ -66,17 +66,28 @@ function awardLevelByVisits({ walletAddress, email = null, visitCount, ipAddress
 
 // POST /api/mint/entry — abre sesión y cuenta la visita en el momento de entrada
 router.post('/entry', mintLimiter, async (req, res) => {
-  const { walletAddress } = req.body;
+  const { walletAddress, ev } = req.body;
   if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
     return res.status(400).json({ error: 'Dirección de wallet no válida' });
   }
 
   try {
-    const { getVisitCount, openSession } = require('../db/database');
+    const { getVisitCount, openSession, getActiveEventWindow } = require('../db/database');
+
+    // Anti-picaresca: si el QR lleva fecha de evento (ev=YYYY-MM-DD), verificar que
+    // coincide con el evento activo de hoy. Si no coincide → fichaje abre sesión pero
+    // NO cuenta como visita (el QR es de otro día).
+    let evMismatch = false;
+    if (ev && /^\d{4}-\d{2}-\d{2}$/.test(ev)) {
+      const win = getActiveEventWindow();
+      if (!win || win.eventDayStr !== ev) {
+        evMismatch = true;
+      }
+    }
 
     // Abrir sesión — openSession decide si cuenta como visita:
     // solo si hay evento en la agenda ahora Y no hay otra visita contada esta semana
-    const result = openSession(walletAddress);
+    const result = openSession(walletAddress, evMismatch);
 
     // Visit count post-entrada (ya incluye la visita de hoy si contó)
     const visitCount = getVisitCount(walletAddress);
@@ -149,7 +160,7 @@ router.post('/exit', mintLimiter, (req, res) => {
 // (openSession decide si cuenta como visita) y otorga el nivel por nº de visitas si contó.
 function performCheckin(walletAddress, ipAddress) {
   const { getVisitCount, openSession } = require('../db/database');
-  const result = openSession(walletAddress);
+  const result = openSession(walletAddress, false);
   const visitCount = getVisitCount(walletAddress);
   let levelUp = null;
   if (result.counted) {

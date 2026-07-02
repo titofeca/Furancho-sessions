@@ -1605,19 +1605,28 @@
         </div>
       </div>
 
-      <!-- QRs operativos (PNG rápido) -->
-      <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:12px;">Vista rápida QR (PNG)</p>
-      <div class="qr-grid" style="margin-bottom:32px;">
-        <div class="qr-card" style="border-color: rgba(46, 204, 113, 0.3);">
-          <img src="/api/qr/entry" alt="QR Entrada" class="qr-img" />
-          <div class="qr-level-name" style="color: #2ecc71;">🟢 ENTRADA</div>
-          <div class="qr-level-label">Fichar al llegar — abre sesión y entrega NFT a nuevos</div>
-          <a href="/api/qr/entry/download" class="btn-download" download style="background: rgba(46,204,113,0.1); border-color: rgba(46,204,113,0.25); color: #2ecc71;">⬇ PNG</a>
+      <!-- QR de entrada POR SESIÓN (anti-picaresca) -->
+      <div style="background:linear-gradient(135deg,rgba(46,204,113,0.06),rgba(196,151,58,0.04)); border:1.5px solid rgba(46,204,113,0.25); border-radius:20px; padding:20px; margin-bottom:28px;">
+        <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:#2ecc71; margin-bottom:4px;">🟢 QR Entrada por sesión</p>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px; line-height:1.5;">Cada sesión tiene su propio QR de "¡Cheguei!". Si alguien usa un QR de otro día, no le cuenta la visita.</p>
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:14px;">
+          <select id="entry-qr-date-select" onchange="updateEntryQrPreview()" style="flex:1; min-width:150px; padding:10px 14px; border:1.5px solid rgba(46,204,113,0.3); border-radius:12px; font-size:13px; font-weight:600; font-family:'Outfit',sans-serif; background:#fff; color:var(--text);">
+            <option value="">Cargando sesiones…</option>
+          </select>
+          <a id="entry-qr-download-link" href="/api/qr/entry/download" download style="padding:10px 18px; background:rgba(46,204,113,0.12); border:1.5px solid rgba(46,204,113,0.3); border-radius:12px; font-size:12px; font-weight:700; color:#2ecc71; text-decoration:none; white-space:nowrap;">⬇ Descargar PNG</a>
         </div>
+        <div style="text-align:center;">
+          <img id="entry-qr-preview" src="/api/qr/entry" alt="QR Entrada" style="width:160px; height:160px; border-radius:12px; border:1.5px solid rgba(46,204,113,0.2); background:#fff;" />
+          <p id="entry-qr-date-label" style="font-size:11px; color:var(--text-muted); margin-top:6px;">Sin fecha (genérico)</p>
+        </div>
+      </div>
+
+      <!-- QR de salida (fijo, no cambia por evento) -->
+      <div class="qr-grid" style="margin-bottom:32px;">
         <div class="qr-card" style="border-color: rgba(139, 25, 24, 0.35);">
           <img src="/api/qr/checkin" alt="QR Salida" class="qr-img" />
           <div class="qr-level-name" style="color: var(--wine-light);">🔴 SALIDA</div>
-          <div class="qr-level-label">Fichar al salir — acumula visita y sube nivel</div>
+          <div class="qr-level-label">Fichar al salir — no cambia por evento</div>
           <a href="/api/qr/checkin/download" class="btn-download" download style="background: rgba(139,25,24,0.1); border-color: rgba(139,25,24,0.3); color: var(--wine-light);">⬇ PNG</a>
         </div>
       </div>
@@ -2704,7 +2713,7 @@
     if (pageId === 'raffles') { loadAchievementFilterOptions(); loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); loadScheduled(); loadWeeklyRaffleAdmin(); loadPartnersAdmin(); populateSchedEstablishmentSelect(); }
     if (pageId === 'scanner') { stopScanner(); document.getElementById('scanner-result').style.display='none'; document.getElementById('scanner-status').textContent=''; }
     if (pageId === 'nfts') loadNftsPage();
-    if (pageId === 'qrcodes') loadStaffCode();
+    if (pageId === 'qrcodes') { loadStaffCode(); loadEntryQrDates(); }
   }
 
   // ===== Acceso camareros: código + enlace para compartir =====
@@ -2727,6 +2736,42 @@
     _staffCodeShown = !_staffCodeShown;
     if (_staffCodeShown) { if (el) el.textContent = _staffCodeVal || '—'; if (btn) btn.textContent = '🙈 Ocultar'; }
     else { if (el) el.textContent = '••••'; if (btn) btn.textContent = '👁 Ver'; }
+  }
+
+  // ===== QR de entrada por sesión (anti-picaresca) =====
+  async function loadEntryQrDates() {
+    const sel = document.getElementById('entry-qr-date-select');
+    if (!sel) return;
+    try {
+      const events = await fetch('/api/events', { headers: authHeaders() }).then(r => r.json());
+      const dates = (Array.isArray(events) ? events : [])
+        .map(e => ({ date: e.event_date, title: e.title || '' }))
+        .sort((a, b) => b.date.localeCompare(a.date));
+      sel.innerHTML = '<option value="">(Sin fecha — QR genérico)</option>' +
+        dates.map(d => {
+          const fmt = new Date(d.date + 'T12:00:00').toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric' });
+          const label = d.title ? `${fmt} — ${d.title}` : fmt;
+          return `<option value="${d.date}">${label}</option>`;
+        }).join('');
+      // Preseleccionar el evento más cercano al hoy (futuro o hoy)
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+      const todayOrNext = dates.find(d => d.date >= today) || dates[0];
+      if (todayOrNext) sel.value = todayOrNext.date;
+      updateEntryQrPreview();
+    } catch (e) { sel.innerHTML = '<option value="">Error cargando sesiones</option>'; }
+  }
+  function updateEntryQrPreview() {
+    const sel = document.getElementById('entry-qr-date-select');
+    const img = document.getElementById('entry-qr-preview');
+    const link = document.getElementById('entry-qr-download-link');
+    const label = document.getElementById('entry-qr-date-label');
+    const date = sel ? sel.value : '';
+    const qs = date ? `?date=${date}` : '';
+    if (img) img.src = `/api/qr/entry${qs}`;
+    if (link) link.href = `/api/qr/entry/download${qs}`;
+    if (label) label.textContent = date
+      ? `Sesión del ${new Date(date + 'T12:00:00').toLocaleDateString('es-ES', { day:'2-digit', month:'long', year:'numeric' })}`
+      : 'Sin fecha (genérico)';
   }
 
   // ==================== VISITAS ====================

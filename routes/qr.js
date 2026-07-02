@@ -34,16 +34,21 @@ const QR_OPTIONS_BY_LEVEL = {
 };
 
 
-// GET /api/qr/entry — genera QR de entrada (Fichaje Inicial)
+// GET /api/qr/entry?date=YYYY-MM-DD — QR de entrada con fecha de evento (anti-picaresca).
+// Sin ?date: genera para el evento activo de hoy (o sin fecha, compatibilidad).
 router.get('/entry', async (req, res) => {
   const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-  const claimUrl = `${protocol}://${req.get('host')}/entry`;
-  const options = { ...QR_OPTIONS, color: { dark: '#116530', light: '#FFFFFF' } }; // Verde
+  const host = req.get('host');
+  const date = req.query.date && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date) ? req.query.date : null;
+  const claimUrl = date
+    ? `${protocol}://${host}/entry?ev=${date}`
+    : `${protocol}://${host}/entry`;
+  const options = { ...QR_OPTIONS, color: { dark: '#116530', light: '#FFFFFF' } };
 
   try {
     const qrBuffer = await QRCode.toBuffer(claimUrl, options);
     res.set('Content-Type', 'image/png');
-    res.set('Content-Disposition', `inline; filename="qr-furancho-entry.png"`);
+    res.set('Content-Disposition', `inline; filename="qr-furancho-entry${date ? '-' + date : ''}.png"`);
     res.send(qrBuffer);
   } catch (e) {
     res.status(500).send('Error generando QR: ' + e.message);
@@ -65,21 +70,21 @@ router.get('/staff', async (req, res) => {
   }
 });
 
-// GET /api/qr/entry/download
+// GET /api/qr/entry/download?date=YYYY-MM-DD — descarga QR de entrada con fecha
 router.get('/entry/download', async (req, res) => {
   const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-  const claimUrl = `${protocol}://${req.get('host')}/entry`;
+  const host = req.get('host');
+  const date = req.query.date && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date) ? req.query.date : null;
+  const claimUrl = date
+    ? `${protocol}://${host}/entry?ev=${date}`
+    : `${protocol}://${host}/entry`;
   const options = { ...QR_OPTIONS, width: 1200, color: { dark: '#116530', light: '#FAFAFA' } };
 
   try {
     const qrBuffer = await QRCode.toBuffer(claimUrl, options);
-    const outputDir = path.join(__dirname, '..', 'qr-output');
-    if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
-    
-    const filePath = path.join(outputDir, 'qr-furancho-entry.png');
-    fs.writeFileSync(filePath, qrBuffer);
-
-    res.download(filePath, 'QR_Entrada_Furancho.png');
+    res.set('Content-Type', 'image/png');
+    res.set('Content-Disposition', `attachment; filename="QR_Entrada_Furancho${date ? '_' + date : ''}.png"`);
+    res.send(qrBuffer);
   } catch (e) {
     res.status(500).send('Error generando QR: ' + e.message);
   }

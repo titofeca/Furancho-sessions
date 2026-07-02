@@ -149,10 +149,11 @@ async function doEntry(walletAddress) {
   document.getElementById('screen-loading').style.display = 'flex';
 
   try {
+    const evParam = new URLSearchParams(window.location.search).get('ev') || undefined;
     const res = await fetch('/api/mint/entry', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ walletAddress })
+      body: JSON.stringify({ walletAddress, ev: evParam })
     });
     const data = await res.json();
 

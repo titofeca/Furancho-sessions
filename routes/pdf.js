@@ -177,17 +177,24 @@ async function buildQrPdf(res, { filename, qrUrl, qrColor, headline, subheadline
   doc.end();
 }
 
-// ─── GET /api/pdf/entrada — QR de fichar entrada ─────────────────────────────
+// ─── GET /api/pdf/entrada?date=YYYY-MM-DD — QR de fichar entrada ─────────────
+// Con ?date genera un QR vinculado a esa sesión (anti-picaresca); sin ella, genérico.
 router.get('/entrada', async (req, res) => {
   const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-  const url = `${protocol}://${req.get('host')}/entry`;
+  const date = req.query.date && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date) ? req.query.date : null;
+  const url = date
+    ? `${protocol}://${req.get('host')}/entry?ev=${date}`
+    : `${protocol}://${req.get('host')}/entry`;
+  const dateLabel = date
+    ? new Date(date + 'T12:00:00').toLocaleDateString('es-ES', { day:'numeric', month:'long' })
+    : null;
   try {
     await buildQrPdf(res, {
-      filename: 'Furancho_QR_Entrada.pdf',
+      filename: date ? `Furancho_QR_Entrada_${date}.pdf` : 'Furancho_QR_Entrada.pdf',
       qrUrl: url,
       qrColor: '#116530',
       headline: '¡Ya estoy aquí, ho!',
-      subheadline: 'Escanea al entrar al Furancho',
+      subheadline: dateLabel ? `Sesión del ${dateLabel}` : 'Escanea al entrar al Furancho',
       tagline: 'FICHA TU ENTRADA · FICHAJE OBLIGATORIO, RAPAZ',
       footerNote: 'Escanea este QR nada más llegar, ho. Sin fichar no hay sorteo ni estadísticas de asistencia.\n¡Que no te pille el guardia despistado!'
     });
