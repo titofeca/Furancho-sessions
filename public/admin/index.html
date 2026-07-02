@@ -1075,6 +1075,42 @@
         </div>
       </div>
 
+      <!-- Crear logro NFT desde la app -->
+      <div class="glass-card" style="margin-bottom:20px;">
+        <div class="card-header" style="margin-bottom:12px;">
+          <span class="card-title">✨ Crear logro NFT</span>
+          <button class="btn-download" onclick="loadAchievementManager()" style="font-size:11px; padding:6px 12px;">↻</button>
+        </div>
+        <p style="font-size:11px; color:var(--text-muted); margin:0 0 12px; line-height:1.5;">Ediciones especiales (San Xoán, María Pita…). Se desbloquean asistiendo el día que indiques; el cliente las mintea desde su museo. Crearlas NO gasta gas.</p>
+
+        <input type="text" class="input-field" id="ach-name" placeholder="Nombre (ej: Furancheiro de María Pita)" style="margin-bottom:8px; font-size:14px;" />
+        <textarea class="input-field" id="ach-description" placeholder="Descripción (ej: Edición especial por asistir a la sesión de María Pita)" rows="2" style="font-size:13px; resize:vertical; font-family:'Outfit',sans-serif; margin-bottom:8px;"></textarea>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
+          <div>
+            <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">🏷️ Edición</label>
+            <input type="text" class="input-field" id="ach-edition" placeholder="Ej: María Pita 2026" style="margin:0; font-size:13px;" />
+          </div>
+          <div>
+            <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">📅 Fecha de desbloqueo</label>
+            <input type="date" class="input-field" id="ach-rule-date" style="margin:0; font-size:13px;" />
+          </div>
+        </div>
+        <p style="font-size:10px; color:var(--text-muted); margin:0 0 8px; line-height:1.4;">Quien haya fichado entrada ESE día podrá reclamar el logro desde su museo.</p>
+
+        <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:5px;">🖼️ Imagen del logro (el propio NFT)</label>
+        <label for="ach-image-input" style="display:block; background:var(--surface); border:1.5px dashed var(--border); border-radius:12px; padding:9px 16px; font-size:12px; color:var(--text-muted); cursor:pointer; text-align:center;">📁 Seleccionar imagen (JPG, PNG o webp)</label>
+        <input type="file" id="ach-image-input" accept="image/*" style="display:none;" onchange="uploadAchievementImage(this)" />
+        <input type="hidden" id="ach-image-url" />
+        <div id="ach-image-preview" style="display:none; margin-top:6px; text-align:center;"><img id="ach-image-thumb" style="max-height:80px; border-radius:10px; border:1px solid var(--border);" /></div>
+
+        <button onclick="createAchievement(this)" style="width:100%; margin-top:12px; padding:12px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:12px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer;">✨ Crear logro</button>
+
+        <div style="margin-top:18px; padding-top:14px; border-top:1px solid rgba(42,21,9,0.1);">
+          <span class="card-title" style="font-size:14px;">Logros existentes</span>
+          <div id="ach-manager-list" style="margin-top:8px;"><p style="font-size:12px; color:var(--text-muted);">Cargando…</p></div>
+        </div>
+      </div>
+
       <!-- Gráfica de entradas por hora (tiempo real) -->
       <div class="glass-card" style="margin-bottom:20px;" id="hourly-chart-card">
         <div class="card-header" style="margin-bottom:14px;">
@@ -2541,6 +2577,7 @@
         loadVipBadge();
         loadHourlyChart();
         loadAchievementStats();
+        loadAchievementManager();
         loadPresentByLevel();
         connectAdminSse();
       } else {
@@ -2657,7 +2694,7 @@
     }, 0);
     if (pageId === 'events') loadEventsPage();
     if (pageId === 'messages') { loadMsgRsvpEvents(); loadScheduledMessages(); loadAchievementFilterOptions(); }
-    if (pageId === 'dashboard') { loadStats(); loadHourlyChart(); loadAchievementStats(); loadPresentByLevel(); }
+    if (pageId === 'dashboard') { loadStats(); loadHourlyChart(); loadAchievementStats(); loadAchievementManager(); loadPresentByLevel(); }
     loadVipBadge();
     if (pageId === 'holders') {
       loadVisits('__totales__');
@@ -4210,6 +4247,96 @@
     document.getElementById('sched-image-thumb').src = '';
     document.getElementById('sched-image-preview').style.display = 'none';
     document.getElementById('sched-image-input').value = '';
+  }
+
+  // ── Crear/gestionar logros NFT desde el panel ──────────────────────────────
+  async function uploadAchievementImage(input) {
+    const file = input.files[0];
+    if (!file) return;
+    let blob;
+    try { blob = await imageFileToPng(file); }
+    catch (e) { showToast('No pude leer esa imagen. Prueba con otra (JPG, PNG o webp).', true); return; }
+    const form = new FormData();
+    form.append('image', blob, 'logro.png');
+    try {
+      const res = await fetch('/api/raffle/upload-image', { method: 'POST', headers: { 'x-admin-token': AUTH_TOKEN }, body: form });
+      const data = await res.json().catch(() => ({}));
+      if (data.url) {
+        document.getElementById('ach-image-url').value = data.url;
+        document.getElementById('ach-image-thumb').src = data.url;
+        document.getElementById('ach-image-preview').style.display = 'block';
+        showToast('✅ Imagen subida');
+      } else {
+        showToast(data.error || 'Error subiendo imagen', true);
+      }
+    } catch (e) { showToast('Error subiendo imagen', true); }
+  }
+
+  async function createAchievement(btn) {
+    const name = document.getElementById('ach-name').value.trim();
+    const description = document.getElementById('ach-description').value.trim();
+    const edition = document.getElementById('ach-edition').value.trim();
+    const ruleDate = document.getElementById('ach-rule-date').value;
+    const image = document.getElementById('ach-image-url').value;
+    if (!name) return showToast('Ponle nombre al logro', true);
+    if (!ruleDate) return showToast('Pon la fecha de desbloqueo', true);
+    if (!image) return showToast('Sube la imagen del logro', true);
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/achievements/admin/create', {
+        method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, description, edition, ruleDate, image })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('✨ Logro creado: ' + data.achievement.name);
+        ['ach-name', 'ach-description', 'ach-edition', 'ach-rule-date', 'ach-image-url'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        document.getElementById('ach-image-preview').style.display = 'none';
+        loadAchievementManager();
+        if (typeof loadAchievementStats === 'function') loadAchievementStats();
+        if (typeof loadAchievementFilterOptions === 'function') loadAchievementFilterOptions();
+      } else {
+        showToast(data.error || 'No se pudo crear', true);
+      }
+    } catch (e) { showToast('Error creando logro', true); }
+    finally { btn.disabled = false; }
+  }
+
+  async function deleteAchievement(id) {
+    if (!confirm('¿Borrar este logro?\n\nSolo se quita de la lista. Los NFT ya minteados en las wallets NO se tocan.')) return;
+    try {
+      const res = await fetch('/api/achievements/admin/' + encodeURIComponent(id), { method: 'DELETE', headers: authHeaders() });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Logro borrado');
+        loadAchievementManager();
+        if (typeof loadAchievementStats === 'function') loadAchievementStats();
+        if (typeof loadAchievementFilterOptions === 'function') loadAchievementFilterOptions();
+      } else {
+        showToast(data.error || 'No se pudo borrar', true);
+      }
+    } catch (e) { showToast('Error borrando', true); }
+  }
+
+  async function loadAchievementManager() {
+    const el = document.getElementById('ach-manager-list');
+    if (!el) return;
+    try {
+      const data = await fetch('/api/achievements/admin/list', { headers: authHeaders() }).then(r => r.json());
+      const list = data.achievements || [];
+      if (!list.length) { el.innerHTML = '<p style="font-size:12px; color:var(--text-muted);">Aún no hay logros.</p>'; return; }
+      el.innerHTML = list.map(a => `
+        <div style="display:flex; align-items:center; gap:10px; padding:8px; background:var(--surface); border:1px solid var(--border); border-radius:10px; margin-bottom:6px;">
+          <img src="${a.image}" style="width:38px; height:38px; object-fit:cover; border-radius:8px; flex-shrink:0; background:#fff;" onerror="this.style.visibility='hidden'"/>
+          <div style="flex:1; min-width:0;">
+            <p style="font-size:13px; font-weight:700; color:var(--text); margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.name} <span style="font-size:10px; color:var(--text-muted); font-weight:600;">· token ${a.tokenId}</span></p>
+            <p style="font-size:10px; color:var(--text-muted); margin:1px 0 0;">${a.ruleDate ? '📅 Desbloqueo: ' + a.ruleDate : 'Sin fecha'}${a.custom ? '' : ' · definido en el código'}</p>
+          </div>
+          ${a.custom
+            ? `<button onclick="deleteAchievement('${a.id}')" style="padding:5px 10px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:8px; font-size:11px; font-weight:700; color:#ef4444; cursor:pointer; font-family:'Outfit',sans-serif; flex-shrink:0;">Borrar</button>`
+            : `<span style="font-size:10px; color:var(--text-muted); font-style:italic; flex-shrink:0;">fijo</span>`}
+        </div>`).join('');
+    } catch (e) { el.innerHTML = '<p style="font-size:12px; color:#ef4444;">Error cargando logros.</p>'; }
   }
 
   // Rellena los desplegables de "logro requerido" (.ach-filter-select) desde el catálogo.

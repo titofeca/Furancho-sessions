@@ -7,6 +7,7 @@ const {
   claimAchievement, getAchievementMint, getWalletAchievementMints
 } = require('../db/database');
 const { notifyAchievementQueue } = require('../services/polygon');
+const { requireAuth } = require('./admin'); // gestión de logros: solo admin
 
 const ETH = /^0x[a-fA-F0-9]{40}$/;
 
@@ -34,7 +35,7 @@ router.get('/status', (req, res) => {
         id: a.id,
         name: a.name,
         description: a.description,
-        image: `/assets/${a.image}`,
+        image: a.image,   // ya viene normalizada desde el catálogo
         tokenId: a.tokenId,
         unlocked: achievements.walletUnlocked(wallet, a),
         claimStatus: m ? m.status : null,   // null = sin reclamar; 'pending'|'success'|'failed'
@@ -69,6 +70,44 @@ router.post('/claim', claimLimiter, (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// ─── GESTIÓN DESDE EL PANEL (admin) ──────────────────────────────────────────
+
+// GET /api/achievements/admin/list — catálogo completo con marca de cuáles se
+// pueden borrar (los creados desde el panel) y el próximo token libre.
+router.get('/admin/list', requireAuth, (req, res) => {
+  try {
+    res.json({
+      achievements: achievements.list().map(a => ({
+        id: a.id, name: a.name, description: a.description, image: a.image,
+        tokenId: a.tokenId, edition: a.edition || null,
+        ruleDate: a.rule ? a.rule.date : null, custom: !!a.custom
+      })),
+      nextTokenId: achievements.nextTokenId()
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/achievements/admin/create — crea un logro nuevo desde el panel.
+// Body: { name, description, image, edition, ruleDate, tokenId? }
+// No mintea nada: solo define el logro. El minteo ocurre cuando un cliente lo reclama.
+router.post('/admin/create', requireAuth, (req, res) => {
+  try {
+    const { name, description, image, edition, ruleDate, tokenId } = req.body;
+    const created = achievements.createCustom({ name, description, image, edition, ruleDate, tokenId });
+    res.json({ success: true, achievement: created });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// DELETE /api/achievements/admin/:id — borra un logro creado desde el panel
+// (nunca los del código). No afecta a NFTs ya minteados en wallets.
+router.delete('/admin/:id', requireAuth, (req, res) => {
+  try {
+    const ok = achievements.deleteCustom(req.params.id);
+    if (!ok) return res.status(404).json({ error: 'Logro no encontrado' });
+    res.json({ success: true });
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 module.exports = router;

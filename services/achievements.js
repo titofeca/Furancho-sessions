@@ -30,12 +30,68 @@ const ACHIEVEMENTS = [
   // { id:'torre',      name:'…', image:'furanchotorre.jpg',      tokenId:102, rule:{ type:'visit_on_date', date:'YYYY-MM-DD' } }
 ];
 
-const _byId = Object.fromEntries(ACHIEVEMENTS.map(a => [a.id, a]));
-const _byToken = Object.fromEntries(ACHIEVEMENTS.map(a => [a.tokenId, a]));
+// Normaliza la imagen a una ruta pública que empieza por "/". Los logros del código
+// guardan el nombre pelado (sirve desde /assets/); los creados desde el panel guardan
+// una ruta completa ("/prize-images/xxx.png"), que se usa tal cual.
+function _normImage(img) {
+  if (!img) return '';
+  return String(img).startsWith('/') ? String(img) : `/assets/${img}`;
+}
 
-function list() { return ACHIEVEMENTS; }
-function getById(id) { return _byId[id] || null; }
-function getByTokenId(tokenId) { return _byToken[tokenId] || null; }
+// Logros creados desde el panel (tabla custom_achievements). Se mapean a la MISMA
+// forma que los del código para que todo lo demás funcione igual.
+function _customList() {
+  try {
+    return db.prepare(`SELECT id, name, description, image, token_id AS tokenId, edition, rule_type, rule_date
+                       FROM custom_achievements ORDER BY token_id ASC`).all()
+      .map(r => ({
+        id: r.id, name: r.name, description: r.description, image: r.image,
+        tokenId: r.tokenId, edition: r.edition,
+        rule: { type: r.rule_type || 'visit_on_date', date: r.rule_date },
+        custom: true
+      }));
+  } catch (_) { return []; }
+}
+
+// Catálogo COMPLETO = logros del código + los creados desde el panel.
+function _all() { return [...ACHIEVEMENTS, ..._customList()]; }
+function _withImage(a) { return a ? { ...a, image: _normImage(a.image) } : null; }
+
+function list() { return _all().map(_withImage); }
+function getById(id) { return _withImage(_all().find(a => a.id === id)); }
+function getByTokenId(tokenId) { return _withImage(_all().find(a => Number(a.tokenId) === Number(tokenId))); }
+
+// Siguiente token libre para un logro nuevo (≥ 101; el 100 y demás ya usados se saltan).
+function nextTokenId() {
+  const used = _all().map(a => Number(a.tokenId)).filter(n => !isNaN(n));
+  return Math.max(100, ...used) + 1;
+}
+
+// Crea un logro desde el panel. Valida y devuelve el logro creado. NO mintea nada:
+// solo define el logro; el minteo on-chain ocurre cuando un cliente lo reclama.
+function createCustom({ id, name, description, image, edition, ruleDate, tokenId }) {
+  const slug = String(id || name || '').toLowerCase().trim()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  if (!slug) throw new Error('Falta el nombre del logro');
+  if (!name || !String(name).trim()) throw new Error('Falta el nombre del logro');
+  if (!ruleDate || !/^\d{4}-\d{2}-\d{2}$/.test(ruleDate)) throw new Error('Falta la fecha de desbloqueo (YYYY-MM-DD)');
+  if (getById(slug)) throw new Error('Ya existe un logro con ese nombre/id');
+  const tid = tokenId ? parseInt(tokenId) : nextTokenId();
+  if (getByTokenId(tid)) throw new Error(`El token ${tid} ya está en uso`);
+  db.prepare(`INSERT INTO custom_achievements (id, name, description, image, token_id, edition, rule_type, rule_date)
+              VALUES (?, ?, ?, ?, ?, ?, 'visit_on_date', ?)`)
+    .run(slug, String(name).trim(), description || null, image || null, tid, edition || null, ruleDate);
+  return getById(slug);
+}
+
+// Borra un logro creado desde el panel (nunca los del código). Devuelve true si borró.
+function deleteCustom(id) {
+  const hardcoded = ACHIEVEMENTS.some(a => a.id === id);
+  if (hardcoded) throw new Error('Ese logro está definido en el código y no se puede borrar desde aquí');
+  const res = db.prepare(`DELETE FROM custom_achievements WHERE id = ?`).run(id);
+  return res.changes > 0;
+}
 
 // Verificación servidor de la regla de desbloqueo. Hoy: asistencia (visita contada) a
 // una fecha concreta. Devuelve true/false.
@@ -67,7 +123,7 @@ function metadataForToken(tokenId) {
   return {
     name: a.name,
     description: a.description,
-    image: `${APP_URL}/assets/${a.image}`,
+    image: `${APP_URL}${a.image}`,   // a.image ya viene normalizada ("/assets/..." o "/prize-images/...")
     external_url: APP_URL,
     attributes: [
       { trait_type: 'Tipo', value: 'Logro' },
@@ -89,18 +145,18 @@ function getAchievementStats() {
   `).all();
   const byId = {};
   rows.forEach(r => { byId[r.achievement_id] = r; });
-  return ACHIEVEMENTS.map(a => {
+  return _all().map(a => {
     const s = byId[a.id] || {};
     return {
-      id: a.id, name: a.name, edition: a.edition || null, tokenId: a.tokenId,
+      id: a.id, name: a.name, edition: a.edition || null, tokenId: a.tokenId, custom: !!a.custom,
       minted: s.minted || 0, pending: s.pending || 0, total: s.total || 0
     };
   });
 }
 
 module.exports = {
-  list, getById, getByTokenId,
+  list, getById, getByTokenId, nextTokenId,
   walletMeetsRule, walletUnlocked, metadataForToken,
-  getAchievementStats,
+  getAchievementStats, createCustom, deleteCustom,
   ACHIEVEMENTS
 };

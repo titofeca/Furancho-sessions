@@ -455,6 +455,21 @@ try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN days TEXT`); } catch (_)
 // Fecha límite de canje (YYYY-MM-DD). Pasada esa fecha, el botón de canje se desactiva.
 try { db.exec(`ALTER TABLE raffles ADD COLUMN validity_end_date TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN validity_end_date TEXT`); } catch (_) {}
+// Logros NFT creados desde el panel (se fusionan con los del código en services/achievements.js).
+// NO toca los logros hardcodeados (token 100, etc.): esto es puramente aditivo.
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS custom_achievements (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    image TEXT,
+    token_id INTEGER UNIQUE,
+    edition TEXT,
+    rule_type TEXT DEFAULT 'visit_on_date',
+    rule_date TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`);
+} catch (_) {}
 // Número de serie del mint dentro de su nivel (1 = primero en alcanzar ese nivel)
 try { db.exec(`ALTER TABLE mints ADD COLUMN mint_serial INTEGER`); } catch (_) {}
 try { db.exec(`ALTER TABLE mints ADD COLUMN mint_cost_matic REAL`); } catch (_) {}
