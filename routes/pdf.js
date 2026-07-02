@@ -571,10 +571,12 @@ function buildPremioPdf(doc, raffle, opts) {
 
     // ── Instrucciones para el LOCAL (este PDF lo envía el admin al local) ─────────
     {
+      const staffCode = process.env.STAFF_CODE || 'camareros';
       const instrBody =
         '1. El cliente te enseña este premio en su app (Furancho Sessions › Mis premios).\n' +
         '2. Verás el botón verde "Entregar premio" y el sello "BONO EN VIVO" con la hora en marcha (así compruebas que es la app real y no una captura de pantalla).\n' +
         '3. Pulsa tú ese botón al entregar el premio: el bono queda cerrado y no se puede volver a usar.\n' +
+        (preview ? '' : `Enlace de camareros: /staff  ·  Código de acceso: ${staffCode}\n`) +
         'Importante: no aceptes capturas de pantalla ni este PDF como canje. El premio SOLO se cierra desde la app del cliente.';
       doc.fontSize(8).font('Helvetica');
       const bodyH = doc.heightOfString(instrBody, { width: W - 150, lineGap: 3 });

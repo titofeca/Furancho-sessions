@@ -5010,7 +5010,7 @@
         const statusIcon = r.status === 'collected' ? '✅' : r.status === 'rejected' ? '✕' : r.status === 'accepted' ? '🏆' : '⏳';
         const statusColor = r.status === 'collected' ? '#15803d' : r.status === 'rejected' ? 'var(--text-muted)' : r.status === 'accepted' ? 'var(--gold)' : 'var(--text-muted)';
         const canCollect = r.status === 'accepted';
-        const canPdf = (r.status === 'accepted' || r.status === 'collected') && r.type === 'local';
+        const canPdf = (r.status === 'accepted' || r.status === 'collected');
         const when = new Date(r.created_at).toLocaleString('es-ES', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
         const t = r.type || 'night';
         const imgHtml = r.prize_image ? `<img src="${r.prize_image}" style="width:36px;height:36px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0;" />` : `<div style="flex-shrink:0; width:36px; height:36px; border-radius:50%; background:rgba(42,21,9,0.05); display:flex; align-items:center; justify-content:center; font-size:15px;">${statusIcon}</div>`;
@@ -5034,7 +5034,7 @@
               ${canPdf ? `<a href="/api/pdf/premio/${r.id}?wallet=${encodeURIComponent(r.winner_wallet)}" target="_blank"
                 style="padding:5px 10px; background:rgba(196,151,58,0.12); border:1px solid rgba(196,151,58,0.3); border-radius:8px; font-size:11px; font-weight:700; color:var(--gold); cursor:pointer; text-decoration:none; font-family:'Outfit',sans-serif;"
                 title="Bono con premio, código, caducidad e instrucciones para enviar al local">
-                📄 PDF local</a>` : ''}
+                📄 PDF bono</a>` : ''}
             </div>
           </div>
           ${r.prize_details ? `<p style="font-size:11px; color:var(--text-muted); margin:6px 0 0 46px; font-style:italic;">${r.prize_details}</p>` : ''}
