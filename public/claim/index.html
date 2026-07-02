@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <!-- App diseñada en claro: evita que Android/Chrome fuerce modo oscuro e invierta
+       colores (hacía ilegible, p.ej., la ventana del sorteo en vivo). -->
+  <meta name="color-scheme" content="light only" />
   <title>Furancho Sessions — Tu pase te está esperando</title>
   <meta name="description" content="El pase digital del Furancho Sessions. Afterwork de viño, tapas y buena gente. Entra, ficha y a disfrutar, ho." />
   <link rel="manifest" href="/manifest.json" />
@@ -37,6 +40,7 @@
       z-index: 5;
     }
     :root {
+      color-scheme: light only;   /* la app es de tema claro; no invertir en modo oscuro del móvil */
       --wine: #8B1918;
       --wine-dark: #5C0F0F;
       --wine-light: #B52A2A;
