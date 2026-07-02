@@ -517,6 +517,13 @@ function buildPremioPdf(doc, raffle, opts) {
     doc.fillColor(estadoColor).fontSize(10).font('Helvetica-Bold')
        .text(estadoTxt, 0, y, { align: 'center', width: W });
 
+    // ── Aviso: el canje se hace en la app, no con este papel ─────────────────────
+    if (!preview) {
+      doc.fillColor(MUTED).fontSize(7.5).font('Helvetica-Oblique')
+         .text('El canje se realiza en la app del cliente, pulsando "Entregar premio".\nEste documento por sí solo no cierra el premio.',
+               40, H - 76, { align: 'center', width: W - 80, lineGap: 2 });
+    }
+
     // ── Footer ───────────────────────────────────────────────────────────────────
     doc.rect(0, H - 42, W, 42).fill(WINE);
     doc.rect(0, H - 46, W, 4).fill(GOLD);
