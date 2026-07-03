@@ -1123,12 +1123,14 @@ router.get('/campaign/stats', requireAuth, (req, res) => {
         visits: getCampaignVisitCount(p.wallet_address),
         createdAt: p.created_at
       }));
+    const legend = achievements.getById(campaign.CAMPAIGN.achievementId);
     res.json({
       active: campaign.isCampaignActive(),
       campaign: { name: campaign.CAMPAIGN.name, startDate: campaign.CAMPAIGN.startDate, endDate: campaign.CAMPAIGN.endDate, required: campaign.CAMPAIGN.requiredVisits },
       stats: campaign.getStats(),
       leaderboard: campaign.getLeaderboard(10),
-      pending
+      pending,
+      nftImage: legend ? legend.image : null
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -1157,6 +1159,25 @@ router.post('/campaign/:id/reject', requireAuth, (req, res) => {
     const { rejectAchievementMint } = require('../db/database');
     rejectAchievementMint(id);
     res.json({ success: true, message: 'NFT de campaña rechazado.' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/campaign/image — persiste la imagen del logro Furancho Legend 2026.
+// La subida física (multipart) la sigue haciendo /api/raffle/upload-image (patrón ya
+// usado por otros logros). Aquí solo guardamos la URL en achievement_overrides para
+// que sobreviva a reinicios sin tocar código.
+router.post('/campaign/image', requireAuth, (req, res) => {
+  const { imageUrl } = req.body || {};
+  if (!imageUrl || typeof imageUrl !== 'string' || !/^\/prize-images\//.test(imageUrl)) {
+    return res.status(400).json({ error: 'imageUrl debe ser una ruta /prize-images/…' });
+  }
+  try {
+    const campaign = require('../services/campaign');
+    const { setAchievementImageOverride } = require('../db/database');
+    setAchievementImageOverride(campaign.CAMPAIGN.achievementId, imageUrl);
+    res.json({ success: true, message: 'Imagen del NFT actualizada.', imageUrl });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

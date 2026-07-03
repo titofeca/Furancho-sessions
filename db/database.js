@@ -483,6 +483,15 @@ try {
   )`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_campaign_visits_wallet ON campaign_visits(wallet_address)`);
 } catch (_) {}
+// Overrides puntuales de logros hardcodeados (p.ej. cambiar la imagen del NFT Legend
+// desde el panel admin sin tocar código). Aplicados por services/achievements.js.
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS achievement_overrides (
+    achievement_id TEXT PRIMARY KEY,
+    image TEXT,
+    updated_at TEXT DEFAULT (datetime('now'))
+  )`);
+} catch (_) {}
 // Número de serie del mint dentro de su nivel (1 = primero en alcanzar ese nivel)
 try { db.exec(`ALTER TABLE mints ADD COLUMN mint_serial INTEGER`); } catch (_) {}
 try { db.exec(`ALTER TABLE mints ADD COLUMN mint_cost_matic REAL`); } catch (_) {}
@@ -996,6 +1005,28 @@ function approveAchievementMint(id) {
 
 function rejectAchievementMint(id) {
   db.prepare(`UPDATE achievement_mints SET status = 'rejected_admin' WHERE id = ? AND status = 'pending_approval'`).run(id);
+}
+
+// Override de imagen para un logro hardcodeado (p. ej. subir la definitiva del NFT
+// Legend sin editar código). Se aplica en services/achievements.js al leer el catálogo.
+function setAchievementImageOverride(achievementId, imagePath) {
+  db.prepare(`
+    INSERT INTO achievement_overrides (achievement_id, image, updated_at)
+    VALUES (?, ?, datetime('now'))
+    ON CONFLICT(achievement_id) DO UPDATE SET image = excluded.image, updated_at = excluded.updated_at
+  `).run(achievementId, imagePath);
+}
+
+function getAchievementImageOverride(achievementId) {
+  const row = db.prepare(`SELECT image FROM achievement_overrides WHERE achievement_id = ?`).get(achievementId);
+  return row ? row.image : null;
+}
+
+function getAllAchievementOverrides() {
+  const rows = db.prepare(`SELECT achievement_id, image FROM achievement_overrides`).all();
+  const map = {};
+  rows.forEach(r => { map[r.achievement_id] = r.image; });
+  return map;
 }
 
 
@@ -2034,6 +2065,9 @@ module.exports = {
   getPendingApprovalAchievements,
   approveAchievementMint,
   rejectAchievementMint,
+  setAchievementImageOverride,
+  getAchievementImageOverride,
+  getAllAchievementOverrides,
   insertVisit,
   getVisitCount,
   getEligibleRaffleParticipants,

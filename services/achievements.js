@@ -66,8 +66,20 @@ function _customList() {
   } catch (_) { return []; }
 }
 
-// Catálogo COMPLETO = logros del código + los creados desde el panel.
-function _all() { return [...ACHIEVEMENTS, ..._customList()]; }
+// Overrides puntuales (tabla achievement_overrides): permiten sustituir la imagen de
+// un logro hardcodeado desde el panel sin tocar código (p.ej. NFT Furancho Legend).
+function _overrides() {
+  try { return require('../db/database').getAllAchievementOverrides(); } catch (_) { return {}; }
+}
+
+// Catálogo COMPLETO = logros del código + los creados desde el panel. Aplica overrides.
+function _all() {
+  const ov = _overrides();
+  return [...ACHIEVEMENTS, ..._customList()].map(a => {
+    if (ov[a.id]) return { ...a, image: ov[a.id] };
+    return a;
+  });
+}
 function _withImage(a) { return a ? { ...a, image: _normImage(a.image) } : null; }
 
 function list() { return _all().map(_withImage); }

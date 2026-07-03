@@ -1100,6 +1100,19 @@
           </div>
         </div>
 
+        <!-- Imagen del NFT Furancho Legend -->
+        <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
+          <div class="card-title" style="font-size:14px; margin-bottom:10px;">🎨 Imagen del NFT "Furancho Legend 2026"</div>
+          <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+            <img id="campaign-nft-thumb" src="" alt="NFT Legend" style="width:80px; height:80px; border-radius:12px; object-fit:cover; border:1.5px solid rgba(42,21,9,0.15); background:#fff;" />
+            <div style="flex:1; min-width:200px;">
+              <label for="campaign-nft-input" style="display:inline-block; padding:10px 16px; background:rgba(196,151,58,0.14); border:1.5px solid var(--gold); border-radius:12px; color:#8B6914; font-weight:700; font-size:12px; cursor:pointer;">📁 Cambiar imagen del NFT</label>
+              <input type="file" id="campaign-nft-input" accept="image/*" style="display:none;" onchange="uploadCampaignNftImage(this)" />
+              <p style="font-size:11px; color:var(--text-muted); margin-top:6px; line-height:1.4;">JPG o PNG. La imagen se guarda en el volumen persistente y sobrevive a los deploys.</p>
+            </div>
+          </div>
+        </div>
+
         <!-- Pendientes de aprobar (NFT) -->
         <div style="margin-bottom:16px;">
           <div class="card-title" style="font-size:14px; margin-bottom:8px;">🏅 NFTs pendientes de confirmar</div>
@@ -3390,6 +3403,9 @@
       if (!d.active && !hasData) { if (card) card.style.display = 'none'; return; }
       if (card) card.style.display = 'block';
 
+      const thumb = document.getElementById('campaign-nft-thumb');
+      if (thumb && d.nftImage) thumb.src = d.nftImage + '?t=' + Date.now();
+
       const statusEl = document.getElementById('campaign-admin-status');
       if (statusEl) {
         const range = d.campaign ? `${d.campaign.startDate} → ${d.campaign.endDate}` : '';
@@ -3459,6 +3475,42 @@
       alert(data.message || 'Rechazado.');
       loadCampaignAdmin();
     } catch (e) { alert('Error al rechazar'); }
+  }
+
+  // Sube una imagen para el NFT Furancho Legend 2026. Reutiliza el endpoint de upload
+  // de sorteos (mismo patrón, JPG/PNG al volumen persistente) y persiste el override.
+  async function uploadCampaignNftImage(input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    let blob;
+    try { blob = await imageFileToPng(file); }
+    catch (e) { showToast('No pude leer esa imagen. Prueba con otra.', true); return; }
+    const form = new FormData();
+    form.append('image', blob, 'furancho_legend.png');
+    try {
+      // 1) Subida física del archivo
+      const up = await fetch('/api/raffle/upload-image', { method: 'POST', headers: { 'x-admin-token': AUTH_TOKEN }, body: form });
+      const upData = await up.json().catch(() => ({}));
+      if (!upData.url) { showToast(upData.error || 'Error subiendo imagen', true); input.value = ''; return; }
+      // 2) Persistir el override para el logro Legend
+      const res = await fetch('/api/admin/campaign/image', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrl: upData.url })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('✅ Imagen del NFT actualizada');
+        const thumb = document.getElementById('campaign-nft-thumb');
+        if (thumb) thumb.src = upData.url + '?t=' + Date.now();
+      } else {
+        showToast(data.error || 'Error guardando la imagen', true);
+      }
+    } catch (e) {
+      showToast('Error subiendo imagen', true);
+    } finally {
+      input.value = '';
+    }
   }
 
   // ==================== PEAK HOURS ====================
