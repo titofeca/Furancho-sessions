@@ -106,6 +106,8 @@
       <div class="camp-progress" id="result-camp-dots"></div>
       <p id="result-camp-msg" style="font-size:15px; font-weight:700; margin-top:4px;"></p>
     </div>
+    <!-- Bloque premio NFT pendiente de entregar (Chave Dourada, etc.) -->
+    <div id="result-nft-prizes" style="display:none; margin-top:16px; max-width:360px; width:100%;"></div>
     <div class="who" id="result-who"></div>
     <button onclick="resumeScan()">Escanear al siguiente ➜</button>
   </div>
@@ -254,6 +256,58 @@
       }
     }
 
+    // Pinta los premios NFT pendientes de entrega presencial (chave dourada, etc.).
+    // Devuelve true si había premios y hemos parado el auto-cierre.
+    function renderNftPrizes(prizes, wallet){
+      const wrap = document.getElementById('result-nft-prizes');
+      if (!wrap) return false;
+      if (!prizes || !prizes.length){ wrap.style.display = 'none'; wrap.innerHTML = ''; return false; }
+      wrap.style.display = 'block';
+      wrap.innerHTML = prizes.map(p => `
+        <div style="padding:16px; background:linear-gradient(135deg, rgba(196,151,58,0.22), rgba(139,25,24,0.10)); border:2px solid var(--gold); border-radius:16px; margin-bottom:10px; box-shadow:0 4px 16px rgba(196,151,58,0.25);">
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+            ${p.achievementImage ? `<img src="${p.achievementImage}" alt="" style="width:56px; height:56px; border-radius:12px; object-fit:cover; border:2px solid var(--gold); background:#fff;" />` : '<span style="font-size:40px;">🏅</span>'}
+            <div style="flex:1;">
+              <p style="margin:0; font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--wine);">🏅 GANÓ ESTE NFT</p>
+              <p style="margin:2px 0 0; font-size:16px; font-weight:900; color:var(--wine); font-family:'Playfair Display',serif;">${p.achievementName}</p>
+              ${p.prize ? `<p style="margin:2px 0 0; font-size:11px; color:var(--text-muted);">Sorteo: ${p.prize}</p>` : ''}
+            </div>
+          </div>
+          <button type="button" data-raffle-id="${p.raffleId}" onclick="grantNftPrize(this, '${wallet}', ${p.raffleId})"
+                  style="width:100%; padding:14px; background:linear-gradient(135deg, var(--gold), #a97b1f); color:#fff; border:none; border-radius:12px; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 3px 12px rgba(196,151,58,0.4); font-family:'Outfit',sans-serif;">
+            🏅 Entregarle el NFT ahora
+          </button>
+        </div>
+      `).join('');
+      return true;
+    }
+
+    async function grantNftPrize(btn, wallet, raffleId){
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = 'Entregando…';
+      try {
+        const r = await fetch('/api/staff/grant-nft-prize/' + encodeURIComponent(raffleId), {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json', 'x-staff-code': localStorage.getItem(STAFF_KEY) || '' },
+          body: JSON.stringify({ walletAddress: wallet })
+        });
+        const d = await r.json();
+        if (r.ok && d.success){
+          btn.style.background = 'rgba(22,163,74,0.9)';
+          btn.textContent = '✅ Entregado — pendiente de confirmar por admin';
+        } else {
+          btn.disabled = false;
+          btn.textContent = original;
+          alert(d.error || 'No se pudo entregar');
+        }
+      } catch(e){
+        btn.disabled = false;
+        btn.textContent = original;
+        alert('Error de red');
+      }
+    }
+
     function showResult(d, wallet){
       const icon = document.getElementById('result-icon');
       const title = document.getElementById('result-title');
@@ -263,6 +317,11 @@
       const campEl = document.getElementById('result-campaign');
       const green = 'rgba(22,163,74,0.15)', gold = 'rgba(196,151,58,0.18)', red = 'rgba(139,25,24,0.15)';
       who.textContent = `${wallet.slice(0,6)}…${wallet.slice(-4)}`;
+
+      // Premios NFT ganados pendientes de entregar en persona (Chave Dourada, etc.).
+      // Si hay al menos uno, se muestra el banner y NO se cierra el resultado solo:
+      // el camarero debe pulsar "Entregar NFT" o "Escanear al siguiente".
+      const hasNftPrize = renderNftPrizes(d.pendingNftPrizes, wallet);
 
       // ── MODO CAMPAÑA: durante el Reto de los 5, el resultado gira en torno al reto ──
       if (d.campaign && d.campaign.active){
@@ -297,7 +356,7 @@
         document.getElementById('result').style.display = 'flex';
         loadCampaign();   // refresca el ranking
         clearTimeout(window._resultTimer);
-        window._resultTimer = setTimeout(resumeScan, 3500);
+        if (!hasNftPrize) window._resultTimer = setTimeout(resumeScan, 3500);
         return;
       }
 
@@ -317,9 +376,9 @@
         else { nextEl.innerHTML = `⬆️ Le falta${nx.remaining !== 1 ? 'n' : ''} <strong style="color:var(--wine);">${nx.remaining} visita${nx.remaining !== 1 ? 's' : ''}</strong> para <strong style="color:var(--wine);">Nv${nx.level} · ${nx.name}</strong>`; nextEl.style.display = 'block'; }
       }
       document.getElementById('result').style.display = 'flex';
-      // Auto-volver al escáner a los 3s
+      // Auto-volver al escáner a los 3s (a menos que haya un NFT que entregar en persona)
       clearTimeout(window._resultTimer);
-      window._resultTimer = setTimeout(resumeScan, 3000);
+      if (!hasNftPrize) window._resultTimer = setTimeout(resumeScan, 3000);
     }
 
     // Carga estado + ranking de campaña. Muestra banner/ranking solo si está activa.

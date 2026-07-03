@@ -93,21 +93,31 @@ function nextTokenId() {
 }
 
 // Crea un logro desde el panel. Valida y devuelve el logro creado. NO mintea nada:
-// solo define el logro; el minteo on-chain ocurre cuando un cliente lo reclama.
-function createCustom({ id, name, description, image, edition, ruleDate, tokenId }) {
+// solo define el logro; el minteo on-chain ocurre cuando un cliente lo reclama (visit_on_date)
+// o cuando el staff se lo entrega en persona (raffle_only).
+function createCustom({ id, name, description, image, edition, ruleDate, tokenId, ruleType }) {
   const slug = String(id || name || '').toLowerCase().trim()
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
   if (!slug) throw new Error('Falta el nombre del logro');
   if (!name || !String(name).trim()) throw new Error('Falta el nombre del logro');
-  if (!ruleDate || !/^\d{4}-\d{2}-\d{2}$/.test(ruleDate)) throw new Error('Falta la fecha de desbloqueo (YYYY-MM-DD)');
+  const rt = (ruleType === 'raffle_only') ? 'raffle_only' : 'visit_on_date';
+  if (rt === 'visit_on_date') {
+    if (!ruleDate || !/^\d{4}-\d{2}-\d{2}$/.test(ruleDate)) throw new Error('Falta la fecha de desbloqueo (YYYY-MM-DD)');
+  }
   if (getById(slug)) throw new Error('Ya existe un logro con ese nombre/id');
   const tid = tokenId ? parseInt(tokenId) : nextTokenId();
   if (getByTokenId(tid)) throw new Error(`El token ${tid} ya está en uso`);
   db.prepare(`INSERT INTO custom_achievements (id, name, description, image, token_id, edition, rule_type, rule_date)
-              VALUES (?, ?, ?, ?, ?, ?, 'visit_on_date', ?)`)
-    .run(slug, String(name).trim(), description || null, image || null, tid, edition || null, ruleDate);
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(slug, String(name).trim(), description || null, image || null, tid, edition || null, rt, rt === 'visit_on_date' ? ruleDate : null);
   return getById(slug);
+}
+
+// Devuelve solo los logros que se otorgan como premio de sorteo. Útil para el
+// desplegable "Premio NFT" al programar sorteos.
+function listRaffleOnly() {
+  return _all().filter(a => a.rule && a.rule.type === 'raffle_only').map(_withImage);
 }
 
 // Borra un logro creado desde el panel (nunca los del código). Devuelve true si borró.
@@ -122,6 +132,10 @@ function deleteCustom(id) {
 // una fecha concreta. Devuelve true/false.
 function walletMeetsRule(wallet, rule) {
   if (!wallet || !rule) return false;
+  // Logros que solo se otorgan como premio de sorteo (chave dourada, etc.):
+  // NUNCA se autodesbloquean desde el museo. Solo el staff los entrega en persona
+  // vía escáner + botón "Otorgar NFT".
+  if (rule.type === 'raffle_only') return false;
   if (rule.type === 'visit_on_date') {
     const row = db.prepare(`
       SELECT 1 FROM (
@@ -191,6 +205,6 @@ function getAchievementStats() {
 module.exports = {
   list, getById, getByTokenId, nextTokenId,
   walletMeetsRule, walletUnlocked, metadataForToken,
-  getAchievementStats, createCustom, deleteCustom,
+  getAchievementStats, createCustom, deleteCustom, listRaffleOnly,
   ACHIEVEMENTS
 };

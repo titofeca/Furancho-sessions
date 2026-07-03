@@ -70,10 +70,60 @@ router.post('/checkin', staffLimiter, requireStaff, (req, res) => {
       result.campaign = null;
     }
 
+    // ── Premios NFT pendientes de entrega presencial ────────────────────────
+    // Si el cliente ganó un sorteo cuyo premio es un NFT (p.ej. Chave Dourada)
+    // y aún no se le entregó, se lo mostramos al camarero junto con el resultado.
+    // El camarero pulsa el botón "Otorgar NFT" para confirmarlo (endpoint aparte).
+    try {
+      const { getPendingNftPrizes } = require('../db/database');
+      const achievements = require('../services/achievements');
+      const rows = getPendingNftPrizes(walletAddress) || [];
+      result.pendingNftPrizes = rows.map(r => {
+        const a = achievements.getById(r.nft_achievement_id);
+        return {
+          raffleId: r.id,
+          prize: r.prize,
+          achievementId: r.nft_achievement_id,
+          achievementName: a ? a.name : r.nft_achievement_id,
+          achievementImage: a ? a.image : (r.prize_image || null)
+        };
+      });
+    } catch (_) { result.pendingNftPrizes = []; }
+
     return res.json(result);
   } catch (e) {
     console.error('Error en /staff/checkin:', e.message);
     res.status(500).json({ error: 'Error procesando entrada' });
+  }
+});
+
+// POST /api/staff/grant-nft-prize/:raffleId — el camarero entrega en persona el NFT
+// al ganador del sorteo. Crea achievement_mints con pending_approval (el admin lo
+// confirma antes de mintear on-chain). Idempotente: si ya se otorgó, error.
+router.post('/grant-nft-prize/:raffleId', staffLimiter, requireStaff, (req, res) => {
+  const { walletAddress } = req.body || {};
+  const raffleId = parseInt(req.params.raffleId);
+  if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
+    return res.status(400).json({ error: 'Dirección de wallet no válida' });
+  }
+  if (!raffleId) return res.status(400).json({ error: 'ID de sorteo no válido' });
+  try {
+    const { grantNftPrize } = require('../db/database');
+    const result = grantNftPrize(raffleId, walletAddress, 'staff');
+    if (!result.ok) {
+      const messages = {
+        raffle_not_found: 'Sorteo no encontrado',
+        not_an_nft_prize: 'Ese sorteo no es de premio NFT',
+        already_granted: 'Este NFT ya fue entregado antes',
+        wallet_mismatch: 'Esa wallet no es la ganadora del sorteo',
+        achievement_not_found: 'El logro NFT del sorteo no existe'
+      };
+      return res.status(400).json({ error: messages[result.error] || result.error });
+    }
+    res.json({ success: true, achievement: result.achievement });
+  } catch (e) {
+    console.error('Error en /staff/grant-nft-prize:', e.message);
+    res.status(500).json({ error: 'Error otorgando NFT' });
   }
 });
 

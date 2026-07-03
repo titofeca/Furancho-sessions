@@ -4248,9 +4248,14 @@
         const endDateStr = r.validity_end_date
           ? new Date(r.validity_end_date + 'T00:00:00').toLocaleDateString('es-ES', { day:'numeric', month:'long', year:'numeric' })
           : '';
+        // Premio NFT (Chave Dourada, etc.): no hay bono canjeable ni código. El
+        // cliente tiene que ir al furancho y el camarero se lo entrega desde el escáner.
+        const isNftPrize = !!r.nft_achievement_id;
+        const isNftGranted = isNftPrize && !!r.nft_granted_at;
         // Canjeable = premio ganado y aceptado, aún sin canjear NI caducado (no la
         // Chave, que tiene su propio flujo). El staff del local lo cierra desde el bono.
-        const isRedeemable = r.status === 'accepted' && !isWeekly && !isExpired;
+        // Los premios NFT NO son canjeables por código: van por otro flujo.
+        const isRedeemable = r.status === 'accepted' && !isWeekly && !isExpired && !isNftPrize;
         const collectedStr = r.collected_at
           ? new Date(r.collected_at.replace(' ', 'T') + 'Z').toLocaleString('es-ES', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })
           : '';
@@ -4318,7 +4323,15 @@
                     </div>
                   `;
                 })()}
-                ${!isCollected && !isExpired && r.verification_code ? `<div style="font-family:monospace; font-size:18px; font-weight:800; letter-spacing:4px; color:var(--wine); margin-top:5px; background:rgba(139,25,24,0.06); border-radius:8px; padding:4px 8px; display:inline-block;">${r.verification_code}</div>` : ''}
+                ${isNftPrize ? `
+                  <div style="margin-top:10px; padding:14px; background:linear-gradient(135deg, rgba(196,151,58,0.18), rgba(139,25,24,0.08)); border:1.5px solid var(--gold); border-radius:12px; text-align:center;">
+                    <div style="font-size:12px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--wine); margin-bottom:6px;">🏅 Premio NFT ganado</div>
+                    ${isNftGranted
+                      ? '<p style="margin:0; font-size:13px; color:var(--wine); font-weight:700;">✅ Ya recogido — pendiente de confirmar por admin, luego llega a tu wallet.</p>'
+                      : '<p style="margin:0; font-size:13px; color:var(--text); line-height:1.5;">Pásate por el furancho y enséñale tu <strong>🪪 ID Socio (QR)</strong> al camarero. Te lo entrega en persona ahí mismo.</p>'}
+                  </div>
+                ` : ''}
+                ${!isNftPrize && !isCollected && !isExpired && r.verification_code ? `<div style="font-family:monospace; font-size:18px; font-weight:800; letter-spacing:4px; color:var(--wine); margin-top:5px; background:rgba(139,25,24,0.06); border-radius:8px; padding:4px 8px; display:inline-block;">${r.verification_code}</div>` : ''}
                 ${isCollected ? `
                   <div style="margin-top:8px; display:flex; align-items:center; gap:8px; background:rgba(22,163,74,0.1); border:1.5px solid rgba(22,163,74,0.4); border-radius:10px; padding:8px 12px;">
                     <span style="font-size:20px;">✅</span>

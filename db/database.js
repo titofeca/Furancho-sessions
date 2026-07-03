@@ -455,6 +455,13 @@ try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN days TEXT`); } catch (_)
 // Fecha límite de canje (YYYY-MM-DD). Pasada esa fecha, el botón de canje se desactiva.
 try { db.exec(`ALTER TABLE raffles ADD COLUMN validity_end_date TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN validity_end_date TEXT`); } catch (_) {}
+// Premio en forma de NFT (logro). Si es null, el sorteo es un premio físico normal
+// (bono canjeable con código). Si tiene id, al ganar hay que ir al furancho y el
+// camarero lo entrega desde el escáner del staff (encola achievement_mints pending_approval).
+try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN nft_achievement_id TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN nft_achievement_id TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN nft_granted_at TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN nft_granted_by TEXT`); } catch (_) {}
 // Logros NFT creados desde el panel (se fusionan con los del código en services/achievements.js).
 // NO toca los logros hardcodeados (token 100, etc.): esto es puramente aditivo.
 try {
@@ -1704,14 +1711,14 @@ function autoCloseSessionsAfterEvent() {
 // Alias retrocompatible
 const autoCloseSessionsAt23 = autoCloseSessionsAfterEvent;
 
-function insertRaffle(prize, winnerWallet, verificationCode, participantWallets = [], targetLevel = null, prizeDetails = null, prizeImage = null, establishment = null, type = 'night', hideName = 0, participantLevel = null, validity = null, people = null, hours = null, days = null, validityEndDate = null) {
+function insertRaffle(prize, winnerWallet, verificationCode, participantWallets = [], targetLevel = null, prizeDetails = null, prizeImage = null, establishment = null, type = 'night', hideName = 0, participantLevel = null, validity = null, people = null, hours = null, days = null, validityEndDate = null, nftAchievementId = null) {
   // Plazo de aceptación: 10s de animación + 600s de ventana de aceptación (debe coincidir
   // con acceptWindow en doLaunch — el sweeper de expiración usa este deadline)
   const deadline = new Date(Date.now() + 610000).toISOString().replace('T', ' ').slice(0, 19);
   const id = db.prepare(`
-    INSERT INTO raffles (prize, winner_wallet, verification_code, status, acceptance_deadline, target_level, prize_details, prize_image, establishment, type, hide_name, participant_level, validity, people, hours, days, validity_end_date)
-    VALUES (?, ?, ?, 'pending_acceptance', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(prize, winnerWallet, verificationCode, deadline, targetLevel, prizeDetails, prizeImage, establishment, type, hideName ? 1 : 0, participantLevel || null, validity, people, hours, days, validityEndDate || null).lastInsertRowid;
+    INSERT INTO raffles (prize, winner_wallet, verification_code, status, acceptance_deadline, target_level, prize_details, prize_image, establishment, type, hide_name, participant_level, validity, people, hours, days, validity_end_date, nft_achievement_id)
+    VALUES (?, ?, ?, 'pending_acceptance', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(prize, winnerWallet, verificationCode, deadline, targetLevel, prizeDetails, prizeImage, establishment, type, hideName ? 1 : 0, participantLevel || null, validity, people, hours, days, validityEndDate || null, nftAchievementId || null).lastInsertRowid;
   if (participantWallets.length) {
     const stmt = db.prepare(`INSERT OR IGNORE INTO raffle_participants (raffle_id, wallet_address) VALUES (?, ?)`);
     participantWallets.forEach(w => stmt.run(id, w));
@@ -1790,10 +1797,63 @@ function getMyWins(walletAddress) {
   if (!walletAddress) return [];
   return db.prepare(`
     SELECT id, prize, verification_code, created_at, collected, collected_at, status, target_level,
-           prize_details, prize_image, establishment, validity, people, hours, days
+           prize_details, prize_image, establishment, validity, people, hours, days, nft_achievement_id, nft_granted_at
     FROM raffles WHERE LOWER(winner_wallet) = LOWER(?) AND status IN ('accepted','collected')
     ORDER BY created_at DESC LIMIT 20
   `).all(walletAddress);
+}
+
+// Premios NFT ganados por una wallet que aún no le fueron entregados presencialmente
+// por el staff. Se usa en el escáner de camareros para mostrar el banner de "Otorgar NFT".
+// Requisitos:
+//  - wallet es el ganador
+//  - el sorteo tiene nft_achievement_id (es un premio NFT, no físico)
+//  - el ganador ya aceptó el premio (status='accepted') o al menos no lo rechazó
+//  - no se otorgó todavía (nft_granted_at IS NULL)
+function getPendingNftPrizes(walletAddress) {
+  if (!walletAddress) return [];
+  return db.prepare(`
+    SELECT id, prize, nft_achievement_id, prize_image, created_at
+    FROM raffles
+    WHERE LOWER(winner_wallet) = LOWER(?)
+      AND nft_achievement_id IS NOT NULL
+      AND nft_granted_at IS NULL
+      AND status IN ('accepted','collected','pending_acceptance')
+    ORDER BY created_at DESC
+  `).all(walletAddress);
+}
+
+// Otorgamiento presencial del NFT al ganador desde el escáner del staff. Atómico:
+//  - verifica ganador correcto
+//  - verifica que aún no se otorgó (idempotente por raffleId)
+//  - marca la fila con timestamp y quién lo otorgó
+//  - encola achievement_mints en 'pending_approval' para que el admin confirme
+// Devuelve { ok, error?, mintCreated }
+function grantNftPrize(raffleId, walletAddress, grantedBy = 'staff') {
+  const raffle = db.prepare(`
+    SELECT id, winner_wallet, nft_achievement_id, nft_granted_at, status
+    FROM raffles WHERE id = ?
+  `).get(raffleId);
+  if (!raffle) return { ok: false, error: 'raffle_not_found' };
+  if (!raffle.nft_achievement_id) return { ok: false, error: 'not_an_nft_prize' };
+  if (raffle.nft_granted_at) return { ok: false, error: 'already_granted' };
+  if (!raffle.winner_wallet || raffle.winner_wallet.toLowerCase() !== String(walletAddress || '').toLowerCase()) {
+    return { ok: false, error: 'wallet_mismatch' };
+  }
+
+  const achievements = require('../services/achievements');
+  const ach = achievements.getById(raffle.nft_achievement_id);
+  if (!ach) return { ok: false, error: 'achievement_not_found' };
+
+  const tx = db.transaction(() => {
+    db.prepare(`UPDATE raffles SET nft_granted_at = datetime('now'), nft_granted_by = ? WHERE id = ?`).run(grantedBy, raffleId);
+    db.prepare(`
+      INSERT OR IGNORE INTO achievement_mints (wallet_address, achievement_id, token_id, status)
+      VALUES (?, ?, ?, 'pending_approval')
+    `).run(walletAddress, ach.id, ach.tokenId);
+  });
+  tx();
+  return { ok: true, mintCreated: true, achievement: { id: ach.id, name: ach.name, image: ach.image } };
 }
 
 function getRaffleParticipation(walletAddress) {
@@ -1810,12 +1870,14 @@ function getRaffleParticipation(walletAddress) {
            CASE WHEN LOWER(r.winner_wallet) = ? THEN r.people ELSE NULL END as people,
            CASE WHEN LOWER(r.winner_wallet) = ? THEN r.hours ELSE NULL END as hours,
            CASE WHEN LOWER(r.winner_wallet) = ? THEN r.days ELSE NULL END as days,
-           CASE WHEN LOWER(r.winner_wallet) = ? THEN r.validity_end_date ELSE NULL END as validity_end_date
+           CASE WHEN LOWER(r.winner_wallet) = ? THEN r.validity_end_date ELSE NULL END as validity_end_date,
+           CASE WHEN LOWER(r.winner_wallet) = ? THEN r.nft_achievement_id ELSE NULL END as nft_achievement_id,
+           CASE WHEN LOWER(r.winner_wallet) = ? THEN r.nft_granted_at ELSE NULL END as nft_granted_at
     FROM raffles r
     WHERE r.id IN (SELECT raffle_id FROM raffle_participants WHERE LOWER(wallet_address) = ?)
        OR LOWER(r.winner_wallet) = ?
     ORDER BY r.created_at DESC LIMIT 30
-  `).all(lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet);
+  `).all(lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet, lowerWallet);
 }
 
 function getRaffleById(id) {
@@ -1845,12 +1907,12 @@ function getScheduledRaffles(eventDate) {
   return eventDate ? db.prepare(q).all(eventDate) : db.prepare(q).all();
 }
 
-function createScheduledRaffle({ eventDate, scheduledTime, prize, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment, requiredAchievement, validity, people, hours, days, validityEndDate }) {
-  return db.prepare(`INSERT INTO scheduled_raffles (event_date, scheduled_time, prize, target_level, participant_level, type, hide_name, prize_details, prize_image, establishment, required_achievement, validity, people, hours, days, validity_end_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .run(eventDate, scheduledTime, prize, targetLevel || null, participantLevel || null, type || 'night', hideName ? 1 : 0, prizeDetails || null, prizeImage || null, establishment || null, requiredAchievement || null, validity || null, people || null, hours || null, days || null, validityEndDate || null).lastInsertRowid;
+function createScheduledRaffle({ eventDate, scheduledTime, prize, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment, requiredAchievement, validity, people, hours, days, validityEndDate, nftAchievementId }) {
+  return db.prepare(`INSERT INTO scheduled_raffles (event_date, scheduled_time, prize, target_level, participant_level, type, hide_name, prize_details, prize_image, establishment, required_achievement, validity, people, hours, days, validity_end_date, nft_achievement_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(eventDate, scheduledTime, prize, targetLevel || null, participantLevel || null, type || 'night', hideName ? 1 : 0, prizeDetails || null, prizeImage || null, establishment || null, requiredAchievement || null, validity || null, people || null, hours || null, days || null, validityEndDate || null, nftAchievementId || null).lastInsertRowid;
 }
 
-function updateScheduledRaffle(id, { eventDate, scheduledTime, prize, status, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment, requiredAchievement, validity, people, hours, days, validityEndDate }) {
+function updateScheduledRaffle(id, { eventDate, scheduledTime, prize, status, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment, requiredAchievement, validity, people, hours, days, validityEndDate, nftAchievementId }) {
   const fields = [], vals = [];
   if (eventDate !== undefined)       { fields.push('event_date = ?');        vals.push(eventDate); }
   if (scheduledTime !== undefined)   { fields.push('scheduled_time = ?');    vals.push(scheduledTime); }
@@ -1869,6 +1931,7 @@ function updateScheduledRaffle(id, { eventDate, scheduledTime, prize, status, ta
   if (hours !== undefined)           { fields.push('hours = ?');             vals.push(hours); }
   if (days !== undefined)            { fields.push('days = ?');              vals.push(days); }
   if (validityEndDate !== undefined) { fields.push('validity_end_date = ?'); vals.push(validityEndDate || null); }
+  if (nftAchievementId !== undefined){ fields.push('nft_achievement_id = ?');vals.push(nftAchievementId || null); }
   if (!fields.length) return;
   vals.push(id);
   db.prepare(`UPDATE scheduled_raffles SET ${fields.join(', ')} WHERE id = ?`).run(...vals);
@@ -2068,6 +2131,8 @@ module.exports = {
   setAchievementImageOverride,
   getAchievementImageOverride,
   getAllAchievementOverrides,
+  getPendingNftPrizes,
+  grantNftPrize,
   insertVisit,
   getVisitCount,
   getEligibleRaffleParticipants,

@@ -96,14 +96,22 @@ router.get('/admin/list', requireAuth, (req, res) => {
 });
 
 // POST /api/achievements/admin/create — crea un logro nuevo desde el panel.
-// Body: { name, description, image, edition, ruleDate, tokenId? }
-// No mintea nada: solo define el logro. El minteo ocurre cuando un cliente lo reclama.
+// Body: { name, description, image, edition, ruleDate, tokenId?, ruleType? }
+// ruleType: 'visit_on_date' (por defecto) o 'raffle_only' (solo se otorga como
+// premio de sorteo, no autoreclamable desde el museo).
 router.post('/admin/create', requireAuth, (req, res) => {
   try {
-    const { name, description, image, edition, ruleDate, tokenId } = req.body;
-    const created = achievements.createCustom({ name, description, image, edition, ruleDate, tokenId });
+    const { name, description, image, edition, ruleDate, tokenId, ruleType } = req.body;
+    const created = achievements.createCustom({ name, description, image, edition, ruleDate, tokenId, ruleType });
     res.json({ success: true, achievement: created });
   } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// GET /api/achievements/admin/raffle-only — logros que se entregan como premio
+// de sorteo (para el desplegable al programar un sorteo NFT).
+router.get('/admin/raffle-only', requireAuth, (req, res) => {
+  try { res.json({ list: achievements.listRaffleOnly() }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // DELETE /api/achievements/admin/:id — borra un logro creado desde el panel

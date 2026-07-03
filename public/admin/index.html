@@ -1132,21 +1132,34 @@
           <span class="card-title">✨ Crear logro NFT</span>
           <button class="btn-download" onclick="loadAchievementManager()" style="font-size:11px; padding:6px 12px;">↻</button>
         </div>
-        <p style="font-size:11px; color:var(--text-muted); margin:0 0 12px; line-height:1.5;">Ediciones especiales (San Xoán, María Pita…). Se desbloquean asistiendo el día que indiques; el cliente las mintea desde su museo. Crearlas NO gasta gas.</p>
+        <p style="font-size:11px; color:var(--text-muted); margin:0 0 12px; line-height:1.5;">Ediciones especiales (San Xoán, María Pita…) o premios de sorteo (Chave Dourada). Crearlas NO gasta gas.</p>
 
         <input type="text" class="input-field" id="ach-name" placeholder="Nombre (ej: Furancheiro de María Pita)" style="margin-bottom:8px; font-size:14px;" />
         <textarea class="input-field" id="ach-description" placeholder="Descripción (ej: Edición especial por asistir a la sesión de María Pita)" rows="2" style="font-size:13px; resize:vertical; font-family:'Outfit',sans-serif; margin-bottom:8px;"></textarea>
+
+        <div style="margin-bottom:10px; padding:10px; background:var(--bg); border:1px solid rgba(42,21,9,0.08); border-radius:10px;">
+          <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:6px;">🔓 Cómo se otorga</label>
+          <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; margin-bottom:6px; cursor:pointer;">
+            <input type="radio" name="ach-rule-type" value="visit_on_date" checked onchange="toggleAchRuleType()" />
+            <span><strong>Asistencia a fecha</strong> · el cliente lo reclama desde su museo si fichó ese día</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer;">
+            <input type="radio" name="ach-rule-type" value="raffle_only" onchange="toggleAchRuleType()" />
+            <span><strong>Solo premio de sorteo</strong> · lo entrega el camarero en persona (Chave Dourada, etc.)</span>
+          </label>
+        </div>
+
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
           <div>
             <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">🏷️ Edición</label>
             <input type="text" class="input-field" id="ach-edition" placeholder="Ej: María Pita 2026" style="margin:0; font-size:13px;" />
           </div>
-          <div>
+          <div id="ach-rule-date-wrap">
             <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">📅 Fecha de desbloqueo</label>
             <input type="date" class="input-field" id="ach-rule-date" style="margin:0; font-size:13px;" />
           </div>
         </div>
-        <p style="font-size:10px; color:var(--text-muted); margin:0 0 8px; line-height:1.4;">Quien haya fichado entrada ESE día podrá reclamar el logro desde su museo.</p>
+        <p id="ach-rule-hint" style="font-size:10px; color:var(--text-muted); margin:0 0 8px; line-height:1.4;">Quien haya fichado entrada ESE día podrá reclamar el logro desde su museo.</p>
 
         <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:5px;">🖼️ Imagen del logro (el propio NFT)</label>
         <label for="ach-image-input" style="display:block; background:var(--surface); border:1.5px dashed var(--border); border-radius:12px; padding:9px 16px; font-size:12px; color:var(--text-muted); cursor:pointer; text-align:center;">📁 Seleccionar imagen (JPG, PNG o webp)</label>
@@ -1914,6 +1927,21 @@
           <select class="input-field ach-filter-select" id="sched-required-achievement" style="margin:0; font-size:13px;">
             <option value="">Sin requisito de logro</option>
           </select>
+        </div>
+
+        <!-- Premio NFT (opcional) -->
+        <div style="margin-bottom:10px; padding:12px; background:linear-gradient(135deg, rgba(196,151,58,0.10), rgba(139,25,24,0.05)); border:1.5px solid rgba(196,151,58,0.35); border-radius:12px;">
+          <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:var(--wine); cursor:pointer;">
+            <input type="checkbox" id="sched-is-nft-prize" onchange="toggleSchedNftPrize()" />
+            <span>🏅 El premio es un NFT (chave dourada, medalla…)</span>
+          </label>
+          <div id="sched-nft-prize-wrap" style="display:none; margin-top:10px;">
+            <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">Elige el logro NFT</label>
+            <select class="input-field" id="sched-nft-achievement-id" style="margin:0; font-size:13px;">
+              <option value="">— cargando —</option>
+            </select>
+            <p style="font-size:10.5px; color:var(--text-muted); margin:8px 0 0; line-height:1.4;">Al ganar, el bono canjeable se sustituye por "Ven al furancho a recogerlo". El camarero se lo entrega desde el escáner cuando llega.</p>
+          </div>
         </div>
 
         <button id="sched-submit-btn" onclick="addScheduled()" style="width:100%; background:var(--wine); color:#fff; border:none; border-radius:12px; padding:11px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; margin-bottom:6px;">+ Programar sorteo</button>
@@ -4491,29 +4519,49 @@
     } catch (e) { showToast('Error subiendo imagen', true); }
   }
 
+  // Muestra/oculta el campo "Fecha de desbloqueo" según el tipo elegido.
+  // Los premios de sorteo no tienen fecha — se otorgan cuando el staff los da.
+  function toggleAchRuleType() {
+    const rt = document.querySelector('input[name="ach-rule-type"]:checked')?.value || 'visit_on_date';
+    const wrap = document.getElementById('ach-rule-date-wrap');
+    const hint = document.getElementById('ach-rule-hint');
+    if (rt === 'raffle_only') {
+      if (wrap) wrap.style.display = 'none';
+      if (hint) hint.textContent = 'Este logro solo se otorga como premio de sorteo. El camarero lo entrega al ganador desde su escáner cuando llega al furancho.';
+    } else {
+      if (wrap) wrap.style.display = '';
+      if (hint) hint.textContent = 'Quien haya fichado entrada ESE día podrá reclamar el logro desde su museo.';
+    }
+  }
+
   async function createAchievement(btn) {
     const name = document.getElementById('ach-name').value.trim();
     const description = document.getElementById('ach-description').value.trim();
     const edition = document.getElementById('ach-edition').value.trim();
+    const ruleType = document.querySelector('input[name="ach-rule-type"]:checked')?.value || 'visit_on_date';
     const ruleDate = document.getElementById('ach-rule-date').value;
     const image = document.getElementById('ach-image-url').value;
     if (!name) return showToast('Ponle nombre al logro', true);
-    if (!ruleDate) return showToast('Pon la fecha de desbloqueo', true);
+    if (ruleType === 'visit_on_date' && !ruleDate) return showToast('Pon la fecha de desbloqueo', true);
     if (!image) return showToast('Sube la imagen del logro', true);
     btn.disabled = true;
     try {
       const res = await fetch('/api/achievements/admin/create', {
         method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description, edition, ruleDate, image })
+        body: JSON.stringify({ name, description, edition, ruleDate: ruleType === 'visit_on_date' ? ruleDate : null, image, ruleType })
       });
       const data = await res.json();
       if (data.success) {
         showToast('✨ Logro creado: ' + data.achievement.name);
         ['ach-name', 'ach-description', 'ach-edition', 'ach-rule-date', 'ach-image-url'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
         document.getElementById('ach-image-preview').style.display = 'none';
+        // Reset del tipo al valor por defecto
+        const def = document.querySelector('input[name="ach-rule-type"][value="visit_on_date"]');
+        if (def) { def.checked = true; toggleAchRuleType(); }
         loadAchievementManager();
         if (typeof loadAchievementStats === 'function') loadAchievementStats();
         if (typeof loadAchievementFilterOptions === 'function') loadAchievementFilterOptions();
+        if (typeof loadSchedNftAchievements === 'function') loadSchedNftAchievements();
       } else {
         showToast(data.error || 'No se pudo crear', true);
       }
@@ -4600,6 +4648,11 @@
     const hours    = type === 'local' ? (document.getElementById('sched-hours')?.value.trim() || null) : null;
     const validityEndDate = type === 'local' ? (document.getElementById('sched-validity-end-date')?.value || null) : null;
 
+    // Premio NFT (opcional): sustituye el bono físico canjeable
+    const isNftPrize = document.getElementById('sched-is-nft-prize')?.checked;
+    const nftAchievementId = isNftPrize ? (document.getElementById('sched-nft-achievement-id')?.value || null) : null;
+    if (isNftPrize && !nftAchievementId) return showToast('Elige el logro NFT del premio', true);
+
     if (!date || !time || !prize) return showToast('Completa fecha, hora y nombre del premio', true);
     const editing = editingScheduledId != null;
     const url = editing ? `/api/raffle/scheduled/${editingScheduledId}` : '/api/raffle/scheduled';
@@ -4607,7 +4660,7 @@
     try {
       const res = await fetch(url, {
         method, headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventDate: date, scheduledTime: time, prize, type, hideName, establishment, prizeDetails, prizeImage, participantLevel, requiredAchievement, validity, people, hours, days, validityEndDate })
+        body: JSON.stringify({ eventDate: date, scheduledTime: time, prize, type, hideName, establishment, prizeDetails, prizeImage, participantLevel, requiredAchievement, validity, people, hours, days, validityEndDate, nftAchievementId })
       });
       const data = await res.json();
       if (data.success) {
@@ -4637,6 +4690,16 @@
     if (document.getElementById('sched-participant-level')) document.getElementById('sched-participant-level').value = r.participant_level || '';
     if (document.getElementById('sched-required-achievement')) document.getElementById('sched-required-achievement').value = r.required_achievement || '';
 
+    // Premio NFT
+    await loadSchedNftAchievements();
+    const nftChk = document.getElementById('sched-is-nft-prize');
+    const nftSel = document.getElementById('sched-nft-achievement-id');
+    if (nftChk && nftSel) {
+      if (r.nft_achievement_id) { nftChk.checked = true; nftSel.value = r.nft_achievement_id; }
+      else { nftChk.checked = false; nftSel.value = ''; }
+      toggleSchedNftPrize();
+    }
+
     // Local: imagen y desplegable de establecimiento
     if (r.prize_image) {
       document.getElementById('sched-image-url').value = r.prize_image;
@@ -4659,6 +4722,33 @@
     document.getElementById('sched-date').scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
+  // Muestra/oculta el desplegable de logro NFT según el checkbox de premio NFT.
+  function toggleSchedNftPrize() {
+    const chk = document.getElementById('sched-is-nft-prize');
+    const wrap = document.getElementById('sched-nft-prize-wrap');
+    if (!chk || !wrap) return;
+    wrap.style.display = chk.checked ? 'block' : 'none';
+    if (chk.checked) loadSchedNftAchievements();
+  }
+
+  // Rellena el desplegable "elige el logro NFT" con los custom_achievements de tipo raffle_only.
+  async function loadSchedNftAchievements() {
+    const sel = document.getElementById('sched-nft-achievement-id');
+    if (!sel) return;
+    try {
+      const res = await fetch('/api/achievements/admin/raffle-only', { headers: authHeaders() });
+      const data = await res.json();
+      const list = Array.isArray(data.list) ? data.list : [];
+      const cur = sel.value;
+      sel.innerHTML = list.length
+        ? '<option value="">— elige uno —</option>' + list.map(a => `<option value="${a.id}">${a.name}${a.edition ? ' · '+a.edition : ''}</option>`).join('')
+        : '<option value="">No hay logros "solo premio de sorteo". Créalos arriba.</option>';
+      sel.value = cur;
+    } catch (e) {
+      sel.innerHTML = '<option value="">Error cargando logros</option>';
+    }
+  }
+
   // Limpia el formulario y sale del modo edición.
   function clearScheduledForm() {
     editingScheduledId = null;
@@ -4674,6 +4764,12 @@
     if (document.getElementById('sched-validity-end-date')) document.getElementById('sched-validity-end-date').value = '';
     if (document.getElementById('sched-participant-level')) document.getElementById('sched-participant-level').value = '';
     if (document.getElementById('sched-required-achievement')) document.getElementById('sched-required-achievement').value = '';
+    const nftChk = document.getElementById('sched-is-nft-prize');
+    const nftSel = document.getElementById('sched-nft-achievement-id');
+    if (nftChk) nftChk.checked = false;
+    if (nftSel) nftSel.value = '';
+    const nftWrap = document.getElementById('sched-nft-prize-wrap');
+    if (nftWrap) nftWrap.style.display = 'none';
     clearSchedImage();
     const submit = document.getElementById('sched-submit-btn');
     if (submit) submit.textContent = '+ Programar sorteo';
