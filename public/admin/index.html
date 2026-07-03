@@ -1613,7 +1613,7 @@
           <select id="entry-qr-date-select" onchange="updateEntryQrPreview()" style="flex:1; min-width:150px; padding:10px 14px; border:1.5px solid rgba(46,204,113,0.3); border-radius:12px; font-size:13px; font-weight:600; font-family:'Outfit',sans-serif; background:#fff; color:var(--text);">
             <option value="">Cargando sesiones…</option>
           </select>
-          <a id="entry-qr-download-link" href="/api/qr/entry/download" download style="padding:10px 18px; background:rgba(46,204,113,0.12); border:1.5px solid rgba(46,204,113,0.3); border-radius:12px; font-size:12px; font-weight:700; color:#2ecc71; text-decoration:none; white-space:nowrap;">⬇ Descargar PNG</a>
+          <a id="entry-qr-download-link" href="/api/pdf/entrada" target="_blank" style="padding:10px 18px; background:rgba(46,204,113,0.12); border:1.5px solid rgba(46,204,113,0.3); border-radius:12px; font-size:12px; font-weight:700; color:#2ecc71; text-decoration:none; white-space:nowrap;">⬇ Descargar PDF</a>
         </div>
         <div style="text-align:center;">
           <img id="entry-qr-preview" src="/api/qr/entry" alt="QR Entrada" style="width:160px; height:160px; border-radius:12px; border:1.5px solid rgba(46,204,113,0.2); background:#fff;" />
@@ -2768,7 +2768,7 @@
     const date = sel ? sel.value : '';
     if (!date) return;
     if (img) img.src = `/api/qr/entry?date=${date}`;
-    if (link) link.href = `/api/qr/entry/download?date=${date}`;
+    if (link) link.href = `/api/pdf/entrada?date=${date}`;
     const fmtDate = new Date(date + 'T12:00:00').toLocaleDateString('es-ES', { day:'2-digit', month:'long', year:'numeric' });
     if (label) label.textContent = `Sesión del ${fmtDate}`;
     if (pdfLink) pdfLink.href = `/api/pdf/entrada?date=${date}`;
