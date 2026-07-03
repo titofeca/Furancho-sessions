@@ -6282,10 +6282,28 @@
       }
 
       if (isWinner && data.status === 'completed') {
-        // Ganador confirmado: mostrar código de verificación (independientemente del día/hora)
+        // Ganador confirmado. Dos casos:
+        //  a) Premio NFT → "ven al furancho a por tu NFT" (sin código ni bono físico)
+        //  b) Premio físico → código de verificación + bono PDF (flujo de siempre)
         btn.style.display = 'none';
         prizeText.innerHTML = `🏆 <strong>¡Te tocó la Chave, ho!</strong>`;
         const weekForPdf = data.currentWeek || _lastWeeklyData?.currentWeek;
+
+        if (data.nftAchievementId) {
+          if (rulesText) {
+            rulesText.innerHTML = `
+              <p style="font-size:13px; color:var(--text-muted); margin:0 0 14px; line-height:1.5;">${data.prize}</p>
+              <div style="background:linear-gradient(135deg, rgba(196,151,58,0.18), rgba(139,25,24,0.08)); border:1.5px solid var(--gold); border-radius:14px; padding:16px 14px; text-align:center;">
+                <p style="font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; color:var(--wine); margin:0 0 8px;">🏅 Premio NFT</p>
+                ${data.nftGranted
+                  ? '<p style="font-size:13px; color:var(--wine); font-weight:700; margin:0; line-height:1.5;">✅ Ya recogido — pendiente de confirmar por el admin, luego llega a tu wallet.</p>'
+                  : '<p style="font-size:13px; color:var(--text); margin:0; line-height:1.5;">Pásate por el furancho y enséñale tu <strong>🪪 ID Socio (QR)</strong> al camarero. Te lo entrega en persona ahí mismo.</p>'}
+              </div>`;
+            rulesText.insertAdjacentHTML('beforeend', weekForPdf ? weeklyChatBoxHtml(weekForPdf) : '');
+          }
+          return;
+        }
+
         const bonoLink = weekForPdf
           ? `<a href="/api/pdf/weekly/${encodeURIComponent(weekForPdf)}?wallet=${encodeURIComponent(userWalletAddress)}" target="_blank" style="display:block; margin-top:12px; padding:11px; background:rgba(196,151,58,0.12); border:1.5px solid var(--gold); color:var(--gold); border-radius:50px; font-size:13px; font-weight:700; text-decoration:none; text-align:center;">📄 Descargar bono PDF</a>`
           : '';

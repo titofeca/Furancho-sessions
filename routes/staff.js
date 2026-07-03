@@ -81,7 +81,9 @@ router.post('/checkin', staffLimiter, requireStaff, (req, res) => {
       result.pendingNftPrizes = rows.map(r => {
         const a = achievements.getById(r.nft_achievement_id);
         return {
-          raffleId: r.id,
+          source: r.source || 'raffle',   // 'raffle' | 'weekly'
+          raffleId: r.raffleId || null,
+          week: r.week || null,
           prize: r.prize,
           achievementId: r.nft_achievement_id,
           achievementName: a ? a.name : r.nft_achievement_id,
@@ -97,9 +99,46 @@ router.post('/checkin', staffLimiter, requireStaff, (req, res) => {
   }
 });
 
-// POST /api/staff/grant-nft-prize/:raffleId — el camarero entrega en persona el NFT
-// al ganador del sorteo. Crea achievement_mints con pending_approval (el admin lo
-// confirma antes de mintear on-chain). Idempotente: si ya se otorgó, error.
+// Mensajes de error comunes al otorgar un NFT (sorteo normal o chave semanal).
+const GRANT_ERROR_MESSAGES = {
+  raffle_not_found: 'Sorteo no encontrado',
+  not_an_nft_prize: 'Ese sorteo no es de premio NFT',
+  already_granted: 'Este NFT ya fue entregado antes',
+  wallet_mismatch: 'Esa wallet no es la ganadora del sorteo',
+  achievement_not_found: 'El logro NFT del sorteo no existe'
+};
+
+// POST /api/staff/grant-nft-prize — el camarero entrega en persona el NFT al ganador.
+// Body: { walletAddress, source:'raffle'|'weekly', raffleId?, week? }.
+// Crea achievement_mints con pending_approval (el admin lo confirma antes de mintear).
+// Idempotente. Soporta tanto sorteos normales (raffleId) como la Chave Semanal (week).
+router.post('/grant-nft-prize', staffLimiter, requireStaff, (req, res) => {
+  const { walletAddress, source, raffleId, week } = req.body || {};
+  if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
+    return res.status(400).json({ error: 'Dirección de wallet no válida' });
+  }
+  try {
+    const { grantNftPrize, grantWeeklyNftPrize } = require('../db/database');
+    let result;
+    if (source === 'weekly') {
+      if (!week) return res.status(400).json({ error: 'Falta la semana del sorteo' });
+      result = grantWeeklyNftPrize(week, walletAddress, 'staff');
+    } else {
+      const rid = parseInt(raffleId);
+      if (!rid) return res.status(400).json({ error: 'ID de sorteo no válido' });
+      result = grantNftPrize(rid, walletAddress, 'staff');
+    }
+    if (!result.ok) {
+      return res.status(400).json({ error: GRANT_ERROR_MESSAGES[result.error] || result.error });
+    }
+    res.json({ success: true, achievement: result.achievement });
+  } catch (e) {
+    console.error('Error en /staff/grant-nft-prize:', e.message);
+    res.status(500).json({ error: 'Error otorgando NFT' });
+  }
+});
+
+// Compat: la ruta antigua con :raffleId sigue funcionando para sorteos normales.
 router.post('/grant-nft-prize/:raffleId', staffLimiter, requireStaff, (req, res) => {
   const { walletAddress } = req.body || {};
   const raffleId = parseInt(req.params.raffleId);
@@ -111,14 +150,7 @@ router.post('/grant-nft-prize/:raffleId', staffLimiter, requireStaff, (req, res)
     const { grantNftPrize } = require('../db/database');
     const result = grantNftPrize(raffleId, walletAddress, 'staff');
     if (!result.ok) {
-      const messages = {
-        raffle_not_found: 'Sorteo no encontrado',
-        not_an_nft_prize: 'Ese sorteo no es de premio NFT',
-        already_granted: 'Este NFT ya fue entregado antes',
-        wallet_mismatch: 'Esa wallet no es la ganadora del sorteo',
-        achievement_not_found: 'El logro NFT del sorteo no existe'
-      };
-      return res.status(400).json({ error: messages[result.error] || result.error });
+      return res.status(400).json({ error: GRANT_ERROR_MESSAGES[result.error] || result.error });
     }
     res.json({ success: true, achievement: result.achievement });
   } catch (e) {

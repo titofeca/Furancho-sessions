@@ -139,6 +139,12 @@ try {
 // Filtro de elegibilidad de La Chave: nivel mínimo y/o logro NFT requerido.
 try { db.exec(`ALTER TABLE weekly_raffles ADD COLUMN min_level INTEGER DEFAULT NULL`); } catch (_) {}
 try { db.exec(`ALTER TABLE weekly_raffles ADD COLUMN required_achievement TEXT DEFAULT NULL`); } catch (_) {}
+// Premio en forma de NFT para la Chave Semanal. Si es null, el premio es físico
+// (flujo de siempre con código/bono). Si tiene id, el ganador va al furancho y el
+// camarero se lo entrega desde el escáner (encola achievement_mints pending_approval).
+// nft_granted_wallets: mapa JSON { wallet: timestamp } de a quién ya se le entregó.
+try { db.exec(`ALTER TABLE weekly_raffles ADD COLUMN nft_achievement_id TEXT DEFAULT NULL`); } catch (_) {}
+try { db.exec(`ALTER TABLE weekly_raffles ADD COLUMN nft_granted_wallets TEXT DEFAULT NULL`); } catch (_) {}
 // Limpiar reservas VIP huérfanas (apuntan a eventos que ya no existen)
 try {
   db.exec(`DELETE FROM vip_reservations WHERE event_id NOT IN (SELECT id FROM events)`);
@@ -1812,7 +1818,10 @@ function getMyWins(walletAddress) {
 //  - no se otorgó todavía (nft_granted_at IS NULL)
 function getPendingNftPrizes(walletAddress) {
   if (!walletAddress) return [];
-  return db.prepare(`
+  const lower = String(walletAddress).toLowerCase();
+
+  // 1) Sorteos normales (tabla raffles): ganador único por fila.
+  const raffleRows = db.prepare(`
     SELECT id, prize, nft_achievement_id, prize_image, created_at
     FROM raffles
     WHERE LOWER(winner_wallet) = LOWER(?)
@@ -1820,7 +1829,42 @@ function getPendingNftPrizes(walletAddress) {
       AND nft_granted_at IS NULL
       AND status IN ('accepted','collected','pending_acceptance')
     ORDER BY created_at DESC
-  `).all(walletAddress);
+  `).all(walletAddress).map(r => ({
+    source: 'raffle', raffleId: r.id, week: null,
+    prize: r.prize, nft_achievement_id: r.nft_achievement_id, prize_image: r.prize_image
+  }));
+
+  // 2) Chave Semanal (tabla weekly_raffles): winner_wallet es un array JSON de ganadores;
+  //    nft_granted_wallets es un mapa JSON { wallet: ts } de a quién ya se le entregó.
+  const weeklyRows = db.prepare(`
+    SELECT claimed_week, prize, nft_achievement_id, winner_wallet, nft_granted_wallets, forfeited_wallets, drawn_at
+    FROM weekly_raffles
+    WHERE nft_achievement_id IS NOT NULL
+      AND status = 'completed'
+      AND winner_wallet IS NOT NULL
+    ORDER BY drawn_at DESC
+  `).all();
+  const parseObj = (s) => { try { const o = JSON.parse(s || '{}'); return (o && typeof o === 'object') ? o : {}; } catch (_) { return {}; } };
+  const weeklyPending = [];
+  for (const r of weeklyRows) {
+    let winners = [];
+    try { const p = JSON.parse(r.winner_wallet); winners = Array.isArray(p) ? p : [p]; }
+    catch (_) { winners = r.winner_wallet ? [r.winner_wallet] : []; }
+    const isWinner = winners.some(w => w && w.toLowerCase() === lower);
+    if (!isWinner) continue;
+    const granted = parseObj(r.nft_granted_wallets);
+    const forfeited = parseObj(r.forfeited_wallets);
+    // Ya entregado a esta wallet, o esta wallet perdió su plazo → no pendiente.
+    const grantedKey = Object.keys(granted).find(k => k.toLowerCase() === lower);
+    const forfeitedKey = Object.keys(forfeited).find(k => k.toLowerCase() === lower);
+    if (grantedKey || forfeitedKey) continue;
+    weeklyPending.push({
+      source: 'weekly', raffleId: null, week: r.claimed_week,
+      prize: r.prize, nft_achievement_id: r.nft_achievement_id, prize_image: null
+    });
+  }
+
+  return [...raffleRows, ...weeklyPending];
 }
 
 // Otorgamiento presencial del NFT al ganador desde el escáner del staff. Atómico:
@@ -1845,14 +1889,57 @@ function grantNftPrize(raffleId, walletAddress, grantedBy = 'staff') {
   const ach = achievements.getById(raffle.nft_achievement_id);
   if (!ach) return { ok: false, error: 'achievement_not_found' };
 
-  const tx = db.transaction(() => {
+  try {
+    db.exec('BEGIN TRANSACTION');
     db.prepare(`UPDATE raffles SET nft_granted_at = datetime('now'), nft_granted_by = ? WHERE id = ?`).run(grantedBy, raffleId);
     db.prepare(`
       INSERT OR IGNORE INTO achievement_mints (wallet_address, achievement_id, token_id, status)
       VALUES (?, ?, ?, 'pending_approval')
     `).run(walletAddress, ach.id, ach.tokenId);
-  });
-  tx();
+    db.exec('COMMIT');
+  } catch (e) {
+    try { db.exec('ROLLBACK'); } catch (_) {}
+    throw e;
+  }
+  return { ok: true, mintCreated: true, achievement: { id: ach.id, name: ach.name, image: ach.image } };
+}
+
+// Otorgamiento presencial del NFT al ganador de la CHAVE SEMANAL. Igual que grantNftPrize
+// pero para weekly_raffles (multi-ganador: marca solo a esta wallet en nft_granted_wallets).
+function grantWeeklyNftPrize(weekStr, walletAddress, grantedBy = 'staff') {
+  const raffle = db.prepare(`SELECT * FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
+  if (!raffle) return { ok: false, error: 'raffle_not_found' };
+  if (!raffle.nft_achievement_id) return { ok: false, error: 'not_an_nft_prize' };
+
+  let winners = [];
+  try { const p = JSON.parse(raffle.winner_wallet); winners = Array.isArray(p) ? p : [p]; }
+  catch (_) { winners = raffle.winner_wallet ? [raffle.winner_wallet] : []; }
+  const matched = winners.find(w => w && w.toLowerCase() === String(walletAddress || '').toLowerCase());
+  if (!matched) return { ok: false, error: 'wallet_mismatch' };
+
+  const parseObj = (s) => { try { const o = JSON.parse(s || '{}'); return (o && typeof o === 'object') ? o : {}; } catch (_) { return {}; } };
+  const granted = parseObj(raffle.nft_granted_wallets);
+  if (Object.keys(granted).some(k => k.toLowerCase() === matched.toLowerCase())) {
+    return { ok: false, error: 'already_granted' };
+  }
+
+  const achievements = require('../services/achievements');
+  const ach = achievements.getById(raffle.nft_achievement_id);
+  if (!ach) return { ok: false, error: 'achievement_not_found' };
+
+  try {
+    db.exec('BEGIN TRANSACTION');
+    granted[matched] = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    db.prepare(`UPDATE weekly_raffles SET nft_granted_wallets = ? WHERE claimed_week = ?`).run(JSON.stringify(granted), weekStr);
+    db.prepare(`
+      INSERT OR IGNORE INTO achievement_mints (wallet_address, achievement_id, token_id, status)
+      VALUES (?, ?, ?, 'pending_approval')
+    `).run(matched, ach.id, ach.tokenId);
+    db.exec('COMMIT');
+  } catch (e) {
+    try { db.exec('ROLLBACK'); } catch (_) {}
+    throw e;
+  }
   return { ok: true, mintCreated: true, achievement: { id: ach.id, name: ach.name, image: ach.image } };
 }
 
@@ -2133,6 +2220,7 @@ module.exports = {
   getAllAchievementOverrides,
   getPendingNftPrizes,
   grantNftPrize,
+  grantWeeklyNftPrize,
   insertVisit,
   getVisitCount,
   getEligibleRaffleParticipants,
@@ -2326,17 +2414,27 @@ function getWeeklyRaffleStatus(walletAddress, weekStr) {
     confirmDeadline: raffle ? raffle.confirm_deadline : null,
     confirmedAt: myState.confirmedAt,
     totalParticipants,
-    isConfigured: !!raffle
+    isConfigured: !!raffle,
+    // Premio NFT (chave dourada, etc.): si está, el ganador va al furancho y el
+    // camarero se lo entrega. nftGranted = ya se le entregó a esta wallet.
+    nftAchievementId: (prizeVisible && raffle) ? (raffle.nft_achievement_id || null) : null,
+    nftGranted: (() => {
+      if (!raffle || !raffle.nft_achievement_id) return false;
+      try {
+        const g = JSON.parse(raffle.nft_granted_wallets || '{}');
+        return Object.keys(g).some(k => k.toLowerCase() === String(walletAddress).toLowerCase());
+      } catch (_) { return false; }
+    })()
   };
 }
 
-function updateWeeklyPrize(weekStr, prize, rules, winnersCount = 1, prizeDetails = null, minLevel = null, requiredAchievement = null) {
+function updateWeeklyPrize(weekStr, prize, rules, winnersCount = 1, prizeDetails = null, minLevel = null, requiredAchievement = null, nftAchievementId = null) {
   db.prepare(`INSERT OR IGNORE INTO weekly_raffles (claimed_week) VALUES (?)`).run(weekStr);
   db.prepare(`
     UPDATE weekly_raffles
-    SET prize = ?, rules = ?, winners_count = ?, prize_details = ?, min_level = ?, required_achievement = ?
+    SET prize = ?, rules = ?, winners_count = ?, prize_details = ?, min_level = ?, required_achievement = ?, nft_achievement_id = ?
     WHERE claimed_week = ?
-  `).run(prize, rules, winnersCount, prizeDetails, minLevel || null, requiredAchievement || null, weekStr);
+  `).run(prize, rules, winnersCount, prizeDetails, minLevel || null, requiredAchievement || null, nftAchievementId || null, weekStr);
 }
 
 function drawWeeklyRaffle(weekStr) {

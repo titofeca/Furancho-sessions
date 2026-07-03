@@ -263,34 +263,41 @@
       if (!wrap) return false;
       if (!prizes || !prizes.length){ wrap.style.display = 'none'; wrap.innerHTML = ''; return false; }
       wrap.style.display = 'block';
-      wrap.innerHTML = prizes.map(p => `
+      wrap.innerHTML = prizes.map((p, idx) => {
+        // Guardamos cada premio en una lista global para que el botón lo recupere por índice
+        // (así soportamos source raffle|weekly sin meter comillas raras en el onclick).
+        window._nftPrizeQueue = window._nftPrizeQueue || {};
+        window._nftPrizeQueue[wallet + ':' + idx] = p;
+        return `
         <div style="padding:16px; background:linear-gradient(135deg, rgba(196,151,58,0.22), rgba(139,25,24,0.10)); border:2px solid var(--gold); border-radius:16px; margin-bottom:10px; box-shadow:0 4px 16px rgba(196,151,58,0.25);">
           <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
             ${p.achievementImage ? `<img src="${p.achievementImage}" alt="" style="width:56px; height:56px; border-radius:12px; object-fit:cover; border:2px solid var(--gold); background:#fff;" />` : '<span style="font-size:40px;">🏅</span>'}
             <div style="flex:1;">
-              <p style="margin:0; font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--wine);">🏅 GANÓ ESTE NFT</p>
+              <p style="margin:0; font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--wine);">🏅 GANÓ ESTE NFT${p.source === 'weekly' ? ' · CHAVE SEMANAL' : ''}</p>
               <p style="margin:2px 0 0; font-size:16px; font-weight:900; color:var(--wine); font-family:'Playfair Display',serif;">${p.achievementName}</p>
               ${p.prize ? `<p style="margin:2px 0 0; font-size:11px; color:var(--text-muted);">Sorteo: ${p.prize}</p>` : ''}
             </div>
           </div>
-          <button type="button" data-raffle-id="${p.raffleId}" onclick="grantNftPrize(this, '${wallet}', ${p.raffleId})"
+          <button type="button" onclick="grantNftPrize(this, '${wallet}', '${wallet + ':' + idx}')"
                   style="width:100%; padding:14px; background:linear-gradient(135deg, var(--gold), #a97b1f); color:#fff; border:none; border-radius:12px; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 3px 12px rgba(196,151,58,0.4); font-family:'Outfit',sans-serif;">
             🏅 Entregarle el NFT ahora
           </button>
-        </div>
-      `).join('');
+        </div>`;
+      }).join('');
       return true;
     }
 
-    async function grantNftPrize(btn, wallet, raffleId){
+    async function grantNftPrize(btn, wallet, queueKey){
+      const p = (window._nftPrizeQueue || {})[queueKey];
+      if (!p){ alert('No encuentro el premio, refresca y escanea de nuevo.'); return; }
       btn.disabled = true;
       const original = btn.textContent;
       btn.textContent = 'Entregando…';
       try {
-        const r = await fetch('/api/staff/grant-nft-prize/' + encodeURIComponent(raffleId), {
+        const r = await fetch('/api/staff/grant-nft-prize', {
           method:'POST',
           headers:{ 'Content-Type':'application/json', 'x-staff-code': localStorage.getItem(STAFF_KEY) || '' },
-          body: JSON.stringify({ walletAddress: wallet })
+          body: JSON.stringify({ walletAddress: wallet, source: p.source || 'raffle', raffleId: p.raffleId || null, week: p.week || null })
         });
         const d = await r.json();
         if (r.ok && d.success){

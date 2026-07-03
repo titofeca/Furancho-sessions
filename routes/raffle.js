@@ -516,6 +516,16 @@ router.get('/my-history', (req, res) => {
           status = 'rejected';
         }
         const codeUnlocked = !!(st.confirmedAt || st.collectedAt || !w.confirm_deadline);
+        // Premio NFT de la Chave Semanal: sin código canjeable; el ganador va al
+        // furancho y el camarero se lo entrega. nft_granted = ya se lo dieron.
+        const isNftPrize = !!w.nft_achievement_id;
+        let nftGranted = false;
+        if (isNftPrize) {
+          try {
+            const g = JSON.parse(w.nft_granted_wallets || '{}');
+            nftGranted = Object.keys(g).some(k => k.toLowerCase() === lowerWallet);
+          } catch (_) {}
+        }
         return {
           id: 'weekly-' + w.claimed_week,
           is_weekly: 1,
@@ -528,10 +538,13 @@ router.get('/my-history', (req, res) => {
           rejection_note: null,
           acceptance_deadline: null,
           is_winner: isWinner ? 1 : 0,
-          verification_code: isWinner && codeUnlocked ? userCode : null,
+          // Si el premio es NFT no hay código: el flujo es presencial vía escáner.
+          verification_code: (!isNftPrize && isWinner && codeUnlocked) ? userCode : null,
           prize_details: null,
           prize_image: null,
-          establishment: null
+          establishment: null,
+          nft_achievement_id: isNftPrize ? w.nft_achievement_id : null,
+          nft_granted_at: nftGranted ? 'granted' : null
         };
       });
 
@@ -1159,7 +1172,8 @@ router.get('/admin/weekly/status', requireAuth, (req, res) => {
       confirmedWallets: raffle ? raffle.confirmed_wallets : null,
       totalParticipants,
       isConfigured: !!raffle,
-      winnersCount: raffle ? (raffle.winners_count || 1) : 1
+      winnersCount: raffle ? (raffle.winners_count || 1) : 1,
+      nftAchievementId: raffle ? (raffle.nft_achievement_id || null) : null
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -1235,14 +1249,14 @@ router.post('/admin/weekly/forfeit', requireAuth, (req, res) => {
 
 // POST /api/admin/weekly/config (ADMIN)
 router.post('/admin/weekly/config', requireAuth, (req, res) => {
-  const { prize, rules, week, winnersCount, prizeDetails, minLevel, requiredAchievement } = req.body;
+  const { prize, rules, week, winnersCount, prizeDetails, minLevel, requiredAchievement, nftAchievementId } = req.body;
   if (!prize) return res.status(400).json({ error: 'Falta el nombre del premio' });
   const weekStr = week || getWeeklyRaffleTargetWeek();
   try {
     const { WEEKLY_DEFAULT_RULES } = require('../db/database');
     const wCount = winnersCount ? parseInt(winnersCount) : 1;
     const mLevel = minLevel ? parseInt(minLevel) : null;
-    updateWeeklyPrize(weekStr, prize, rules || WEEKLY_DEFAULT_RULES, wCount, prizeDetails || null, mLevel, requiredAchievement || null);
+    updateWeeklyPrize(weekStr, prize, rules || WEEKLY_DEFAULT_RULES, wCount, prizeDetails || null, mLevel, requiredAchievement || null, nftAchievementId || null);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });

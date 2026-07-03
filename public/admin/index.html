@@ -2129,6 +2129,21 @@
             </select>
           </div>
 
+          <!-- Premio NFT (opcional) -->
+          <div style="margin-bottom:14px; padding:12px; background:linear-gradient(135deg, rgba(196,151,58,0.10), rgba(139,25,24,0.05)); border:1.5px solid rgba(196,151,58,0.35); border-radius:12px;">
+            <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:var(--wine); cursor:pointer;">
+              <input type="checkbox" id="weekly-is-nft-prize" onchange="toggleWeeklyNftPrize()" />
+              <span>🏅 El premio es un NFT (chave dourada, medalla…)</span>
+            </label>
+            <div id="weekly-nft-prize-wrap" style="display:none; margin-top:10px;">
+              <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">Elige el logro NFT</label>
+              <select class="input-field" id="weekly-nft-achievement-id" style="margin:0; font-size:13px;">
+                <option value="">— cargando —</option>
+              </select>
+              <p style="font-size:10.5px; color:var(--text-muted); margin:8px 0 0; line-height:1.4;">El ganador ve "Ven al furancho a por tu NFT". El camarero se lo entrega desde el escáner cuando llega. No hay código ni bono físico.</p>
+            </div>
+          </div>
+
           <label class="form-label" style="font-size:11px; font-weight:700; color:var(--gold); text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:6px;">📝 Operativa y Reglas</label>
           <textarea class="input-field" id="weekly-rules-input" placeholder="Operativa del sorteo semanal..." style="font-size:13px; font-family:'Outfit',sans-serif; min-height:80px; resize:vertical; margin-bottom:14px; background:rgba(42,21,9,0.05); border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; color:var(--text); width:100%; box-sizing:border-box; padding:10px; outline:none;"></textarea>
           
@@ -5560,6 +5575,15 @@
       if (winnersInput && document.activeElement !== winnersInput) {
         winnersInput.value = data.winnersCount || 1;
       }
+      // Premio NFT: precargar checkbox + selector desde la config guardada
+      const nftChk = document.getElementById('weekly-is-nft-prize');
+      const nftSel = document.getElementById('weekly-nft-achievement-id');
+      if (nftChk && nftSel) {
+        await loadWeeklyNftAchievements();
+        if (data.nftAchievementId) { nftChk.checked = true; nftSel.value = data.nftAchievementId; }
+        else { nftChk.checked = false; nftSel.value = ''; }
+        toggleWeeklyNftPrize();
+      }
 
       // Actualizar el panel de confirmación con lo que está en la DB
       if (data.isConfigured && data.prize) {
@@ -5859,6 +5883,33 @@
     }
   }
 
+  // Muestra/oculta el selector de logro NFT según el checkbox de premio NFT (chave semanal).
+  function toggleWeeklyNftPrize() {
+    const chk = document.getElementById('weekly-is-nft-prize');
+    const wrap = document.getElementById('weekly-nft-prize-wrap');
+    if (!chk || !wrap) return;
+    wrap.style.display = chk.checked ? 'block' : 'none';
+    if (chk.checked) loadWeeklyNftAchievements();
+  }
+
+  // Rellena el desplegable de logro NFT de la chave semanal (solo logros raffle_only).
+  async function loadWeeklyNftAchievements() {
+    const sel = document.getElementById('weekly-nft-achievement-id');
+    if (!sel) return;
+    try {
+      const res = await fetch('/api/achievements/admin/raffle-only', { headers: authHeaders() });
+      const data = await res.json();
+      const list = Array.isArray(data.list) ? data.list : [];
+      const cur = sel.value;
+      sel.innerHTML = list.length
+        ? '<option value="">— elige uno —</option>' + list.map(a => `<option value="${a.id}">${a.name}${a.edition ? ' · '+a.edition : ''}</option>`).join('')
+        : '<option value="">No hay logros "solo premio de sorteo". Créalos en "Crear logro NFT".</option>';
+      sel.value = cur;
+    } catch (e) {
+      sel.innerHTML = '<option value="">Error cargando logros</option>';
+    }
+  }
+
   async function saveWeeklyRaffleConfig() {
     const selectEl = document.getElementById('weekly-admin-week-select');
     const prizeInput = document.getElementById('weekly-prize-input');
@@ -5874,8 +5925,15 @@
     const winnersCount = winnersInput ? winnersInput.value : 1;
     const minLevel = document.getElementById('weekly-min-level')?.value || null;
     const requiredAchievement = document.getElementById('weekly-required-achievement')?.value || null;
+    // Premio NFT (opcional)
+    const isNftPrize = document.getElementById('weekly-is-nft-prize')?.checked;
+    const nftAchievementId = isNftPrize ? (document.getElementById('weekly-nft-achievement-id')?.value || null) : null;
     if (!prize) {
       showToast('Introduce el nombre del premio', true);
+      return;
+    }
+    if (isNftPrize && !nftAchievementId) {
+      showToast('Elige el logro NFT del premio', true);
       return;
     }
 
@@ -5886,7 +5944,7 @@
           ...authHeaders(),
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ prize, rules, week: selectedWeek, winnersCount, prizeDetails, minLevel, requiredAchievement })
+        body: JSON.stringify({ prize, rules, week: selectedWeek, winnersCount, prizeDetails, minLevel, requiredAchievement, nftAchievementId })
       });
       const data = await res.json();
       if (res.ok && data.success) {
