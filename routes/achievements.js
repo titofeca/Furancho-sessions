@@ -88,6 +88,7 @@ router.get('/admin/list', requireAuth, (req, res) => {
       achievements: achievements.list().map(a => ({
         id: a.id, name: a.name, description: a.description, image: a.image,
         tokenId: a.tokenId, edition: a.edition || null,
+        ruleType: a.rule ? a.rule.type : null,
         ruleDate: a.rule ? a.rule.date : null, custom: !!a.custom
       })),
       nextTokenId: achievements.nextTokenId()
@@ -112,6 +113,17 @@ router.post('/admin/create', requireAuth, (req, res) => {
 router.get('/admin/raffle-only', requireAuth, (req, res) => {
   try { res.json({ list: achievements.listRaffleOnly() }); }
   catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PATCH /api/achievements/admin/:id — edita un logro creado desde el panel.
+// Body: cualquiera de { name, description, image, edition, ruleType, ruleDate }.
+// El token_id (identidad on-chain) no se cambia. No afecta a NFTs ya minteados.
+router.patch('/admin/:id', requireAuth, (req, res) => {
+  try {
+    const { name, description, image, edition, ruleType, ruleDate } = req.body;
+    const updated = achievements.updateCustom(req.params.id, { name, description, image, edition, ruleType, ruleDate });
+    res.json({ success: true, achievement: updated });
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 // DELETE /api/achievements/admin/:id — borra un logro creado desde el panel

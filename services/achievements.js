@@ -120,6 +120,45 @@ function listRaffleOnly() {
   return _all().filter(a => a.rule && a.rule.type === 'raffle_only').map(_withImage);
 }
 
+// Edita un logro creado desde el panel (nunca los del código). Solo actualiza los
+// campos presentes en el objeto. Permite cambiar el tipo (asistencia ↔ premio de sorteo).
+// El token_id NO se toca (es la identidad on-chain del NFT).
+function updateCustom(id, { name, description, image, edition, ruleType, ruleDate }) {
+  const existing = db.prepare(`SELECT * FROM custom_achievements WHERE id = ?`).get(id);
+  if (!existing) {
+    // Si intentan editar un logro del código, avisamos claramente.
+    if (ACHIEVEMENTS.some(a => a.id === id)) throw new Error('Ese logro está definido en el código y no se edita desde aquí');
+    throw new Error('Logro no encontrado');
+  }
+  const fields = [], vals = [];
+  if (name !== undefined) {
+    if (!String(name).trim()) throw new Error('El nombre no puede quedar vacío');
+    fields.push('name = ?'); vals.push(String(name).trim());
+  }
+  if (description !== undefined) { fields.push('description = ?'); vals.push(description || null); }
+  if (image !== undefined && image) { fields.push('image = ?'); vals.push(image); }
+  if (edition !== undefined) { fields.push('edition = ?'); vals.push(edition || null); }
+  // Tipo de desbloqueo: valida coherencia con la fecha.
+  const nextRuleType = ruleType !== undefined
+    ? ((ruleType === 'raffle_only') ? 'raffle_only' : 'visit_on_date')
+    : existing.rule_type;
+  if (ruleType !== undefined) { fields.push('rule_type = ?'); vals.push(nextRuleType); }
+  if (nextRuleType === 'visit_on_date') {
+    const effectiveDate = ruleDate !== undefined ? ruleDate : existing.rule_date;
+    if (!effectiveDate || !/^\d{4}-\d{2}-\d{2}$/.test(effectiveDate)) {
+      throw new Error('El desbloqueo por asistencia necesita una fecha (YYYY-MM-DD)');
+    }
+    if (ruleDate !== undefined) { fields.push('rule_date = ?'); vals.push(ruleDate); }
+  } else {
+    // raffle_only no usa fecha: la limpiamos para no dejar datos incoherentes.
+    fields.push('rule_date = ?'); vals.push(null);
+  }
+  if (!fields.length) return getById(id);
+  vals.push(id);
+  db.prepare(`UPDATE custom_achievements SET ${fields.join(', ')} WHERE id = ?`).run(...vals);
+  return getById(id);
+}
+
 // Borra un logro creado desde el panel (nunca los del código). Devuelve true si borró.
 function deleteCustom(id) {
   const hardcoded = ACHIEVEMENTS.some(a => a.id === id);
@@ -205,6 +244,6 @@ function getAchievementStats() {
 module.exports = {
   list, getById, getByTokenId, nextTokenId,
   walletMeetsRule, walletUnlocked, metadataForToken,
-  getAchievementStats, createCustom, deleteCustom, listRaffleOnly,
+  getAchievementStats, createCustom, updateCustom, deleteCustom, listRaffleOnly,
   ACHIEVEMENTS
 };

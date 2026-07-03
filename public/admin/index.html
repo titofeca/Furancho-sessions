@@ -1167,7 +1167,8 @@
         <input type="hidden" id="ach-image-url" />
         <div id="ach-image-preview" style="display:none; margin-top:6px; text-align:center;"><img id="ach-image-thumb" style="max-height:80px; border-radius:10px; border:1px solid var(--border);" /></div>
 
-        <button onclick="createAchievement(this)" style="width:100%; margin-top:12px; padding:12px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:12px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer;">✨ Crear logro</button>
+        <button id="ach-submit-btn" onclick="createAchievement(this)" style="width:100%; margin-top:12px; padding:12px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:12px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer;">✨ Crear logro</button>
+        <button id="ach-cancel-edit-btn" onclick="clearAchievementForm()" style="display:none; width:100%; margin-top:8px; padding:9px; background:transparent; color:var(--text-muted); border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; font-family:'Outfit',sans-serif; font-size:12px; font-weight:700; cursor:pointer;">Cancelar edición</button>
 
         <div style="margin-top:18px; padding-top:14px; border-top:1px solid rgba(42,21,9,0.1);">
           <span class="card-title" style="font-size:14px;">Logros existentes</span>
@@ -4279,6 +4280,8 @@
   let currentSchedType = 'night';
   let scheduledRowsById = {};
   let editingScheduledId = null;
+  let achievementRowsById = {};
+  let editingAchievementId = null;
 
   // Abre un recurso protegido de admin (bono HTML o PDF) en pestaña nueva,
   // enviando la cabecera de auth (requireAuth no acepta token por querystring).
@@ -4544,28 +4547,27 @@
     if (!name) return showToast('Ponle nombre al logro', true);
     if (ruleType === 'visit_on_date' && !ruleDate) return showToast('Pon la fecha de desbloqueo', true);
     if (!image) return showToast('Sube la imagen del logro', true);
+    const editing = editingAchievementId != null;
+    const url = editing ? '/api/achievements/admin/' + encodeURIComponent(editingAchievementId) : '/api/achievements/admin/create';
+    const method = editing ? 'PATCH' : 'POST';
     btn.disabled = true;
     try {
-      const res = await fetch('/api/achievements/admin/create', {
-        method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      const res = await fetch(url, {
+        method, headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, description, edition, ruleDate: ruleType === 'visit_on_date' ? ruleDate : null, image, ruleType })
       });
       const data = await res.json();
       if (data.success) {
-        showToast('✨ Logro creado: ' + data.achievement.name);
-        ['ach-name', 'ach-description', 'ach-edition', 'ach-rule-date', 'ach-image-url'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-        document.getElementById('ach-image-preview').style.display = 'none';
-        // Reset del tipo al valor por defecto
-        const def = document.querySelector('input[name="ach-rule-type"][value="visit_on_date"]');
-        if (def) { def.checked = true; toggleAchRuleType(); }
+        showToast(editing ? '✅ Logro actualizado: ' + data.achievement.name : '✨ Logro creado: ' + data.achievement.name);
+        clearAchievementForm();
         loadAchievementManager();
         if (typeof loadAchievementStats === 'function') loadAchievementStats();
         if (typeof loadAchievementFilterOptions === 'function') loadAchievementFilterOptions();
         if (typeof loadSchedNftAchievements === 'function') loadSchedNftAchievements();
       } else {
-        showToast(data.error || 'No se pudo crear', true);
+        showToast(data.error || (editing ? 'No se pudo actualizar' : 'No se pudo crear'), true);
       }
-    } catch (e) { showToast('Error creando logro', true); }
+    } catch (e) { showToast(editing ? 'Error actualizando logro' : 'Error creando logro', true); }
     finally { btn.disabled = false; }
   }
 
@@ -4591,19 +4593,74 @@
     try {
       const data = await fetch('/api/achievements/admin/list', { headers: authHeaders() }).then(r => r.json());
       const list = data.achievements || [];
+      achievementRowsById = {};
+      list.forEach(a => { achievementRowsById[a.id] = a; });
       if (!list.length) { el.innerHTML = '<p style="font-size:12px; color:var(--text-muted);">Aún no hay logros.</p>'; return; }
-      el.innerHTML = list.map(a => `
+      el.innerHTML = list.map(a => {
+        // Badge del tipo de desbloqueo
+        const badge = a.ruleType === 'raffle_only'
+          ? '<span style="display:inline-block; font-size:9px; font-weight:800; letter-spacing:0.3px; color:#8B6914; background:rgba(196,151,58,0.18); border:1px solid rgba(196,151,58,0.4); border-radius:20px; padding:1px 7px;">🏅 PREMIO DE SORTEO</span>'
+          : (a.ruleType === 'campaign_visits'
+            ? '<span style="display:inline-block; font-size:9px; font-weight:800; letter-spacing:0.3px; color:var(--wine); background:rgba(139,25,24,0.1); border:1px solid rgba(139,25,24,0.25); border-radius:20px; padding:1px 7px;">👑 CAMPAÑA</span>'
+            : `<span style="display:inline-block; font-size:9px; font-weight:800; letter-spacing:0.3px; color:var(--text-muted); background:rgba(0,0,0,0.04); border:1px solid rgba(0,0,0,0.08); border-radius:20px; padding:1px 7px;">📅 ${a.ruleDate || 'asistencia'}</span>`);
+        return `
         <div style="display:flex; align-items:center; gap:10px; padding:8px; background:var(--surface); border:1px solid var(--border); border-radius:10px; margin-bottom:6px;">
           <img src="${a.image}" style="width:38px; height:38px; object-fit:cover; border-radius:8px; flex-shrink:0; background:#fff;" onerror="this.style.visibility='hidden'"/>
           <div style="flex:1; min-width:0;">
             <p style="font-size:13px; font-weight:700; color:var(--text); margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.name} <span style="font-size:10px; color:var(--text-muted); font-weight:600;">· token ${a.tokenId}</span></p>
-            <p style="font-size:10px; color:var(--text-muted); margin:1px 0 0;">${a.ruleDate ? '📅 Desbloqueo: ' + a.ruleDate : 'Sin fecha'}${a.custom ? '' : ' · definido en el código'}</p>
+            <div style="margin-top:3px;">${badge}${a.custom ? '' : ' <span style="font-size:9px; color:var(--text-muted); font-style:italic;">· en el código</span>'}</div>
           </div>
           ${a.custom
-            ? `<button onclick="deleteAchievement('${a.id}')" style="padding:5px 10px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:8px; font-size:11px; font-weight:700; color:#ef4444; cursor:pointer; font-family:'Outfit',sans-serif; flex-shrink:0;">Borrar</button>`
+            ? `<div style="display:flex; gap:6px; flex-shrink:0;">
+                 <button onclick="editAchievement('${a.id}')" style="padding:5px 10px; background:rgba(196,151,58,0.12); border:1px solid rgba(196,151,58,0.35); border-radius:8px; font-size:11px; font-weight:700; color:#8B6914; cursor:pointer; font-family:'Outfit',sans-serif;">Editar</button>
+                 <button onclick="deleteAchievement('${a.id}')" style="padding:5px 10px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:8px; font-size:11px; font-weight:700; color:#ef4444; cursor:pointer; font-family:'Outfit',sans-serif;">Borrar</button>
+               </div>`
             : `<span style="font-size:10px; color:var(--text-muted); font-style:italic; flex-shrink:0;">fijo</span>`}
-        </div>`).join('');
+        </div>`;
+      }).join('');
     } catch (e) { el.innerHTML = '<p style="font-size:12px; color:#ef4444;">Error cargando logros.</p>'; }
+  }
+
+  // Rellena el formulario con un logro existente para editarlo (PATCH al guardar).
+  function editAchievement(id) {
+    const a = achievementRowsById[id];
+    if (!a) return;
+    editingAchievementId = id;
+    document.getElementById('ach-name').value = a.name || '';
+    document.getElementById('ach-description').value = a.description || '';
+    document.getElementById('ach-edition').value = a.edition || '';
+    document.getElementById('ach-rule-date').value = a.ruleDate || '';
+    document.getElementById('ach-image-url').value = a.image || '';
+    if (a.image) {
+      document.getElementById('ach-image-thumb').src = a.image;
+      document.getElementById('ach-image-preview').style.display = 'block';
+    } else {
+      document.getElementById('ach-image-preview').style.display = 'none';
+    }
+    // Tipo de desbloqueo
+    const rt = a.ruleType === 'raffle_only' ? 'raffle_only' : 'visit_on_date';
+    const radio = document.querySelector(`input[name="ach-rule-type"][value="${rt}"]`);
+    if (radio) { radio.checked = true; toggleAchRuleType(); }
+    // Botones
+    const submit = document.getElementById('ach-submit-btn');
+    if (submit) submit.textContent = '💾 Guardar cambios';
+    const cancel = document.getElementById('ach-cancel-edit-btn');
+    if (cancel) cancel.style.display = 'block';
+    document.getElementById('ach-name').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  // Limpia el formulario de logro y sale del modo edición.
+  function clearAchievementForm() {
+    editingAchievementId = null;
+    ['ach-name', 'ach-description', 'ach-edition', 'ach-rule-date', 'ach-image-url'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    const prev = document.getElementById('ach-image-preview');
+    if (prev) prev.style.display = 'none';
+    const def = document.querySelector('input[name="ach-rule-type"][value="visit_on_date"]');
+    if (def) { def.checked = true; toggleAchRuleType(); }
+    const submit = document.getElementById('ach-submit-btn');
+    if (submit) submit.textContent = '✨ Crear logro';
+    const cancel = document.getElementById('ach-cancel-edit-btn');
+    if (cancel) cancel.style.display = 'none';
   }
 
   // Rellena los desplegables de "logro requerido" (.ach-filter-select) desde el catálogo.
