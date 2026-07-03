@@ -43,17 +43,53 @@ router.post('/login', staffLimiter, (req, res) => {
 
 // POST /api/staff/checkin — el camarero ficha la ENTRADA del cliente escaneado.
 // Reusa EXACTAMENTE la misma lógica de fichaje que /entry y /admin-checkin.
+// Durante la campaña "Reto de los 5" añade además la visita de campaña, validando
+// que el QR se ha escaneado EN VIVO (campaignTs fresco) para evitar capturas.
 router.post('/checkin', staffLimiter, requireStaff, (req, res) => {
-  const { walletAddress } = req.body || {};
+  const { walletAddress, campaignTs } = req.body || {};
   if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
     return res.status(400).json({ error: 'Dirección de wallet no válida' });
   }
   try {
     const { performCheckin } = require('./mint');
-    return res.json(performCheckin(walletAddress, req.ip));
+    const result = performCheckin(walletAddress, req.ip);
+
+    // ── Campaña "Reto de los 5" ──────────────────────────────────────────────
+    const campaign = require('../services/campaign');
+    if (campaign.isCampaignActive()) {
+      // Anti-captura: durante la campaña el QR debe llevar timestamp fresco. Sin él
+      // (QR estático o captura), no se cuenta la visita de campaña.
+      if (campaignTs === undefined || campaignTs === null || campaignTs === '') {
+        result.campaign = { active: true, counted: false, error: 'qr_not_live' };
+      } else if (!campaign.isQrFresh(campaignTs)) {
+        result.campaign = { active: true, counted: false, error: 'qr_expired' };
+      } else {
+        result.campaign = campaign.recordVisit(walletAddress);
+      }
+    } else {
+      result.campaign = null;
+    }
+
+    return res.json(result);
   } catch (e) {
     console.error('Error en /staff/checkin:', e.message);
     res.status(500).json({ error: 'Error procesando entrada' });
+  }
+});
+
+// GET /api/staff/campaign/leaderboard — ranking de la campaña para la pantalla del
+// camarero (top clientes por visitas + cuántos completaron el reto).
+router.get('/campaign/leaderboard', requireStaff, (req, res) => {
+  try {
+    const campaign = require('../services/campaign');
+    res.json({
+      active: campaign.isCampaignActive(),
+      leaderboard: campaign.getLeaderboard(10),
+      stats: campaign.getStats()
+    });
+  } catch (e) {
+    console.error('Error en /staff/campaign/leaderboard:', e.message);
+    res.status(500).json({ error: 'Error cargando ranking' });
   }
 });
 

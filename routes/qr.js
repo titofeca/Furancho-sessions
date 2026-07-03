@@ -166,6 +166,29 @@ router.get('/inspect/:address', async (req, res) => {
   }
 });
 
+// GET /api/qr/campaign/:address — QR EN VIVO para el "Reto de los 5". Codifica
+// "CAMPAIGN:<wallet>:<timestamp>" con la hora del SERVIDOR, de modo que una captura
+// caduca sola (el checkin del camarero valida frescura ±2 min). El cliente refresca
+// este QR cada ~60s pidiéndolo de nuevo. No se cachea nunca.
+router.get('/campaign/:address', async (req, res) => {
+  const { address } = req.params;
+  if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+    return res.status(400).send('Dirección no válida');
+  }
+  const ts = Math.floor(Date.now() / 1000);
+  const payload = `CAMPAIGN:${address}:${ts}`;
+  const options = { ...QR_OPTIONS, color: { dark: '#8B6914', light: '#FFFFFF' } }; // dorado
+  try {
+    const qrBuffer = await QRCode.toBuffer(payload, options);
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    res.set('Pragma', 'no-cache');
+    res.set('Content-Type', 'image/png');
+    res.send(qrBuffer);
+  } catch (e) {
+    res.status(500).send('Error generando QR: ' + e.message);
+  }
+});
+
 // GET /api/qr/:level — genera QR como imagen PNG (legacy)
 router.get('/:level', async (req, res) => {
   const level = parseInt(req.params.level);

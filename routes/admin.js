@@ -1106,6 +1106,62 @@ router.post('/mints/:id/reject', requireAuth, (req, res) => {
   }
 });
 
+// ─── CAMPAÑA "RETO DE LOS 5" ─────────────────────────────────────────────────
+
+// GET /api/admin/campaign/stats — resumen de la campaña + ranking + pendientes de aprobar.
+router.get('/campaign/stats', requireAuth, (req, res) => {
+  try {
+    const campaign = require('../services/campaign');
+    const { getPendingApprovalAchievements, getCampaignVisitCount } = require('../db/database');
+    const achievements = require('../services/achievements');
+    // Solo los pendientes del logro de esta campaña.
+    const pending = getPendingApprovalAchievements()
+      .filter(p => p.achievement_id === campaign.CAMPAIGN.achievementId)
+      .map(p => ({
+        id: p.id,
+        wallet: p.wallet_address,
+        visits: getCampaignVisitCount(p.wallet_address),
+        createdAt: p.created_at
+      }));
+    res.json({
+      active: campaign.isCampaignActive(),
+      campaign: { name: campaign.CAMPAIGN.name, startDate: campaign.CAMPAIGN.startDate, endDate: campaign.CAMPAIGN.endDate, required: campaign.CAMPAIGN.requiredVisits },
+      stats: campaign.getStats(),
+      leaderboard: campaign.getLeaderboard(10),
+      pending
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/campaign/:id/approve — aprueba el NFT de un cliente que completó el reto
+// y lo manda a la cola de minteo (Polygon).
+router.post('/campaign/:id/approve', requireAuth, (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { approveAchievementMint } = require('../db/database');
+    const { notifyAchievementQueue } = require('../services/polygon');
+    approveAchievementMint(id);
+    notifyAchievementQueue();
+    res.json({ success: true, message: '¡Aprobado! El NFT Furancho Legend entrará en la cola de Polygon.' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/campaign/:id/reject — rechaza el NFT (no se mintea nada).
+router.post('/campaign/:id/reject', requireAuth, (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { rejectAchievementMint } = require('../db/database');
+    rejectAchievementMint(id);
+    res.json({ success: true, message: 'NFT de campaña rechazado.' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /api/admin/mints/delete — borra un pase concreto (wallet + nivel), sea cual sea
 // su estado. Para corregir niveles asignados por error o limpiar wallets de prueba
 // (reject/clearStaleMint solo tocan pendientes, no un mint ya en 'success'). Solo admin.

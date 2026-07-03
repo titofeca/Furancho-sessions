@@ -24,10 +24,23 @@ const ACHIEVEMENTS = [
     tokenId: 100,
     edition: 'San Xoán 2026',
     rule: { type: 'visit_on_date', date: '2026-06-25' }
+  },
+  {
+    // "Reto de los 5" — campaña de fidelización de verano (22 jul – 20 sep 2026).
+    // Se desbloquea al acumular 5 visitas de campaña (tabla campaign_visits). El cliente
+    // lo reclama desde su museo, pero el mint queda 'pending_approval' hasta que admin lo
+    // confirme (evita gas por trampas). Ver services/campaign.js.
+    // TODO: sustituir 'furanchotorre.jpg' por la imagen definitiva de "Furancho Legend 2026".
+    id: 'furancho_legend_2026',
+    name: 'Furancho Legend 2026',
+    description: 'Leyenda del Furancho · Verano 2026. NFT exclusivo por completar el Reto de los 5: cinco visitas durante la temporada de verano.',
+    image: 'furanchotorre.jpg',
+    tokenId: 103,
+    edition: 'Verano 2026',
+    rule: { type: 'campaign_visits', campaignId: 'reto_5_verano_2026', requiredVisits: 5 }
   }
   // Imágenes ya subidas, pendientes de su regla (día de asistencia):
   // { id:'maria_pita', name:'…', image:'furanchomariapita.jpg', tokenId:101, rule:{ type:'visit_on_date', date:'YYYY-MM-DD' } }
-  // { id:'torre',      name:'…', image:'furanchotorre.jpg',      tokenId:102, rule:{ type:'visit_on_date', date:'YYYY-MM-DD' } }
 ];
 
 // Normaliza la imagen a una ruta pública que empieza por "/". Los logros del código
@@ -108,6 +121,15 @@ function walletMeetsRule(wallet, rule) {
       ) WHERE d = ? LIMIT 1
     `).get(wallet, wallet, rule.date);
     return !!row;
+  }
+  if (rule.type === 'campaign_visits') {
+    // Desbloqueo por acumular N visitas de campaña (tabla campaign_visits, independiente
+    // del fichaje normal). Se verifica en servidor: nunca se fía del cliente.
+    const row = db.prepare(`
+      SELECT COUNT(*) AS c FROM campaign_visits
+      WHERE LOWER(wallet_address) = LOWER(?) AND campaign_id = ?
+    `).get(wallet, rule.campaignId || 'reto_5_verano_2026');
+    return (row ? row.c : 0) >= (rule.requiredVisits || 5);
   }
   return false;
 }

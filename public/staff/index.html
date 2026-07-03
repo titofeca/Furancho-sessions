@@ -38,6 +38,21 @@
     .result p{ font-size:16px; color:var(--text-muted); line-height:1.5; max-width:340px; }
     .result .who{ font-family:monospace; font-size:13px; color:var(--text-muted); margin-top:14px; }
     .result button{ margin-top:26px; padding:15px 40px; border:none; border-radius:50px; background:var(--wine); color:#fff; font-family:'Outfit',sans-serif; font-size:16px; font-weight:800; cursor:pointer; }
+    /* ── Campaña "Reto de los 5" ── */
+    .camp-banner{ background:linear-gradient(135deg, rgba(196,151,58,0.18), rgba(139,25,24,0.12)); border:1.5px solid var(--gold); border-radius:14px; padding:12px 14px; margin-bottom:16px; font-size:12.5px; line-height:1.45; color:#6b4a0f; font-weight:600; }
+    .camp-banner b{ color:var(--wine); }
+    .camp-progress{ display:flex; gap:8px; justify-content:center; margin:14px 0 6px; }
+    .camp-dot{ width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:800; border:2px solid rgba(42,21,9,0.15); background:#fff; color:var(--text-muted); }
+    .camp-dot.on{ background:linear-gradient(135deg,var(--gold),#a97b1f); color:#fff; border-color:var(--gold); box-shadow:0 3px 10px rgba(196,151,58,0.4); }
+    .camp-rank{ margin-top:18px; background:rgba(255,255,255,0.55); border:1px solid rgba(42,21,9,0.1); border-radius:16px; padding:14px 16px; }
+    .camp-rank h3{ font-family:'Playfair Display',serif; font-size:15px; color:var(--wine); margin-bottom:4px; }
+    .camp-rank .rank-sub{ font-size:11.5px; color:var(--text-muted); margin-bottom:10px; }
+    .camp-rank ol{ list-style:none; }
+    .camp-rank li{ display:flex; align-items:center; justify-content:space-between; padding:7px 0; border-bottom:1px solid rgba(42,21,9,0.06); font-size:13px; }
+    .camp-rank li:last-child{ border-bottom:none; }
+    .camp-rank .who{ font-family:monospace; font-size:12px; color:var(--text); }
+    .camp-rank .cnt{ font-weight:800; color:var(--wine); }
+    .camp-rank .done{ color:var(--green); }
   </style>
 </head>
 <body>
@@ -56,6 +71,10 @@
 
     <!-- SCANNER -->
     <div id="scanner" class="card" style="display:none;">
+      <!-- Banner campaña (solo visible durante el Reto de los 5) -->
+      <div class="camp-banner" id="camp-banner" style="display:none;">
+        👑 <b>Reto de los 5 activo.</b> Escanea SOLO el QR que el cliente enseña <b>en vivo</b> desde su app. Las capturas de pantalla no valen y caducan solas.
+      </div>
       <h2 style="text-align:center;">📷 Escanea al cliente</h2>
       <p class="lead" style="text-align:center;">Pídele que abra su app y te enseñe su <strong>🪪 ID Socio (QR)</strong>. Apunta y se ficha solo.</p>
       <div id="reader"></div>
@@ -67,6 +86,13 @@
       <p class="scan-hint" style="margin-top:12px;">Cada escaneo ficha la <strong>entrada</strong> del cliente para que entre en los sorteos.</p>
       <div class="footer-link"><button onclick="logout()">Cambiar código / salir</button></div>
     </div>
+
+    <!-- RANKING campaña (solo visible durante el Reto de los 5) -->
+    <div class="camp-rank" id="camp-rank" style="display:none;">
+      <h3>👑 Reto de los 5 — Ranking</h3>
+      <div class="rank-sub" id="camp-rank-sub"></div>
+      <ol id="camp-rank-list"></ol>
+    </div>
   </div>
 
   <!-- RESULT OVERLAY -->
@@ -75,6 +101,11 @@
     <h3 id="result-title"></h3>
     <p id="result-msg"></p>
     <div id="result-next" style="display:none; margin-top:16px; background:rgba(139,25,24,0.06); border:1px solid rgba(139,25,24,0.2); border-radius:14px; padding:12px 16px; font-size:14px; color:var(--text); max-width:340px;"></div>
+    <!-- Bloque campaña dentro del resultado -->
+    <div id="result-campaign" style="display:none; margin-top:16px; max-width:360px; width:100%;">
+      <div class="camp-progress" id="result-camp-dots"></div>
+      <p id="result-camp-msg" style="font-size:15px; font-weight:700; margin-top:4px;"></p>
+    </div>
     <div class="who" id="result-who"></div>
     <button onclick="resumeScan()">Escanear al siguiente ➜</button>
   </div>
@@ -143,13 +174,13 @@
         };
         const onScan = (decoded) => {
           const now = Date.now();
-          const m = String(decoded).match(/(0x[a-fA-F0-9]{40})/);
-          if (!m) { status.textContent = '⚠️ Ese QR no es de un cliente Furancho'; return; }
-          const wallet = m[1];
+          const parsed = parseClientQr(decoded);
+          if (!parsed) { status.textContent = '⚠️ Ese QR no es de un cliente Furancho'; return; }
+          const { wallet, campaignTs } = parsed;
           if (processing) return;
           if (wallet === lastWallet && (now - lastAt) < 6000) return; // anti-doble del mismo cliente
           processing = true; lastWallet = wallet; lastAt = now;
-          doCheckin(wallet);
+          doCheckin(wallet, campaignTs);
         };
         // Elegir cámara trasera para evitar errores en Android
         let started = false;
@@ -176,16 +207,29 @@
       }catch(err){
         status.innerHTML = '⚠️ No se pudo abrir la cámara. Permite el acceso a cámara en el navegador y recarga.';
       }
+      loadCampaign();   // banner + ranking del Reto de los 5 (si está activo)
     }
 
-    async function doCheckin(wallet){
+    // Decodifica el QR del cliente. Acepta el formato de campaña (QR en vivo con
+    // timestamp: "CAMPAIGN:0x..:1753200000") y el clásico ID Socio (cualquier URL con
+    // la wallet). Devuelve { wallet, campaignTs } o null si no es un QR válido.
+    function parseClientQr(decoded){
+      const raw = String(decoded || '');
+      const cm = raw.match(/^CAMPAIGN:(0x[a-fA-F0-9]{40}):(\d+)$/);
+      if (cm) return { wallet: cm[1], campaignTs: cm[2] };
+      const m = raw.match(/(0x[a-fA-F0-9]{40})/);
+      if (m) return { wallet: m[1], campaignTs: null };
+      return null;
+    }
+
+    async function doCheckin(wallet, campaignTs){
       const status = document.getElementById('scan-status');
       status.textContent = 'Fichando…';
       try{
         const r = await fetch('/api/staff/checkin', {
           method:'POST',
           headers:{ 'Content-Type':'application/json', 'x-staff-code': localStorage.getItem(STAFF_KEY) || '' },
-          body: JSON.stringify({ walletAddress: wallet })
+          body: JSON.stringify({ walletAddress: wallet, campaignTs: campaignTs || undefined })
         });
         if (r.status === 401){ // código cambiado/incorrecto → volver al gate
           logout();
@@ -198,12 +242,67 @@
       }catch(e){ status.textContent = '⚠️ Error de red al fichar.'; processing = false; }
     }
 
+    // Pinta los 5 sellos de progreso del reto.
+    function renderCampDots(container, visits, required){
+      const req = required || 5;
+      container.innerHTML = '';
+      for (let i=1;i<=req;i++){
+        const dot = document.createElement('div');
+        dot.className = 'camp-dot' + (i <= visits ? ' on' : '');
+        dot.textContent = i <= visits ? '★' : i;
+        container.appendChild(dot);
+      }
+    }
+
     function showResult(d, wallet){
       const icon = document.getElementById('result-icon');
       const title = document.getElementById('result-title');
       const msg = document.getElementById('result-msg');
       const who = document.getElementById('result-who');
-      const green = 'rgba(22,163,74,0.15)', gold = 'rgba(196,151,58,0.18)';
+      const nextEl = document.getElementById('result-next');
+      const campEl = document.getElementById('result-campaign');
+      const green = 'rgba(22,163,74,0.15)', gold = 'rgba(196,151,58,0.18)', red = 'rgba(139,25,24,0.15)';
+      who.textContent = `${wallet.slice(0,6)}…${wallet.slice(-4)}`;
+
+      // ── MODO CAMPAÑA: durante el Reto de los 5, el resultado gira en torno al reto ──
+      if (d.campaign && d.campaign.active){
+        if (nextEl) nextEl.style.display = 'none';   // el nivel no es relevante en vacaciones
+        const c = d.campaign;
+        let bg = green, ic = '✅', t = '', m = '';
+        campEl.style.display = 'none';
+        if (c.error === 'qr_expired'){
+          bg = red; ic = '⏳'; t = 'QR caducado';
+          m = 'Ese QR ya no vale. Pídele que abra su app y te enseñe el QR nuevo (se renueva solo).';
+        } else if (c.error === 'qr_not_live'){
+          bg = red; ic = '📵'; t = 'No es un QR en vivo';
+          m = 'No aceptes capturas. Que el cliente abra su app y te enseñe el QR del Reto de los 5 en pantalla.';
+        } else if (c.counted && c.completed){
+          bg = gold; ic = '👑'; t = '¡LEYENDA DEL FURANCHO!';
+          m = `¡Completó el Reto de los 5! Su NFT Furancho Legend queda pendiente de confirmar.`;
+          campEl.style.display = 'block'; renderCampDots(document.getElementById('result-camp-dots'), c.totalVisits, c.required);
+          document.getElementById('result-camp-msg').textContent = `${c.totalVisits}/${c.required} · ¡Reto completado!`;
+        } else if (c.counted){
+          bg = green; ic = '⭐'; t = '¡Punto conseguido!';
+          m = `Le falta${c.required - c.totalVisits !== 1 ? 'n' : ''} ${c.required - c.totalVisits} para ser Leyenda.`;
+          campEl.style.display = 'block'; renderCampDots(document.getElementById('result-camp-dots'), c.totalVisits, c.required);
+          document.getElementById('result-camp-msg').textContent = `Lleva ${c.totalVisits}/${c.required} visitas`;
+        } else {
+          bg = gold; ic = '🕒'; t = 'Ya tiene el punto de hoy';
+          m = 'Este cliente ya selló su visita hoy. ¡Mañana más, que las reglas son las reglas!';
+          campEl.style.display = 'block'; renderCampDots(document.getElementById('result-camp-dots'), c.totalVisits, c.required);
+          document.getElementById('result-camp-msg').textContent = `Lleva ${c.totalVisits}/${c.required} visitas`;
+        }
+        icon.style.background = bg; icon.textContent = ic;
+        title.textContent = t; msg.textContent = m;
+        document.getElementById('result').style.display = 'flex';
+        loadCampaign();   // refresca el ranking
+        clearTimeout(window._resultTimer);
+        window._resultTimer = setTimeout(resumeScan, 3500);
+        return;
+      }
+
+      // ── MODO NORMAL (fuera de campaña): fichaje de sesión de siempre ──
+      campEl.style.display = 'none';
       let bg = green, ic = '✅', t = '¡Fichado!', m = '';
       if (d.isNew){ ic = '🎉'; t = '¡Bienvenido!'; m = 'Primera visita registrada. ¡Ya está en el bombo de los sorteos!'; bg = gold; }
       else if (d.counted){ t = '¡Fichado!'; m = `Entrada registrada · visita #${d.visitCount}. Ya participa en los sorteos.`; if (d.levelUp && d.levelUp.levelName) m += ` ¡Sube a ${d.levelUp.levelName}!`; }
@@ -211,9 +310,7 @@
       else { ic = '✅'; t = '¡Ya está dentro!'; m = `La visita de esta semana ya estaba contada (lleva ${d.visitCount}). Sigue participando en los sorteos.`; }
       icon.style.background = bg; icon.textContent = ic;
       title.textContent = t; msg.textContent = m;
-      who.textContent = `${wallet.slice(0,6)}…${wallet.slice(-4)}`;
       // Cuánto le falta para el siguiente nivel — para decírselo al cliente
-      const nextEl = document.getElementById('result-next');
       if (nextEl){
         const nx = nextLevelInfo(d.visitCount);
         if (nx.max){ nextEl.innerHTML = '👑 <strong>Nivel máximo</strong> — ya es O Presidente, ho.'; nextEl.style.display = 'block'; }
@@ -223,6 +320,35 @@
       // Auto-volver al escáner a los 3s
       clearTimeout(window._resultTimer);
       window._resultTimer = setTimeout(resumeScan, 3000);
+    }
+
+    // Carga estado + ranking de campaña. Muestra banner/ranking solo si está activa.
+    async function loadCampaign(){
+      try{
+        const r = await fetch('/api/staff/campaign/leaderboard', {
+          headers:{ 'x-staff-code': localStorage.getItem(STAFF_KEY) || '' }
+        });
+        if (!r.ok) return;
+        const d = await r.json();
+        const banner = document.getElementById('camp-banner');
+        const rank = document.getElementById('camp-rank');
+        if (!d.active){ if (banner) banner.style.display='none'; if (rank) rank.style.display='none'; return; }
+        if (banner) banner.style.display = 'block';
+        if (rank) rank.style.display = 'block';
+        const sub = document.getElementById('camp-rank-sub');
+        if (sub && d.stats) sub.textContent = `${d.stats.participants} participantes · ${d.stats.completed} ya son Leyenda`;
+        const list = document.getElementById('camp-rank-list');
+        if (list){
+          if (!d.leaderboard || !d.leaderboard.length){ list.innerHTML = '<li style="color:var(--text-muted);">Aún nadie ha fichado. ¡A por ellos!</li>'; }
+          else {
+            list.innerHTML = d.leaderboard.map((row, i) => {
+              const w = `${row.wallet.slice(0,6)}…${row.wallet.slice(-4)}`;
+              const badge = row.completed ? '<span class="done">👑</span>' : `${i+1}.`;
+              return `<li><span class="who">${badge} ${w}</span><span class="cnt ${row.completed?'done':''}">${row.visits}/${d.stats?d.stats.required:5}</span></li>`;
+            }).join('');
+          }
+        }
+      }catch(e){ /* silencioso: la campaña es opcional */ }
     }
 
     function resumeScan(){
@@ -246,10 +372,12 @@
         const qr = new Html5Qrcode('staff-temp-reader');
         const decoded = await qr.scanFile(file, false);
         try { await qr.clear(); } catch(e){}
-        const m = String(decoded).match(/(0x[a-fA-F0-9]{40})/);
-        if (!m){ status.textContent = '⚠️ Ese QR no es de un cliente Furancho'; startScanner(); return; }
-        processing = true; lastWallet = m[1]; lastAt = Date.now();
-        await doCheckin(m[1]);
+        const parsed = parseClientQr(decoded);
+        if (!parsed){ status.textContent = '⚠️ Ese QR no es de un cliente Furancho'; startScanner(); return; }
+        // Nota: durante la campaña, un QR fotografiado de una captura vieja llega con
+        // timestamp caducado y el servidor lo rechaza solo. La foto de un QR en vivo pasa.
+        processing = true; lastWallet = parsed.wallet; lastAt = Date.now();
+        await doCheckin(parsed.wallet, parsed.campaignTs);
       } catch(err){
         status.textContent = '⚠️ No vi ningún QR en la foto. Acércate y que salga nítido.';
         startScanner();

@@ -470,6 +470,19 @@ try {
     created_at TEXT DEFAULT (datetime('now'))
   )`);
 } catch (_) {}
+// Campaña "Reto de los 5" (verano 2026): visitas de fidelización, independientes del
+// fichaje normal y de los niveles. 1 visita por cliente por día natural (UNIQUE).
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS campaign_visits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_address TEXT NOT NULL,
+    campaign_id TEXT NOT NULL DEFAULT 'reto_5_verano_2026',
+    visit_date TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(wallet_address, campaign_id, visit_date)
+  )`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_campaign_visits_wallet ON campaign_visits(wallet_address)`);
+} catch (_) {}
 // Número de serie del mint dentro de su nivel (1 = primero en alcanzar ese nivel)
 try { db.exec(`ALTER TABLE mints ADD COLUMN mint_serial INTEGER`); } catch (_) {}
 try { db.exec(`ALTER TABLE mints ADD COLUMN mint_cost_matic REAL`); } catch (_) {}
@@ -540,11 +553,11 @@ function getNextPendingMint() {
 
 // ── Mints de LOGROS (NFT de ediciones especiales, claim del cliente) ─────────
 // Idempotente: si ya existe (UNIQUE wallet+logro), no duplica y devuelve el existente.
-function claimAchievement(walletAddress, achievementId, tokenId) {
+function claimAchievement(walletAddress, achievementId, tokenId, status = 'pending') {
   const info = db.prepare(`
     INSERT OR IGNORE INTO achievement_mints (wallet_address, achievement_id, token_id, status)
-    VALUES (?, ?, ?, 'pending')
-  `).run(walletAddress, achievementId, tokenId);
+    VALUES (?, ?, ?, ?)
+  `).run(walletAddress, achievementId, tokenId, status);
   return { created: info.changes > 0, row: getAchievementMint(walletAddress, achievementId) };
 }
 
@@ -914,6 +927,75 @@ function approveMint(id) {
 
 function rejectMint(id) {
   db.prepare(`UPDATE mints SET status = 'rejected_admin' WHERE id = ? AND status = 'pending_approval'`).run(id);
+}
+
+// ==================== CAMPAÑA "RETO DE LOS 5" ====================
+// Registra 1 visita de campaña por cliente por día natural (Madrid). Idempotente:
+// si ya fichó hoy, no crea otra. Devuelve si contó y el total acumulado.
+function recordCampaignVisit(walletAddress, dateStr, campaignId = 'reto_5_verano_2026') {
+  if (!walletAddress || !dateStr) return { counted: false, totalVisits: 0 };
+  const info = db.prepare(`
+    INSERT OR IGNORE INTO campaign_visits (wallet_address, campaign_id, visit_date)
+    VALUES (?, ?, ?)
+  `).run(walletAddress, campaignId, dateStr);
+  const totalVisits = getCampaignVisitCount(walletAddress, campaignId);
+  return { counted: info.changes > 0, totalVisits };
+}
+
+function getCampaignVisitCount(walletAddress, campaignId = 'reto_5_verano_2026') {
+  if (!walletAddress) return 0;
+  const row = db.prepare(`
+    SELECT COUNT(*) as c FROM campaign_visits
+    WHERE LOWER(wallet_address) = LOWER(?) AND campaign_id = ?
+  `).get(walletAddress, campaignId);
+  return row ? row.c : 0;
+}
+
+// Ranking de la campaña: wallets ordenadas por nº de visitas (desc), con su última visita.
+function getCampaignLeaderboard(limit = 10, campaignId = 'reto_5_verano_2026') {
+  return db.prepare(`
+    SELECT wallet_address, COUNT(*) as visits, MAX(visit_date) as last_visit
+    FROM campaign_visits
+    WHERE campaign_id = ?
+    GROUP BY LOWER(wallet_address)
+    ORDER BY visits DESC, last_visit DESC
+    LIMIT ?
+  `).all(campaignId, limit);
+}
+
+// Nº de participantes y de completados (>= requiredVisits) de la campaña.
+function getCampaignStats(requiredVisits = 5, campaignId = 'reto_5_verano_2026') {
+  const participants = db.prepare(`
+    SELECT COUNT(*) as c FROM (
+      SELECT LOWER(wallet_address) as w FROM campaign_visits WHERE campaign_id = ? GROUP BY LOWER(wallet_address)
+    )
+  `).get(campaignId).c;
+  const completed = db.prepare(`
+    SELECT COUNT(*) as c FROM (
+      SELECT LOWER(wallet_address) as w FROM campaign_visits WHERE campaign_id = ?
+      GROUP BY LOWER(wallet_address) HAVING COUNT(*) >= ?
+    )
+  `).get(campaignId, requiredVisits).c;
+  return { participants, completed };
+}
+
+// Aprobación de logros (achievement_mints) — espejo del flujo de mints de nivel.
+// La cola on-chain solo procesa status='pending', así que 'pending_approval' queda
+// retenido hasta que el admin lo apruebe (evita gastar gas sin confirmar).
+function getPendingApprovalAchievements() {
+  return db.prepare(`
+    SELECT id, wallet_address, achievement_id, token_id, created_at
+    FROM achievement_mints WHERE status = 'pending_approval'
+    ORDER BY created_at ASC
+  `).all();
+}
+
+function approveAchievementMint(id) {
+  db.prepare(`UPDATE achievement_mints SET status = 'pending' WHERE id = ? AND status = 'pending_approval'`).run(id);
+}
+
+function rejectAchievementMint(id) {
+  db.prepare(`UPDATE achievement_mints SET status = 'rejected_admin' WHERE id = ? AND status = 'pending_approval'`).run(id);
 }
 
 
@@ -1945,6 +2027,13 @@ module.exports = {
   getPendingApprovalMints,
   approveMint,
   rejectMint,
+  recordCampaignVisit,
+  getCampaignVisitCount,
+  getCampaignLeaderboard,
+  getCampaignStats,
+  getPendingApprovalAchievements,
+  approveAchievementMint,
+  rejectAchievementMint,
   insertVisit,
   getVisitCount,
   getEligibleRaffleParticipants,

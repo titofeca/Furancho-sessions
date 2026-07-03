@@ -1076,6 +1076,43 @@
         </div>
       </div>
 
+      <!-- Reto de los 5 — Campaña de verano -->
+      <div class="glass-card" id="campaign-admin-card" style="margin-bottom:20px; display:none;">
+        <div class="card-header" style="margin-bottom:12px;">
+          <span class="card-title">👑 Reto de los 5 — Campaña Verano</span>
+          <button class="btn-download" onclick="loadCampaignAdmin()" style="font-size:11px; padding:6px 12px;">↻</button>
+        </div>
+        <div id="campaign-admin-status" style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">Cargando…</div>
+
+        <!-- Stats -->
+        <div style="display:flex; gap:10px; margin-bottom:16px;">
+          <div style="flex:1; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px; padding:12px; text-align:center;">
+            <div style="font-family:'Playfair Display',serif; font-size:26px; font-weight:900; color:var(--wine);" id="camp-stat-participants">—</div>
+            <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">Participantes</div>
+          </div>
+          <div style="flex:1; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px; padding:12px; text-align:center;">
+            <div style="font-family:'Playfair Display',serif; font-size:26px; font-weight:900; color:var(--gold);" id="camp-stat-completed">—</div>
+            <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">Leyendas (5/5)</div>
+          </div>
+          <div style="flex:1; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px; padding:12px; text-align:center;">
+            <div style="font-family:'Playfair Display',serif; font-size:26px; font-weight:900; color:#f59e0b;" id="camp-stat-pending">—</div>
+            <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">Por aprobar</div>
+          </div>
+        </div>
+
+        <!-- Pendientes de aprobar (NFT) -->
+        <div style="margin-bottom:16px;">
+          <div class="card-title" style="font-size:14px; margin-bottom:8px;">🏅 NFTs pendientes de confirmar</div>
+          <div id="campaign-pending-list"><p style="font-size:12px; color:var(--text-muted);">—</p></div>
+        </div>
+
+        <!-- Ranking -->
+        <div>
+          <div class="card-title" style="font-size:14px; margin-bottom:8px;">📊 Ranking de visitas</div>
+          <div id="campaign-rank-list"><p style="font-size:12px; color:var(--text-muted);">—</p></div>
+        </div>
+      </div>
+
       <!-- Crear logro NFT desde la app -->
       <div class="glass-card" style="margin-bottom:20px;">
         <div class="card-header" style="margin-bottom:12px;">
@@ -2589,6 +2626,7 @@
         loadAchievementStats();
         loadAchievementManager();
         loadPresentByLevel();
+        loadCampaignAdmin();
         connectAdminSse();
       } else {
         errorDiv.style.display = 'block';
@@ -2704,7 +2742,7 @@
     }, 0);
     if (pageId === 'events') loadEventsPage();
     if (pageId === 'messages') { loadMsgRsvpEvents(); loadScheduledMessages(); loadAchievementFilterOptions(); }
-    if (pageId === 'dashboard') { loadStats(); loadHourlyChart(); loadAchievementStats(); loadAchievementManager(); loadPresentByLevel(); }
+    if (pageId === 'dashboard') { loadStats(); loadHourlyChart(); loadAchievementStats(); loadAchievementManager(); loadPresentByLevel(); loadCampaignAdmin(); }
     loadVipBadge();
     if (pageId === 'holders') {
       loadVisits('__totales__');
@@ -3338,6 +3376,88 @@
       const data = await res.json();
       alert(data.message || 'Rechazado correctamente.');
       loadNftsPage();
+    } catch (e) { alert('Error al rechazar'); }
+  }
+
+  // ==================== CAMPAÑA "RETO DE LOS 5" ====================
+  async function loadCampaignAdmin() {
+    const card = document.getElementById('campaign-admin-card');
+    try {
+      const d = await fetch('/api/admin/campaign/stats', { headers: authHeaders() }).then(r => r.json());
+      if (d.error) return;
+      // La tarjeta se muestra si la campaña está activa o si ya hay participantes.
+      const hasData = d.stats && (d.stats.participants > 0 || d.pending.length > 0);
+      if (!d.active && !hasData) { if (card) card.style.display = 'none'; return; }
+      if (card) card.style.display = 'block';
+
+      const statusEl = document.getElementById('campaign-admin-status');
+      if (statusEl) {
+        const range = d.campaign ? `${d.campaign.startDate} → ${d.campaign.endDate}` : '';
+        statusEl.innerHTML = d.active
+          ? `🟢 <strong style="color:#16a34a;">Campaña activa</strong> · ${range}`
+          : `⚪ Campaña inactiva · ${range}`;
+      }
+      document.getElementById('camp-stat-participants').textContent = d.stats.participants;
+      document.getElementById('camp-stat-completed').textContent = d.stats.completed;
+      document.getElementById('camp-stat-pending').textContent = d.pending.length;
+
+      // Pendientes de aprobar
+      const pend = document.getElementById('campaign-pending-list');
+      if (pend) {
+        if (!d.pending.length) {
+          pend.innerHTML = `<p style="font-size:12px; color:var(--text-muted);">Sin NFTs pendientes, neno 🍷</p>`;
+        } else {
+          pend.innerHTML = d.pending.map(p => {
+            const w = `${p.wallet.slice(0,6)}…${p.wallet.slice(-4)}`;
+            return `<div style="background:var(--bg); border:1px solid #f59e0b44; border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px;">
+              <span style="font-family:monospace; font-size:11px; color:var(--text-muted); flex:1;">${w}</span>
+              <span style="font-size:11px; color:var(--wine); font-weight:700; white-space:nowrap;">${p.visits} visitas</span>
+              <span style="font-size:10px; color:var(--text-muted);">${p.createdAt ? p.createdAt.slice(0,16) : '—'}</span>
+              <div style="display:flex; gap:6px; width:100%; justify-content:flex-end;">
+                <button onclick="approveCampaign(${p.id})" style="background:#22c55e; color:#fff; border:none; border-radius:8px; padding:8px 18px; font-size:13px; font-weight:600; cursor:pointer;">✅ Aprobar NFT</button>
+                <button onclick="rejectCampaign(${p.id})" style="background:#ef4444; color:#fff; border:none; border-radius:8px; padding:8px 18px; font-size:13px; font-weight:600; cursor:pointer;">❌ Rechazar</button>
+              </div>
+            </div>`;
+          }).join('');
+        }
+      }
+
+      // Ranking
+      const rank = document.getElementById('campaign-rank-list');
+      if (rank) {
+        if (!d.leaderboard || !d.leaderboard.length) {
+          rank.innerHTML = `<p style="font-size:12px; color:var(--text-muted);">Aún nadie ha fichado.</p>`;
+        } else {
+          rank.innerHTML = d.leaderboard.map((row, i) => {
+            const w = `${row.wallet.slice(0,6)}…${row.wallet.slice(-4)}`;
+            const badge = row.completed ? '👑' : `${i+1}.`;
+            return `<div style="display:flex; align-items:center; justify-content:space-between; padding:7px 4px; border-bottom:1px solid rgba(42,21,9,0.06); font-size:13px;">
+              <span style="font-family:monospace; color:var(--text);">${badge} ${w}</span>
+              <span style="font-weight:800; color:${row.completed?'#16a34a':'var(--wine)'};">${row.visits}/${d.campaign.required}</span>
+            </div>`;
+          }).join('');
+        }
+      }
+    } catch (e) { /* silencioso */ }
+  }
+
+  async function approveCampaign(id) {
+    if (!confirm('¿Aprobar el NFT Furancho Legend de este cliente? Se minteará en Polygon.')) return;
+    try {
+      const res = await fetch(`/api/admin/campaign/${id}/approve`, { method: 'POST', headers: authHeaders() });
+      const data = await res.json();
+      alert(data.message || '¡Aprobado!');
+      loadCampaignAdmin();
+    } catch (e) { alert('Error al aprobar'); }
+  }
+
+  async function rejectCampaign(id) {
+    if (!confirm('¿Rechazar este NFT? El cliente NO lo recibirá.')) return;
+    try {
+      const res = await fetch(`/api/admin/campaign/${id}/reject`, { method: 'POST', headers: authHeaders() });
+      const data = await res.json();
+      alert(data.message || 'Rechazado.');
+      loadCampaignAdmin();
     } catch (e) { alert('Error al rechazar'); }
   }
 

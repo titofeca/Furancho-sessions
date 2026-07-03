@@ -64,6 +64,12 @@ router.post('/claim', claimLimiter, (req, res) => {
     if (existing) {
       return res.json({ success: true, alreadyClaimed: true, status: existing.status, achievementId: a.id });
     }
+    // Logros de campaña (Reto de los 5): requieren aprobación admin antes de mintear
+    // (anti-trampa / control de gas). No entran directos a la cola.
+    if (a.rule && a.rule.type === 'campaign_visits') {
+      claimAchievement(walletAddress, a.id, a.tokenId, 'pending_approval');
+      return res.json({ success: true, status: 'pending_approval', achievementId: a.id });
+    }
     claimAchievement(walletAddress, a.id, a.tokenId);
     notifyAchievementQueue();
     res.json({ success: true, status: 'pending', achievementId: a.id });

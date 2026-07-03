@@ -233,6 +233,16 @@
       to   { transform: rotate(360deg); }
     }
 
+    /* QR "en vivo" del Reto de los 5: borde pulsante que se congela en una captura */
+    .camp-qr-frame {
+      display:inline-block; padding:8px; border-radius:16px; background:#fff;
+      border:3px solid var(--gold); animation: campQrPulse 1.6s ease-in-out infinite;
+    }
+    @keyframes campQrPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(196,151,58,0.5); border-color:var(--gold); }
+      50%       { box-shadow: 0 0 0 8px rgba(196,151,58,0); border-color:#8B1918; }
+    }
+
     .nft-title {
       font-family: 'Playfair Display', serif;
       font-size: clamp(32px, 9vw, 42px);
@@ -1998,6 +2008,28 @@
         </div>
       </div>
 
+      <!-- ①bis EL RETO DE LOS 5 (campaña de verano) -->
+      <div class="profile-progress-card" id="campaign-card" style="display:none; padding:22px; margin-bottom:20px; background:linear-gradient(160deg, rgba(196,151,58,0.10), rgba(139,25,24,0.06)); border:1.5px solid rgba(196,151,58,0.4);">
+        <div style="text-align:center; margin-bottom:6px;">
+          <span style="font-size:30px;">👑</span>
+          <h3 style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:var(--wine); margin:4px 0 2px;">El Reto de los 5</h3>
+          <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0;">Conviértete en <strong>Leyenda del Furancho</strong>. 5 visitas este verano y te llevas el NFT exclusivo <em>Furancho Legend 2026</em>. Solo cuenta 1 visita al día, ¡ho!</p>
+        </div>
+
+        <!-- Sellos -->
+        <div class="camp-dots" id="campaign-dots" style="display:flex; gap:9px; justify-content:center; margin:16px 0 10px;"></div>
+        <p id="campaign-count" style="text-align:center; font-size:14px; font-weight:800; color:var(--wine); margin:0 0 4px;">0/5 visitas</p>
+
+        <!-- Estado del NFT / mensaje -->
+        <p id="campaign-state-msg" style="text-align:center; font-size:12.5px; color:var(--text-muted); line-height:1.5; margin:8px 0 0;"></p>
+
+        <!-- CTA: enseñar QR en vivo -->
+        <button id="campaign-show-qr" onclick="openIdModal()" style="width:100%; margin-top:16px; padding:14px; background:linear-gradient(135deg,var(--gold),#a97b1f); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 4px 14px rgba(196,151,58,0.35);">
+          🪪 Enseñar mi QR al camarero
+        </button>
+        <p style="text-align:center; font-size:11px; color:var(--text-muted); margin:10px 0 0; line-height:1.45;">Enséñalo <strong>en vivo</strong> desde la app cuando el personal pase por tu mesa. Las capturas no valen (caducan solas).</p>
+      </div>
+
       <!-- ② EL SORTEO SEMANAL ("LA CHAVE SEMANAL") -->
       <div class="profile-progress-card" id="weekly-claim-card" style="padding:18px; margin-bottom:20px; border:1.5px solid rgba(196,151,58,0.22); background:linear-gradient(135deg,rgba(196,151,58,0.06),rgba(139,25,24,0.03)); display:none;">
         <div style="display:flex; flex-direction:column; gap:12px;">
@@ -3159,6 +3191,9 @@
       // Contador de visitas
       document.getElementById('visit-count-display').textContent = visitCount;
       document.getElementById('visit-total-display').textContent = visitCount >= 12 ? '✓ ¡El puto amo, ho!' : 'visitas';
+
+      // Reto de los 5 (campaña verano): carga y pinta su tarjeta si aplica.
+      loadCampaignProgress();
 
       // Hint
       const hint = document.getElementById('profile-progress-hint');
@@ -5794,17 +5829,104 @@
     const sheet = modal.firstElementChild || modal.querySelector('div');
     document.getElementById('id-wallet-text').textContent = userWalletAddress;
     const qrContainer = document.getElementById('id-qr-container');
-    qrContainer.innerHTML = `<img src="/api/qr/inspect/${userWalletAddress}" style="width:200px; height:200px; display:block; border-radius:10px;" alt="QR ID" />`;
+    const campActive = window._campaignState && window._campaignState.active;
+    if (campActive) {
+      startCampaignQr(qrContainer);   // QR EN VIVO que caduca (anti-captura)
+    } else {
+      stopCampaignQr();
+      qrContainer.innerHTML = `<img src="/api/qr/inspect/${userWalletAddress}" style="width:200px; height:200px; display:block; border-radius:10px;" alt="QR ID" />`;
+    }
     modal.style.display = 'flex';
     modal.offsetHeight;
     if (sheet) sheet.style.transform = 'translateY(0)';
   }
 
+  // QR de campaña "en vivo": se pide al servidor (que embebe su hora) y se renueva
+  // cada 60s. Una captura reenviada caduca sola (el checkin valida frescura ±2 min).
+  function startCampaignQr(qrContainer) {
+    const REFRESH = 60;
+    let remaining = REFRESH;
+    function paint() {
+      qrContainer.innerHTML = `
+        <div class="camp-qr-frame">
+          <img src="/api/qr/campaign/${userWalletAddress}?t=${Date.now()}" style="width:200px; height:200px; display:block; border-radius:10px;" alt="QR en vivo" />
+        </div>
+        <div style="margin-top:12px; font-size:12.5px; font-weight:800; color:var(--wine);">
+          🔴 EN VIVO · se renueva en <span id="camp-qr-count">${remaining}</span>s
+        </div>
+        <div style="margin-top:6px; font-size:11px; color:var(--text-muted); line-height:1.4;">Muéstralo en pantalla al camarero. Las capturas no valen.</div>`;
+    }
+    paint();
+    stopCampaignQr();
+    window._campQrTick = setInterval(() => {
+      remaining--;
+      const el = document.getElementById('camp-qr-count');
+      if (el) el.textContent = Math.max(0, remaining);
+      if (remaining <= 0) { remaining = REFRESH; paint(); }
+    }, 1000);
+  }
+
+  function stopCampaignQr() {
+    if (window._campQrTick) { clearInterval(window._campQrTick); window._campQrTick = null; }
+  }
+
   function closeIdModal() {
+    stopCampaignQr();
     const modal = document.getElementById('id-modal');
     const sheet = modal.firstElementChild || modal.querySelector('div');
     if (sheet) sheet.style.transform = 'translateY(100%)';
     setTimeout(() => { modal.style.display = 'none'; }, 280);
+  }
+
+  // Carga el progreso del Reto de los 5 y pinta su tarjeta en el perfil. La tarjeta
+  // se muestra si la campaña está activa o si el cliente ya tiene visitas de campaña.
+  async function loadCampaignProgress() {
+    if (!userWalletAddress) return;
+    try {
+      const r = await fetch(`/api/campaign/progress?wallet=${userWalletAddress}`);
+      if (!r.ok) return;
+      const p = await r.json();
+      window._campaignState = p;
+      const card = document.getElementById('campaign-card');
+      if (!card) return;
+      if (!p.active && (!p.visits || p.visits === 0)) { card.style.display = 'none'; return; }
+      card.style.display = 'block';
+      // Sellos
+      const dots = document.getElementById('campaign-dots');
+      if (dots) {
+        dots.innerHTML = '';
+        for (let i = 1; i <= p.required; i++) {
+          const d = document.createElement('div');
+          const on = i <= p.visits;
+          d.style.cssText = `width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;border:2px solid ${on?'var(--gold)':'rgba(42,21,9,0.15)'};background:${on?'linear-gradient(135deg,var(--gold),#a97b1f)':'#fff'};color:${on?'#fff':'var(--text-muted)'};`;
+          d.textContent = on ? '★' : i;
+          dots.appendChild(d);
+        }
+      }
+      const cnt = document.getElementById('campaign-count');
+      if (cnt) cnt.textContent = `${p.visits}/${p.required} visitas`;
+      const msg = document.getElementById('campaign-state-msg');
+      const btn = document.getElementById('campaign-show-qr');
+      if (msg) {
+        if (p.claimStatus === 'success') {
+          msg.innerHTML = '✅ <strong>¡Ya eres Leyenda!</strong> Tu NFT Furancho Legend 2026 está en tu wallet. Míralo en el museo.';
+          if (btn) btn.style.display = 'none';
+        } else if (p.claimStatus === 'pending' || p.claimStatus === 'pending_approval') {
+          msg.innerHTML = '🏅 <strong>¡Reto completado!</strong> Tu NFT está pendiente de confirmación. En breve lo tendrás en la wallet.';
+          if (btn) btn.style.display = 'none';
+        } else if (p.completed) {
+          msg.innerHTML = '🏅 <strong>¡Reto completado!</strong> Reclama tu NFT en el museo.';
+          if (btn) btn.style.display = 'none';
+        } else if (p.active) {
+          const falta = p.required - p.visits;
+          msg.textContent = `Te falta${falta !== 1 ? 'n' : ''} ${falta} visita${falta !== 1 ? 's' : ''} para ser Leyenda.`;
+          if (btn) btn.style.display = 'block';
+        } else {
+          msg.textContent = 'La campaña de verano ya terminó. ¡Gracias por tu constancia, ho!';
+          if (btn) btn.style.display = 'none';
+        }
+      }
+    } catch (e) { /* silencioso: la campaña es opcional */ }
   }
 
   function openPrizesModal() {
