@@ -505,6 +505,15 @@ try {
     updated_at TEXT DEFAULT (datetime('now'))
   )`);
 } catch (_) {}
+// Ajustes generales del panel (key-value). Se usa, p. ej., para que el admin decida
+// si los clientes ven en su museo los logros que aún NO han conseguido (sombreados).
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT,
+    updated_at TEXT DEFAULT (datetime('now'))
+  )`);
+} catch (_) {}
 // Número de serie del mint dentro de su nivel (1 = primero en alcanzar ese nivel)
 try { db.exec(`ALTER TABLE mints ADD COLUMN mint_serial INTEGER`); } catch (_) {}
 try { db.exec(`ALTER TABLE mints ADD COLUMN mint_cost_matic REAL`); } catch (_) {}
@@ -1040,6 +1049,26 @@ function getAllAchievementOverrides() {
   const map = {};
   rows.forEach(r => { map[r.achievement_id] = r.image; });
   return map;
+}
+
+// Ajustes generales (key-value). getSetting devuelve el fallback si no existe.
+function getSetting(key, fallback = null) {
+  try {
+    const row = db.prepare(`SELECT value FROM app_settings WHERE key = ?`).get(key);
+    return row ? row.value : fallback;
+  } catch (_) { return fallback; }
+}
+function setSetting(key, value) {
+  db.prepare(`
+    INSERT INTO app_settings (key, value, updated_at)
+    VALUES (?, ?, datetime('now'))
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+  `).run(key, value == null ? null : String(value));
+}
+// Helper booleano: guarda '1'/'0' y lee con default.
+function getBoolSetting(key, fallback = true) {
+  const v = getSetting(key, null);
+  return v == null ? fallback : v === '1';
 }
 
 
@@ -2218,6 +2247,9 @@ module.exports = {
   setAchievementImageOverride,
   getAchievementImageOverride,
   getAllAchievementOverrides,
+  getSetting,
+  setSetting,
+  getBoolSetting,
   getPendingNftPrizes,
   grantNftPrize,
   grantWeeklyNftPrize,

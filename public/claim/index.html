@@ -7087,9 +7087,25 @@
       if (!all.length) { section.style.display = 'none'; return; }
       _nftAchById = {};
       all.forEach(a => { _nftAchById[a.id] = a; });
+      // El admin puede ocultar los logros por conseguir (showLocked). Por defecto se ven.
+      const showLocked = !data || data.showLocked !== false;
       const done   = all.filter(a => a.unlocked || a.claimStatus);
-      const locked = all.filter(a => !(a.unlocked || a.claimStatus));
-      grid.innerHTML = [...done.map(_nftCardUnlocked), ...locked.map(_nftCardLocked)].join('');
+      const locked = showLocked ? all.filter(a => !(a.unlocked || a.claimStatus)) : [];
+      if (!done.length && !locked.length) { section.style.display = 'none'; return; }
+      let html = done.map(_nftCardUnlocked).join('');
+      // Los no conseguidos (sombreados) van plegados dentro de un desplegable.
+      if (locked.length) {
+        html += `
+          <button onclick="toggleLockedNfts()" id="nft-locked-toggle" type="button"
+            style="display:flex; align-items:center; justify-content:space-between; width:100%; background:rgba(42,21,9,0.03); border:1.5px dashed rgba(42,21,9,0.15); border-radius:14px; padding:12px 14px; cursor:pointer; font-family:'Outfit',sans-serif; font-size:12.5px; font-weight:800; color:var(--text-muted);">
+            <span>🔒 Ver logros por conseguir (${locked.length})</span>
+            <span id="nft-locked-caret" style="transition:transform 0.2s;">▾</span>
+          </button>
+          <div id="nft-locked-wrap" style="display:none; flex-direction:column; gap:10px;">
+            ${locked.map(_nftCardLocked).join('')}
+          </div>`;
+      }
+      grid.innerHTML = html;
       section.style.display = 'block';
     } catch (e) {
       section.style.display = 'none';
@@ -7164,6 +7180,17 @@
     showToast(msg);
   }
   window.showNftDetail = showNftDetail;
+
+  // Abre/cierra el desplegable de logros por conseguir (sombreados) en el museo.
+  function toggleLockedNfts() {
+    const wrap = document.getElementById('nft-locked-wrap');
+    const caret = document.getElementById('nft-locked-caret');
+    if (!wrap) return;
+    const open = wrap.style.display !== 'none' && wrap.style.display !== '';
+    wrap.style.display = open ? 'none' : 'flex';
+    if (caret) caret.style.transform = open ? '' : 'rotate(180deg)';
+  }
+  window.toggleLockedNfts = toggleLockedNfts;
 
   // YYYY-MM-DD → DD/MM/YYYY (para la pista de desbloqueo por asistencia).
   function _fmtNftDate(d) {

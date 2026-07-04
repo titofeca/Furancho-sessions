@@ -4,8 +4,13 @@ const router = express.Router();
 
 const achievements = require('../services/achievements');
 const {
-  claimAchievement, getAchievementMint, getWalletAchievementMints
+  claimAchievement, getAchievementMint, getWalletAchievementMints,
+  getBoolSetting, setSetting
 } = require('../db/database');
+
+// Clave de ajuste: ¿los clientes ven en su museo los logros que aún NO han conseguido
+// (sombreados)? Por defecto sí. El admin lo controla con un check en el panel.
+const SHOW_LOCKED_KEY = 'museum_show_locked';
 const { notifyAchievementQueue } = require('../services/polygon');
 const { requireAuth } = require('./admin'); // gestión de logros: solo admin
 
@@ -45,7 +50,9 @@ router.get('/status', (req, res) => {
         txHash: m ? m.tx_hash : null
       };
     });
-    res.json({ achievements: items });
+    // El cliente usa este flag para decidir si pinta (sombreados) los logros aún no
+    // conseguidos. Si el admin lo desactiva, el museo solo muestra los ya conseguidos.
+    res.json({ achievements: items, showLocked: getBoolSetting(SHOW_LOCKED_KEY, true) });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -97,6 +104,19 @@ router.get('/admin/list', requireAuth, (req, res) => {
       nextTokenId: achievements.nextTokenId()
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/achievements/admin/settings — ajustes del museo (para pintar el check).
+router.get('/admin/settings', requireAuth, (req, res) => {
+  res.json({ showLocked: getBoolSetting(SHOW_LOCKED_KEY, true) });
+});
+
+// PUT /api/achievements/admin/settings — guarda si los clientes ven los logros
+// no conseguidos (sombreados). Body: { showLocked: true|false }.
+router.put('/admin/settings', requireAuth, (req, res) => {
+  const { showLocked } = req.body;
+  setSetting(SHOW_LOCKED_KEY, showLocked ? '1' : '0');
+  res.json({ success: true, showLocked: !!showLocked });
 });
 
 // POST /api/achievements/admin/create — crea un logro nuevo desde el panel.

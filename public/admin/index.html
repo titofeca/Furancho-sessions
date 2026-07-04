@@ -1134,6 +1134,13 @@
         </div>
         <p style="font-size:11px; color:var(--text-muted); margin:0 0 12px; line-height:1.5;">Ediciones especiales (San Xoán, María Pita…) o premios de sorteo (Chave Dourada). Crearlas NO gasta gas.</p>
 
+        <!-- Ajuste del museo: ¿los clientes ven los logros que aún no han conseguido? -->
+        <label style="display:flex; align-items:flex-start; gap:9px; padding:11px; background:var(--bg); border:1px solid rgba(42,21,9,0.08); border-radius:10px; margin-bottom:16px; cursor:pointer;">
+          <input type="checkbox" id="museum-show-locked" onchange="saveMuseumShowLocked(this)" style="margin-top:2px; width:16px; height:16px; flex-shrink:0;" />
+          <span style="font-size:12.5px; line-height:1.45;"><strong>Mostrar a los clientes los logros por conseguir</strong><br>
+            <span style="color:var(--text-muted); font-size:11.5px;">En su museo verán, sombreados y dentro de un desplegable, los NFT que aún no tienen. Desmárcalo para que solo vean los ya conseguidos.</span></span>
+        </label>
+
         <input type="text" class="input-field" id="ach-name" placeholder="Nombre (ej: Furancheiro de María Pita)" style="margin-bottom:8px; font-size:14px;" />
         <textarea class="input-field" id="ach-description" placeholder="Descripción (ej: Edición especial por asistir a la sesión de María Pita)" rows="2" style="font-size:13px; resize:vertical; font-family:'Outfit',sans-serif; margin-bottom:8px;"></textarea>
 
@@ -4602,7 +4609,31 @@
     } catch (e) { showToast('Error borrando', true); }
   }
 
+  // Ajuste del museo: ¿los clientes ven los logros no conseguidos (sombreados)?
+  async function loadMuseumSettings() {
+    const cb = document.getElementById('museum-show-locked');
+    if (!cb) return;
+    try {
+      const data = await fetch('/api/achievements/admin/settings', { headers: authHeaders() }).then(r => r.json());
+      cb.checked = data.showLocked !== false; // por defecto sí
+    } catch (e) {}
+  }
+  async function saveMuseumShowLocked(cb) {
+    try {
+      const res = await fetch('/api/achievements/admin/settings', {
+        method: 'PUT', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ showLocked: cb.checked })
+      });
+      if (!res.ok) throw new Error();
+      showToast(cb.checked ? '✅ Los clientes verán los logros por conseguir' : '✅ Los clientes solo verán los logros conseguidos');
+    } catch (e) {
+      cb.checked = !cb.checked; // revertir en error
+      showToast('No se pudo guardar el ajuste', true);
+    }
+  }
+
   async function loadAchievementManager() {
+    loadMuseumSettings();
     const el = document.getElementById('ach-manager-list');
     if (!el) return;
     try {
