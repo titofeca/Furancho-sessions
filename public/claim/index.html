@@ -7071,40 +7071,104 @@
   window.showBadgeTooltip = showBadgeTooltip;
 
   // ── LOGROS NFT (ediciones especiales reclamables desde el museo) ──────────────
-  // Pinta solo los logros DESBLOQUEADOS (asistió al evento). El servidor verifica la
-  // regla; aquí solo mostramos el estado de claim.
+  // Pinta TODOS los logros NFT del catálogo. Los DESBLOQUEADOS/reclamados salen arriba
+  // con su tarjeta completa (imagen, texto y botón de reclamar). Los que el cliente aún
+  // NO ha conseguido salen debajo, SOMBREADOS (imagen + título), para que vea las
+  // ediciones que puede aspirar a conseguir; al tocarlos se abre el detalle (showNftDetail).
+  // El servidor verifica la regla; aquí solo pintamos estado.
+  let _nftAchById = {};
   async function renderNftAchievements(prefetched) {
     const section = document.getElementById('museo-nft-section');
     const grid = document.getElementById('museo-nft-grid');
     if (!section || !grid || !userWalletAddress) return;
     try {
       const data = prefetched || await fetch(`/api/achievements/status?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => null);
-      // Mostrar los desbloqueados por asistencia Y los ya OTORGADOS/reclamados (claimStatus).
-      const items = (data && data.achievements) ? data.achievements.filter(a => a.unlocked || a.claimStatus) : [];
-      if (!items.length) { section.style.display = 'none'; return; }
-      grid.innerHTML = items.map(a => {
-        let cta;
-        if (a.claimStatus === 'success') {
-          cta = `<span style="font-size:12px; font-weight:800; color:#16a34a;">✅ NFT en tu wallet</span>`;
-        } else if (a.claimStatus === 'pending') {
-          cta = `<span style="font-size:12px; font-weight:800; color:var(--gold);">⏳ Generando tu NFT…</span>`;
-        } else {
-          const label = a.claimStatus === 'failed' ? '🔁 Reintentar NFT' : '🎟️ Convertir en NFT';
-          cta = `<button onclick="claimAchievementNft('${a.id}', this)" style="background:var(--wine); color:#fff; border:none; border-radius:100px; padding:8px 16px; font-size:12px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif;">${label}</button>`;
-        }
-        return `<div style="display:flex; gap:12px; align-items:center; background:rgba(196,151,58,0.08); border:1.5px solid rgba(196,151,58,0.3); border-radius:14px; padding:10px 12px;">
-          <img src="${a.image}" alt="${a.name}" style="width:54px; height:54px; object-fit:cover; border-radius:10px; flex-shrink:0;" onerror="this.style.display='none'">
-          <div style="flex:1; min-width:0;">
-            <p style="font-size:13px; font-weight:800; color:var(--wine); margin:0 0 2px;">${a.name}</p>
-            <p style="font-size:11px; color:var(--text-muted); margin:0 0 7px; line-height:1.35;">${a.description}</p>
-            ${cta}
-          </div>
-        </div>`;
-      }).join('');
+      const all = (data && data.achievements) ? data.achievements.slice() : [];
+      if (!all.length) { section.style.display = 'none'; return; }
+      _nftAchById = {};
+      all.forEach(a => { _nftAchById[a.id] = a; });
+      const done   = all.filter(a => a.unlocked || a.claimStatus);
+      const locked = all.filter(a => !(a.unlocked || a.claimStatus));
+      grid.innerHTML = [...done.map(_nftCardUnlocked), ...locked.map(_nftCardLocked)].join('');
       section.style.display = 'block';
     } catch (e) {
       section.style.display = 'none';
     }
+  }
+
+  // Tarjeta de logro CONSEGUIDO (o ya reclamado): imagen, texto y CTA de reclamar.
+  function _nftCardUnlocked(a) {
+    let cta;
+    if (a.claimStatus === 'success') {
+      cta = `<span style="font-size:12px; font-weight:800; color:#16a34a;">✅ NFT en tu wallet</span>`;
+    } else if (a.claimStatus === 'pending' || a.claimStatus === 'pending_approval') {
+      cta = `<span style="font-size:12px; font-weight:800; color:var(--gold);">⏳ Generando tu NFT…</span>`;
+    } else {
+      const label = a.claimStatus === 'failed' ? '🔁 Reintentar NFT' : '🎟️ Convertir en NFT';
+      cta = `<button onclick="claimAchievementNft('${a.id}', this)" style="background:var(--wine); color:#fff; border:none; border-radius:100px; padding:8px 16px; font-size:12px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif;">${label}</button>`;
+    }
+    return `<div onclick="showNftDetail('${a.id}')" style="display:flex; gap:12px; align-items:center; background:rgba(196,151,58,0.08); border:1.5px solid rgba(196,151,58,0.3); border-radius:14px; padding:10px 12px; cursor:pointer;">
+      <img src="${a.image}" alt="${a.name}" style="width:54px; height:54px; object-fit:cover; border-radius:10px; flex-shrink:0;" onerror="this.style.display='none'">
+      <div style="flex:1; min-width:0;">
+        <p style="font-size:13px; font-weight:800; color:var(--wine); margin:0 0 2px;">${a.name}</p>
+        <p style="font-size:11px; color:var(--text-muted); margin:0 0 7px; line-height:1.35;">${a.description}</p>
+        ${cta}
+      </div>
+    </div>`;
+  }
+
+  // Tarjeta de logro AÚN NO CONSEGUIDO: sombreada (imagen en gris + título). Al tocar
+  // abre el detalle con la descripción y cómo desbloquearlo.
+  function _nftCardLocked(a) {
+    return `<div onclick="showNftDetail('${a.id}')" style="display:flex; gap:12px; align-items:center; background:rgba(42,21,9,0.03); border:1.5px dashed rgba(42,21,9,0.15); border-radius:14px; padding:10px 12px; cursor:pointer;">
+      <img src="${a.image}" alt="${a.name}" style="width:54px; height:54px; object-fit:cover; border-radius:10px; flex-shrink:0; opacity:0.4; filter:grayscale(100%);" onerror="this.style.display='none'">
+      <div style="flex:1; min-width:0;">
+        <p style="font-size:13px; font-weight:800; color:var(--text-muted); margin:0 0 2px;">🔒 ${a.name}</p>
+        <p style="font-size:11px; color:var(--text-muted); opacity:0.85; margin:0;">Aínda por conseguir · toca para ver</p>
+      </div>
+    </div>`;
+  }
+
+  // Detalle de un logro NFT (imagen grande, título, descripción y estado / cómo
+  // desbloquearlo). Reutiliza el toast como el resto de tooltips del museo.
+  function showNftDetail(id) {
+    const a = _nftAchById[id];
+    if (!a) return;
+    const unlocked = a.unlocked || a.claimStatus;
+    const lock = unlocked ? '' : 'opacity:0.5; filter:grayscale(100%);';
+    let hint = '';
+    if (unlocked) {
+      hint = a.claimStatus === 'success' ? '✅ Ya lo tienes en tu wallet.'
+           : (a.claimStatus === 'pending' || a.claimStatus === 'pending_approval') ? '⏳ Tu NFT se está generando.'
+           : '🏆 ¡Desbloqueado! Convídelo en NFT desde el museo.';
+    } else if (a.ruleType === 'visit_on_date') {
+      hint = a.ruleDate ? `Se desbloquea asistiendo ao Furancho o ${_fmtNftDate(a.ruleDate)}.`
+                        : 'Se desbloquea asistiendo ao Furancho o día da edición.';
+    } else if (a.ruleType === 'campaign_visits') {
+      hint = 'Se desbloquea completando o Reto dos 5 (5 visitas de verán).';
+    } else if (a.ruleType === 'raffle_only') {
+      hint = 'Premio especial: entrégache o Furancho en persoa. ¡Atento aos sorteos, ho!';
+    } else {
+      hint = 'Segue vindo ao Furancho para desbloquealo.';
+    }
+    const statusText = unlocked ? '🏆 Conseguido' : '🔒 Aínda por conseguir';
+    const msg = `
+      <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px; padding:4px 0;">
+        <img src="${a.image}" alt="${a.name}" style="width:128px; height:128px; object-fit:cover; border-radius:16px; margin-bottom:6px; ${lock}" onerror="this.style.display='none'">
+        <strong style="font-size:14px; color:var(--gold); font-family:'Outfit',sans-serif;">${a.name}</strong>
+        <span style="font-size:12px; color:#F2EDE3; opacity:0.9; font-weight:400;">${a.description || ''}</span>
+        <span style="font-size:11.5px; color:#F2EDE3; opacity:0.85; font-weight:500; line-height:1.4;">${hint}</span>
+        <span style="font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; margin-top:6px; color:${unlocked ? '#4ade80' : '#7a6a5a'};">${statusText}</span>
+      </div>
+    `;
+    showToast(msg);
+  }
+  window.showNftDetail = showNftDetail;
+
+  // YYYY-MM-DD → DD/MM/YYYY (para la pista de desbloqueo por asistencia).
+  function _fmtNftDate(d) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(d || ''));
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : d;
   }
 
   async function claimAchievementNft(id, btn) {

@@ -37,6 +37,9 @@ router.get('/status', (req, res) => {
         description: a.description,
         image: a.image,   // ya viene normalizada desde el catálogo
         tokenId: a.tokenId,
+        edition: a.edition || null,
+        ruleType: a.rule ? a.rule.type : null,   // visit_on_date | campaign_visits | raffle_only
+        ruleDate: a.rule ? a.rule.date : null,   // solo visit_on_date
         unlocked: achievements.walletUnlocked(wallet, a),
         claimStatus: m ? m.status : null,   // null = sin reclamar; 'pending'|'success'|'failed'
         txHash: m ? m.tx_hash : null
