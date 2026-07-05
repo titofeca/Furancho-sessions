@@ -7054,19 +7054,30 @@
   function showBadgeTooltip(name, desc, unlocked, icon, image) {
     const statusText = unlocked ? '🏆 ¡Logro Desbloqueado!' : '🔒 Logro Bloqueado';
     const lock = unlocked ? '' : 'opacity:0.45; filter:grayscale(100%);';
-    // Ilustración grande si la hay; si no carga, cae al emoji.
     const visual = image
-      ? `<img src="${image}" alt="${name}" onclick="event.stopPropagation(); openImageLightbox(this.src, this.alt)" style="width:128px; height:128px; object-fit:cover; border-radius:16px; margin-bottom:6px; cursor:zoom-in; ${lock}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${icon}',style:'font-size:36px;margin-bottom:4px;display:block;'}))">`
-      : `<span style="font-size:36px; margin-bottom:4px; display:block; ${lock}">${icon}</span>`;
-    const msg = `
-      <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px; padding:4px 0;">
+      ? `<img src="${image}" alt="${name}" onclick="event.stopPropagation(); openImageLightbox(this.src, this.alt)" style="width:150px; height:150px; object-fit:cover; border-radius:18px; cursor:zoom-in; ${lock}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${icon}',style:'font-size:42px;display:block;'}))">`
+      : `<span style="font-size:42px; display:block; ${lock}">${icon}</span>`;
+    const prev = document.getElementById('nft-detail-overlay');
+    if (prev) prev.remove();
+    const ov = document.createElement('div');
+    ov.id = 'nft-detail-overlay';
+    ov.style.cssText = 'position:fixed; inset:0; z-index:99999; background:rgba(12,6,3,0.92); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; padding:24px; opacity:0; transition:opacity 0.3s ease;';
+    ov.innerHTML = `
+      <div style="background:rgba(28,12,5,0.97); border:1.5px solid rgba(196,151,58,0.35); border-radius:22px; padding:32px 28px; max-width:340px; width:100%; display:flex; flex-direction:column; align-items:center; text-align:center; gap:12px; position:relative; box-shadow:0 20px 60px rgba(0,0,0,0.5); transform:scale(0.94); transition:transform 0.3s cubic-bezier(0.22,1,0.36,1);">
+        <button onclick="document.getElementById('nft-detail-overlay').remove(); document.removeEventListener('keydown', window._nftDetailKeyHandler);" style="position:absolute; top:14px; right:14px; width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,0.1); color:#F2EDE3; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
         ${visual}
-        <strong style="font-size:14px; color:var(--gold); font-family:\'Outfit\',sans-serif;">${name}</strong>
-        <span style="font-size:12px; color:#F2EDE3; opacity:0.9; font-weight:400;">${desc}</span>
-        <span style="font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; margin-top:6px; color:${unlocked ? '#4ade80' : '#7a6a5a'};">${statusText}</span>
+        <strong style="font-size:18px; color:var(--gold); font-family:'Outfit',sans-serif; line-height:1.3;">${name}</strong>
+        <span style="font-size:14px; color:#F2EDE3; opacity:0.9; font-weight:400; line-height:1.5;">${desc}</span>
+        <span style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; margin-top:8px; color:${unlocked ? '#4ade80' : '#7a6a5a'};">${statusText}</span>
+        <button onclick="document.getElementById('nft-detail-overlay').remove(); document.removeEventListener('keydown', window._nftDetailKeyHandler);" style="margin-top:12px; background:rgba(196,151,58,0.15); border:1.5px solid rgba(196,151,58,0.4); color:var(--gold); border-radius:100px; padding:10px 28px; font-size:14px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">Volver</button>
       </div>
     `;
-    showToast(msg);
+    const close = () => { ov.style.opacity = '0'; const card = ov.querySelector('div'); if (card) card.style.transform = 'scale(0.94)'; setTimeout(() => ov.remove(), 300); document.removeEventListener('keydown', window._nftDetailKeyHandler); };
+    window._nftDetailKeyHandler = (e) => { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', window._nftDetailKeyHandler);
+    ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
+    document.body.appendChild(ov);
+    requestAnimationFrame(() => { ov.style.opacity = '1'; const card = ov.querySelector('div'); if (card) card.style.transform = 'scale(1)'; });
   }
   window.showBadgeTooltip = showBadgeTooltip;
 
@@ -7146,8 +7157,6 @@
     </div>`;
   }
 
-  // Detalle de un logro NFT (imagen grande, título, descripción y estado / cómo
-  // desbloquearlo). Reutiliza el toast como el resto de tooltips del museo.
   function showNftDetail(id) {
     const a = _nftAchById[id];
     if (!a) return;
@@ -7156,7 +7165,7 @@
     let hint = '';
     if (unlocked) {
       hint = a.claimStatus === 'success' ? '✅ Ya lo tienes en tu wallet. <a href="https://polygonscan.com/token/0x30118E36F1E3681ac5B9D048659Bc22733c78913?a=' + userWalletAddress + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:#4ade80; text-decoration:underline; font-weight:700;">Verificar en Polygonscan</a>'
-           : (a.claimStatus === 'pending' || a.claimStatus === 'pending_approval') ? '⏳ Tu NFT se está generando.'
+           : (a.claimStatus === 'pending' || a.claimStatus === 'pending_approval') ? '⏳ Tu NFT se está generando...'
            : '🏆 ¡Desbloqueado! Convídelo en NFT desde el museo.';
     } else if (a.ruleType === 'visit_on_date') {
       hint = a.ruleDate ? `Se desbloquea asistiendo ao Furancho o ${_fmtNftDate(a.ruleDate)}.`
@@ -7169,17 +7178,29 @@
       hint = 'Segue vindo ao Furancho para desbloquealo.';
     }
     const statusText = unlocked ? '🏆 Conseguido' : '🔒 Aínda por conseguir';
-    const msg = `
-      <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px; padding:4px 0;">
-        <img src="${a.image}" alt="${a.name}" onclick="event.stopPropagation(); openImageLightbox(this.src, this.alt)" style="width:128px; height:128px; object-fit:cover; border-radius:16px; margin-bottom:2px; cursor:zoom-in; ${lock}" onerror="this.style.display='none'">
-        <span style="font-size:10px; color:#F2EDE3; opacity:0.65; font-weight:600; margin-bottom:4px;">🔍 Toca la imagen para ampliar</span>
-        <strong style="font-size:14px; color:var(--gold); font-family:'Outfit',sans-serif;">${a.name}</strong>
-        <span style="font-size:12px; color:#F2EDE3; opacity:0.9; font-weight:400;">${a.description || ''}</span>
-        <span style="font-size:11.5px; color:#F2EDE3; opacity:0.85; font-weight:500; line-height:1.4;">${hint}</span>
-        <span style="font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; margin-top:6px; color:${unlocked ? '#4ade80' : '#7a6a5a'};">${statusText}</span>
+    const prev = document.getElementById('nft-detail-overlay');
+    if (prev) prev.remove();
+    const ov = document.createElement('div');
+    ov.id = 'nft-detail-overlay';
+    ov.style.cssText = 'position:fixed; inset:0; z-index:99999; background:rgba(12,6,3,0.92); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; padding:24px; opacity:0; transition:opacity 0.3s ease;';
+    ov.innerHTML = `
+      <div style="background:rgba(28,12,5,0.97); border:1.5px solid rgba(196,151,58,0.35); border-radius:22px; padding:32px 28px; max-width:340px; width:100%; display:flex; flex-direction:column; align-items:center; text-align:center; gap:12px; position:relative; box-shadow:0 20px 60px rgba(0,0,0,0.5); transform:scale(0.94); transition:transform 0.3s cubic-bezier(0.22,1,0.36,1);">
+        <button onclick="document.getElementById('nft-detail-overlay').remove(); document.removeEventListener('keydown', window._nftDetailKeyHandler);" style="position:absolute; top:14px; right:14px; width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,0.1); color:#F2EDE3; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
+        <img src="${a.image}" alt="${a.name}" onclick="event.stopPropagation(); openImageLightbox(this.src, this.alt)" style="width:150px; height:150px; object-fit:cover; border-radius:18px; cursor:zoom-in; ${lock}" onerror="this.style.display='none'">
+        <span style="font-size:11px; color:#F2EDE3; opacity:0.5; font-weight:500;">Toca a imaxe para ampliar</span>
+        <strong style="font-size:18px; color:var(--gold); font-family:'Outfit',sans-serif; line-height:1.3;">${a.name}</strong>
+        <span style="font-size:14px; color:#F2EDE3; opacity:0.9; font-weight:400; line-height:1.5;">${a.description || ''}</span>
+        <span style="font-size:13px; color:#F2EDE3; opacity:0.85; font-weight:500; line-height:1.5; margin-top:4px;">${hint}</span>
+        <span style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; margin-top:8px; color:${unlocked ? '#4ade80' : '#7a6a5a'};">${statusText}</span>
+        <button onclick="document.getElementById('nft-detail-overlay').remove(); document.removeEventListener('keydown', window._nftDetailKeyHandler);" style="margin-top:12px; background:rgba(196,151,58,0.15); border:1.5px solid rgba(196,151,58,0.4); color:var(--gold); border-radius:100px; padding:10px 28px; font-size:14px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">Volver</button>
       </div>
     `;
-    showToast(msg);
+    const close = () => { ov.style.opacity = '0'; const card = ov.querySelector('div'); if (card) card.style.transform = 'scale(0.94)'; setTimeout(() => ov.remove(), 300); document.removeEventListener('keydown', window._nftDetailKeyHandler); };
+    window._nftDetailKeyHandler = (e) => { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', window._nftDetailKeyHandler);
+    ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
+    document.body.appendChild(ov);
+    requestAnimationFrame(() => { ov.style.opacity = '1'; const card = ov.querySelector('div'); if (card) card.style.transform = 'scale(1)'; });
   }
   window.showNftDetail = showNftDetail;
 
