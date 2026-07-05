@@ -4549,7 +4549,7 @@
           // Ilustración si el logro la tiene; si la imagen no carga (aún no subida),
           // se reemplaza por el emoji sin romper la rejilla.
           const visual = b.image
-            ? `<img src="${b.image}" alt="${b.name}" style="width:42px; height:42px; object-fit:cover; border-radius:9px; margin-bottom:4px; display:block;" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${b.icon}',style:'font-size:24px;margin-bottom:4px;display:block;'}))">`
+            ? `<img src="${b.image}" alt="${b.name}" onclick="event.stopPropagation(); openImageLightbox(this.src, this.alt)" style="width:42px; height:42px; object-fit:cover; border-radius:9px; margin-bottom:4px; display:block; cursor:zoom-in;" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${b.icon}',style:'font-size:24px;margin-bottom:4px;display:block;'}))">`
             : `<span style="font-size:24px; margin-bottom:4px; display:block;">${b.icon}</span>`;
 
           return `
@@ -7124,7 +7124,7 @@
       cta = `<button onclick="claimAchievementNft('${a.id}', this)" style="background:var(--wine); color:#fff; border:none; border-radius:100px; padding:8px 16px; font-size:12px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif;">${label}</button>`;
     }
     return `<div onclick="showNftDetail('${a.id}')" style="display:flex; gap:12px; align-items:center; background:rgba(196,151,58,0.08); border:1.5px solid rgba(196,151,58,0.3); border-radius:14px; padding:10px 12px; cursor:pointer;">
-      <img src="${a.image}" alt="${a.name}" style="width:54px; height:54px; object-fit:cover; border-radius:10px; flex-shrink:0;" onerror="this.style.display='none'">
+      <img src="${a.image}" alt="${a.name}" onclick="event.stopPropagation(); openImageLightbox(this.src, this.alt)" style="width:54px; height:54px; object-fit:cover; border-radius:10px; flex-shrink:0; cursor:zoom-in;" onerror="this.style.display='none'">
       <div style="flex:1; min-width:0;">
         <p style="font-size:13px; font-weight:800; color:var(--wine); margin:0 0 2px;">${a.name}</p>
         <p style="font-size:11px; color:var(--text-muted); margin:0 0 7px; line-height:1.35;">${a.description}</p>
@@ -7137,7 +7137,7 @@
   // abre el detalle con la descripción y cómo desbloquearlo.
   function _nftCardLocked(a) {
     return `<div onclick="showNftDetail('${a.id}')" style="display:flex; gap:12px; align-items:center; background:rgba(42,21,9,0.03); border:1.5px dashed rgba(42,21,9,0.15); border-radius:14px; padding:10px 12px; cursor:pointer;">
-      <img src="${a.image}" alt="${a.name}" style="width:54px; height:54px; object-fit:cover; border-radius:10px; flex-shrink:0; opacity:0.4; filter:grayscale(100%);" onerror="this.style.display='none'">
+      <img src="${a.image}" alt="${a.name}" onclick="event.stopPropagation(); openImageLightbox(this.src, this.alt)" style="width:54px; height:54px; object-fit:cover; border-radius:10px; flex-shrink:0; opacity:0.4; filter:grayscale(100%); cursor:zoom-in;" onerror="this.style.display='none'">
       <div style="flex:1; min-width:0;">
         <p style="font-size:13px; font-weight:800; color:var(--text-muted); margin:0 0 2px;">🔒 ${a.name}</p>
         <p style="font-size:11px; color:var(--text-muted); opacity:0.85; margin:0;">Aínda por conseguir · toca para ver</p>
