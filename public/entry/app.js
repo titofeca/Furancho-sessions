@@ -157,6 +157,19 @@ async function doEntry(walletAddress) {
     });
     const data = await res.json();
 
+    // QR de otro evento o furancho cerrado → no dejar entrar
+    if (data.closed) {
+      document.getElementById('screen-loading').style.display = 'none';
+      const screen = document.getElementById('screen-success');
+      screen.style.display = 'flex';
+      document.getElementById('icon-container').innerText = '🚪';
+      document.getElementById('title-container').innerText = 'Furancho Pechado';
+      document.getElementById('msg-container').innerHTML = `<span style="color:var(--wine); font-weight:600;">${data.message || 'Este QR non é válido para a sesión de hoxe, ho.'}</span>`;
+      const enterBtn = document.querySelector('.btn-enter');
+      if (enterBtn) enterBtn.style.display = 'none';
+      return;
+    }
+
     document.getElementById('screen-loading').style.display = 'none';
     const screen = document.getElementById('screen-success');
     screen.style.display = 'flex';

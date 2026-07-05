@@ -75,20 +75,26 @@ router.post('/entry', mintLimiter, async (req, res) => {
     const { getVisitCount, openSession, getActiveEventWindow } = require('../db/database');
 
     // Anti-picaresca: el QR DEBE llevar la fecha del evento (ev=YYYY-MM-DD) y
-    // coincidir con el evento activo. Sin fecha o fecha incorrecta → no cuenta.
-    let evMismatch = false;
+    // coincidir con el evento activo. Sin fecha o fecha incorrecta → rechazado.
+    const win = getActiveEventWindow();
     if (!ev || !/^\d{4}-\d{2}-\d{2}$/.test(ev)) {
-      evMismatch = true;
-    } else {
-      const win = getActiveEventWindow();
-      if (!win || win.eventDayStr !== ev) {
-        evMismatch = true;
-      }
+      return res.json({
+        success: false, closed: true,
+        message: 'Furancho pechado, ho. Este QR non ten data de evento.'
+      });
+    }
+    if (!win || win.eventDayStr !== ev) {
+      return res.json({
+        success: false, closed: true,
+        message: win
+          ? `Este QR é da sesión do ${ev.split('-').reverse().join('/')}. Hoxe hai outra sesión, ho.`
+          : 'Furancho pechado, ho. Hoxe non hai sesión na axenda.'
+      });
     }
 
     // Abrir sesión — openSession decide si cuenta como visita:
     // solo si hay evento en la agenda ahora Y no hay otra visita contada esta semana
-    const result = openSession(walletAddress, evMismatch);
+    const result = openSession(walletAddress, false);
 
     // Visit count post-entrada (ya incluye la visita de hoy si contó)
     const visitCount = getVisitCount(walletAddress);
