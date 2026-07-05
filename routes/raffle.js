@@ -1327,7 +1327,7 @@ router.post('/admin/weekly/draw', requireAuth, (req, res) => {
     const result = drawWeeklyRaffle(weekStr);
 
     // Enviar Push a todos informando del ganador de la Chave Semanal
-    const { sendPushToAll } = require('../services/push');
+    const { sendPushToAll, sendPushToWallets } = require('../services/push');
     sendPushToAll(
       `🔑 ¡Chave Semanal sorteada!`,
       `Ya hay ganador de ${result.prize}. Abre la app: si te tocó, tienes hasta las 23:59 de hoy para confirmar, ho.`,
@@ -1336,6 +1336,16 @@ router.post('/admin/weekly/draw', requireAuth, (req, res) => {
         image: '/assets/logo.png',
         actions: [{ action: 'open', title: '¿Me tocó? 🔑' }],
       }
+    );
+
+    // Push directo al ganador (puede no tener la app abierta)
+    let winners;
+    try { winners = JSON.parse(result.winnerWallet); } catch (_) { winners = [result.winnerWallet]; }
+    sendPushToWallets(
+      winners,
+      '🏆 ¡GANACHES A CHAVE, HO!',
+      `Tocouche "${result.prize}". Abre a app e confirma antes das 23:59 ou o premio pérdese. ¡Corre, rapaz!`,
+      { url: '/claim' }
     );
 
     // SSE: Notificar en tiempo real al ganador específico (si está conectado).

@@ -253,10 +253,18 @@ function scheduleWeeklyRaffle() {
       const winCount = winners.length;
       console.log(`[WeeklyRaffle] ✅ ${winCount} ganador(es) automático(s) semana ${weekStr}: ${result.winnerWallet} | Premio: ${result.prize} | Confirmar antes de: ${result.confirmDeadline}`);
 
-      const { sendPushToAll } = require('./services/push');
+      const { sendPushToAll, sendPushToWallets } = require('./services/push');
       sendPushToAll(
         '🔑 ¡Chave Semanal sorteada!',
         `${winCount > 1 ? `Hay ${winCount} ganadores` : 'Ya hay ganador'} de ${result.prize}. Abre la app: si te tocó, confirma antes de las 23:59 de hoy o el premio se pierde, ho.`,
+        { url: '/claim' }
+      );
+
+      // Push directo al ganador (puede no tener la app abierta)
+      sendPushToWallets(
+        winners,
+        '🏆 ¡GANACHES A CHAVE, HO!',
+        `Tocouche "${result.prize}". Abre a app e confirma antes das 23:59 ou o premio pérdese. ¡Corre, rapaz!`,
         { url: '/claim' }
       );
 
@@ -281,6 +289,64 @@ function scheduleWeeklyRaffle() {
 }
 scheduleWeeklyRaffle();
 
+
+// ─── PUSHES DEL CICLO DE LA CHAVE (apertura domingo + recordatorio martes) ───
+// Domingo 21:00: la ventana se abre → push a todos.
+// Martes 20:00: último día para apuntarse → recordatorio a todos.
+let _lastWeeklyOpenPush = null;
+let _lastWeeklyReminderPush = null;
+function scheduleWeeklyLifecyclePushes() {
+  setInterval(async () => {
+    try {
+      const now = new Date();
+      const madrid = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+      const day = madrid.getDay();
+      const h = madrid.getHours();
+      const yyyy = madrid.getFullYear();
+      const mm = String(madrid.getMonth() + 1).padStart(2, '0');
+      const dd = String(madrid.getDate()).padStart(2, '0');
+      const todayStr = `${yyyy}-${mm}-${dd}`;
+
+      const { db, getWeeklyRaffleTargetWeek } = require('./db/database');
+
+      // ── Domingo 21:00 — ventana abierta ──────────────────────────────────
+      if (day === 0 && h === 21 && _lastWeeklyOpenPush !== todayStr) {
+        _lastWeeklyOpenPush = todayStr;
+        const weekStr = getWeeklyRaffleTargetWeek(madrid);
+        const raffle = db.prepare(`SELECT prize FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
+        if (raffle && raffle.prize) {
+          const { sendPushToAll } = require('./services/push');
+          sendPushToAll(
+            '🔑 ¡A Chave Semanal xa está aberta!',
+            `Esta semana se sortea: ${raffle.prize}. Abre a app e apúntate antes do mércores ás 21:00. ¡Non te quedes fóra, ho! 🍷`,
+            { url: '/claim' }
+          );
+          console.log(`[WeeklyPush] 🔑 Push apertura Chave semana ${weekStr}`);
+        }
+      }
+
+      // ── Martes 20:00 — recordatorio último día ────────────────────────────
+      if (day === 2 && h === 20 && _lastWeeklyReminderPush !== todayStr) {
+        _lastWeeklyReminderPush = todayStr;
+        const weekStr = getWeeklyRaffleTargetWeek(madrid);
+        const raffle = db.prepare(`SELECT prize FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
+        const claimCount = db.prepare(`SELECT COUNT(*) as n FROM weekly_claims WHERE claimed_week = ?`).get(weekStr)?.n || 0;
+        if (raffle && raffle.prize) {
+          const { sendPushToAll } = require('./services/push');
+          sendPushToAll(
+            '⏰ Mañá se sortea a Chave!',
+            `${claimCount} participante${claimCount !== 1 ? 's' : ''} xa están dentro. Premio: ${raffle.prize}. Se non te apuntaches, hoxe é o último día, ho.`,
+            { url: '/claim' }
+          );
+          console.log(`[WeeklyPush] ⏰ Recordatorio Chave martes — ${claimCount} participantes`);
+        }
+      }
+    } catch (e) {
+      console.error('[WeeklyPush] Error:', e.message);
+    }
+  }, 60 * 1000);
+}
+scheduleWeeklyLifecyclePushes();
 
 // ─── AUTO-PÉRDIDA DE LA CHAVE (sin confirmar antes de las 23:59) ──────────────
 // Cada minuto: si el ganador no confirmó dentro del plazo, el premio queda como
