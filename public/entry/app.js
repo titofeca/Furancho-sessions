@@ -200,7 +200,21 @@ async function doEntry(walletAddress) {
     }
     document.getElementById('icon-container').innerText = selected.icon;
     document.getElementById('title-container').innerText = selected.title;
-    document.getElementById('msg-container').innerHTML = `${selected.msg}<br><br>${footer}`;
+
+    let nftBanner = '';
+    if (data.pendingNftPrizes && data.pendingNftPrizes.length > 0) {
+      const p = data.pendingNftPrizes[0];
+      const imgHtml = p.image ? `<img src="${p.image}" style="width:72px; height:72px; border-radius:14px; object-fit:cover; box-shadow:0 4px 20px rgba(196,151,58,0.4); border:2px solid rgba(196,151,58,0.5);" onerror="this.style.display='none'">` : '';
+      nftBanner = `
+        <div style="margin-top:18px; background:linear-gradient(135deg, rgba(196,151,58,0.15), rgba(139,25,24,0.1)); border:2px solid rgba(196,151,58,0.5); border-radius:18px; padding:18px 16px; text-align:center;">
+          ${imgHtml}
+          <p style="font-size:15px; font-weight:800; color:var(--gold); margin:10px 0 4px; font-family:'Outfit',sans-serif;">🏆 ¡Tes un premio NFT agardándote!</p>
+          <p style="font-size:13px; font-weight:600; color:var(--wine); margin:0 0 8px; line-height:1.4;">${p.name}</p>
+          <p style="font-size:12px; color:var(--wine); margin:0; opacity:0.85; line-height:1.4;">Achégate a <strong>Tito</strong> ou ao staff para que cho entreguen. Ensinalle esta pantalla e en dous minutos tes o teu NFT no museo, ho.</p>
+        </div>`;
+    }
+
+    document.getElementById('msg-container').innerHTML = `${selected.msg}<br><br>${footer}${nftBanner}`;
 
   } catch (e) {
     showError('Error al registrar entrada. Inténtalo de nuevo.');

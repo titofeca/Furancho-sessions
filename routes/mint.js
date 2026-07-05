@@ -111,6 +111,16 @@ router.post('/entry', mintLimiter, async (req, res) => {
       }
     }
 
+    let pendingNftPrizes = [];
+    try {
+      const { getPendingNftPrizes } = require('../db/database');
+      const achievements = require('../services/achievements');
+      pendingNftPrizes = (getPendingNftPrizes(walletAddress) || []).map(r => {
+        const a = achievements.getById(r.nft_achievement_id);
+        return { prize: r.prize, name: a ? a.name : r.prize, image: a ? a.image : null };
+      });
+    } catch (_) {}
+
     return res.json({
       success: true,
       action: 'entry',
@@ -120,6 +130,7 @@ router.post('/entry', mintLimiter, async (req, res) => {
       hasEventNow: result.hasEventNow !== false,
       alreadyCounted: !!result.alreadyVisitedThisWeek || !!result.alreadyOpen,
       levelUp,
+      pendingNftPrizes,
       message: visitCount === 1 && result.counted
         ? '¡Benvido a Furancho Sessions!'
         : `¡Benvido de volta! Levas ${visitCount} visita${visitCount !== 1 ? 's' : ''}.`
