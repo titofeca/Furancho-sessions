@@ -2398,8 +2398,38 @@ module.exports = {
   getScheduledMessages,
   insertScheduledMessage,
   updateScheduledMessage,
-  deleteScheduledMessage
+  deleteScheduledMessage,
+  getEventRecap
 };
+
+function getEventRecap(eventDate) {
+  const attendees = db.prepare(`
+    SELECT COUNT(DISTINCT LOWER(wallet_address)) AS c
+    FROM sessions WHERE date(entry_time) = ? AND counted_as_visit = 1
+  `).get(eventDate)?.c || 0;
+
+  const attendeeWallets = db.prepare(`
+    SELECT DISTINCT LOWER(wallet_address) AS w
+    FROM sessions WHERE date(entry_time) = ? AND counted_as_visit = 1
+  `).all(eventDate).map(r => r.w);
+
+  const prizes = db.prepare(`
+    SELECT prize, establishment FROM raffles
+    WHERE date(created_at) = ? AND status IN ('accepted','collected')
+  `).all(eventDate);
+
+  const levelUps = db.prepare(`
+    SELECT COUNT(*) AS c FROM mints
+    WHERE date(created_at) = ? AND status = 'success'
+  `).get(eventDate)?.c || 0;
+
+  const nftsMinted = db.prepare(`
+    SELECT COUNT(*) AS c FROM achievement_mints
+    WHERE date(created_at) = ? AND status IN ('success','pending')
+  `).get(eventDate)?.c || 0;
+
+  return { attendees, attendeeWallets, prizes, levelUps, nftsMinted };
+}
 
 function claimWeeklyRaffle(walletAddress, weekStr) {
   db.prepare(`

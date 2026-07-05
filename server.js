@@ -388,6 +388,73 @@ function scheduleComebackPushes() {
 }
 scheduleComebackPushes();
 
+// ─── PUSH "LO QUE TE PERDISTE" — resumen del evento a los que NO vinieron ───
+// Se dispara a las 13:00 del día SIGUIENTE al evento. Solo envía a wallets con
+// push subscription que NO ficharon entrada esa noche. Datos reales, sin inventar.
+let _lastRecapDate = null;
+function scheduleEventRecapPush() {
+  setInterval(async () => {
+    try {
+      const now = new Date();
+      const madridStr = now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' });
+      const madrid = new Date(madridStr);
+      const hour = madrid.getHours();
+      const todayStr = `${madrid.getFullYear()}-${String(madrid.getMonth() + 1).padStart(2, '0')}-${String(madrid.getDate()).padStart(2, '0')}`;
+
+      if (hour !== 13 || _lastRecapDate === todayStr) return;
+      _lastRecapDate = todayStr;
+
+      const { db, getEventRecap } = require('./db/database');
+
+      const yesterday = new Date(madrid);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+
+      const event = db.prepare(`SELECT title FROM events WHERE event_date = ? AND active = 1`).get(yStr);
+      if (!event) return;
+
+      const recap = getEventRecap(yStr);
+      if (recap.attendees < 1) return;
+
+      const parts = [];
+      if (recap.prizes.length > 0) {
+        const names = recap.prizes.map(p => p.prize).slice(0, 3);
+        parts.push(`se sortearon ${recap.prizes.length} premio${recap.prizes.length > 1 ? 's' : ''} (${names.join(', ')})`);
+      }
+      if (recap.levelUps > 0) parts.push(`${recap.levelUps} persona${recap.levelUps > 1 ? 's subieron' : ' subió'} de nivel`);
+      if (recap.nftsMinted > 0) parts.push(`${recap.nftsMinted} NFT${recap.nftsMinted > 1 ? 's' : ''} repartido${recap.nftsMinted > 1 ? 's' : ''}`);
+
+      if (parts.length === 0) return;
+
+      const attendeeSet = new Set(recap.attendeeWallets);
+      const allSubs = db.prepare(`
+        SELECT DISTINCT wallet_address FROM push_subscriptions
+        WHERE wallet_address IS NOT NULL
+      `).all();
+      const absentWallets = allSubs
+        .map(s => s.wallet_address.toLowerCase())
+        .filter(w => !attendeeSet.has(w));
+
+      if (!absentWallets.length) return;
+
+      const body = `Onte no Furancho: ${parts.join(', ')}. Ti non estabas, ho. A próxima non te a perdas. 🍷`;
+
+      const { sendPushToWallet } = require('./services/push');
+      let sent = 0;
+      for (const w of absentWallets) {
+        try {
+          await sendPushToWallet(w, 'O que te perdiches 🍷', body, { url: '/claim' });
+          sent++;
+        } catch (_) {}
+      }
+      console.log(`[Recap] 📨 Push "lo que te perdiste" enviado a ${sent}/${absentWallets.length} ausentes (evento ${yStr})`);
+    } catch (e) {
+      console.error('[Recap] Error:', e.message);
+    }
+  }, 60 * 1000);
+}
+scheduleEventRecapPush();
+
 // ─── ENVÍO AUTOMÁTICO DE MENSAJES PROGRAMADOS ───────────────────────────────
 // Cada minuto comprueba si hay mensajes programados pendientes cuya fecha/hora sea menor o igual a la actual en Madrid.
 // Si los encuentra, los envía y los marca como 'sent'.

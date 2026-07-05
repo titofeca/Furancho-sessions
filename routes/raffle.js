@@ -596,6 +596,7 @@ router.patch('/:id/fix', requireAuth, (req, res) => {
 // POST /api/raffle/:id/redeem — CANJE en el local. Lo pulsa el staff en el móvil
 // del ganador. No requiere admin: verifica que la wallet sea la del ganador.
 // Idempotente: si ya estaba canjeado devuelve el estado sin re-marcar (evita doble canje).
+// Notifica al admin por push cuando se canjea un bono de la Ruta Furancheira.
 router.post('/:id/redeem', (req, res) => {
   const { wallet } = req.body;
   if (!wallet) return res.status(400).json({ error: 'Falta la wallet' });
@@ -608,6 +609,20 @@ router.post('/:id/redeem', (req, res) => {
         clientSSE.res.write(`event: prize_collected\ndata: ${JSON.stringify({ raffleId: req.params.id })}\n\n`);
         if (typeof clientSSE.res.flush === 'function') clientSSE.res.flush();
       } catch (_) {}
+    }
+    // Notificar al admin que se canjeó un bono (especialmente útil para Ruta Furancheira)
+    if (!result.alreadyCollected) {
+      const adminWallet = process.env.ADMIN_WALLET;
+      if (adminWallet) {
+        const { sendPushToWallet } = require('../services/push');
+        const shortW = wallet.slice(0, 6) + '…' + wallet.slice(-4);
+        sendPushToWallet(
+          adminWallet,
+          '🎫 Bono canjeado',
+          `${shortW} acaba de canjear "${result.prize}" (sorteo #${req.params.id}). Queda registrado, ho.`,
+          { url: '/admin' }
+        ).catch(() => {});
+      }
     }
     res.json({ success: true, ...result });
   } catch (e) { res.status(400).json({ error: e.message }); }
