@@ -26,6 +26,23 @@ db.exec('PRAGMA foreign_keys = ON');
 db.exec('PRAGMA busy_timeout = 5000');
 
 try { db.exec(`CREATE TABLE IF NOT EXISTS prize_presets (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, active INTEGER DEFAULT 1, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
+try { db.exec(`CREATE TABLE IF NOT EXISTS weekly_prize_templates (id INTEGER PRIMARY KEY AUTOINCREMENT, emoji TEXT DEFAULT '🎁', label TEXT NOT NULL, prize TEXT NOT NULL, rules TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
+try {
+  const hasTemplates = db.prepare(`SELECT count(*) as c FROM weekly_prize_templates`).get().c;
+  if (!hasTemplates) {
+    const seed = db.prepare(`INSERT INTO weekly_prize_templates (emoji, label, prize, rules) VALUES (?, ?, ?, ?)`);
+    seed.run('🪙', '200 Pesetas', '200 Pesetas (Vales Furancho)', '¡El clásico do furancho! Llévate 200 pesetas de las de antes para gastar en tazas de vino y raciones de la casa. ¡Auténtico sabor ochentero, ho!');
+    seed.run('🎰', 'Doble Oportunidad', 'Doble Oportunidad en Sorteos', '¡Doble o nada, ho! Independientemente de tu nivel de furancheiro, esta semana tendrás el doble de oportunidades (doble papeleta en el bombo) en todos los sorteos en vivo en el local.');
+    seed.run('🍷', 'Botella de Viño', 'Botella de Viño de la Casa', '¡Un clásico para llevar a casa o descorchar en la barra! Llévate una botella del mejor viño cosechero do furancho para brindar con quien tú quieras.');
+    seed.run('🍳', 'Ración Especial', 'Ración Especial + Taza de Viño', '¡Un manjar furancheiro, ho! Llévate una ración especial de la casa (oreja, tortilla o jamón asado) y una taza de viño del patrón para empujar. ¡Comida de la hostia!');
+    seed.run('🧺', 'Lote Furancheiro', 'Cesta de Productos do Furancho', '¡Lote completo, ho! Una cesta premium con productos típicos gallegos: viño casero, queso de tetilla, chorizo curado de aldea y pan de hogaza. ¡El paraíso del larpeiro!');
+    seed.run('👕', 'Camiseta Oficial', 'Camiseta Oficial Furancho Sessions', '¡Viste con estilo furancheiro! Llévate la camiseta oficial de Furancho Sessions de edición limitada con diseño retro de los 80. ¡Serás el más pintón del barrio!');
+    seed.run('☕', 'Licor Café', 'Botella de Licor Café Casero', '¡El elixir do furancheiro, ho! Una botella de licor café artesanal de receta secreta para espabilar el alma. Ideal para tomar bien frío después de un buen xantar. ¡Pura retranca líquida!');
+    seed.run('🥧', 'Empanada Enteira', 'Empanada Gallega Entera', '¡Para compartir con la pandilla! Una empanada casera entera (de atún, carne o bacalao) hecha con la masa fina clásica gallega en horno de piedra. ¡La reina de cualquier furancho, ho!');
+    seed.run('💑', 'Xantar para Dous', 'Cena para Dos Furancheiros', '¡Xantar completo para dos! Incluye una jarra de viño cosechero, dos raciones copiosas a elegir y postre de la casa. Para que presumas de invitación de la hostia con quien tú quieras.');
+    seed.run('🎁', 'Sorpresa do Patrón', 'La Caja Sorpresa do Patrón', '¡Sorpresa sorpresa, ho! Una caja de madera misteriosa preparada a mano por el patrón del furancho con productos secretos que no te podemos desvelar... ¡Atrévete a descubrir lo que hay dentro!');
+  }
+} catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS raffle_participants (raffle_id INTEGER NOT NULL, wallet_address TEXT NOT NULL, PRIMARY KEY (raffle_id, wallet_address))`); } catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS scheduled_raffles (id INTEGER PRIMARY KEY AUTOINCREMENT, event_date TEXT NOT NULL, scheduled_time TEXT NOT NULL, prize TEXT NOT NULL, status TEXT DEFAULT 'pending', raffle_id INTEGER, target_level INTEGER, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
 try {
@@ -2033,6 +2050,21 @@ function deletePrizePreset(id) {
   db.prepare(`UPDATE prize_presets SET active = 0 WHERE id = ?`).run(id);
 }
 
+// ── Plantillas de premios de la Chave Semanal (CRUD) ──
+function getWeeklyPrizeTemplates() {
+  return db.prepare(`SELECT id, emoji, label, prize, rules FROM weekly_prize_templates ORDER BY id ASC`).all();
+}
+function addWeeklyPrizeTemplate({ emoji, label, prize, rules }) {
+  return db.prepare(`INSERT INTO weekly_prize_templates (emoji, label, prize, rules) VALUES (?, ?, ?, ?)`).run(emoji || '🎁', label, prize, rules).lastInsertRowid;
+}
+function updateWeeklyPrizeTemplate(id, { emoji, label, prize, rules }) {
+  return db.prepare(`UPDATE weekly_prize_templates SET emoji=coalesce(?,emoji), label=coalesce(?,label), prize=coalesce(?,prize), rules=coalesce(?,rules) WHERE id=?`)
+    .run(emoji ?? null, label ?? null, prize ?? null, rules ?? null, id);
+}
+function deleteWeeklyPrizeTemplate(id) {
+  db.prepare(`DELETE FROM weekly_prize_templates WHERE id = ?`).run(id);
+}
+
 function getRaffleCountTonight() {
   return db.prepare(`SELECT COUNT(*) as count FROM raffles WHERE date(created_at) = date('now')`).get()?.count || 0;
 }
@@ -2319,6 +2351,10 @@ module.exports = {
   getPrizePresets,
   addPrizePreset,
   deletePrizePreset,
+  getWeeklyPrizeTemplates,
+  addWeeklyPrizeTemplate,
+  updateWeeklyPrizeTemplate,
+  deleteWeeklyPrizeTemplate,
   getRaffleCountTonight,
   getScheduledRaffles,
   createScheduledRaffle,

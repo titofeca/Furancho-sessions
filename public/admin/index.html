@@ -2151,22 +2151,24 @@
           <textarea class="input-field" id="weekly-rules-input" placeholder="Operativa del sorteo semanal..." style="font-size:13px; font-family:'Outfit',sans-serif; min-height:80px; resize:vertical; margin-bottom:14px; background:rgba(42,21,9,0.05); border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; color:var(--text); width:100%; box-sizing:border-box; padding:10px; outline:none;"></textarea>
           
           <div style="margin-bottom:14px;">
-            <span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing:0.5px;">📋 Plantillas de Premios:</span>
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-              <button type="button" onclick="applyWeeklyTemplate('pesetas')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">🪙 200 Pesetas</button>
-              <button type="button" onclick="applyWeeklyTemplate('double')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">🎰 Doble Oportunidad</button>
-              <button type="button" onclick="applyWeeklyTemplate('vino')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">🍷 Botella de Viño</button>
-              <button type="button" onclick="applyWeeklyTemplate('tapa')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">🍳 Ración Especial</button>
-              <button type="button" onclick="applyWeeklyTemplate('cesta')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">🧺 Lote Furancheiro</button>
-              <button type="button" onclick="applyWeeklyTemplate('merch')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">👕 Camiseta Oficial</button>
-              <button type="button" onclick="applyWeeklyTemplate('licor_cafe')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">☕ Licor Café</button>
-              <button type="button" onclick="applyWeeklyTemplate('empanada')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">🥧 Empanada Enteira</button>
-              <button type="button" onclick="applyWeeklyTemplate('cena')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">💑 Xantar para Dous</button>
-              <button type="button" onclick="applyWeeklyTemplate('sorpresa')" style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">🎁 Sorpresa do Patrón</button>
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+              <span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">📋 Plantillas de Premios</span>
+              <button type="button" onclick="toggleWeeklyTemplateManager()" class="btn-download" style="font-size:10px; padding:4px 10px;">⚙ Gestionar</button>
             </div>
+            <div id="weekly-template-buttons" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
           </div>
-          
-          <button onclick="saveWeeklyRaffleConfig()" style="background:var(--wine); color:#fff; border:none; border-radius:12px; padding:12px 18px; font-size:13px; font-weight:700; cursor:pointer; width:100%; font-family:'Outfit',sans-serif;">💾 Guardar Premio y Operativa</button>
+
+          <!-- Gestión de plantillas (oculto por defecto) -->
+          <div id="weekly-template-manager" style="display:none; margin-bottom:14px; background:rgba(42,21,9,0.03); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:12px;">
+            <p style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin:0 0 8px;">Editar / Eliminar plantillas</p>
+            <div id="weekly-template-edit-list" style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;"></div>
+            <button type="button" onclick="startNewWeeklyTemplate()" style="width:100%; background:rgba(196,151,58,0.1); border:1.5px dashed var(--gold); color:var(--gold); border-radius:10px; padding:10px; font-size:12px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">+ Crear nueva plantilla</button>
+          </div>
+
+          <div style="display:flex; gap:8px;">
+            <button onclick="saveWeeklyRaffleConfig()" style="flex:1; background:var(--wine); color:#fff; border:none; border-radius:12px; padding:12px 18px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">💾 Guardar Premio y Operativa</button>
+            <button type="button" onclick="saveCurrentAsWeeklyTemplate()" style="background:rgba(196,151,58,0.12); border:1.5px solid var(--gold); color:var(--gold); border-radius:10px; padding:12px 14px; font-size:12px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; white-space:nowrap;" title="Guardar lo que hay ahora en los campos como nueva plantilla">📋 Guardar como plantilla</button>
+          </div>
 
           <!-- Panel de confirmación: lo que está guardado actualmente -->
           <div id="weekly-saved-summary" style="display:none; margin-top:12px; background:rgba(196,151,58,0.12); border:1.5px solid #C4973A; border-radius:12px; padding:12px 14px;">
@@ -2808,7 +2810,7 @@
       loadVisits('__totales__');
       loadAnalyticsPage();
     }
-    if (pageId === 'raffles') { loadAchievementFilterOptions(); loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); loadScheduled(); loadWeeklyRaffleAdmin(); loadPartnersAdmin(); populateSchedEstablishmentSelect(); }
+    if (pageId === 'raffles') { loadAchievementFilterOptions(); loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); loadScheduled(); loadWeeklyRaffleAdmin(); loadWeeklyTemplates(); loadPartnersAdmin(); populateSchedEstablishmentSelect(); }
     if (pageId === 'scanner') { stopScanner(); document.getElementById('scanner-result').style.display='none'; document.getElementById('scanner-status').textContent=''; }
     if (pageId === 'nfts') loadNftsPage();
     if (pageId === 'qrcodes') { loadStaffCode(); loadEntryQrDates(); }
@@ -6188,42 +6190,123 @@
     panel.style.display = 'block';
   }
 
-  function applyWeeklyTemplate(type) {
-    const prizeInput = document.getElementById('weekly-prize-input');
-    const rulesInput = document.getElementById('weekly-rules-input');
-    if (!prizeInput || !rulesInput) return;
-    
-    if (type === 'pesetas') {
-      prizeInput.value = '200 Pesetas (Vales Furancho)';
-      rulesInput.value = '¡El clásico do furancho! Llévate 200 pesetas de las de antes para gastar en tazas de vino y raciones de la casa. ¡Auténtico sabor ochentero, ho!';
-    } else if (type === 'double') {
-      prizeInput.value = 'Doble Oportunidad en Sorteos';
-      rulesInput.value = '¡Doble o nada, ho! Independientemente de tu nivel de furancheiro, esta semana tendrás el doble de oportunidades (doble papeleta en el bombo) en todos los sorteos en vivo en el local.';
-    } else if (type === 'vino') {
-      prizeInput.value = 'Botella de Viño de la Casa';
-      rulesInput.value = '¡Un clásico para llevar a casa o descorchar en la barra! Llévate una botella del mejor viño cosechero do furancho para brindar con quien tú quieras.';
-    } else if (type === 'tapa') {
-      prizeInput.value = 'Ración Especial + Taza de Viño';
-      rulesInput.value = '¡Un manjar furancheiro, ho! Llévate una ración especial de la casa (oreja, tortilla o jamón asado) y una taza de viño del patrón para empujar. ¡Comida de la hostia!';
-    } else if (type === 'cesta') {
-      prizeInput.value = 'Cesta de Productos do Furancho';
-      rulesInput.value = '¡Lote completo, ho! Una cesta premium con productos típicos gallegos: viño casero, queso de tetilla, chorizo curado de aldea y pan de hogaza. ¡El paraíso del larpeiro!';
-    } else if (type === 'merch') {
-      prizeInput.value = 'Camiseta Oficial Furancho Sessions';
-      rulesInput.value = '¡Viste con estilo furancheiro! Llévate la camiseta oficial de Furancho Sessions de edición limitada con diseño retro de los 80. ¡Serás el más pintón del barrio!';
-    } else if (type === 'licor_cafe') {
-      prizeInput.value = 'Botella de Licor Café Casero';
-      rulesInput.value = '¡El elixir do furancheiro, ho! Una botella de licor café artesanal de receta secreta para espabilar el alma. Ideal para tomar bien frío después de un buen xantar. ¡Pura retranca líquida!';
-    } else if (type === 'empanada') {
-      prizeInput.value = 'Empanada Gallega Entera';
-      rulesInput.value = '¡Para compartir con la pandilla! Una empanada casera entera (de atún, carne o bacalao) hecha con la masa fina clásica gallega en horno de piedra. ¡La reina de cualquier furancho, ho!';
-    } else if (type === 'cena') {
-      prizeInput.value = 'Cena para Dos Furancheiros';
-      rulesInput.value = '¡Xantar completo para dos! Incluye una jarra de viño cosechero, dos raciones copiosas a elegir y postre de la casa. Para que presumas de invitación de la hostia con quien tú quieras.';
-    } else if (type === 'sorpresa') {
-      prizeInput.value = 'La Caja Sorpresa do Patrón';
-      rulesInput.value = '¡Sorpresa sorpresa, ho! Una caja de madera misteriosa preparada a mano por el patrón del furancho con productos secretos que no te podemos desvelar... ¡Atrévete a descubrir lo que hay dentro!';
-    }
+  // ── Plantillas de premios Chave Semanal (dinámicas desde BD) ──
+  let _weeklyTemplates = [];
+
+  async function loadWeeklyTemplates() {
+    try {
+      _weeklyTemplates = await fetch('/api/raffle/weekly/templates', { headers: authHeaders() }).then(r => r.json());
+    } catch (_) { _weeklyTemplates = []; }
+    renderWeeklyTemplateButtons();
+    renderWeeklyTemplateEditList();
+  }
+
+  function renderWeeklyTemplateButtons() {
+    const wrap = document.getElementById('weekly-template-buttons');
+    if (!wrap) return;
+    wrap.innerHTML = _weeklyTemplates.map(t => `
+      <button type="button" onclick="applyWeeklyTemplateById(${t.id})"
+        style="background:rgba(196,151,58,0.12); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s;">
+        ${t.emoji} ${t.label}
+      </button>`).join('') || '<span style="font-size:11px; color:var(--text-muted);">Sin plantillas.</span>';
+  }
+
+  function applyWeeklyTemplateById(id) {
+    const t = _weeklyTemplates.find(x => x.id === id);
+    if (!t) return;
+    const p = document.getElementById('weekly-prize-input');
+    const r = document.getElementById('weekly-rules-input');
+    if (p) p.value = t.prize;
+    if (r) r.value = t.rules;
+    showToast(`📋 Plantilla "${t.label}" aplicada`);
+  }
+
+  function renderWeeklyTemplateEditList() {
+    const el = document.getElementById('weekly-template-edit-list');
+    if (!el) return;
+    el.innerHTML = _weeklyTemplates.map(t => `
+      <div style="display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:8px 10px;">
+        <span style="font-size:16px; flex-shrink:0;">${t.emoji}</span>
+        <div style="flex:1; min-width:0;">
+          <p style="font-size:12px; font-weight:700; color:var(--text); margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.label}</p>
+          <p style="font-size:10px; color:var(--text-muted); margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.prize}</p>
+        </div>
+        <button onclick="editWeeklyTemplate(${t.id})" style="padding:4px 10px; background:rgba(196,151,58,0.12); border:1px solid rgba(196,151,58,0.35); border-radius:6px; font-size:10px; font-weight:700; color:#8B6914; cursor:pointer; font-family:'Outfit',sans-serif;">Editar</button>
+        <button onclick="deleteWeeklyTemplate(${t.id})" style="padding:4px 10px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:6px; font-size:10px; font-weight:700; color:#ef4444; cursor:pointer; font-family:'Outfit',sans-serif;">Borrar</button>
+      </div>`).join('') || '<p style="font-size:11px; color:var(--text-muted);">Sin plantillas.</p>';
+  }
+
+  function toggleWeeklyTemplateManager() {
+    const m = document.getElementById('weekly-template-manager');
+    if (!m) return;
+    m.style.display = m.style.display === 'none' ? 'block' : 'none';
+  }
+
+  async function editWeeklyTemplate(id) {
+    const t = _weeklyTemplates.find(x => x.id === id);
+    if (!t) return;
+    const emoji = prompt('Emoji:', t.emoji);
+    if (emoji === null) return;
+    const label = prompt('Nombre del botón:', t.label);
+    if (!label) return;
+    const prize = prompt('Texto del premio:', t.prize);
+    if (!prize) return;
+    const rules = prompt('Operativa:', t.rules);
+    if (!rules) return;
+    try {
+      await fetch(`/api/raffle/weekly/templates/${id}`, {
+        method: 'PUT', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emoji, label, prize, rules })
+      });
+      showToast('✅ Plantilla actualizada');
+      loadWeeklyTemplates();
+    } catch (_) { showToast('Error actualizando', true); }
+  }
+
+  async function deleteWeeklyTemplate(id) {
+    if (!confirm('¿Borrar esta plantilla?')) return;
+    try {
+      await fetch(`/api/raffle/weekly/templates/${id}`, { method: 'DELETE', headers: authHeaders() });
+      showToast('Plantilla borrada');
+      loadWeeklyTemplates();
+    } catch (_) { showToast('Error borrando', true); }
+  }
+
+  async function startNewWeeklyTemplate() {
+    const emoji = prompt('Emoji para el botón:', '🎁') || '🎁';
+    const label = prompt('Nombre del botón (corto):');
+    if (!label) return;
+    const prize = prompt('Texto del premio:');
+    if (!prize) return;
+    const rules = prompt('Operativa / descripción:');
+    if (!rules) return;
+    try {
+      const res = await fetch('/api/raffle/weekly/templates', {
+        method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emoji, label, prize, rules })
+      });
+      const data = await res.json();
+      if (data.success) { showToast('✅ Plantilla creada'); loadWeeklyTemplates(); }
+      else showToast(data.error || 'Error', true);
+    } catch (_) { showToast('Error creando', true); }
+  }
+
+  async function saveCurrentAsWeeklyTemplate() {
+    const prize = document.getElementById('weekly-prize-input')?.value?.trim();
+    const rules = document.getElementById('weekly-rules-input')?.value?.trim();
+    if (!prize || !rules) return showToast('Rellena primero el premio y la operativa', true);
+    const label = prompt('Nombre corto para el botón de la plantilla:', prize.substring(0, 30));
+    if (!label) return;
+    const emoji = prompt('Emoji:', '🎁') || '🎁';
+    try {
+      const res = await fetch('/api/raffle/weekly/templates', {
+        method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emoji, label, prize, rules })
+      });
+      const data = await res.json();
+      if (data.success) { showToast('✅ Guardado como plantilla'); loadWeeklyTemplates(); }
+      else showToast(data.error || 'Error', true);
+    } catch (_) { showToast('Error', true); }
   }
 
   // Badge pendientes VIP en el nav

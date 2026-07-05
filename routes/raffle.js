@@ -7,7 +7,9 @@ const fs = require('fs');
 const {
   getEligibleRaffleParticipants, insertRaffle, acceptRaffle, rejectRaffle,
   collectRaffle, redeemRaffleByWinner, getRaffleHistory, getMyWins, getRaffleParticipation, getRaffleById,
-  getPrizePresets, addPrizePreset, deletePrizePreset, getRaffleCountTonight,
+  getPrizePresets, addPrizePreset, deletePrizePreset,
+  getWeeklyPrizeTemplates, addWeeklyPrizeTemplate, updateWeeklyPrizeTemplate, deleteWeeklyPrizeTemplate,
+  getRaffleCountTonight,
   getScheduledRaffles, createScheduledRaffle, updateScheduledRaffle,
   deleteScheduledRaffle, linkScheduledRaffle, insertMint,
   claimWeeklyRaffle, getWeeklyRaffleStatus, updateWeeklyPrize, drawWeeklyRaffle, collectWeeklyRaffle, collectWeeklyWinner, forfeitWeeklyRaffle,
@@ -666,6 +668,36 @@ router.post('/prizes', requireAuth, (req, res) => {
 router.delete('/prizes/:id', requireAuth, (req, res) => {
   try {
     deletePrizePreset(parseInt(req.params.id));
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── PLANTILLAS CHAVE SEMANAL ────────────────────────────────────────────────
+
+router.get('/weekly/templates', requireAuth, (req, res) => {
+  try { res.json(getWeeklyPrizeTemplates()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/weekly/templates', requireAuth, (req, res) => {
+  const { emoji, label, prize, rules } = req.body;
+  if (!label?.trim() || !prize?.trim() || !rules?.trim()) return res.status(400).json({ error: 'Faltan campos (label, prize, rules)' });
+  try {
+    const id = addWeeklyPrizeTemplate({ emoji: emoji || '🎁', label: label.trim(), prize: prize.trim(), rules: rules.trim() });
+    res.json({ success: true, id });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+router.put('/weekly/templates/:id', requireAuth, (req, res) => {
+  const { emoji, label, prize, rules } = req.body;
+  try {
+    updateWeeklyPrizeTemplate(parseInt(req.params.id), { emoji, label, prize, rules });
+    res.json({ success: true });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+router.delete('/weekly/templates/:id', requireAuth, (req, res) => {
+  try {
+    deleteWeeklyPrizeTemplate(parseInt(req.params.id));
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
