@@ -505,13 +505,21 @@ try {
     updated_at TEXT DEFAULT (datetime('now'))
   )`);
 } catch (_) {}
-// Ajustes generales del panel (key-value). Se usa, p. ej., para que el admin decida
-// si los clientes ven en su museo los logros que aún NO han conseguido (sombreados).
+// Ajustes generales del panel (key-value). Almacén genérico reutilizable.
 try {
   db.exec(`CREATE TABLE IF NOT EXISTS app_settings (
     key TEXT PRIMARY KEY,
     value TEXT,
     updated_at TEXT DEFAULT (datetime('now'))
+  )`);
+} catch (_) {}
+// Visibilidad POR LOGRO en el museo: qué NFT ven los clientes (sombreados) ANTES de
+// conseguirlos. Se guardan aquí SOLO los que el admin ha decidido OCULTAR; por defecto
+// (no está en la tabla) el logro se muestra. Aplica a logros del código y creados.
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS achievement_hidden_locked (
+    achievement_id TEXT PRIMARY KEY,
+    hidden_at TEXT DEFAULT (datetime('now'))
   )`);
 } catch (_) {}
 // Número de serie del mint dentro de su nivel (1 = primero en alcanzar ese nivel)
@@ -1069,6 +1077,19 @@ function setSetting(key, value) {
 function getBoolSetting(key, fallback = true) {
   const v = getSetting(key, null);
   return v == null ? fallback : v === '1';
+}
+
+// ── Visibilidad por logro en el museo (qué NFT ven los clientes sin conseguirlos) ──
+// Devuelve los IDs OCULTOS (los que NO deben verse hasta conseguirlos).
+function getHiddenLockedAchievementIds() {
+  try { return db.prepare(`SELECT achievement_id FROM achievement_hidden_locked`).all().map(r => r.achievement_id); }
+  catch (_) { return []; }
+}
+// visible=true → se ve sombreado antes de conseguirlo (quita de ocultos).
+// visible=false → oculto hasta que el cliente lo consiga (lo añade a ocultos).
+function setAchievementLockedVisibility(achievementId, visible) {
+  if (visible) db.prepare(`DELETE FROM achievement_hidden_locked WHERE achievement_id = ?`).run(achievementId);
+  else db.prepare(`INSERT OR IGNORE INTO achievement_hidden_locked (achievement_id) VALUES (?)`).run(achievementId);
 }
 
 
@@ -2250,6 +2271,8 @@ module.exports = {
   getSetting,
   setSetting,
   getBoolSetting,
+  getHiddenLockedAchievementIds,
+  setAchievementLockedVisibility,
   getPendingNftPrizes,
   grantNftPrize,
   grantWeeklyNftPrize,

@@ -5,12 +5,8 @@ const router = express.Router();
 const achievements = require('../services/achievements');
 const {
   claimAchievement, getAchievementMint, getWalletAchievementMints,
-  getBoolSetting, setSetting
+  getHiddenLockedAchievementIds, setAchievementLockedVisibility
 } = require('../db/database');
-
-// Clave de ajuste: ¿los clientes ven en su museo los logros que aún NO han conseguido
-// (sombreados)? Por defecto sí. El admin lo controla con un check en el panel.
-const SHOW_LOCKED_KEY = 'museum_show_locked';
 const { notifyAchievementQueue } = require('../services/polygon');
 const { requireAuth } = require('./admin'); // gestión de logros: solo admin
 
@@ -34,6 +30,7 @@ router.get('/status', (req, res) => {
   try {
     const mints = {};
     getWalletAchievementMints(wallet).forEach(m => { mints[m.achievement_id] = m; });
+    const hidden = new Set(getHiddenLockedAchievementIds());
     const items = achievements.list().map(a => {
       const m = mints[a.id];
       return {
@@ -49,10 +46,11 @@ router.get('/status', (req, res) => {
         claimStatus: m ? m.status : null,   // null = sin reclamar; 'pending'|'success'|'failed'
         txHash: m ? m.tx_hash : null
       };
-    });
-    // El cliente usa este flag para decidir si pinta (sombreados) los logros aún no
-    // conseguidos. Si el admin lo desactiva, el museo solo muestra los ya conseguidos.
-    res.json({ achievements: items, showLocked: getBoolSetting(SHOW_LOCKED_KEY, true) });
+    })
+    // Los logros que el admin marcó como ocultos NO se muestran hasta conseguirlos;
+    // los ya conseguidos/reclamados se ven siempre.
+    .filter(it => it.unlocked || it.claimStatus || !hidden.has(it.id));
+    res.json({ achievements: items });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -94,29 +92,29 @@ router.post('/claim', claimLimiter, (req, res) => {
 // pueden borrar (los creados desde el panel) y el próximo token libre.
 router.get('/admin/list', requireAuth, (req, res) => {
   try {
+    const hidden = new Set(getHiddenLockedAchievementIds());
     res.json({
       achievements: achievements.list().map(a => ({
         id: a.id, name: a.name, description: a.description, image: a.image,
         tokenId: a.tokenId, edition: a.edition || null,
         ruleType: a.rule ? a.rule.type : null,
-        ruleDate: a.rule ? a.rule.date : null, custom: !!a.custom
+        ruleDate: a.rule ? a.rule.date : null, custom: !!a.custom,
+        // hiddenLocked=true → los clientes NO lo ven hasta conseguirlo (por defecto se ve).
+        hiddenLocked: hidden.has(a.id)
       })),
       nextTokenId: achievements.nextTokenId()
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/achievements/admin/settings — ajustes del museo (para pintar el check).
-router.get('/admin/settings', requireAuth, (req, res) => {
-  res.json({ showLocked: getBoolSetting(SHOW_LOCKED_KEY, true) });
-});
-
-// PUT /api/achievements/admin/settings — guarda si los clientes ven los logros
-// no conseguidos (sombreados). Body: { showLocked: true|false }.
-router.put('/admin/settings', requireAuth, (req, res) => {
-  const { showLocked } = req.body;
-  setSetting(SHOW_LOCKED_KEY, showLocked ? '1' : '0');
-  res.json({ success: true, showLocked: !!showLocked });
+// PUT /api/achievements/admin/:id/visibility — el admin decide, POR LOGRO, si se ve
+// en el museo (sombreado) ANTES de conseguirlo. Body: { visible: true|false }.
+router.put('/admin/:id/visibility', requireAuth, (req, res) => {
+  try {
+    const visible = req.body.visible !== false;
+    setAchievementLockedVisibility(req.params.id, visible);
+    res.json({ success: true, id: req.params.id, visible });
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 // POST /api/achievements/admin/create — crea un logro nuevo desde el panel.
