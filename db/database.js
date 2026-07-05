@@ -1827,30 +1827,32 @@ function collectRaffle(raffleId, adminNote) {
 // devuelve el estado sin volver a marcarlo. Solo el ganador (misma wallet) puede
 // cerrarlo, y solo si el premio fue aceptado antes.
 function redeemRaffleByWinner(raffleId, walletAddress) {
-  const raffle = db.prepare(`SELECT id, winner_wallet, status, prize, collected_at, validity_end_date FROM raffles WHERE id = ?`).get(raffleId);
+  const raffle = db.prepare(`SELECT id, winner_wallet, status, prize, collected_at, validity_end_date, establishment FROM raffles WHERE id = ?`).get(raffleId);
   if (!raffle) throw new Error('Premio no encontrado');
   if (!raffle.winner_wallet || !walletAddress || raffle.winner_wallet.toLowerCase() !== walletAddress.toLowerCase()) {
     throw new Error('No eres el ganador de este premio');
   }
   if (raffle.status === 'collected') {
-    return { alreadyCollected: true, collected_at: raffle.collected_at, prize: raffle.prize };
+    return { alreadyCollected: true, collected_at: raffle.collected_at, prize: raffle.prize, establishment: raffle.establishment };
   }
   if (raffle.status !== 'accepted') {
     throw new Error('Este premio no está listo para canjear');
   }
-  // Caducidad: si hay fecha límite y ya pasó (hora de Madrid), no se puede canjear.
   if (raffle.validity_end_date) {
-    const todayMadrid = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' }); // YYYY-MM-DD
+    const todayMadrid = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
     if (todayMadrid > raffle.validity_end_date) {
       throw new Error('Este premio ha caducado y ya no se puede canjear');
     }
   }
+  const collectedBy = raffle.establishment
+    ? `Canjeado en ${raffle.establishment}`
+    : 'Canjeado en local (staff)';
   db.prepare(`
-    UPDATE raffles SET collected = 1, status = 'collected', collected_at = datetime('now'), collected_by = 'Canjeado en local (staff)'
+    UPDATE raffles SET collected = 1, status = 'collected', collected_at = datetime('now'), collected_by = ?
     WHERE id = ? AND status = 'accepted'
-  `).run(raffleId);
+  `).run(collectedBy, raffleId);
   const updated = db.prepare(`SELECT collected_at, prize FROM raffles WHERE id = ?`).get(raffleId);
-  return { alreadyCollected: false, collected_at: updated.collected_at, prize: updated.prize };
+  return { alreadyCollected: false, collected_at: updated.collected_at, prize: updated.prize, establishment: raffle.establishment };
 }
 
 function getRaffleHistory() {

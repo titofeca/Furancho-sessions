@@ -616,10 +616,11 @@ router.post('/:id/redeem', (req, res) => {
       if (adminWallet) {
         const { sendPushToWallet } = require('../services/push');
         const shortW = wallet.slice(0, 6) + '…' + wallet.slice(-4);
+        const local = result.establishment ? ` en ${result.establishment}` : '';
         sendPushToWallet(
           adminWallet,
-          '🎫 Bono canjeado',
-          `${shortW} acaba de canjear "${result.prize}" (sorteo #${req.params.id}). Queda registrado, ho.`,
+          '🎫 Bono canjeado' + local,
+          `${shortW} canjeó "${result.prize}"${local} (sorteo #${req.params.id}) — ${result.collected_at}. Queda registrado, ho.`,
           { url: '/admin' }
         ).catch(() => {});
       }
