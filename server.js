@@ -191,7 +191,7 @@ scheduleAutoCheckout();
 //   - Si no hay premio pero hay evento el jueves siguiente → también lanza.
 //   - Si el sorteo ya fue realizado esta semana → no lo repite (flag lastDrawnWeek).
 // La ventana de 5 min permite que un reinicio del servidor no se pierda el disparo.
-// El ganador debe CONFIRMAR en la app antes de las 23:00 de esa misma noche;
+// El ganador debe CONFIRMAR en la app antes de las 23:59 de esa misma noche;
 // si no confirma, el premio se da por perdido automáticamente (ver sweeper más abajo).
 let _weeklyLastDrawnWeek = null; // anti double-fire: semana ya sorteada esta sesión
 function scheduleWeeklyRaffle() {
@@ -256,7 +256,7 @@ function scheduleWeeklyRaffle() {
       const { sendPushToAll } = require('./services/push');
       sendPushToAll(
         '🔑 ¡Chave Semanal sorteada!',
-        `${winCount > 1 ? `Hay ${winCount} ganadores` : 'Ya hay ganador'} de ${result.prize}. Abre la app: si te tocó, confirma antes de las 23:00 de hoy o el premio se pierde, ho.`,
+        `${winCount > 1 ? `Hay ${winCount} ganadores` : 'Ya hay ganador'} de ${result.prize}. Abre la app: si te tocó, confirma antes de las 23:59 de hoy o el premio se pierde, ho.`,
         { url: '/claim' }
       );
 
@@ -282,7 +282,7 @@ function scheduleWeeklyRaffle() {
 scheduleWeeklyRaffle();
 
 
-// ─── AUTO-PÉRDIDA DE LA CHAVE (sin confirmar antes de las 23:00) ──────────────
+// ─── AUTO-PÉRDIDA DE LA CHAVE (sin confirmar antes de las 23:59) ──────────────
 // Cada minuto: si el ganador no confirmó dentro del plazo, el premio queda como
 // 'forfeited' — visible en los listados del admin y en el historial del cliente.
 function scheduleWeeklyForfeitSweep() {

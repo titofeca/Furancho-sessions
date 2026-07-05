@@ -134,7 +134,7 @@ try {
 try {
   db.exec(`ALTER TABLE weekly_raffles ADD COLUMN forfeited_at TEXT`);
 } catch (_) {}
-// Confirmación del ganador: tras el sorteo del miércoles 21:00 debe confirmar antes de las 23:00
+// Confirmación del ganador: tras el sorteo del miércoles 21:00 debe confirmar antes de las 23:59
 try {
   db.exec(`ALTER TABLE weekly_raffles ADD COLUMN confirm_deadline TEXT`);
 } catch (_) {}
@@ -2564,11 +2564,11 @@ function drawWeeklyRaffle(weekStr) {
     verificationCodes[wallet] = code;
   }
 
-  // Plazo de confirmación: esa misma noche a las 23:00 Madrid.
-  // Si el sorteo se lanza ya pasadas las 22:30 (p. ej. tirada manual del admin), dar 2h de margen.
+  // Plazo de confirmación: esa misma noche a las 23:59 Madrid.
+  // Si el sorteo se lanza ya pasadas las 23:00 (p. ej. tirada manual del admin), dar 2h de margen.
   const madridNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
   const todayMadridStr = `${madridNow.getFullYear()}-${String(madridNow.getMonth() + 1).padStart(2, '0')}-${String(madridNow.getDate()).padStart(2, '0')}`;
-  let confirmDeadline = madridToUTC(todayMadridStr, '23:00');
+  let confirmDeadline = madridToUTC(todayMadridStr, '23:59');
   if (new Date(confirmDeadline.replace(' ', 'T') + 'Z').getTime() - Date.now() < 30 * 60000) {
     confirmDeadline = new Date(Date.now() + 2 * 3600 * 1000).toISOString().replace('T', ' ').slice(0, 19);
   }
@@ -2591,7 +2591,7 @@ function drawWeeklyRaffle(weekStr) {
   };
 }
 
-// El ganador confirma que ha visto el premio (antes de las 23:00 de la noche del sorteo).
+// El ganador confirma que ha visto el premio (antes de las 23:59 de la noche del sorteo).
 // Multi-ganador: cada ganador confirma SOLO el suyo (mapa confirmed_wallets). El estado
 // global confirmed_at se fija solo cuando TODOS los ganadores han confirmado.
 function confirmWeeklyRaffle(walletAddress, weekStr) {

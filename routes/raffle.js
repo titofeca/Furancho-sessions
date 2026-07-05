@@ -1143,7 +1143,7 @@ router.post('/weekly/claim', claimLimiter, (req, res) => {
   }
 });
 
-// POST /api/raffle/weekly/confirm — el ganador confirma el premio antes de las 23:00
+// POST /api/raffle/weekly/confirm — el ganador confirma el premio antes de las 23:59
 router.post('/weekly/confirm', claimLimiter, (req, res) => {
   const { walletAddress, week } = req.body;
   if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
@@ -1315,7 +1315,7 @@ router.post('/admin/weekly/draw', requireAuth, (req, res) => {
     const { sendPushToAll } = require('../services/push');
     sendPushToAll(
       `🔑 ¡Chave Semanal sorteada!`,
-      `Ya hay ganador de ${result.prize}. Abre la app: si te tocó, tienes hasta las 23:00 de hoy para confirmar, ho.`,
+      `Ya hay ganador de ${result.prize}. Abre la app: si te tocó, tienes hasta las 23:59 de hoy para confirmar, ho.`,
       {
         url: '/claim',
         image: '/assets/logo.png',

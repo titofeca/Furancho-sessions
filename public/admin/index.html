@@ -5672,7 +5672,7 @@
           drawnAtEl.textContent = `Sorteado el: ${when}`;
         }
 
-        // Estado de confirmación del ganador (debe confirmar antes de las 23:00 de la noche del sorteo)
+        // Estado de confirmación del ganador (debe confirmar antes de las 23:59 de la noche del sorteo)
         const confirmedEl = document.getElementById('weekly-confirmed-at');
         if (confirmedEl) {
           const nWinners = data.winnersCount || 1;
