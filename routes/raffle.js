@@ -1151,8 +1151,17 @@ router.post('/weekly/confirm', claimLimiter, (req, res) => {
   }
   const weekStr = week || getWeeklyRaffleTargetWeek();
   try {
-    const { confirmWeeklyRaffle } = require('../db/database');
+    const { confirmWeeklyRaffle, grantWeeklyNftPrize } = require('../db/database');
     const raffle = confirmWeeklyRaffle(walletAddress, weekStr);
+
+    // Si el premio es un NFT, encolar el mint como pending_approval en cuanto
+    // el ganador confirma. El admin lo aprueba cuando vea al cliente en el evento.
+    if (raffle.nft_achievement_id) {
+      try {
+        grantWeeklyNftPrize(weekStr, walletAddress, 'auto_confirm');
+      } catch (_) {}
+    }
+
     // Devolver el código INDIVIDUAL de este ganador (no el JSON con todos).
     let userCode = raffle.verification_code;
     try {

@@ -210,7 +210,7 @@ async function doEntry(walletAddress) {
           ${imgHtml}
           <p style="font-size:15px; font-weight:800; color:var(--gold); margin:10px 0 4px; font-family:'Outfit',sans-serif;">🏆 ¡Tes un premio NFT agardándote!</p>
           <p style="font-size:13px; font-weight:600; color:var(--wine); margin:0 0 8px; line-height:1.4;">${p.name}</p>
-          <p style="font-size:12px; color:var(--wine); margin:0; opacity:0.85; line-height:1.4;">Achégate a <strong>Tito</strong> ou ao staff para que cho entreguen. Ensinalle esta pantalla e en dous minutos tes o teu NFT no museo, ho.</p>
+          <p style="font-size:12px; color:var(--wine); margin:0; opacity:0.85; line-height:1.4;">O teu NFT entrégase aquí no Furancho, hoxe que ficaches entrada. Achégate a <strong>Tito</strong> ou ao staff, ensínalle esta pantalla e en dous minutos aparece no teu museo, ho.</p>
         </div>`;
     }
 
