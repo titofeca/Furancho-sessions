@@ -4037,6 +4037,9 @@
   }
 
   let adminSseSource = null;
+  if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
 
   function connectAdminSse() {
     if (adminSseSource) {
@@ -4069,6 +4072,44 @@
         }
       } catch(err) {
         console.error('Error procesando evento weekly_chat_message:', err);
+      }
+    });
+
+    adminSseSource.addEventListener('bono_redeemed', (e) => {
+      try {
+        const d = JSON.parse(e.data);
+        const local = d.establishment ? ` en <strong>${d.establishment}</strong>` : '';
+        const msg = `🎫 Bono canjeado${local}: "${d.prize}" por ${d.wallet} — ${d.collected_at}`;
+        showToast(msg);
+        // Notificación del navegador (si tiene permiso)
+        if (Notification.permission === 'granted') {
+          new Notification('🎫 Bono canjeado' + (d.establishment ? ' en ' + d.establishment : ''), {
+            body: `${d.wallet} canjeó "${d.prize}" — ${d.collected_at}`,
+            icon: '/assets/logo.png',
+            tag: 'bono-' + d.raffleId
+          });
+        }
+        // Tarjeta persistente en el panel de notificaciones
+        const container = document.getElementById('vip-notifications-container');
+        if (container) {
+          const card = document.createElement('div');
+          card.style.cssText = 'background:rgba(254,252,243,0.98); border:1px solid rgba(196,151,58,0.2); border-left:5px solid var(--gold); border-radius:12px; padding:14px 16px; box-shadow:0 10px 25px rgba(42,21,9,0.15); font-family:Outfit,sans-serif; transform:translateX(120%); transition:transform 0.35s cubic-bezier(0.175,0.885,0.32,1.275), opacity 0.3s; opacity:0; position:relative;';
+          card.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-weight:800; color:var(--gold); font-size:12px; letter-spacing:0.5px;">🎫 BONO CANJEADO</span>
+              <button onclick="this.closest('div').style.transform='translateX(120%)'; setTimeout(()=>this.closest('div').remove(),350)" style="background:none; border:none; font-size:16px; cursor:pointer; color:#999;">✕</button>
+            </div>
+            <div style="font-size:13px; color:var(--text); margin-top:6px; line-height:1.5;">
+              <strong>${d.prize}</strong>${local}<br>
+              <span style="font-size:11px; color:var(--text-muted);">${d.wallet} · ${d.collected_at} · Sorteo #${d.raffleId}</span>
+            </div>
+          `;
+          container.appendChild(card);
+          requestAnimationFrame(() => { card.style.opacity = '1'; card.style.transform = 'translateX(0)'; });
+          setTimeout(() => { card.style.transform = 'translateX(120%)'; card.style.opacity = '0'; setTimeout(() => card.remove(), 400); }, 15000);
+        }
+      } catch(err) {
+        console.error('Error procesando bono_redeemed:', err);
       }
     });
 

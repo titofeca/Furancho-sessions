@@ -610,20 +610,16 @@ router.post('/:id/redeem', (req, res) => {
         if (typeof clientSSE.res.flush === 'function') clientSSE.res.flush();
       } catch (_) {}
     }
-    // Notificar al admin que se canjeó un bono (especialmente útil para Ruta Furancheira)
+    // Notificar al admin en tiempo real (SSE al panel admin)
     if (!result.alreadyCollected) {
-      const adminWallet = process.env.ADMIN_WALLET;
-      if (adminWallet) {
-        const { sendPushToWallet } = require('../services/push');
-        const shortW = wallet.slice(0, 6) + '…' + wallet.slice(-4);
-        const local = result.establishment ? ` en ${result.establishment}` : '';
-        sendPushToWallet(
-          adminWallet,
-          '🎫 Bono canjeado' + local,
-          `${shortW} canjeó "${result.prize}"${local} (sorteo #${req.params.id}) — ${result.collected_at}. Queda registrado, ho.`,
-          { url: '/admin' }
-        ).catch(() => {});
-      }
+      broadcastToAdmins('bono_redeemed', {
+        raffleId: parseInt(req.params.id),
+        prize: result.prize,
+        wallet: wallet.slice(0, 6) + '…' + wallet.slice(-4),
+        walletFull: wallet,
+        establishment: result.establishment || null,
+        collected_at: result.collected_at
+      });
     }
     res.json({ success: true, ...result });
   } catch (e) { res.status(400).json({ error: e.message }); }
