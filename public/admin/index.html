@@ -5495,6 +5495,7 @@
               </div>
               ${r.establishment ? `<p style="font-size:10px; color:var(--wine); font-weight:600; margin:0 0 1px;">${r.establishment}</p>` : ''}
               <p style="font-size:10px; color:var(--text-muted); margin:0;">${r.wallet_masked} · ${when}</p>
+              ${r.collected_at ? `<p style="font-size:10px; color:#15803d; font-weight:600; margin:1px 0 0;">Canjeado: ${new Date(r.collected_at.replace(' ','T')+'Z').toLocaleString('es-ES',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</p>` : ''}
               ${r.validity_end_date ? `<p style="font-size:10px; color:var(--wine); margin:1px 0 0; font-weight:600;">Caduca: ${r.validity_end_date} <button onclick="fixRaffleDate(${r.id})" style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--gold);padding:0 2px;">✏️</button></p>` : ''}
               ${r.status === 'rejected' ? `<p style="font-size:10px; color:var(--text-muted); margin:2px 0 0; font-style:italic;">${r.rejection_note || 'Rechazado'}</p>` : ''}
             </div>
