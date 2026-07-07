@@ -2478,11 +2478,10 @@ function weeklyWinnerState(raffle, walletAddress) {
 }
 
 function getWeeklyRaffleStatus(walletAddress, weekStr) {
-  if (!walletAddress) return { claimed: false, totalParticipants: 0, isConfigured: false };
+  if (!walletAddress) return { claimed: false, isConfigured: false };
   const raffle = db.prepare(`SELECT * FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
   
   const claim = db.prepare(`SELECT id FROM weekly_claims WHERE LOWER(wallet_address) = LOWER(?) AND claimed_week = ?`).get(walletAddress, weekStr);
-  const totalParticipants = db.prepare(`SELECT COUNT(*) as count FROM weekly_claims WHERE claimed_week = ?`).get(weekStr)?.count || 0;
 
   let isWinner = false;
   let userCode = null;
@@ -2536,7 +2535,6 @@ function getWeeklyRaffleStatus(walletAddress, weekStr) {
     forfeitedAt: myState.forfeitedAt,
     confirmDeadline: raffle ? raffle.confirm_deadline : null,
     confirmedAt: myState.confirmedAt,
-    totalParticipants,
     isConfigured: !!raffle,
     // Premio NFT (chave dourada, etc.): si está, el ganador va al furancho y el
     // camarero se lo entrega. nftGranted = ya se le entregó a esta wallet.
