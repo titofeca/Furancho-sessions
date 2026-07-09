@@ -1862,7 +1862,7 @@ function getRaffleHistory() {
            winner_wallet, verification_code, created_at,
            collected, collected_at, collected_by, status, rejection_note, accepted_at, target_level,
            prize_details, prize_image, establishment, type, hide_name,
-           validity, people, hours, days, validity_end_date
+           validity, people, hours, days, validity_end_date, nft_achievement_id, nft_granted_at
     FROM raffles
     ORDER BY created_at DESC LIMIT 100
   `).all();
@@ -1961,6 +1961,12 @@ function grantNftPrize(raffleId, walletAddress, grantedBy = 'staff') {
   try {
     db.exec('BEGIN TRANSACTION');
     db.prepare(`UPDATE raffles SET nft_granted_at = datetime('now'), nft_granted_by = ? WHERE id = ?`).run(grantedBy, raffleId);
+    // Entregar el NFT también cierra el bono del sorteo: es el mismo acto presencial
+    // (el ganador recibe premio + NFT a la vez), así no queda "accepted" colgado.
+    db.prepare(`
+      UPDATE raffles SET collected = 1, status = 'collected', collected_at = datetime('now'), collected_by = ?
+      WHERE id = ? AND status != 'collected'
+    `).run(`NFT entregado (${grantedBy})`, raffleId);
     db.prepare(`
       INSERT OR IGNORE INTO achievement_mints (wallet_address, achievement_id, token_id, status)
       VALUES (?, ?, ?, 'pending_approval')

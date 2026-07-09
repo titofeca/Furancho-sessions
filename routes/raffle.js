@@ -267,6 +267,7 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
     eligibleWallets: eligibleSet,
     prizeDetails: prizeDetails || null, prizeImage: prizeImage || null, establishment: establishment || null,
     validity: validity || null, people: people || null, hours: hours || null, days: days || null,
+    nftAchievementId: nftAchievementId || null,
     startedAt: Date.now()
   };
 
@@ -283,7 +284,8 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
   setTimeout(() => {
     const resultData = { winnerWallet, verificationCode, prize, raffleId, acceptWindow: 600, type,
       prizeDetails: prizeDetails || null, prizeImage: prizeImage || null, establishment: establishment || null,
-      validity: validity || null, people: people || null, hours: hours || null, days: days || null };
+      validity: validity || null, people: people || null, hours: hours || null, days: days || null,
+      nftAchievementId: nftAchievementId || null };
     broadcastToEligible('raffle_result', resultData, eligibleSet);
     // Actualizar estado activo con resultado
     if (activeRaffle?.raffleId === raffleId) {
@@ -577,6 +579,51 @@ router.patch('/:id/collect', requireAuth, (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// POST /api/raffle/admin/grant-nft-prize — el ADMIN entrega en persona el premio NFT
+// al ganador (desde el Escáner del panel o el Historial de Premios). Mismo flujo que
+// el de camareros (/api/staff/grant-nft-prize): marca la entrega, cierra el bono y
+// encola el mint en 'pending_approval'. Body: { walletAddress, source, raffleId?, week? }
+router.post('/admin/grant-nft-prize', requireAuth, (req, res) => {
+  const { walletAddress, source, raffleId, week } = req.body || {};
+  if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
+    return res.status(400).json({ error: 'Dirección de wallet no válida' });
+  }
+  const GRANT_ERROR_MESSAGES = {
+    raffle_not_found: 'Sorteo no encontrado',
+    not_an_nft_prize: 'Ese sorteo no es de premio NFT',
+    already_granted: 'Este NFT ya fue entregado antes',
+    wallet_mismatch: 'Esa wallet no es la ganadora del sorteo',
+    achievement_not_found: 'El logro NFT del sorteo no existe'
+  };
+  try {
+    const { grantNftPrize, grantWeeklyNftPrize } = require('../db/database');
+    let result;
+    if (source === 'weekly') {
+      if (!week) return res.status(400).json({ error: 'Falta la semana del sorteo' });
+      result = grantWeeklyNftPrize(week, walletAddress, 'admin');
+    } else {
+      const rid = parseInt(raffleId);
+      if (!rid) return res.status(400).json({ error: 'ID de sorteo no válido' });
+      result = grantNftPrize(rid, walletAddress, 'admin');
+    }
+    if (!result.ok) {
+      return res.status(400).json({ error: GRANT_ERROR_MESSAGES[result.error] || result.error });
+    }
+    // Avisar al cliente por SSE para que su tarjeta pase a "recogido" al instante
+    const clientSSE = clients.find(c => c.walletAddress && c.walletAddress.toLowerCase() === walletAddress.toLowerCase());
+    if (clientSSE) {
+      try {
+        clientSSE.res.write(`event: prize_collected\ndata: ${JSON.stringify({ raffleId: raffleId || null, week: week || null })}\n\n`);
+        if (typeof clientSSE.res.flush === 'function') clientSSE.res.flush();
+      } catch (_) {}
+    }
+    res.json({ success: true, achievement: result.achievement });
+  } catch (e) {
+    console.error('Error en /admin/grant-nft-prize:', e.message);
+    res.status(500).json({ error: 'Error otorgando NFT' });
+  }
+});
+
 // PATCH /api/raffle/:id/fix — admin corrige datos de un sorteo ya lanzado
 // (validity_end_date, etc.) sin tocar la lógica del premio ni el ganador.
 router.patch('/:id/fix', requireAuth, (req, res) => {
@@ -654,7 +701,8 @@ router.get('/active', (req, res) => {
       prize: activeRaffle.prize, raffleId: activeRaffle.raffleId, acceptWindow: remaining,
       type: activeRaffle.type, prizeDetails: activeRaffle.prizeDetails,
       prizeImage: activeRaffle.prizeImage, establishment: activeRaffle.establishment,
-      validity: activeRaffle.validity || null, people: activeRaffle.people || null, hours: activeRaffle.hours || null, days: activeRaffle.days || null });
+      validity: activeRaffle.validity || null, people: activeRaffle.people || null, hours: activeRaffle.hours || null, days: activeRaffle.days || null,
+      nftAchievementId: activeRaffle.nftAchievementId || null });
   }
   return res.json({ active: true, phase: 'start', prize: activeRaffle.displayPrize,
     raffleId: activeRaffle.raffleId, type: activeRaffle.type,

@@ -971,6 +971,26 @@ router.get('/inspect-wallet/:address', requireAuth, (req, res) => {
       ORDER BY entry_time DESC LIMIT 1
     `).get(address);
 
+    // Premios NFT ganados en sorteos y aún sin entregar en persona: el Escáner
+    // enseña el banner "Otorgar NFT" igual que la página de camareros.
+    let pendingNftPrizes = [];
+    try {
+      const { getPendingNftPrizes } = require('../db/database');
+      const achievements = require('../services/achievements');
+      pendingNftPrizes = (getPendingNftPrizes(address) || []).map(r => {
+        const a = achievements.getById(r.nft_achievement_id);
+        return {
+          source: r.source || 'raffle',
+          raffleId: r.raffleId || null,
+          week: r.week || null,
+          prize: r.prize,
+          achievementId: r.nft_achievement_id,
+          achievementName: a ? a.name : r.nft_achievement_id,
+          achievementImage: a ? a.image : (r.prize_image || null)
+        };
+      });
+    } catch (_) {}
+
     res.json({
       walletAddress: address,
       level,
@@ -980,7 +1000,8 @@ router.get('/inspect-wallet/:address', requireAuth, (req, res) => {
       activeNow: !!activeSession,
       activeSessionStart: activeSession ? activeSession.entry_time : null,
       claimedLevels: getClaimedLevels(address),
-      tapasByDay
+      tapasByDay,
+      pendingNftPrizes
     });
   } catch (e) {
     res.status(500).json({ error: e.message });

@@ -2072,7 +2072,7 @@
           <button id="accept-prize-btn" onclick="acceptPrize()" style="width:100%; padding:14px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; box-shadow:0 4px 16px rgba(139,25,24,0.3);">
             ¡ES PARA MÍ! Trincar premio 🎉
           </button>
-          <p style="font-size:11px; color:var(--text-muted); margin-top:8px;">Enseña este código al staff para que te den lo tuyo.</p>
+          <p id="accept-prize-note" style="font-size:11px; color:var(--text-muted); margin-top:8px;">Enseña este código al staff para que te den lo tuyo.</p>
         </div>
 
         <!-- Premios de esta noche — visible directamente en el perfil tras fichar -->
@@ -3834,11 +3834,17 @@
     let _acceptCountdownInterval = null;
     let _prizesExpanded = false;
 
-    function showAcceptBanner(raffleId, prize, code, windowSecs) {
+    function showAcceptBanner(raffleId, prize, code, windowSecs, isNft = false) {
       _acceptRaffleId = raffleId;
       const banner = document.getElementById('accept-prize-banner');
       document.getElementById('accept-prize-name').textContent = prize;
-      document.getElementById('accept-prize-code').textContent = code;
+      // Premio NFT: no hay código canjeable — la entrega es presencial (staff/admin
+      // se lo otorga escaneando su ID Socio o desde el panel).
+      document.getElementById('accept-prize-code').textContent = isNft ? '🏅 NFT' : code;
+      const noteEl = document.getElementById('accept-prize-note');
+      if (noteEl) noteEl.textContent = isNft
+        ? 'Premio NFT: acéptalo y el staff te lo entrega en persona (enséñale tu 🪪 ID Socio).'
+        : 'Enseña este código al staff para que te den lo tuyo.';
       banner.style.display = 'block';
 
       let remaining = windowSecs;
@@ -3880,7 +3886,9 @@
         });
         if (res.ok) {
           const data = await res.json();
-          btn.textContent = '✅ ¡Premio trincado! Enséñale el código al staff, ho';
+          btn.textContent = window._currentRaffleIsNft
+            ? '✅ ¡Premio trincado! El staff te entrega el NFT en persona, ho'
+            : '✅ ¡Premio trincado! Enséñale el código al staff, ho';
           btn.style.background = 'linear-gradient(135deg,#4ade80,#16a34a)';
           document.getElementById('accept-countdown-wrap').style.display = 'none';
           if (_acceptCountdownInterval) clearInterval(_acceptCountdownInterval);
@@ -4143,7 +4151,8 @@
         const deadlineDate = new Date(pendingRaffle.acceptance_deadline.replace(' ', 'T') + 'Z');
         const diffSecs = Math.max(0, Math.floor((deadlineDate - new Date()) / 1000));
         if (diffSecs > 0) {
-          showAcceptBanner(pendingRaffle.id, pendingRaffle.prize, pendingRaffle.verification_code, diffSecs);
+          window._currentRaffleIsNft = !!pendingRaffle.nft_achievement_id;
+          showAcceptBanner(pendingRaffle.id, pendingRaffle.prize, pendingRaffle.verification_code, diffSecs, !!pendingRaffle.nft_achievement_id);
         }
       } else if (!pendingRaffle && _acceptRaffleId) {
         hideAcceptBanner();
@@ -4929,12 +4938,23 @@
       if (modal) { modal.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
 
       if (myWallet && data.winnerWallet && data.winnerWallet.toLowerCase() === myWallet.toLowerCase()) {
+        const isNftPrize = !!data.nftAchievementId;
+        window._currentRaffleIsNft = isNftPrize;
         const titleEl = document.getElementById('raffle-winner-title');
         if (titleEl) titleEl.textContent = _winnerTitles[Math.floor(Math.random()*_winnerTitles.length)];
         document.getElementById('raffle-winner').style.display = 'block';
         document.getElementById('raffle-winner-prize').textContent = data.prize;
         document.getElementById('raffle-code').textContent = data.verificationCode;
         document.getElementById('raffle-loser').style.display = 'none';
+
+        // Premio NFT: sin código canjeable — se oculta la caja del código y la nota
+        // explica que el staff se lo entrega en persona. Premio normal: restaurar.
+        const winnerCodeBox = document.querySelector('#raffle-winner .raffle-winner-box');
+        if (winnerCodeBox) winnerCodeBox.style.display = isNftPrize ? 'none' : '';
+        const winnerNote = document.querySelector('#raffle-winner .raffle-note');
+        if (winnerNote) winnerNote.textContent = isNftPrize
+          ? '🏅 Premio NFT: dale a "Trincar premio" y el staff te lo entrega en persona en el local — enséñale tu 🪪 ID Socio (QR).'
+          : '🍷 Enséñale esto al staff y trinca el premio antes de que se acabe el vino.';
 
         // Restaurar elementos compartidos con el modal de la Chave Semanal
         const codeLabelReset = document.querySelector('.raffle-code-label');
@@ -5026,7 +5046,7 @@
         if (navigator.vibrate) navigator.vibrate([100,50,100,50,100,50,100,50,500,100,500,100,800]);
         if (dot) dot.classList.add('live');
         if (statusText) statusText.textContent = '🏆 ¡Te tocó! Reclámalo antes de que expire, ho';
-        showAcceptBanner(data.raffleId, data.prize, data.verificationCode, data.acceptWindow || 600);
+        showAcceptBanner(data.raffleId, data.prize, data.verificationCode, data.acceptWindow || 600, isNftPrize);
         renderPrizes();
       } else {
         const loserEmoji = _loserEmojis[Math.floor(Math.random()*_loserEmojis.length)];
