@@ -2714,6 +2714,14 @@
       loadScheduledMessages();
       loadPeakHours();
       loadVipBadge();
+      // Mismas cargas que el login con contraseña: sin esto, entrando con el token
+      // guardado (PWA del móvil) "Logros NFT especiales" y "En el local ahora" se
+      // quedaban en "Cargando…" — el aforo no salía hasta el refresco de los 30s.
+      loadHourlyChart();
+      loadAchievementStats();
+      loadAchievementManager();
+      loadPresentByLevel();
+      loadCampaignAdmin();
       connectAdminSse();
     }
   });
