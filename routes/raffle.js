@@ -291,7 +291,16 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
     if (activeRaffle?.raffleId === raffleId) {
       activeRaffle = { ...activeRaffle, phase: 'result', winnerWallet, verificationCode, acceptWindow: 600, resultAt: Date.now() };
     }
+    // Push directo al GANADOR: si tiene el móvil en el bolsillo, el SSE no le llega.
+    // Sin esto solo se enteraba quien miraba la app — y los premios caducaban sin aceptar.
+    sendPushToWallets([winnerWallet], '🏆 ¡TE TOCÓ, NENO!', `Ganaste "${prize}". Abre la app y dale a ¡ES MÍO! antes de 10 minutos, que si no se pierde, ho 🍷`, {
+      url: '/claim',
+      image: prizeImage || '/assets/logo.png',
+      actions: [{ action: 'open', title: '¡Trincar premio! 🎉' }],
+    });
   }, 10000);
+  // (El recordatorio de "quedan <5 min" ya existe: el sweeper periódico envía
+  // el push de rescate "🚨 ¡Malo será!" al ganador — no duplicar aquí.)
 
   setTimeout(() => {
     try {
