@@ -456,6 +456,15 @@ try { db.exec(`CREATE TABLE IF NOT EXISTS event_finances (
   notes TEXT,
   updated_at TEXT DEFAULT (datetime('now'))
 )`); } catch (_) {}
+// Costes por evento (misma tabla privada): para calcular beneficio y margen y ver
+// qué eventos rentan más. En céntimos, como la facturación. "otros" lleva etiqueta.
+try { db.exec(`ALTER TABLE event_finances ADD COLUMN cost_staff_cents INTEGER`); } catch (_) {}
+try { db.exec(`ALTER TABLE event_finances ADD COLUMN cost_dj_cents INTEGER`); } catch (_) {}
+try { db.exec(`ALTER TABLE event_finances ADD COLUMN cost_band_cents INTEGER`); } catch (_) {}
+try { db.exec(`ALTER TABLE event_finances ADD COLUMN cost_fnb_cents INTEGER`); } catch (_) {}
+try { db.exec(`ALTER TABLE event_finances ADD COLUMN cost_decor_cents INTEGER`); } catch (_) {}
+try { db.exec(`ALTER TABLE event_finances ADD COLUMN cost_other_cents INTEGER`); } catch (_) {}
+try { db.exec(`ALTER TABLE event_finances ADD COLUMN cost_other_label TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected INTEGER DEFAULT 0`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_at TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_by TEXT`); } catch (_) {}
@@ -1336,20 +1345,30 @@ function getAllEvents() {
 // Estas funciones SOLO se llaman desde rutas admin (requireAuth). Nunca desde
 // getEvents() ni ningún endpoint público. Importes en céntimos (enteros).
 
-// Upsert de la facturación de un evento. Campos null = "sin dato" (no 0).
-function setEventFinance(eventId, { revenueCents, covers, tables, vipCount, notes }) {
+// Upsert de la facturación y costes de un evento. Campos null = "sin dato" (no 0).
+function setEventFinance(eventId, { revenueCents, covers, tables, vipCount, notes,
+  costStaffCents, costDjCents, costBandCents, costFnbCents, costDecorCents, costOtherCents, costOtherLabel }) {
   const norm = (v) => (v === null || v === undefined || v === '' ? null : v);
   db.prepare(`
-    INSERT INTO event_finances (event_id, revenue_cents, covers, tables_count, vip_count, notes, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+    INSERT INTO event_finances (event_id, revenue_cents, covers, tables_count, vip_count, notes,
+      cost_staff_cents, cost_dj_cents, cost_band_cents, cost_fnb_cents, cost_decor_cents, cost_other_cents, cost_other_label, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     ON CONFLICT(event_id) DO UPDATE SET
-      revenue_cents = excluded.revenue_cents,
-      covers        = excluded.covers,
-      tables_count  = excluded.tables_count,
-      vip_count     = excluded.vip_count,
-      notes         = excluded.notes,
-      updated_at    = datetime('now')
-  `).run(eventId, norm(revenueCents), norm(covers), norm(tables), norm(vipCount), norm(notes));
+      revenue_cents     = excluded.revenue_cents,
+      covers            = excluded.covers,
+      tables_count      = excluded.tables_count,
+      vip_count         = excluded.vip_count,
+      notes             = excluded.notes,
+      cost_staff_cents  = excluded.cost_staff_cents,
+      cost_dj_cents     = excluded.cost_dj_cents,
+      cost_band_cents   = excluded.cost_band_cents,
+      cost_fnb_cents    = excluded.cost_fnb_cents,
+      cost_decor_cents  = excluded.cost_decor_cents,
+      cost_other_cents  = excluded.cost_other_cents,
+      cost_other_label  = excluded.cost_other_label,
+      updated_at        = datetime('now')
+  `).run(eventId, norm(revenueCents), norm(covers), norm(tables), norm(vipCount), norm(notes),
+    norm(costStaffCents), norm(costDjCents), norm(costBandCents), norm(costFnbCents), norm(costDecorCents), norm(costOtherCents), norm(costOtherLabel));
   return getEventFinance(eventId);
 }
 
@@ -1362,31 +1381,63 @@ function getEventFinance(eventId) {
 function getEventFinancesSummary() {
   const rows = db.prepare(`
     SELECT e.id AS event_id, e.event_date, e.title,
-           f.revenue_cents, f.covers, f.tables_count, f.vip_count, f.notes, f.updated_at
+           f.revenue_cents, f.covers, f.tables_count, f.vip_count, f.notes, f.updated_at,
+           f.cost_staff_cents, f.cost_dj_cents, f.cost_band_cents, f.cost_fnb_cents,
+           f.cost_decor_cents, f.cost_other_cents, f.cost_other_label
     FROM event_finances f
     JOIN events e ON e.id = f.event_id
     WHERE f.revenue_cents IS NOT NULL OR f.covers IS NOT NULL
        OR f.tables_count IS NOT NULL OR f.vip_count IS NOT NULL
+       OR f.cost_staff_cents IS NOT NULL OR f.cost_dj_cents IS NOT NULL
+       OR f.cost_band_cents IS NOT NULL OR f.cost_fnb_cents IS NOT NULL
+       OR f.cost_decor_cents IS NOT NULL OR f.cost_other_cents IS NOT NULL
     ORDER BY e.event_date ASC
   `).all();
 
+  const c2e = (c) => (c != null ? c / 100 : null); // céntimos → euros (null se respeta)
   let totalRevenue = 0, totalCovers = 0, totalTables = 0, totalVip = 0, revenueEvents = 0;
+  let totalCosts = 0;
+  const costTotalsByCat = { staff: 0, dj: 0, band: 0, fnb: 0, decor: 0, other: 0 };
+
   const events = rows.map(r => {
-    const revenue = r.revenue_cents != null ? r.revenue_cents / 100 : null;
+    const revenue = c2e(r.revenue_cents);
+    const costs = {
+      staff: c2e(r.cost_staff_cents), dj: c2e(r.cost_dj_cents), band: c2e(r.cost_band_cents),
+      fnb: c2e(r.cost_fnb_cents), decor: c2e(r.cost_decor_cents), other: c2e(r.cost_other_cents),
+      otherLabel: r.cost_other_label || null
+    };
+    const costVals = [costs.staff, costs.dj, costs.band, costs.fnb, costs.decor, costs.other].filter(v => v != null);
+    // costsTotal null = "sin costes apuntados" (distinto de costes 0)
+    const costsTotal = costVals.length ? costVals.reduce((a, b) => a + b, 0) : null;
+    // Beneficio solo cuando hay facturación; sin costes apuntados se asume coste 0
+    const profit = revenue != null ? revenue - (costsTotal || 0) : null;
+    const marginPct = (profit != null && revenue > 0) ? (profit / revenue) * 100 : null;
     const avgTicket = (revenue != null && r.covers) ? revenue / r.covers : null;   // €/persona
     const perTable  = (revenue != null && r.tables_count) ? revenue / r.tables_count : null; // €/mesa
     const vipPct    = (r.vip_count != null && r.covers) ? (r.vip_count / r.covers) * 100 : null;
+
     if (revenue != null) { totalRevenue += revenue; revenueEvents++; }
+    if (costsTotal != null) totalCosts += costsTotal;
+    if (costs.staff) costTotalsByCat.staff += costs.staff;
+    if (costs.dj)    costTotalsByCat.dj    += costs.dj;
+    if (costs.band)  costTotalsByCat.band  += costs.band;
+    if (costs.fnb)   costTotalsByCat.fnb   += costs.fnb;
+    if (costs.decor) costTotalsByCat.decor += costs.decor;
+    if (costs.other) costTotalsByCat.other += costs.other;
     if (r.covers)       totalCovers += r.covers;
     if (r.tables_count) totalTables += r.tables_count;
     if (r.vip_count)    totalVip += r.vip_count;
+
     return {
       eventId: r.event_id, date: r.event_date, title: r.title,
       revenue, covers: r.covers, tables: r.tables_count, vipCount: r.vip_count,
-      avgTicket, perTable, vipPct, notes: r.notes, updatedAt: r.updated_at
+      avgTicket, perTable, vipPct,
+      costs, costsTotal, profit, marginPct,
+      notes: r.notes, updatedAt: r.updated_at
     };
   });
 
+  const totalProfit = totalRevenue - totalCosts;
   return {
     events,
     totals: {
@@ -1398,7 +1449,11 @@ function getEventFinancesSummary() {
       avgTicket: totalCovers ? totalRevenue / totalCovers : null,  // ticket medio global (€/persona)
       perTable: totalTables ? totalRevenue / totalTables : null,    // €/mesa medio global
       avgRevenuePerEvent: revenueEvents ? totalRevenue / revenueEvents : null,
-      vipPct: totalCovers ? (totalVip / totalCovers) * 100 : null
+      vipPct: totalCovers ? (totalVip / totalCovers) * 100 : null,
+      costs: totalCosts,
+      costsByCategory: costTotalsByCat,
+      profit: totalProfit,
+      marginPct: totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : null
     }
   };
 }

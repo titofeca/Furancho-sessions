@@ -1206,6 +1206,13 @@
           <div id="finance-bar-chart" style="display:flex; align-items:flex-end; gap:8px; height:120px; padding:0 2px;"></div>
           <div id="finance-bar-labels" style="display:flex; gap:8px; margin-top:6px;"></div>
         </div>
+
+        <!-- 🏆 Ranking: qué eventos rentan más (beneficio = facturación − costes) -->
+        <div id="finance-ranking-wrap" style="display:none; margin-top:18px; padding-top:14px; border-top:1px solid rgba(42,21,9,0.08);">
+          <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;">🏆 Qué renta más (por beneficio)</div>
+          <div id="finance-ranking"></div>
+          <div id="finance-cost-breakdown" style="margin-top:14px;"></div>
+        </div>
         <p id="finance-empty" style="display:none; font-size:12px; color:var(--text-muted); text-align:center; padding:16px 0;">Aún no hay facturación registrada. Ábrela desde un evento para empezar, ho 🍷</p>
       </div>
 
@@ -2612,8 +2619,48 @@
           </div>
           <input id="fin-notes" type="text" maxlength="500" placeholder="Notas (opcional): incidencias, clima, aforo…"
             style="width:100%; background:#F2EDE3; color:#2A1509; border:1.5px solid rgba(42,21,9,0.12); border-radius:10px; padding:11px 14px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
-          <p id="fin-hint" style="font-size:11.5px; color:#7A6A5A; margin:0; min-height:16px; line-height:1.5;"></p>
-          <button onclick="saveEventFinance()" style="width:100%; background:#7A5A00; color:#fff; border:none; border-radius:10px; padding:13px; font-size:14px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">💾 Guardar facturación</button>
+
+          <!-- 📉 Costes del evento (para calcular beneficio y margen) -->
+          <div style="border-top:1px dashed rgba(42,21,9,0.15); padding-top:12px;">
+            <p style="font-size:11px; color:#8B1918; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; margin:0 0 10px;">📉 Costes (€)</p>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <div>
+                <label style="font-size:11px; color:#7A6A5A; font-weight:600; display:block; margin-bottom:4px;">👥 Personal</label>
+                <input id="fin-cost-staff" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00" oninput="updateFinanceHint()"
+                  style="width:100%; background:#F2EDE3; color:#2A1509; border:1.5px solid rgba(42,21,9,0.12); border-radius:10px; padding:12px 14px; font-size:15px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+              </div>
+              <div>
+                <label style="font-size:11px; color:#7A6A5A; font-weight:600; display:block; margin-bottom:4px;">🎧 DJ</label>
+                <input id="fin-cost-dj" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00" oninput="updateFinanceHint()"
+                  style="width:100%; background:#F2EDE3; color:#2A1509; border:1.5px solid rgba(42,21,9,0.12); border-radius:10px; padding:12px 14px; font-size:15px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+              </div>
+              <div>
+                <label style="font-size:11px; color:#7A6A5A; font-weight:600; display:block; margin-bottom:4px;">🎤 Grupo de música</label>
+                <input id="fin-cost-band" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00" oninput="updateFinanceHint()"
+                  style="width:100%; background:#F2EDE3; color:#2A1509; border:1.5px solid rgba(42,21,9,0.12); border-radius:10px; padding:12px 14px; font-size:15px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+              </div>
+              <div>
+                <label style="font-size:11px; color:#7A6A5A; font-weight:600; display:block; margin-bottom:4px;">🍷 F&amp;B (comida y bebida)</label>
+                <input id="fin-cost-fnb" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00" oninput="updateFinanceHint()"
+                  style="width:100%; background:#F2EDE3; color:#2A1509; border:1.5px solid rgba(42,21,9,0.12); border-radius:10px; padding:12px 14px; font-size:15px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+              </div>
+              <div>
+                <label style="font-size:11px; color:#7A6A5A; font-weight:600; display:block; margin-bottom:4px;">🎨 Decoración</label>
+                <input id="fin-cost-decor" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00" oninput="updateFinanceHint()"
+                  style="width:100%; background:#F2EDE3; color:#2A1509; border:1.5px solid rgba(42,21,9,0.12); border-radius:10px; padding:12px 14px; font-size:15px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+              </div>
+              <div>
+                <label style="font-size:11px; color:#7A6A5A; font-weight:600; display:block; margin-bottom:4px;">📦 Otros (importe)</label>
+                <input id="fin-cost-other" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00" oninput="updateFinanceHint()"
+                  style="width:100%; background:#F2EDE3; color:#2A1509; border:1.5px solid rgba(42,21,9,0.12); border-radius:10px; padding:12px 14px; font-size:15px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+              </div>
+            </div>
+            <input id="fin-cost-other-label" type="text" maxlength="100" placeholder="¿Qué es «otros»? Ej: alquiler carpa, seguro, flete…"
+              style="width:100%; margin-top:10px; background:#F2EDE3; color:#2A1509; border:1.5px solid rgba(42,21,9,0.12); border-radius:10px; padding:11px 14px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+          </div>
+
+          <p id="fin-hint" style="font-size:11.5px; color:#7A6A5A; margin:0; min-height:16px; line-height:1.6;"></p>
+          <button onclick="saveEventFinance()" style="width:100%; background:#7A5A00; color:#fff; border:none; border-radius:10px; padding:13px; font-size:14px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">💾 Guardar facturación y costes</button>
         </div>
       </div>
     </div>
@@ -3106,8 +3153,12 @@
         <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-top:3px; font-weight:600;">${label}</div>
       </div>`;
 
+      const profitColor = (n) => n == null ? 'var(--wine)' : (n >= 0 ? '#15803d' : '#cc3333');
       tilesEl.innerHTML = [
         tile('Facturación total', euro(t.revenue), 'var(--wine)'),
+        tile('Costes totales', euro(t.costs), '#cc3333'),
+        tile('Beneficio', euro(t.profit), profitColor(t.profit)),
+        tile('Margen', pct(t.marginPct), profitColor(t.profit)),
         tile('Ticket medio', euro(t.avgTicket), 'var(--gold)'),
         tile('€/mesa medio', euro(t.perTable), 'var(--gold)'),
         tile('Media por evento', euro(t.avgRevenuePerEvent), 'var(--wine)'),
@@ -3115,10 +3166,68 @@
         tile('% VIP', pct(t.vipPct))
       ].join('');
 
+      // ── Ranking "qué renta más": eventos ordenados por beneficio ──
+      const rankWrap = document.getElementById('finance-ranking-wrap');
+      const rankEl = document.getElementById('finance-ranking');
+      const breakdownEl = document.getElementById('finance-cost-breakdown');
+      const withProfit = evs.filter(e => e.profit != null).sort((a, b) => b.profit - a.profit);
+      if (rankWrap && rankEl) {
+        if (!withProfit.length) {
+          rankWrap.style.display = 'none';
+        } else {
+          rankWrap.style.display = 'block';
+          const medals = ['🥇', '🥈', '🥉'];
+          rankEl.innerHTML = withProfit.slice(0, 8).map((e, i) => {
+            const d = new Date(e.date + 'T12:00:00').toLocaleDateString('es-ES', { day:'numeric', month:'short' });
+            const col = e.profit >= 0 ? '#15803d' : '#cc3333';
+            const costParts = [];
+            if (e.costs) {
+              if (e.costs.staff) costParts.push(`👥 ${euro(e.costs.staff)}`);
+              if (e.costs.dj)    costParts.push(`🎧 ${euro(e.costs.dj)}`);
+              if (e.costs.band)  costParts.push(`🎤 ${euro(e.costs.band)}`);
+              if (e.costs.fnb)   costParts.push(`🍷 ${euro(e.costs.fnb)}`);
+              if (e.costs.decor) costParts.push(`🎨 ${euro(e.costs.decor)}`);
+              if (e.costs.other) costParts.push(`📦 ${e.costs.otherLabel || 'Otros'}: ${euro(e.costs.other)}`);
+            }
+            return `<div style="display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid rgba(42,21,9,0.06);">
+              <span style="font-size:15px; flex-shrink:0; width:24px; text-align:center;">${medals[i] || (i + 1) + 'º'}</span>
+              <div style="flex:1; min-width:0;">
+                <p style="font-size:12.5px; font-weight:700; color:var(--text); margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${e.title || 'Evento'} <span style="font-weight:500; color:var(--text-muted); font-size:11px;">· ${d}</span></p>
+                <p style="font-size:10.5px; color:var(--text-muted); margin:1px 0 0;">Facturó ${euro(e.revenue)} · costes ${euro(e.costsTotal || 0)}${costParts.length ? `<br>${costParts.join(' · ')}` : ''}</p>
+              </div>
+              <div style="text-align:right; flex-shrink:0;">
+                <div style="font-size:14px; font-weight:900; color:${col};">${e.profit >= 0 ? '+' : ''}${euro(e.profit)}</div>
+                ${e.marginPct != null ? `<div style="font-size:10px; font-weight:700; color:${col};">${e.marginPct.toFixed(0)}% margen</div>` : ''}
+              </div>
+            </div>`;
+          }).join('');
+
+          // Desglose global de costes por categoría (dónde se va el dinero)
+          if (breakdownEl) {
+            const cats = [
+              ['👥 Personal', t.costsByCategory?.staff], ['🎧 DJ', t.costsByCategory?.dj],
+              ['🎤 Grupo música', t.costsByCategory?.band], ['🍷 F&B', t.costsByCategory?.fnb],
+              ['🎨 Decoración', t.costsByCategory?.decor], ['📦 Otros', t.costsByCategory?.other]
+            ].filter(c => c[1] > 0);
+            const maxCat = Math.max(1, ...cats.map(c => c[1]));
+            breakdownEl.innerHTML = cats.length ? `
+              <div style="font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:8px;">Dónde se va el dinero</div>
+              ${cats.map(([label, v]) => `
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:5px;">
+                  <span style="font-size:10.5px; color:var(--text); width:110px; flex-shrink:0;">${label}</span>
+                  <div style="flex:1; height:12px; background:rgba(42,21,9,0.05); border-radius:100px; overflow:hidden;">
+                    <div style="width:${Math.round((v / maxCat) * 100)}%; height:100%; background:linear-gradient(90deg, rgba(204,51,51,0.55), rgba(139,25,24,0.75)); border-radius:100px;"></div>
+                  </div>
+                  <span style="font-size:10.5px; font-weight:700; color:var(--wine); width:66px; text-align:right; flex-shrink:0;">${euro(v)}</span>
+                </div>`).join('')}` : '';
+          }
+        }
+      }
+
       const withRev = evs.filter(e => e.revenue != null);
       if (!withRev.length) {
         if (chartWrap) chartWrap.style.display = 'none';
-        if (emptyEl) emptyEl.style.display = 'block';
+        if (emptyEl) emptyEl.style.display = evs.length ? 'none' : 'block';
         return;
       }
       if (chartWrap) chartWrap.style.display = 'block';
@@ -3129,7 +3238,7 @@
       chartEl.innerHTML = show.map(e => {
         const h = Math.round((e.revenue / maxRev) * 100);
         const shortRev = e.revenue >= 1000 ? (e.revenue / 1000).toFixed(1) + 'k' : Math.round(e.revenue);
-        const tip = `${e.title || ''} · ${euro(e.revenue)}${e.avgTicket ? ` · ${euro(e.avgTicket)}/persona` : ''}`;
+        const tip = `${e.title || ''} · ${euro(e.revenue)}${e.avgTicket ? ` · ${euro(e.avgTicket)}/persona` : ''}${e.profit != null ? ` · beneficio ${euro(e.profit)}` : ''}`;
         return `<div title="${tip.replace(/"/g,'&quot;')}" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%;">
           <div style="font-size:9px; font-weight:700; color:var(--wine); margin-bottom:3px;">${shortRev}</div>
           <div style="width:100%; max-width:34px; height:${Math.max(4, h)}%; background:linear-gradient(180deg,var(--gold),var(--wine)); border-radius:5px 5px 0 0;"></div>
@@ -6673,30 +6782,55 @@
   // ── FACTURACIÓN POR EVENTO (privado, solo admin) ──────────────────────────
   async function loadEventFinance(id) {
     // Limpiar antes de cargar (evita arrastrar datos de otro evento)
-    ['fin-revenue','fin-covers','fin-tables','fin-vip','fin-notes'].forEach(k => { const e = document.getElementById(k); if (e) e.value = ''; });
+    ['fin-revenue','fin-covers','fin-tables','fin-vip','fin-notes',
+     'fin-cost-staff','fin-cost-dj','fin-cost-band','fin-cost-fnb','fin-cost-decor','fin-cost-other','fin-cost-other-label']
+      .forEach(k => { const e = document.getElementById(k); if (e) e.value = ''; });
     const hint = document.getElementById('fin-hint'); if (hint) hint.textContent = '';
     try {
       const f = await fetch(`/api/admin/event-finances/${id}`, { headers: authHeaders() }).then(r => r.json());
-      if (f && f.revenue_cents != null) document.getElementById('fin-revenue').value = (f.revenue_cents / 100);
-      if (f && f.covers != null)        document.getElementById('fin-covers').value = f.covers;
-      if (f && f.tables_count != null)  document.getElementById('fin-tables').value = f.tables_count;
-      if (f && f.vip_count != null)     document.getElementById('fin-vip').value = f.vip_count;
-      if (f && f.notes)                 document.getElementById('fin-notes').value = f.notes;
+      const cents = (id, v) => { if (v != null) document.getElementById(id).value = (v / 100); };
+      if (f) {
+        cents('fin-revenue', f.revenue_cents);
+        if (f.covers != null)       document.getElementById('fin-covers').value = f.covers;
+        if (f.tables_count != null) document.getElementById('fin-tables').value = f.tables_count;
+        if (f.vip_count != null)    document.getElementById('fin-vip').value = f.vip_count;
+        if (f.notes)                document.getElementById('fin-notes').value = f.notes;
+        cents('fin-cost-staff', f.cost_staff_cents);
+        cents('fin-cost-dj',    f.cost_dj_cents);
+        cents('fin-cost-band',  f.cost_band_cents);
+        cents('fin-cost-fnb',   f.cost_fnb_cents);
+        cents('fin-cost-decor', f.cost_decor_cents);
+        cents('fin-cost-other', f.cost_other_cents);
+        if (f.cost_other_label)     document.getElementById('fin-cost-other-label').value = f.cost_other_label;
+      }
       updateFinanceHint();
     } catch (e) { /* silencioso: sin datos aún */ }
   }
 
-  // Pista en vivo del ticket medio mientras el admin teclea (solo cálculo local).
+  // Pista en vivo mientras el admin teclea (solo cálculo local): ticket medio,
+  // costes totales, beneficio y margen.
   function updateFinanceHint() {
     const hint = document.getElementById('fin-hint');
     if (!hint) return;
-    const rev = parseFloat(document.getElementById('fin-revenue').value);
+    const val = (id) => { const e = document.getElementById(id); const n = parseFloat(e && e.value); return isFinite(n) ? n : 0; };
+    const rev = val('fin-revenue');
     const cov = parseInt(document.getElementById('fin-covers').value, 10);
     const tab = parseInt(document.getElementById('fin-tables').value, 10);
+    const costs = val('fin-cost-staff') + val('fin-cost-dj') + val('fin-cost-band') + val('fin-cost-fnb') + val('fin-cost-decor') + val('fin-cost-other');
     const parts = [];
     if (rev > 0 && cov > 0) parts.push(`Ticket medio: <strong>${(rev / cov).toFixed(2)} €</strong>/persona`);
     if (rev > 0 && tab > 0) parts.push(`<strong>${(rev / tab).toFixed(2)} €</strong>/mesa`);
-    hint.innerHTML = parts.length ? '📊 ' + parts.join(' · ') : '';
+    let line2 = '';
+    if (costs > 0) {
+      line2 = `📉 Costes: <strong>${costs.toFixed(2)} €</strong>`;
+      if (rev > 0) {
+        const profit = rev - costs;
+        const margin = (profit / rev) * 100;
+        const col = profit >= 0 ? '#15803d' : '#cc3333';
+        line2 += ` · Beneficio: <strong style="color:${col};">${profit.toFixed(2)} €</strong> · Margen: <strong style="color:${col};">${margin.toFixed(0)}%</strong>`;
+      }
+    }
+    hint.innerHTML = [parts.length ? '📊 ' + parts.join(' · ') : '', line2].filter(Boolean).join('<br>');
   }
 
   async function saveEventFinance() {
@@ -6706,7 +6840,14 @@
       covers:   document.getElementById('fin-covers').value,
       tables:   document.getElementById('fin-tables').value,
       vipCount: document.getElementById('fin-vip').value,
-      notes:    document.getElementById('fin-notes').value
+      notes:    document.getElementById('fin-notes').value,
+      costStaff: document.getElementById('fin-cost-staff').value,
+      costDj:    document.getElementById('fin-cost-dj').value,
+      costBand:  document.getElementById('fin-cost-band').value,
+      costFnb:   document.getElementById('fin-cost-fnb').value,
+      costDecor: document.getElementById('fin-cost-decor').value,
+      costOther: document.getElementById('fin-cost-other').value,
+      costOtherLabel: document.getElementById('fin-cost-other-label').value
     };
     try {
       const res = await fetch(`/api/admin/event-finances/${currentEventId}`, {

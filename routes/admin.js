@@ -243,22 +243,31 @@ router.post('/event-finances/:eventId', requireAuth, (req, res) => {
     const ev = db.prepare('SELECT id FROM events WHERE id = ?').get(eventId);
     if (!ev) return res.status(404).json({ error: 'Evento no encontrado' });
 
-    const { revenue, covers, tables, vipCount, notes } = req.body || {};
-    // Validación: números no negativos o vacío. El importe llega en euros y se
-    // guarda en céntimos (redondeo al céntimo) para no arrastrar decimales.
+    const { revenue, covers, tables, vipCount, notes,
+      costStaff, costDj, costBand, costFnb, costDecor, costOther, costOtherLabel } = req.body || {};
+    // Validación: números no negativos o vacío. Los importes llegan en euros y se
+    // guardan en céntimos (redondeo al céntimo) para no arrastrar decimales.
     const numOrNull = (v) => {
       if (v === null || v === undefined || v === '') return null;
       const n = Number(v);
       if (!isFinite(n) || n < 0) throw new Error('Valor numérico no válido');
       return n;
     };
-    const revenueEuros = numOrNull(revenue);
+    const eurosToCents = (v) => { const n = numOrNull(v); return n != null ? Math.round(n * 100) : null; };
     const result = setEventFinance(eventId, {
-      revenueCents: revenueEuros != null ? Math.round(revenueEuros * 100) : null,
+      revenueCents: eurosToCents(revenue),
       covers: numOrNull(covers) != null ? Math.round(numOrNull(covers)) : null,
       tables: numOrNull(tables) != null ? Math.round(numOrNull(tables)) : null,
       vipCount: numOrNull(vipCount) != null ? Math.round(numOrNull(vipCount)) : null,
-      notes: (typeof notes === 'string' && notes.trim()) ? notes.trim().slice(0, 500) : null
+      notes: (typeof notes === 'string' && notes.trim()) ? notes.trim().slice(0, 500) : null,
+      // Costes por categoría (personal, DJ, grupo, F&B, decoración, otros con nombre)
+      costStaffCents: eurosToCents(costStaff),
+      costDjCents: eurosToCents(costDj),
+      costBandCents: eurosToCents(costBand),
+      costFnbCents: eurosToCents(costFnb),
+      costDecorCents: eurosToCents(costDecor),
+      costOtherCents: eurosToCents(costOther),
+      costOtherLabel: (typeof costOtherLabel === 'string' && costOtherLabel.trim()) ? costOtherLabel.trim().slice(0, 100) : null
     });
     res.json({ success: true, finance: result });
   } catch (e) { res.status(400).json({ error: e.message }); }
