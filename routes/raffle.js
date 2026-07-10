@@ -828,9 +828,33 @@ router.get('/scheduled', (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/raffle/scheduled/all — admin, todos los programados (futuros)
+// GET /api/raffle/scheduled/all — admin, todos los programados (futuros).
+// A los ya lanzados se les adjunta el RESULTADO del sorteo enlazado (ganador,
+// cuándo lo aceptó, si se entregó...) para que el admin vea los pasos de un vistazo.
 router.get('/scheduled/all', requireAuth, (req, res) => {
-  try { res.json(getScheduledRaffles(null)); } catch(e) { res.status(500).json({ error: e.message }); }
+  try {
+    const { db } = require('../db/database');
+    const rows = getScheduledRaffles(null).map(s => {
+      if (!s.raffle_id) return s;
+      const r = db.prepare(`
+        SELECT winner_wallet, status, accepted_at, collected_at, rejection_note,
+               nft_achievement_id, nft_granted_at
+        FROM raffles WHERE id = ?
+      `).get(s.raffle_id);
+      if (!r) return s;
+      return { ...s, result: {
+        winnerWallet: r.winner_wallet,
+        walletMasked: r.winner_wallet ? r.winner_wallet.slice(0, 6) + '…' + r.winner_wallet.slice(-4) : null,
+        status: r.status,
+        acceptedAt: r.accepted_at,
+        collectedAt: r.collected_at,
+        rejectionNote: r.rejection_note,
+        isNft: !!r.nft_achievement_id,
+        nftGrantedAt: r.nft_granted_at
+      } };
+    });
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 // POST /api/raffle/scheduled — admin, crear sorteo programado

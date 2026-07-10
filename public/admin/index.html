@@ -4448,6 +4448,36 @@
   function setSchedRaffleType(t) { setSchedType(t === 'std' ? 'night' : t); }
   function updateLevelRafflePrizeName() {} // no-op, mantenida por compatibilidad
 
+  // Resultado de un sorteo ya lanzado, para la agenda: qué wallet se llevó el
+  // premio y los pasos con su check (aceptado ✓ hora → entregado ✓ hora). Así el
+  // admin ve de un vistazo si el ganador está atento o el premio quedó sin reclamar.
+  function schedResultHtml(res) {
+    if (!res || !res.winnerWallet) return '';
+    const hora = (ts) => ts ? new Date(ts.replace(' ', 'T') + 'Z').toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '';
+    const chip = (bg, color, border, txt) =>
+      `<span style="font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:100px; background:${bg}; color:${color}; border:1px solid ${border}; white-space:nowrap;">${txt}</span>`;
+    const chips = [];
+    if (res.status === 'rejected') {
+      chips.push(chip('rgba(139,25,24,0.08)', 'var(--wine)', 'rgba(139,25,24,0.25)', `✗ No aceptado — ${res.rejectionNote || 'no respondió'}`));
+    } else if (res.status === 'pending_acceptance') {
+      chips.push(chip('rgba(196,151,58,0.12)', '#7A5A00', 'rgba(196,151,58,0.4)', '⏳ Esperando aceptación…'));
+    } else {
+      chips.push(chip('rgba(22,163,74,0.1)', '#15803d', 'rgba(22,163,74,0.35)', `✓ Aceptado${res.acceptedAt ? ' ' + hora(res.acceptedAt) : ''}`));
+      if (res.status === 'collected') {
+        chips.push(chip('rgba(22,163,74,0.1)', '#15803d', 'rgba(22,163,74,0.35)', `${res.isNft ? '🏅 NFT entregado' : '✓ Entregado'}${res.collectedAt ? ' ' + hora(res.collectedAt) : ''}`));
+      } else {
+        chips.push(chip('rgba(196,151,58,0.12)', '#7A5A00', 'rgba(196,151,58,0.4)', res.isNft ? '🏅 NFT sin entregar aún' : '🎁 Sin recoger aún'));
+      }
+    }
+    return `<div style="margin-top:8px; padding:7px 10px; background:rgba(42,21,9,0.03); border:1px solid rgba(42,21,9,0.08); border-radius:10px;">
+      <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+        <span style="font-size:11px; font-weight:800; color:var(--wine);">🏆 Ganador:</span>
+        <span style="font-family:monospace; font-size:11px; font-weight:700; color:var(--text);">${res.walletMasked}</span>
+        ${chips.join(' ')}
+      </div>
+    </div>`;
+  }
+
   // ── AGENDA DE SORTEOS ──────────────────────────────────────────────────────
   async function loadScheduled() {
     const container = document.getElementById('scheduled-list');
@@ -4497,6 +4527,7 @@
               </button>
             </div>
           </div>
+          ${schedResultHtml(r.result)}
           <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
             ${isPending ? `<button onclick="editScheduled(${r.id})"
               style="${btnStyle} background:rgba(196,151,58,0.12); color:var(--gold); border:1px solid rgba(196,151,58,0.35);">✎ Editar</button>` : ''}
@@ -5518,7 +5549,8 @@
               </div>
               ${r.establishment ? `<p style="font-size:10px; color:var(--wine); font-weight:600; margin:0 0 1px;">${r.establishment}</p>` : ''}
               <p style="font-size:10px; color:var(--text-muted); margin:0;">${r.wallet_masked} · ${when}</p>
-              ${r.collected_at ? `<p style="font-size:10px; color:#15803d; font-weight:600; margin:1px 0 0;">Canjeado: ${new Date(r.collected_at.replace(' ','T')+'Z').toLocaleString('es-ES',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</p>` : ''}
+              ${r.accepted_at && r.status !== 'rejected' ? `<p style="font-size:10px; color:#15803d; font-weight:600; margin:1px 0 0;">✓ Aceptado: ${new Date(r.accepted_at.replace(' ','T')+'Z').toLocaleString('es-ES',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</p>` : ''}
+              ${!r.accepted_at && r.status === 'accepted' ? `<p style="font-size:10px; color:#15803d; font-weight:600; margin:1px 0 0;">✓ Aceptado</p>` : ''}
               ${r.validity_end_date ? `<p style="font-size:10px; color:var(--wine); margin:1px 0 0; font-weight:600;">Caduca: ${r.validity_end_date} <button onclick="fixRaffleDate(${r.id})" style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--gold);padding:0 2px;">✏️</button></p>` : ''}
               ${r.status === 'rejected' ? `<p style="font-size:10px; color:var(--text-muted); margin:2px 0 0; font-style:italic;">${r.rejection_note || 'Rechazado'}</p>` : ''}
             </div>
