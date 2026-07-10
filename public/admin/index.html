@@ -1189,6 +1189,26 @@
         <p id="hourly-chart-empty" style="display:none; font-size:12px; color:var(--text-muted); text-align:center; padding:16px 0;">Sin entradas registradas hoy todavía 🍷</p>
       </div>
 
+      <!-- 💶 FACTURACIÓN POR EVENTO (PRIVADO — nunca visible para clientes) -->
+      <div class="glass-card" style="margin-bottom:20px;" id="finance-stats-card">
+        <div class="card-header" style="margin-bottom:6px;">
+          <span class="card-title">💶 Facturación por evento</span>
+          <button class="btn-download" onclick="loadEventFinanceStats()" style="font-size:11px; padding:6px 12px;">↻</button>
+        </div>
+        <p style="font-size:11px; color:var(--text-muted); margin:0 0 14px;">🔒 Privado — solo tú. Añade los datos desde cada evento (Eventos → editar → Facturación).</p>
+
+        <!-- Tiles resumen -->
+        <div id="finance-tiles" style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:16px;"></div>
+
+        <!-- Gráfico de barras: facturación por evento -->
+        <div id="finance-chart-wrap">
+          <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:8px;">Facturación por evento</div>
+          <div id="finance-bar-chart" style="display:flex; align-items:flex-end; gap:8px; height:120px; padding:0 2px;"></div>
+          <div id="finance-bar-labels" style="display:flex; gap:8px; margin-top:6px;"></div>
+        </div>
+        <p id="finance-empty" style="display:none; font-size:12px; color:var(--text-muted); text-align:center; padding:16px 0;">Aún no hay facturación registrada. Ábrela desde un evento para empezar, ho 🍷</p>
+      </div>
+
       <!-- QR Acceso Clientes — destacado en dashboard -->
       <div style="background: rgba(196,151,58,0.06); border: 1px solid rgba(196,151,58,0.22); border-radius: 20px; padding: 22px; margin-bottom: 24px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
         <img src="/api/qr/checkin" alt="QR Clientes" style="width: 110px; height: 110px; border-radius: 12px; flex-shrink: 0;" />
@@ -2560,6 +2580,42 @@
           <button onclick="addTapa()" style="width:100%; background:#8B1918; color:#fff; border:none; border-radius:10px; padding:13px; font-size:14px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">+ Añadir tapa</button>
         </div>
       </div>
+
+      <!-- 💶 Facturación del evento (PRIVADO — solo el admin lo ve, nunca un cliente) -->
+      <div id="finance-section" style="display:none; margin-top:18px; padding-top:16px; border-top:1px solid rgba(42,21,9,0.1);">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
+          <label style="font-size:11px; color:#8B1918; font-weight:700; text-transform:uppercase; letter-spacing:1.2px;">💶 Facturación</label>
+          <span style="font-size:9px; font-weight:800; letter-spacing:.5px; text-transform:uppercase; background:rgba(42,21,9,0.08); color:#7A6A5A; padding:3px 8px; border-radius:100px;">🔒 Privado · solo tú</span>
+        </div>
+        <div style="background:#fff; border:1.5px solid rgba(42,21,9,0.12); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:12px;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div>
+              <label style="font-size:11px; color:#7A6A5A; font-weight:600; display:block; margin-bottom:4px;">Facturación (€)</label>
+              <input id="fin-revenue" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00" oninput="updateFinanceHint()"
+                style="width:100%; background:#F2EDE3; color:#2A1509; border:1.5px solid rgba(42,21,9,0.12); border-radius:10px; padding:12px 14px; font-size:15px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+            </div>
+            <div>
+              <label style="font-size:11px; color:#7A6A5A; font-weight:600; display:block; margin-bottom:4px;">Personas</label>
+              <input id="fin-covers" type="number" min="0" step="1" inputmode="numeric" placeholder="0" oninput="updateFinanceHint()"
+                style="width:100%; background:#F2EDE3; color:#2A1509; border:1.5px solid rgba(42,21,9,0.12); border-radius:10px; padding:12px 14px; font-size:15px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+            </div>
+            <div>
+              <label style="font-size:11px; color:#7A6A5A; font-weight:600; display:block; margin-bottom:4px;">Mesas</label>
+              <input id="fin-tables" type="number" min="0" step="1" inputmode="numeric" placeholder="0" oninput="updateFinanceHint()"
+                style="width:100%; background:#F2EDE3; color:#2A1509; border:1.5px solid rgba(42,21,9,0.12); border-radius:10px; padding:12px 14px; font-size:15px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+            </div>
+            <div>
+              <label style="font-size:11px; color:#7A6A5A; font-weight:600; display:block; margin-bottom:4px;">Personas VIP</label>
+              <input id="fin-vip" type="number" min="0" step="1" inputmode="numeric" placeholder="0"
+                style="width:100%; background:#F2EDE3; color:#2A1509; border:1.5px solid rgba(42,21,9,0.12); border-radius:10px; padding:12px 14px; font-size:15px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+            </div>
+          </div>
+          <input id="fin-notes" type="text" maxlength="500" placeholder="Notas (opcional): incidencias, clima, aforo…"
+            style="width:100%; background:#F2EDE3; color:#2A1509; border:1.5px solid rgba(42,21,9,0.12); border-radius:10px; padding:11px 14px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+          <p id="fin-hint" style="font-size:11.5px; color:#7A6A5A; margin:0; min-height:16px; line-height:1.5;"></p>
+          <button onclick="saveEventFinance()" style="width:100%; background:#7A5A00; color:#fff; border:none; border-radius:10px; padding:13px; font-size:14px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">💾 Guardar facturación</button>
+        </div>
+      </div>
     </div>
     <!-- Botones -->
     <div style="display:flex; gap:10px; padding:14px 22px 32px; flex-shrink:0; border-top:1px solid rgba(42,21,9,0.1);">
@@ -2689,6 +2745,7 @@
         loadAchievementManager();
         loadPresentByLevel();
         loadCampaignAdmin();
+        loadEventFinanceStats();
         connectAdminSse();
       } else {
         errorDiv.style.display = 'block';
@@ -2722,6 +2779,7 @@
       loadAchievementManager();
       loadPresentByLevel();
       loadCampaignAdmin();
+      loadEventFinanceStats();
       connectAdminSse();
     }
   });
@@ -2812,7 +2870,7 @@
     }, 0);
     if (pageId === 'events') loadEventsPage();
     if (pageId === 'messages') { loadMsgRsvpEvents(); loadScheduledMessages(); loadAchievementFilterOptions(); }
-    if (pageId === 'dashboard') { loadStats(); loadHourlyChart(); loadAchievementStats(); loadAchievementManager(); loadPresentByLevel(); loadCampaignAdmin(); }
+    if (pageId === 'dashboard') { loadStats(); loadHourlyChart(); loadAchievementStats(); loadAchievementManager(); loadPresentByLevel(); loadCampaignAdmin(); loadEventFinanceStats(); }
     loadVipBadge();
     if (pageId === 'holders') {
       loadVisits('__totales__');
@@ -3026,6 +3084,64 @@
           ? `<p style="font-size:11.5px; color:var(--text-muted); text-align:center; margin:10px 0 0;">Nadie fichado en el local ahora mismo (fuera de evento o sin entradas).</p>`
           : (achLines ? `<div style="margin-top:10px;">${achLines}</div>` : ''));
     } catch (e) { el.innerHTML = '<p style="font-size:12px; color:#ef4444;">Error cargando aforo por nivel.</p>'; }
+  }
+
+  // ── FACTURACIÓN POR EVENTO — tiles resumen + gráfico de barras (privado) ──────
+  async function loadEventFinanceStats() {
+    const tilesEl = document.getElementById('finance-tiles');
+    const chartEl = document.getElementById('finance-bar-chart');
+    const labelsEl = document.getElementById('finance-bar-labels');
+    const chartWrap = document.getElementById('finance-chart-wrap');
+    const emptyEl = document.getElementById('finance-empty');
+    if (!tilesEl) return;
+    try {
+      const data = await fetch('/api/admin/event-finances', { headers: authHeaders() }).then(r => r.json());
+      const t = data.totals || {};
+      const evs = data.events || [];
+      const euro = (n) => n == null ? '—' : Number(n).toLocaleString('es-ES', { style:'currency', currency:'EUR', maximumFractionDigits: (n >= 1000 ? 0 : 2) });
+      const num  = (n) => (n == null || n === 0) ? (n === 0 ? '0' : '—') : Number(n).toLocaleString('es-ES');
+      const pct  = (n) => n == null ? '—' : n.toFixed(0) + '%';
+      const tile = (label, value, accent) => `<div style="background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:12px; padding:12px; text-align:center;">
+        <div style="font-family:'Playfair Display',serif; font-size:21px; font-weight:900; color:${accent||'var(--wine)'}; line-height:1.1;">${value}</div>
+        <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-top:3px; font-weight:600;">${label}</div>
+      </div>`;
+
+      tilesEl.innerHTML = [
+        tile('Facturación total', euro(t.revenue), 'var(--wine)'),
+        tile('Ticket medio', euro(t.avgTicket), 'var(--gold)'),
+        tile('€/mesa medio', euro(t.perTable), 'var(--gold)'),
+        tile('Media por evento', euro(t.avgRevenuePerEvent), 'var(--wine)'),
+        tile('Personas totales', num(t.covers)),
+        tile('% VIP', pct(t.vipPct))
+      ].join('');
+
+      const withRev = evs.filter(e => e.revenue != null);
+      if (!withRev.length) {
+        if (chartWrap) chartWrap.style.display = 'none';
+        if (emptyEl) emptyEl.style.display = 'block';
+        return;
+      }
+      if (chartWrap) chartWrap.style.display = 'block';
+      if (emptyEl) emptyEl.style.display = 'none';
+
+      const maxRev = Math.max(1, ...withRev.map(e => e.revenue));
+      const show = withRev.slice(-12); // últimos 12 eventos con datos
+      chartEl.innerHTML = show.map(e => {
+        const h = Math.round((e.revenue / maxRev) * 100);
+        const shortRev = e.revenue >= 1000 ? (e.revenue / 1000).toFixed(1) + 'k' : Math.round(e.revenue);
+        const tip = `${e.title || ''} · ${euro(e.revenue)}${e.avgTicket ? ` · ${euro(e.avgTicket)}/persona` : ''}`;
+        return `<div title="${tip.replace(/"/g,'&quot;')}" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%;">
+          <div style="font-size:9px; font-weight:700; color:var(--wine); margin-bottom:3px;">${shortRev}</div>
+          <div style="width:100%; max-width:34px; height:${Math.max(4, h)}%; background:linear-gradient(180deg,var(--gold),var(--wine)); border-radius:5px 5px 0 0;"></div>
+        </div>`;
+      }).join('');
+      labelsEl.innerHTML = show.map(e => {
+        const d = new Date(e.date + 'T12:00:00');
+        return `<div style="flex:1; text-align:center; font-size:9px; color:var(--text-muted);">${d.getDate()}/${d.getMonth() + 1}</div>`;
+      }).join('');
+    } catch (e) {
+      if (tilesEl) tilesEl.innerHTML = '<p style="font-size:12px; color:#ef4444; grid-column:1/-1;">Error cargando facturación.</p>';
+    }
   }
 
   // ==================== STATS ====================
@@ -6486,6 +6602,8 @@
       document.getElementById('event-delete-btn').style.display = 'block';
       document.getElementById('event-active-row').style.display = 'flex';
       document.getElementById('tapas-section').style.display = 'block';
+      document.getElementById('finance-section').style.display = 'block';
+      loadEventFinance(id);
       fetch('/api/events/all', { headers: authHeaders() }).then(r => r.json()).then(events => {
         const ev = events.find(e => e.id === id);
         if (ev) {
@@ -6503,6 +6621,7 @@
       document.getElementById('event-delete-btn').style.display = 'none';
       document.getElementById('event-active-row').style.display = 'none';
       document.getElementById('tapas-section').style.display = 'none';
+      document.getElementById('finance-section').style.display = 'none';
     }
 
     modal.style.display = 'flex';
@@ -6548,6 +6667,56 @@
       loadAgenda();
     } catch(e) {
       showToast('Error de red al guardar — reintenta', true);
+    }
+  }
+
+  // ── FACTURACIÓN POR EVENTO (privado, solo admin) ──────────────────────────
+  async function loadEventFinance(id) {
+    // Limpiar antes de cargar (evita arrastrar datos de otro evento)
+    ['fin-revenue','fin-covers','fin-tables','fin-vip','fin-notes'].forEach(k => { const e = document.getElementById(k); if (e) e.value = ''; });
+    const hint = document.getElementById('fin-hint'); if (hint) hint.textContent = '';
+    try {
+      const f = await fetch(`/api/admin/event-finances/${id}`, { headers: authHeaders() }).then(r => r.json());
+      if (f && f.revenue_cents != null) document.getElementById('fin-revenue').value = (f.revenue_cents / 100);
+      if (f && f.covers != null)        document.getElementById('fin-covers').value = f.covers;
+      if (f && f.tables_count != null)  document.getElementById('fin-tables').value = f.tables_count;
+      if (f && f.vip_count != null)     document.getElementById('fin-vip').value = f.vip_count;
+      if (f && f.notes)                 document.getElementById('fin-notes').value = f.notes;
+      updateFinanceHint();
+    } catch (e) { /* silencioso: sin datos aún */ }
+  }
+
+  // Pista en vivo del ticket medio mientras el admin teclea (solo cálculo local).
+  function updateFinanceHint() {
+    const hint = document.getElementById('fin-hint');
+    if (!hint) return;
+    const rev = parseFloat(document.getElementById('fin-revenue').value);
+    const cov = parseInt(document.getElementById('fin-covers').value, 10);
+    const tab = parseInt(document.getElementById('fin-tables').value, 10);
+    const parts = [];
+    if (rev > 0 && cov > 0) parts.push(`Ticket medio: <strong>${(rev / cov).toFixed(2)} €</strong>/persona`);
+    if (rev > 0 && tab > 0) parts.push(`<strong>${(rev / tab).toFixed(2)} €</strong>/mesa`);
+    hint.innerHTML = parts.length ? '📊 ' + parts.join(' · ') : '';
+  }
+
+  async function saveEventFinance() {
+    if (!currentEventId) return;
+    const payload = {
+      revenue:  document.getElementById('fin-revenue').value,
+      covers:   document.getElementById('fin-covers').value,
+      tables:   document.getElementById('fin-tables').value,
+      vipCount: document.getElementById('fin-vip').value,
+      notes:    document.getElementById('fin-notes').value
+    };
+    try {
+      const res = await fetch(`/api/admin/event-finances/${currentEventId}`, {
+        method: 'POST', headers: authHeaders(), body: JSON.stringify(payload)
+      });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); return showToast(d.error || 'Error al guardar facturación', true); }
+      showToast('💶 Facturación guardada');
+      if (typeof loadEventFinanceStats === 'function') loadEventFinanceStats(); // refresca el gráfico del dashboard
+    } catch (e) {
+      showToast('Error de red al guardar facturación', true);
     }
   }
 

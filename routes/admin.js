@@ -212,6 +212,58 @@ router.get('/present-by-level', requireAuth, (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── FACTURACIÓN POR EVENTO (PRIVADO — solo admin) ────────────────────────────
+// Estos endpoints están bajo requireAuth y NO tienen equivalente público. El dato
+// de facturación vive en la tabla event_finances (separada de `events`), así que
+// no se filtra por /api/events ni por ningún endpoint de cliente.
+
+// GET /api/admin/event-finances — resumen por evento + totales/medias para gráficos
+router.get('/event-finances', requireAuth, (req, res) => {
+  try {
+    res.json(require('../db/database').getEventFinancesSummary());
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/admin/event-finances/:eventId — facturación de un evento (para precargar el modal)
+router.get('/event-finances/:eventId', requireAuth, (req, res) => {
+  const eventId = parseInt(req.params.eventId, 10);
+  if (!eventId) return res.status(400).json({ error: 'ID de evento no válido' });
+  try {
+    res.json(require('../db/database').getEventFinance(eventId) || {});
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/admin/event-finances/:eventId — guarda/actualiza la facturación de un evento.
+// Body: { revenue (€), covers, tables, vipCount, notes }. Campos vacíos = "sin dato".
+router.post('/event-finances/:eventId', requireAuth, (req, res) => {
+  const eventId = parseInt(req.params.eventId, 10);
+  if (!eventId) return res.status(400).json({ error: 'ID de evento no válido' });
+  try {
+    const { db, setEventFinance } = require('../db/database');
+    const ev = db.prepare('SELECT id FROM events WHERE id = ?').get(eventId);
+    if (!ev) return res.status(404).json({ error: 'Evento no encontrado' });
+
+    const { revenue, covers, tables, vipCount, notes } = req.body || {};
+    // Validación: números no negativos o vacío. El importe llega en euros y se
+    // guarda en céntimos (redondeo al céntimo) para no arrastrar decimales.
+    const numOrNull = (v) => {
+      if (v === null || v === undefined || v === '') return null;
+      const n = Number(v);
+      if (!isFinite(n) || n < 0) throw new Error('Valor numérico no válido');
+      return n;
+    };
+    const revenueEuros = numOrNull(revenue);
+    const result = setEventFinance(eventId, {
+      revenueCents: revenueEuros != null ? Math.round(revenueEuros * 100) : null,
+      covers: numOrNull(covers) != null ? Math.round(numOrNull(covers)) : null,
+      tables: numOrNull(tables) != null ? Math.round(numOrNull(tables)) : null,
+      vipCount: numOrNull(vipCount) != null ? Math.round(numOrNull(vipCount)) : null,
+      notes: (typeof notes === 'string' && notes.trim()) ? notes.trim().slice(0, 500) : null
+    });
+    res.json({ success: true, finance: result });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 // GET /api/admin/debug-push
 router.get('/debug-push', requireAuth, (req, res) => {
   try {

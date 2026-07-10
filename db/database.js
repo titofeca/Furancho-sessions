@@ -442,6 +442,20 @@ try { db.exec(`ALTER TABLE events ADD COLUMN start_time TEXT DEFAULT '19:00'`); 
 try { db.exec(`ALTER TABLE events ADD COLUMN end_time TEXT DEFAULT '23:59'`); } catch (_) {}
 // Alias gracioso y anónimo de la reserva VIP (se genera al confirmar; hace de "nombre de la mesa")
 try { db.exec(`ALTER TABLE vip_reservations ADD COLUMN alias TEXT`); } catch (_) {}
+// ── FACTURACIÓN POR EVENTO (PRIVADO — solo panel admin) ──────────────────────
+// Tabla SEPARADA a propósito: la tabla `events` la sirve getEvents() (público) con
+// SELECT e.*, así que cualquier columna ahí se filtraría a los clientes. Al vivir
+// aparte, ningún endpoint público la toca — el dinero solo se lee vía rutas admin.
+// Importes en CÉNTIMOS de euro (enteros) para no arrastrar errores de coma flotante.
+try { db.exec(`CREATE TABLE IF NOT EXISTS event_finances (
+  event_id INTEGER PRIMARY KEY,
+  revenue_cents INTEGER,
+  covers INTEGER,
+  tables_count INTEGER,
+  vip_count INTEGER,
+  notes TEXT,
+  updated_at TEXT DEFAULT (datetime('now'))
+)`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected INTEGER DEFAULT 0`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_at TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_by TEXT`); } catch (_) {}
@@ -1316,6 +1330,77 @@ function getAllEvents() {
     GROUP BY e.id
     ORDER BY e.event_date ASC
   `).all();
+}
+
+// ── FACTURACIÓN POR EVENTO (PRIVADO) ─────────────────────────────────────────
+// Estas funciones SOLO se llaman desde rutas admin (requireAuth). Nunca desde
+// getEvents() ni ningún endpoint público. Importes en céntimos (enteros).
+
+// Upsert de la facturación de un evento. Campos null = "sin dato" (no 0).
+function setEventFinance(eventId, { revenueCents, covers, tables, vipCount, notes }) {
+  const norm = (v) => (v === null || v === undefined || v === '' ? null : v);
+  db.prepare(`
+    INSERT INTO event_finances (event_id, revenue_cents, covers, tables_count, vip_count, notes, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+    ON CONFLICT(event_id) DO UPDATE SET
+      revenue_cents = excluded.revenue_cents,
+      covers        = excluded.covers,
+      tables_count  = excluded.tables_count,
+      vip_count     = excluded.vip_count,
+      notes         = excluded.notes,
+      updated_at    = datetime('now')
+  `).run(eventId, norm(revenueCents), norm(covers), norm(tables), norm(vipCount), norm(notes));
+  return getEventFinance(eventId);
+}
+
+function getEventFinance(eventId) {
+  return db.prepare(`SELECT * FROM event_finances WHERE event_id = ?`).get(eventId) || null;
+}
+
+// Resumen para el panel admin: una fila por evento CON datos de facturación, más
+// los agregados (totales y medias) que alimentan las estadísticas y el gráfico.
+function getEventFinancesSummary() {
+  const rows = db.prepare(`
+    SELECT e.id AS event_id, e.event_date, e.title,
+           f.revenue_cents, f.covers, f.tables_count, f.vip_count, f.notes, f.updated_at
+    FROM event_finances f
+    JOIN events e ON e.id = f.event_id
+    WHERE f.revenue_cents IS NOT NULL OR f.covers IS NOT NULL
+       OR f.tables_count IS NOT NULL OR f.vip_count IS NOT NULL
+    ORDER BY e.event_date ASC
+  `).all();
+
+  let totalRevenue = 0, totalCovers = 0, totalTables = 0, totalVip = 0, revenueEvents = 0;
+  const events = rows.map(r => {
+    const revenue = r.revenue_cents != null ? r.revenue_cents / 100 : null;
+    const avgTicket = (revenue != null && r.covers) ? revenue / r.covers : null;   // €/persona
+    const perTable  = (revenue != null && r.tables_count) ? revenue / r.tables_count : null; // €/mesa
+    const vipPct    = (r.vip_count != null && r.covers) ? (r.vip_count / r.covers) * 100 : null;
+    if (revenue != null) { totalRevenue += revenue; revenueEvents++; }
+    if (r.covers)       totalCovers += r.covers;
+    if (r.tables_count) totalTables += r.tables_count;
+    if (r.vip_count)    totalVip += r.vip_count;
+    return {
+      eventId: r.event_id, date: r.event_date, title: r.title,
+      revenue, covers: r.covers, tables: r.tables_count, vipCount: r.vip_count,
+      avgTicket, perTable, vipPct, notes: r.notes, updatedAt: r.updated_at
+    };
+  });
+
+  return {
+    events,
+    totals: {
+      revenue: totalRevenue,
+      covers: totalCovers,
+      tables: totalTables,
+      vip: totalVip,
+      revenueEvents,
+      avgTicket: totalCovers ? totalRevenue / totalCovers : null,  // ticket medio global (€/persona)
+      perTable: totalTables ? totalRevenue / totalTables : null,    // €/mesa medio global
+      avgRevenuePerEvent: revenueEvents ? totalRevenue / revenueEvents : null,
+      vipPct: totalCovers ? (totalVip / totalCovers) * 100 : null
+    }
+  };
 }
 
 // Textos canónicos de cada evento — editables desde el admin, pero estos son el fallback si la BD se reinicia.
@@ -2332,6 +2417,9 @@ module.exports = {
   getSessionDates,
   createEvent,
   updateEvent,
+  setEventFinance,
+  getEventFinance,
+  getEventFinancesSummary,
   deleteEvent,
   getAllEvents,
   getEvents,
