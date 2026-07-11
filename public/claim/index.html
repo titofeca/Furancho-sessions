@@ -1966,19 +1966,15 @@
 
       <div id="vacation-card" style="display:none; margin-bottom:20px; border-radius:20px; border:1.5px solid rgba(196,151,58,.45); background:linear-gradient(160deg, rgba(196,151,58,.12), rgba(139,25,24,.06));">
         <div style="padding:20px;">
-          <!-- Estado A: cuenta atrás al último Furancho -->
+          <!-- Estado A: UNA cuenta atrás POR CADA Furancho que queda (leyendo la agenda),
+               para que se vea que quedan varias sesiones y no solo la última -->
           <div id="vacation-countdown-state">
             <div style="text-align:center; margin-bottom:14px;">
-              <span style="font-size:26px;">🌅</span>
-              <h3 style="font-family:'Playfair Display',serif; font-size:19px; font-weight:900; color:var(--wine); margin:4px 0 2px;">Último Furancho del verano</h3>
-              <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0;">El <strong>jueves 30 de julio</strong> cerramos por vacaciones. ¡La última cunca antes del verano, neno! 🍷</p>
+              <span id="vac-cd-emoji" style="font-size:26px;">🍷</span>
+              <h3 id="vac-cd-title" style="font-family:'Playfair Display',serif; font-size:19px; font-weight:900; color:var(--wine); margin:4px 0 2px;">Cuenta atrás furancheira</h3>
+              <p id="vac-cd-sub" style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0;">Los Furanchos que quedan antes de las vacaciones, cada uno con su cuenta atrás. 🍷</p>
             </div>
-            <div style="display:flex; gap:8px; justify-content:center;">
-              <div class="cd-box"><div class="cd-num" id="vac-d">--</div><div class="cd-lbl">Días</div></div>
-              <div class="cd-box"><div class="cd-num" id="vac-h">--</div><div class="cd-lbl">Horas</div></div>
-              <div class="cd-box"><div class="cd-num" id="vac-m">--</div><div class="cd-lbl">Min</div></div>
-              <div class="cd-box"><div class="cd-num" id="vac-s">--</div><div class="cd-lbl">Seg</div></div>
-            </div>
+            <div id="vac-cd-list" style="display:flex; flex-direction:column; gap:10px;"></div>
           </div>
           <!-- Estado B: modo vacaciones (a partir del 31 de julio) -->
           <div id="vacation-mode-state" style="display:none; text-align:center;">
@@ -2007,7 +2003,7 @@
           </div>
           <!-- ⬆️ FIN EMBLEMA -->
           <h3 style="font-family:'Playfair Display',serif; font-size:19px; font-weight:900; color:#f5e6c8; margin:0 0 3px;">🌒 Eclipse total sobre A Coruña</h3>
-          <p style="font-size:12px; color:rgba(245,230,200,.72); line-height:1.5; margin:0 0 14px;">El <strong style="color:#f5e6c8;">12 de agosto a las 20:28</strong> se hace de noche 76 segundos. Un espectáculo único desde la terraza. 🌘</p>
+          <p style="font-size:12px; color:rgba(245,230,200,.72); line-height:1.5; margin:0 0 14px;">El <strong style="color:#f5e6c8;">12 de agosto a las 20:28</strong> se hace de noche 76 segundos en A Coruña. Un momentazo único — que no te lo cuenten, ho. 🌘</p>
           <div id="eclipse-countdown" style="display:flex; gap:8px; justify-content:center;">
             <div class="cd-box" style="background:rgba(255,255,255,.08); border-color:rgba(245,230,200,.2);"><div class="cd-num" style="color:#f5e6c8;" id="ecl-d">--</div><div class="cd-lbl" style="color:rgba(245,230,200,.6);">Días</div></div>
             <div class="cd-box" style="background:rgba(255,255,255,.08); border-color:rgba(245,230,200,.2);"><div class="cd-num" style="color:#f5e6c8;" id="ecl-h">--</div><div class="cd-lbl" style="color:rgba(245,230,200,.6);">Horas</div></div>
@@ -6136,13 +6132,36 @@
     set(prefix + '-d', p.d); set(prefix + '-h', p.h); set(prefix + '-m', p.m); set(prefix + '-s', p.s);
   }
 
+  // Próximos Furanchos de la agenda real (para contar hacia CADA sesión, no solo
+  // la última). Si la carga falla, se cae al objetivo fijo del 30 jul (sin romper).
+  let _furanchoList = null; // [{ ms, dateLabel }]
+  async function loadUpcomingFuranchos() {
+    try {
+      const r = await fetch('/api/events');
+      if (!r.ok) return;
+      const events = await r.json();
+      const lastMs = new Date(VACATION.lastFurancho).getTime();
+      _furanchoList = (events || [])
+        .filter(e => e.event_date && (e.active === undefined || e.active))
+        .map(e => {
+          const ms = new Date(`${e.event_date}T19:30:00+02:00`).getTime();
+          const d = new Date(`${e.event_date}T12:00:00`);
+          const dateLabel = d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+          return { ms, dateLabel };
+        })
+        .filter(f => !isNaN(f.ms) && f.ms <= lastMs)
+        .sort((a, b) => a.ms - b.ms);
+      renderVacationCards();
+    } catch (_) {}
+  }
+
   function renderVacationCards() {
     const now = Date.now();
     const last = new Date(VACATION.lastFurancho).getTime();
     const backAt = new Date(VACATION.backInSeptember).getTime();
     const ecl = new Date(VACATION.eclipse).getTime();
 
-    // Tarjeta vacaciones: cuenta atrás → modo vacaciones → oculta al volver
+    // Tarjeta vacaciones: cuenta atrás al próximo Furancho → modo vacaciones → oculta
     const vc = document.getElementById('vacation-card');
     if (vc) {
       if (now > backAt) {
@@ -6154,7 +6173,43 @@
         if (now < last) {
           if (cdState) cdState.style.display = 'block';
           if (modeState) modeState.style.display = 'none';
-          _setCd('vac', _cdParts(last - now));
+          // Una cuenta atrás POR CADA Furancho pendiente. Si la agenda no cargó,
+          // se pinta solo la del 30 jul (fallback seguro).
+          const upcoming = (_furanchoList && _furanchoList.length)
+            ? _furanchoList.filter(f => f.ms > now)
+            : [{ ms: last, dateLabel: 'jueves, 30 de julio' }];
+          const emojiEl = document.getElementById('vac-cd-emoji');
+          const titleEl = document.getElementById('vac-cd-title');
+          const subEl = document.getElementById('vac-cd-sub');
+          if (upcoming.length === 1) {
+            if (emojiEl) emojiEl.textContent = '🌅';
+            if (titleEl) titleEl.textContent = 'Último Furancho del verano';
+            if (subEl) subEl.innerHTML = `El <strong>${upcoming[0].dateLabel}</strong> cerramos por vacaciones. ¡La última cunca antes del verano, neno! 🍷`;
+          } else {
+            if (emojiEl) emojiEl.textContent = '🍷';
+            if (titleEl) titleEl.textContent = 'Cuenta atrás furancheira';
+            if (subEl) subEl.innerHTML = `Quedan <strong>${upcoming.length} Furanchos</strong> antes de las vacaciones. ¡Que no se te escape ninguno, ho! 🍷`;
+          }
+          const listEl = document.getElementById('vac-cd-list');
+          if (listEl) {
+            const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+            listEl.innerHTML = upcoming.map((f, i) => {
+              const p = _cdParts(f.ms - now);
+              const isLast = (i === upcoming.length - 1);
+              const isNext = (i === 0);
+              const pill = isLast
+                ? '<span style="font-size:9px; font-weight:800; letter-spacing:1px; color:#8B6914; background:rgba(196,151,58,.2); border:1px solid rgba(196,151,58,.45); border-radius:100px; padding:3px 9px;">🌅 ÚLTIMO DO VERÁN</span>'
+                : (isNext ? '<span style="font-size:9px; font-weight:800; letter-spacing:1px; color:var(--wine); background:rgba(139,25,24,.1); border:1px solid rgba(139,25,24,.25); border-radius:100px; padding:3px 9px;">O PRÓXIMO</span>' : '');
+              const box = (v, l) => `<div class="cd-box" style="min-width:46px; padding:6px 2px;"><div class="cd-num" style="font-size:19px;">${String(v).padStart(2, '0')}</div><div class="cd-lbl">${l}</div></div>`;
+              return `<div style="background:rgba(255,255,255,.55); border:1.5px solid ${isNext ? 'rgba(139,25,24,.3)' : 'rgba(139,25,24,.12)'}; border-radius:14px; padding:10px 12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+                  <span style="font-weight:800; font-size:13px; color:var(--wine);">🍷 ${cap(f.dateLabel)}</span>
+                  ${pill}
+                </div>
+                <div style="display:flex; gap:6px; justify-content:center;">${box(p.d, 'Días')}${box(p.h, 'Horas')}${box(p.m, 'Min')}${box(p.s, 'Seg')}</div>
+              </div>`;
+            }).join('');
+          }
         } else {
           if (cdState) cdState.style.display = 'none';
           if (modeState) modeState.style.display = 'block';
@@ -6176,6 +6231,7 @@
 
   function initVacationCards() {
     renderVacationCards();
+    loadUpcomingFuranchos(); // agenda real → una cuenta atrás por Furancho pendiente
     if (_vacationTimer) clearInterval(_vacationTimer);
     _vacationTimer = setInterval(renderVacationCards, 1000);
   }
