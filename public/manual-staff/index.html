@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light only" />
+  <title>Manual de Staff — Furancho Sessions</title>
+  <meta name="robots" content="noindex" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      color-scheme: light only;
+      --wine: #8B1918; --wine-dark: #5C0F0F; --cream: #F2EDE3; --cream-dark: #E8DDD0;
+      --gold: #C4973A; --text: #2A1509; --muted: #7A6A5A;
+      --ok: #16a34a; --ok-bg: rgba(74,222,128,0.12);
+      --no: #b91c1c; --no-bg: rgba(185,28,28,0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Outfit', sans-serif; background: var(--cream); color: var(--text);
+      background-image: radial-gradient(ellipse at 20% 0%, rgba(139,25,24,0.07) 0%, transparent 50%),
+                        radial-gradient(ellipse at 80% 100%, rgba(196,151,58,0.08) 0%, transparent 50%);
+      background-attachment: fixed; padding-bottom: 60px;
+    }
+    .wrap { max-width: 640px; margin: 0 auto; padding: 0 16px; }
+
+    /* HERO */
+    .hero { text-align: center; padding: 34px 16px 20px; }
+    .hero img { width: 74px; height: 74px; border-radius: 18px; box-shadow: 0 8px 24px rgba(92,15,15,0.25); }
+    .hero h1 { font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 900; color: var(--wine); margin: 12px 0 4px; }
+    .hero p { font-size: 14px; color: var(--muted); }
+
+    /* TABS */
+    .tabs { position: sticky; top: 0; z-index: 50; background: var(--cream); padding: 10px 16px; display: flex; gap: 8px; max-width: 640px; margin: 0 auto; }
+    .tab-btn {
+      flex: 1; border: 1.5px solid rgba(139,25,24,0.25); background: #fff; color: var(--wine);
+      border-radius: 100px; padding: 12px 8px; font-family: 'Outfit', sans-serif; font-size: 13px;
+      font-weight: 800; cursor: pointer; transition: all .2s;
+    }
+    .tab-btn.active { background: var(--wine); color: #fff; border-color: var(--wine); box-shadow: 0 6px 18px rgba(139,25,24,0.3); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; animation: enter .4s ease; }
+    @keyframes enter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+    /* CARDS */
+    .card {
+      background: #fff; border: 1.5px solid rgba(42,21,9,0.08); border-radius: 20px;
+      padding: 20px; margin: 16px 0; box-shadow: 0 4px 16px rgba(42,21,9,0.05);
+    }
+    .card h2 { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 900; color: var(--wine); margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+    .card h2 .n {
+      display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+      width: 30px; height: 30px; border-radius: 50%; background: var(--wine); color: #fff;
+      font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 800;
+    }
+    .card > p.sub { font-size: 13px; color: var(--muted); margin-bottom: 12px; line-height: 1.5; }
+    .card p, .card li { font-size: 14px; line-height: 1.6; }
+    .card ul { padding-left: 20px; margin: 8px 0; }
+    .card li { margin-bottom: 6px; }
+
+    /* DO / DON'T */
+    .rule { border-radius: 14px; padding: 12px 14px; margin: 10px 0; font-size: 13.5px; line-height: 1.55; }
+    .rule.si { background: var(--ok-bg); border: 1.5px solid rgba(22,163,74,0.35); }
+    .rule.no { background: var(--no-bg); border: 1.5px solid rgba(185,28,28,0.3); }
+    .rule b.tag { display: block; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 3px; }
+    .rule.si b.tag { color: var(--ok); }
+    .rule.no b.tag { color: var(--no); }
+
+    /* GOLD callout */
+    .gold-box {
+      background: linear-gradient(135deg, rgba(196,151,58,0.14), rgba(196,151,58,0.05));
+      border: 1.5px dashed var(--gold); border-radius: 14px; padding: 14px 16px; margin: 12px 0;
+      font-size: 13.5px; line-height: 1.55;
+    }
+    .gold-box b.tag { display: block; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: #8B6914; margin-bottom: 3px; }
+
+    /* FRASE bubble */
+    .frase {
+      background: var(--cream); border-radius: 16px 16px 16px 4px; padding: 13px 16px; margin: 10px 0;
+      font-size: 14.5px; line-height: 1.55; font-style: italic; color: var(--text);
+      border: 1.5px solid var(--cream-dark); position: relative;
+    }
+    .frase::before { content: "💬"; margin-right: 6px; font-style: normal; }
+
+    /* LEVELS table */
+    .levels { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+    .lvl { display: flex; align-items: center; gap: 12px; background: var(--cream); border-radius: 14px; padding: 10px 14px; }
+    .lvl .badge { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; background: #fff; border: 2px solid var(--cream-dark); }
+    .lvl b { font-size: 14px; }
+    .lvl span.req { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--wine); background: rgba(139,25,24,0.08); border-radius: 100px; padding: 4px 10px; white-space: nowrap; }
+    .lvl small { display: block; font-size: 11.5px; color: var(--muted); }
+
+    /* Objeciones */
+    .obj { margin: 14px 0; }
+    .obj .q { font-weight: 800; font-size: 14px; color: var(--wine); margin-bottom: 4px; }
+    .obj .q::before { content: "🙅 "; }
+
+    /* Steps */
+    .steps { counter-reset: paso; margin: 12px 0; }
+    .step { display: flex; gap: 12px; margin-bottom: 12px; }
+    .step::before {
+      counter-increment: paso; content: counter(paso);
+      width: 26px; height: 26px; border-radius: 50%; background: var(--gold); color: #fff;
+      font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
+    }
+    .step div { font-size: 14px; line-height: 1.55; }
+
+    .divider-title { text-align: center; margin: 26px 0 4px; font-size: 11px; font-weight: 800; letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted); }
+    .footer { text-align: center; padding: 30px 16px 10px; font-size: 12px; color: var(--muted); }
+
+    @media print {
+      .tabs { display: none; }
+      .tab-panel { display: block !important; }
+      .card { break-inside: avoid; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="hero">
+    <img src="/assets/logo.png" alt="Furancho Sessions" />
+    <h1>Manual del Staff</h1>
+    <p>Todo lo que haces tú y todo lo que le cuentas al cliente. Léelo una vez y a brillar, ho. 🍷</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('barra', this)">📋 Manual de barra</button>
+    <button class="tab-btn" onclick="showTab('cliente', this)">💬 Véndesela al cliente</button>
+  </div>
+
+  <!-- ============ TAB 1: MANUAL DE BARRA ============ -->
+  <div class="wrap tab-panel active" id="tab-barra">
+
+    <div class="card">
+      <h2><span class="n">1</span>Tu herramienta: la página de camareros</h2>
+      <p class="sub">Todo lo tuyo pasa por una sola página en tu móvil.</p>
+      <ul>
+        <li>Abre <b>/staff</b> en el navegador de tu móvil (el jefe te pasa el enlace).</li>
+        <li>Mete el <b>código de la noche</b> que te da el jefe. Solo lo pide <b>una vez</b> en ese móvil.</li>
+        <li>Dentro tienes el <b>escáner</b>: con eso fichas clientes, entregas premios NFT y apuntas visitas del Reto de los 5.</li>
+      </ul>
+      <div class="gold-box"><b class="tag">Truco</b>¿La cámara no enfoca? Usa el botón <b>«📸 Sacar foto al QR»</b> — le haces una foto al QR del cliente y funciona igual.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="n">2</span>Fichar la entrada de un cliente</h2>
+      <p class="sub">Fichar = contar su visita y meterlo en el bombo de los sorteos de la noche.</p>
+      <div class="steps">
+        <div class="step"><div>Pídele que abra su app y te enseñe su <b>🪪 ID Socio (QR)</b> — está arriba en su perfil.</div></div>
+        <div class="step"><div>Apunta con el escáner de tu página de camareros. <b>Se ficha solo</b> y te sale la confirmación en verde con su nombre de nivel.</div></div>
+      </div>
+      <div class="rule si"><b class="tag">✓ Así sí</b>El cliente también puede ficharse él solito: desde <b>su app</b>, botón <b>«Fichar Entrada»</b>, escaneando el QR «¡Cheguei!» del local. Las dos vías valen igual.</div>
+      <div class="rule no"><b class="tag">✗ Así no</b>Que <b>NUNCA</b> escanee el QR del local con la cámara normal del móvil (fuera de la app). Eso lía las cuentas. Siempre desde el botón de su app.</div>
+      <div class="gold-box"><b class="tag">Para que no te pille</b>La visita solo cuenta en <b>noches de evento</b> y <b>máximo 1 por semana</b>. Si un cliente dice «no me subió la visita», es esto — no es un fallo.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="n">3</span>Sorteos en vivo</h2>
+      <p class="sub">La joya de la noche. Tú no sorteas nada: lo lanza el jefe, pero tú eres quien salva la jugada.</p>
+      <ul>
+        <li>Solo entran en el bombo los que están <b>fichados Y siguen dentro</b>.</li>
+        <li>Al ganador le salta en su app un botón: <b>«¡ES MÍO! Trincar premio»</b>. Tiene <b>10 minutos</b> para pulsarlo.</li>
+        <li>Le llegan avisos al móvil, pero si ves cara de despiste en el salón cuando suena un sorteo… <b>díselo</b>: «¡Mira la app, que igual te tocó, neno!»</li>
+      </ul>
+      <div class="rule no"><b class="tag">Ojo</b>Si un cliente ficha <b>salida</b> y se va antes del sorteo, <b>sale del bombo</b>. Avísalo si se despide temprano: «quédate al sorteo, que si te vas ya no entras».</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="n">4</span>Entregar un premio (bono ganado)</h2>
+      <p class="sub">El canje es a prueba de listillos. Grábate esto:</p>
+      <div class="steps">
+        <div class="step"><div>El cliente abre <b>su bono dentro de su app</b>. Verás el sello <b>«BONO EN VIVO»</b> con un reloj corriendo — eso te dice que no es una captura.</div></div>
+        <div class="step"><div><b>TÚ</b> pulsas el botón verde <b>«Entregar premio»</b> en <b>su móvil</b>. Queda canjeado para siempre. Cada bono se canjea <b>una sola vez</b>.</div></div>
+      </div>
+      <div class="rule no"><b class="tag">✗ Nunca</b>No vale un PDF, ni una captura de pantalla, ni «es que me lo enseñó antes». Sin sello en vivo y sin pulsar tú el botón, <b>no hay premio</b>.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="n">5</span>Premios NFT (Pase de Oro, Chave Dourada…)</h2>
+      <p class="sub">Algunos premios no son un bono: son un NFT que se entrega en persona.</p>
+      <ul>
+        <li>Escanea el <b>ID Socio</b> del ganador con tu escáner de siempre.</li>
+        <li>Si tiene un premio NFT pendiente, te sale un <b>banner dorado</b> con un botón de entrega.</li>
+        <li>Pulsas, confirmas, y el NFT le llega a su museo. Listo.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="n">6</span>Chave Semanal</h2>
+      <p class="sub">El sorteo semanal. El ganador viene a recoger con un <b>código de verificación</b> en su app — te lo enseña, lo compruebas y entregas. Si el premio de la semana es NFT, va por el banner dorado del punto 5.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="n">7</span>Reto de los 5 — verano en la terraza</h2>
+      <p class="sub">Del 22 de julio al 20 de septiembre, en la Terraza do Finisterre: 5 visitas = NFT Furancho Legend.</p>
+      <ul>
+        <li>Escanea <b>SOLO el QR en vivo</b> que el cliente enseña desde su app. Las capturas de pantalla <b>caducan solas y no valen</b>.</li>
+        <li>En tu página verás sus puntos del reto y el <b>ranking</b> de los que más vienen.</li>
+        <li>Pasadas las 5 visitas <b>se sigue sumando</b>: cada visita extra da estatus para las sorpresas de septiembre. ¡Díselo!</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="n">8</span>Si algo se tuerce</h2>
+      <ul>
+        <li><b>La cámara no enfoca</b> → botón «📸 Sacar foto al QR».</li>
+        <li><b>El cliente no tiene cuenta</b> → pestaña «Véndesela al cliente» 😉 (2 minutos y listo).</li>
+        <li><b>«Ya tenía cuenta y no me entra»</b> → que NO se haga otra. Ver la regla de oro en la otra pestaña.</li>
+        <li><b>Un QR raro, un bono dudoso, algo que no cuadra</b> → no le des vueltas: <b>avisa al jefe</b>.</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <!-- ============ TAB 2: VÉNDESELA AL CLIENTE ============ -->
+  <div class="wrap tab-panel" id="tab-cliente">
+
+    <div class="card">
+      <h2>🍷 La app en una frase</h2>
+      <div class="frase">«Es el pase digital del Furancho: fichas cuando vienes, subes de nivel y entras en los sorteos de la noche. Gratis, sin registros y en un minuto, ho.»</div>
+    </div>
+
+    <div class="card">
+      <h2>🎁 Qué gana el cliente</h2>
+      <p class="sub">Esto es lo que defiendes. No es «otra app»: es su carné de socio con premios.</p>
+      <ul>
+        <li>🎰 <b>Sorteos en vivo</b> cada noche de evento — solo por estar dentro y fichado. Premios de verdad.</li>
+        <li>🗝️ <b>Chave Semanal</b>: un sorteo cada semana, participe o no venga esa noche.</li>
+        <li>📈 <b>Niveles que suben solos</b> con las visitas (mira la tabla de abajo) — su pase es un NFT real, suyo para siempre.</li>
+        <li>🏅 <b>Museo de logros</b>: ediciones especiales de noches únicas (San Xoán, eventos señalados…).</li>
+        <li>⭐ <b>Reserva de zona VIP</b> desde la app, sin llamadas.</li>
+        <li>🍽️ <b>Tapas de la semana</b> con los alérgenos claros.</li>
+        <li>🔔 <b>Avisos al móvil</b>: cuándo arranca un sorteo, si le tocó, qué se cuece.</li>
+        <li>🎚️ <b>Ambiente en directo</b>: desde el sofá ve el ambientazo que hay en el local… y le entra el mono de venir.</li>
+        <li>👑 <b>Reto de los 5</b> (verano): 5 visitas a la terraza = NFT Legend, y cada visita extra da estatus para las sorpresas de septiembre.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>📈 Los niveles (para explicarlos en 10 segundos)</h2>
+      <div class="levels">
+        <div class="lvl"><span class="badge">🫂</span><div><b>Cautivo</b><small>Nivel 1</small></div><span class="req">1ª visita</span></div>
+        <div class="lvl"><span class="badge">🥂</span><div><b>Cunqueiro</b><small>Nivel 2</small></div><span class="req">2ª visita</span></div>
+        <div class="lvl"><span class="badge">🌿</span><div><b>Larpeiro</b><small>Nivel 3</small></div><span class="req">4ª visita</span></div>
+        <div class="lvl"><span class="badge">👑</span><div><b>Presidente</b><small>Nivel 4</small></div><span class="req">12ª visita</span></div>
+      </div>
+      <div class="frase">«Con volver una vez ya eres Cunqueiro, neno. Y los de nivel alto tienen sorteos solo para ellos.»</div>
+    </div>
+
+    <div class="card">
+      <h2>📲 Instalarla SIN líos (2 minutos)</h2>
+      <div class="steps">
+        <div class="step"><div>Que escanee el <b>QR del salón</b> con la cámara de su móvil.</div></div>
+        <div class="step"><div><b>Crear su cuenta</b>: un toque, sin email, sin DNI, sin papeleo.</div></div>
+        <div class="step"><div><b>«Añadir a pantalla de inicio»</b> cuando se lo ofrezca. El icono queda en su móvil <b>y ya recuerda su cuenta</b>: la próxima vez entra directo.</div></div>
+        <div class="step"><div>Recuérdale lo de <b>«Guarda tu acceso»</b>: que descargue su QR o apunte sus 12 palabras, por si cambia de móvil.</div></div>
+      </div>
+      <div class="rule no"><b class="tag">⚠️ Regla de oro — dobles cuentas</b><b>UNA cuenta por persona, para siempre.</b> Si dice «ya me hice cuenta el otro día», que <b>NUNCA</b> se cree otra: se entra por el <b>icono de su pantalla de inicio</b>. Y si perdió el icono o cambió de móvil, se <b>restaura</b> con su QR de acceso o sus 12 palabras. Una cuenta nueva = pierde sus visitas, su nivel y sus premios.</div>
+    </div>
+
+    <div class="card">
+      <h2>🙋 Objeciones típicas (y qué contestar)</h2>
+      <div class="obj">
+        <p class="q">«¿Otra app más? Paso.»</p>
+        <div class="frase">«No se instala nada del store: es web. La añades a la pantalla y pesa cero. Y sin ella no entras en los sorteos de esta noche, tú mismo…»</div>
+      </div>
+      <div class="obj">
+        <p class="q">«No quiero dar mis datos.»</p>
+        <div class="frase">«No pide ni email ni teléfono ni nombre. Le das a crear y ya está. Más anónimo que pagar en efectivo, ho.»</div>
+      </div>
+      <div class="obj">
+        <p class="q">«¿Me vais a freír a notificaciones?»</p>
+        <div class="frase">«Solo avisa de los sorteos y cosas de la noche. Y los avisos los activas tú si quieres — sin ellos también funciona.»</div>
+      </div>
+      <div class="obj">
+        <p class="q">«¿NFT? Yo de cripto ni idea.»</p>
+        <div class="frase">«Ni falta que hace. Es tu carné de socio digital, tuyo para siempre y sin pagar nada. Tú solo ven, ficha y sube de nivel.»</div>
+      </div>
+      <div class="obj">
+        <p class="q">«¿Y si cambio de móvil?»</p>
+        <div class="frase">«Guardas tu QR o tus 12 palabras y recuperas todo tal cual: nivel, visitas y premios.»</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>⚡ El cierre que nunca falla</h2>
+      <div class="frase">«Mira, esta noche hay sorteo. Te hago la cuenta en un minuto, te ficho, y ya estás dentro del bombo. Si te toca, me invitas a algo.» 😄</div>
+    </div>
+
+  </div>
+
+  <div class="footer">Furancho Sessions · Manual interno del staff · No compartir fuera del equipo 🍷</div>
+
+  <script>
+    function showTab(id, btn) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-' + id).classList.add('active');
+      btn.classList.add('active');
+      window.scrollTo(0, 0);
+    }
+  </script>
+</body>
+</html>
