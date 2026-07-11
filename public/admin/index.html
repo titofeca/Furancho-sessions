@@ -2407,6 +2407,18 @@
         <button onclick="saveVibeTiers()" style="margin-top:14px; width:100%; background:var(--wine); color:#fff; border:none; border-radius:50px; padding:12px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">Guardar medidor</button>
       </div>
 
+      <!-- Horario de la terraza -->
+      <div class="card" style="margin-top:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <h2 style="font-family:'Playfair Display',serif; font-size:18px; font-weight:700; color:var(--text); margin:0;">🕐 Horario de la terraza</h2>
+          <span id="terraza-updated-pill" style="font-size:11px; color:var(--text-muted); font-weight:600;"></span>
+        </div>
+        <p style="font-size:11px; color:var(--text-muted); margin:0 0 14px;">Los clientes lo ven en su app al momento. También lo puede editar el staff desde su página (/staff), para que no dependa de ti.</p>
+        <div id="terraza-days-admin" style="display:flex; flex-direction:column; gap:8px;">Cargando...</div>
+        <input id="terraza-note-admin" type="text" maxlength="140" placeholder="Nota opcional (ej: Si llueve, cerramos)" style="margin-top:10px; width:100%; background:#fff; color:var(--text); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:11px 13px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+        <button onclick="saveTerrazaAdmin()" style="margin-top:12px; width:100%; background:var(--wine); color:#fff; border:none; border-radius:50px; padding:12px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">Guardar horario</button>
+      </div>
+
     </div>
 
     <!-- ==================== NFTs ==================== -->
@@ -6938,9 +6950,56 @@
     } catch (e) { showToast('Error: ' + e.message); }
   }
 
+  // ==================== HORARIO DE LA TERRAZA ====================
+  const TERRAZA_DAYS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+  async function loadTerrazaAdmin() {
+    try {
+      const cfg = await fetch('/api/admin/terraza-hours', { headers: authHeaders() }).then(r => r.json());
+      const wrap = document.getElementById('terraza-days-admin');
+      if (!wrap) return;
+      document.getElementById('terraza-note-admin').value = cfg.note || '';
+      const pill = document.getElementById('terraza-updated-pill');
+      if (pill) pill.textContent = cfg.updatedAt
+        ? `Última edición: ${cfg.updatedBy === 'staff' ? 'staff' : 'tú'} · ${new Date(cfg.updatedAt).toLocaleDateString('es-ES', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}`
+        : 'Sin configurar todavía';
+      wrap.innerHTML = cfg.days.map((d, i) => `
+        <div style="display:flex; align-items:center; gap:8px; background:#fff; border:1.5px solid rgba(42,21,9,0.1); border-radius:12px; padding:9px 11px;">
+          <input type="checkbox" class="tza-open" data-i="${i}" ${d.open ? 'checked' : ''} onchange="tzaToggleRow(${i}, this.checked)" style="width:20px; height:20px; accent-color:#8B1918; flex-shrink:0; cursor:pointer;" />
+          <span style="flex:1; font-size:13px; font-weight:700; color:var(--text);">${TERRAZA_DAYS[i]}</span>
+          <input type="time" class="tza-from" data-i="${i}" value="${d.from}" ${d.open ? '' : 'disabled'} style="width:92px; padding:7px 4px; font-size:13px; border:1px solid var(--border); border-radius:9px; background:var(--bg); color:var(--text); ${d.open ? '' : 'opacity:.4;'}" />
+          <span style="color:var(--text-muted); font-size:12px;">→</span>
+          <input type="time" class="tza-to" data-i="${i}" value="${d.to}" ${d.open ? '' : 'disabled'} style="width:92px; padding:7px 4px; font-size:13px; border:1px solid var(--border); border-radius:9px; background:var(--bg); color:var(--text); ${d.open ? '' : 'opacity:.4;'}" />
+        </div>`).join('');
+    } catch (_) {}
+  }
+  function tzaToggleRow(i, on) {
+    ['tza-from', 'tza-to'].forEach(cls => {
+      const el = document.querySelector(`.${cls}[data-i="${i}"]`);
+      if (el) { el.disabled = !on; el.style.opacity = on ? '1' : '.4'; }
+    });
+  }
+  async function saveTerrazaAdmin() {
+    const days = TERRAZA_DAYS.map((_, i) => ({
+      open: document.querySelector(`.tza-open[data-i="${i}"]`).checked,
+      from: document.querySelector(`.tza-from[data-i="${i}"]`).value,
+      to: document.querySelector(`.tza-to[data-i="${i}"]`).value
+    }));
+    try {
+      const r = await fetch('/api/admin/terraza-hours', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ days, note: document.getElementById('terraza-note-admin').value })
+      });
+      const data = await r.json();
+      if (!r.ok) return showToast(data.error || 'Error al guardar');
+      showToast('✅ Horario de la terraza guardado');
+      loadTerrazaAdmin();
+    } catch (e) { showToast('Error: ' + e.message); }
+  }
+
   // ==================== EVENTOS & VIP ====================
   async function loadEventsPage() {
-    await Promise.all([loadAgenda(), loadAnalytics(), loadEventsData(), loadCountdowns(), loadVibeAdmin()]);
+    await Promise.all([loadAgenda(), loadAnalytics(), loadEventsData(), loadCountdowns(), loadVibeAdmin(), loadTerrazaAdmin()]);
   }
 
   // ==================== AGENDA ====================

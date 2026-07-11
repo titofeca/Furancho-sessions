@@ -1605,6 +1605,29 @@ router.post('/countdowns/:id/logo', requireAuth, cdUpload.single('logo'), (req, 
   }
 });
 
+// ── HORARIO DE LA TERRAZA ────────────────────────────────────────────────────
+
+// GET /api/admin/terraza-hours (ADMIN ONLY)
+router.get('/terraza-hours', requireAuth, (req, res) => {
+  try {
+    res.json(require('../services/terraza').getTerrazaHours());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/terraza-hours (ADMIN ONLY)
+router.post('/terraza-hours', requireAuth, (req, res) => {
+  try {
+    const saved = require('../services/terraza').saveTerrazaHours(
+      { days: req.body.days, note: req.body.note }, 'admin'
+    );
+    res.json({ success: true, ...saved });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 // ── MEDIDOR DE AMBIENTE (FOMO) ───────────────────────────────────────────────
 
 // GET /api/admin/vibe-tiers (ADMIN ONLY) — config + estado en vivo (con cifra exacta)

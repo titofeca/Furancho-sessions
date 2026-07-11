@@ -1991,6 +1991,18 @@
         </div>
       </div>
 
+      <!-- Horario semanal de la terraza (lo editan admin/staff; solo sale si hay días configurados) -->
+      <div id="terraza-card" style="display:none; margin-bottom:20px; border-radius:20px; border:1.5px solid rgba(196,151,58,.45); background:linear-gradient(160deg, rgba(196,151,58,.10), rgba(255,255,255,.35));">
+        <div style="padding:18px 20px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:4px;">
+            <h3 style="font-family:'Playfair Display',serif; font-size:18px; font-weight:900; color:var(--wine); margin:0;">🍹 Horario da terraza</h3>
+            <span id="terraza-now-badge" style="display:none; font-size:10px; font-weight:800; letter-spacing:1px; color:#16a34a; background:rgba(74,222,128,.14); border:1px solid rgba(74,222,128,.35); border-radius:100px; padding:4px 10px; white-space:nowrap;">🟢 ABERTO AGORA</span>
+          </div>
+          <p id="terraza-note-view" style="display:none; font-size:11.5px; color:var(--text-muted); line-height:1.5; margin:0 0 10px;"></p>
+          <div id="terraza-week" style="display:flex; flex-direction:column; gap:5px; margin-top:8px;"></div>
+        </div>
+      </div>
+
       <div id="eclipse-card" style="display:none; margin-bottom:20px; border-radius:20px; border:1.5px solid rgba(42,21,9,.4); background:linear-gradient(160deg, #2a1509, #4a2a15);">
         <div style="padding:20px; text-align:center;">
           <!-- ⬇️ EMBLEMA ECLIPSE — PLACEHOLDER animado (luna cruzando el logo). -->
@@ -3335,6 +3347,7 @@
       initVacationCards();
       loadDynamicCountdowns();
       initVibe(); // medidor de ambiente en vivo
+      loadTerrazaHours(); // horario semanal de la terraza (admin/staff lo editan)
 
       // Hint
       const hint = document.getElementById('profile-progress-hint');
@@ -6244,6 +6257,42 @@
     loadUpcomingFuranchos(); // agenda real → una cuenta atrás por Furancho pendiente
     if (_vacationTimer) clearInterval(_vacationTimer);
     _vacationTimer = setInterval(renderVacationCards, 1000);
+  }
+
+  // ── HORARIO DE LA TERRAZA ─────────────────────────────────────────────────
+  // Semana editable por admin/staff. Solo se pinta si hay algún día abierto.
+  async function loadTerrazaHours() {
+    try {
+      const r = await fetch('/api/events/terraza-hours');
+      if (!r.ok) return;
+      const cfg = await r.json();
+      const card = document.getElementById('terraza-card');
+      if (!card || !cfg.days || !cfg.days.some(d => d.open)) return; // sin días → oculta
+      const DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+      const todayIdx = (new Date().getDay() + 6) % 7; // getDay(): 0=domingo → lunes=0
+      const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+      const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+      // ¿Abierta ahora? Rango de hoy (con cierre de madrugada) o el de ayer cruzando medianoche
+      const inRange = (d, sinceMidnight) => {
+        if (!d || !d.open) return false;
+        const f = toMin(d.from), t = toMin(d.to);
+        if (sinceMidnight) return t <= f && nowMin < t;      // tramo de ayer que sigue tras las 00:00
+        return t > f ? (nowMin >= f && nowMin < t) : nowMin >= f; // normal o abre hoy y cierra de madrugada
+      };
+      const openNow = inRange(cfg.days[todayIdx], false) || inRange(cfg.days[(todayIdx + 6) % 7], true);
+      const badge = document.getElementById('terraza-now-badge');
+      if (badge) badge.style.display = openNow ? 'inline-block' : 'none';
+      const noteEl = document.getElementById('terraza-note-view');
+      if (noteEl && cfg.note) { noteEl.textContent = cfg.note; noteEl.style.display = 'block'; }
+      document.getElementById('terraza-week').innerHTML = cfg.days.map((d, i) => {
+        const isToday = i === todayIdx;
+        return `<div style="display:flex; justify-content:space-between; align-items:center; padding:7px 12px; border-radius:10px; ${isToday ? 'background:rgba(139,25,24,.08); border:1.5px solid rgba(139,25,24,.25);' : 'background:rgba(255,255,255,.4);'}">
+          <span style="font-size:12.5px; font-weight:${isToday ? '800' : '600'}; color:${isToday ? 'var(--wine)' : 'var(--text)'};">${DAYS[i]}${isToday ? ' · hoy' : ''}</span>
+          <span style="font-size:12.5px; font-weight:${d.open ? '700' : '400'}; color:${d.open ? 'var(--wine)' : 'var(--text-muted)'};">${d.open ? `${d.from} – ${d.to}` : 'Cerrado'}</span>
+        </div>`;
+      }).join('');
+      card.style.display = 'block';
+    } catch (_) {}
   }
 
   // ── MEDIDOR DE AMBIENTE (FOMO en vivo) ────────────────────────────────────

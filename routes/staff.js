@@ -175,4 +175,29 @@ router.get('/campaign/leaderboard', requireStaff, (req, res) => {
   }
 });
 
+// ── HORARIO DE LA TERRAZA ────────────────────────────────────────────────────
+// Los camareros pueden ver y ACTUALIZAR el horario semanal desde su página, para
+// que no dependa del admin. Solo toca app_settings: aislado de fichajes/sorteos.
+
+// GET /api/staff/terraza-hours — horario actual (para el editor del camarero)
+router.get('/terraza-hours', requireStaff, (req, res) => {
+  try {
+    res.json(require('../services/terraza').getTerrazaHours());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/staff/terraza-hours — guardar horario editado por un camarero
+router.post('/terraza-hours', staffLimiter, requireStaff, (req, res) => {
+  try {
+    const saved = require('../services/terraza').saveTerrazaHours(
+      { days: req.body.days, note: req.body.note }, 'staff'
+    );
+    res.json({ success: true, ...saved });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 module.exports = router;

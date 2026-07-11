@@ -93,6 +93,21 @@
       <div class="rank-sub" id="camp-rank-sub"></div>
       <ol id="camp-rank-list"></ol>
     </div>
+
+    <!-- HORARIO DE LA TERRAZA (editable por el camarero) -->
+    <div class="card" id="terraza-card" style="display:none; margin-top:18px;">
+      <div onclick="toggleTerraza()" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none;">
+        <h2 style="font-size:17px; margin:0;">🕐 Horario de la terraza</h2>
+        <span id="terraza-chevron" style="font-size:15px; color:var(--text-muted);">▼</span>
+      </div>
+      <div id="terraza-body" style="display:none; margin-top:12px;">
+        <p class="lead" style="margin-bottom:12px; font-size:12.5px;">Lo que marques aquí lo ven los clientes en su app al momento. Marca los días abiertos y sus horas.</p>
+        <div id="terraza-days" style="display:flex; flex-direction:column; gap:8px;"></div>
+        <input id="terraza-note" type="text" maxlength="140" placeholder="Nota opcional (ej: Si llueve, cerramos)" style="margin-top:10px; font-size:13px; text-align:left; letter-spacing:0; padding:11px 13px;" />
+        <button class="primary" style="margin-top:12px; padding:13px; font-size:14px;" onclick="saveTerraza(this)">Guardar horario</button>
+        <div class="err" id="terraza-err"></div>
+      </div>
+    </div>
   </div>
 
   <!-- RESULT OVERLAY -->
@@ -155,13 +170,68 @@
       try { if (scanner) scanner.stop().catch(()=>{}); } catch(e){}
       scanner = null;
       document.getElementById('code-input').value = '';
+      document.getElementById('terraza-card').style.display = 'none';
       showGate();
+    }
+
+    // ── Horario de la terraza (editable por el camarero) ──
+    const TERRAZA_DAYS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+    function toggleTerraza(){
+      const body = document.getElementById('terraza-body');
+      const open = body.style.display !== 'none';
+      body.style.display = open ? 'none' : 'block';
+      document.getElementById('terraza-chevron').textContent = open ? '▼' : '▲';
+      if (!open) loadTerraza();
+    }
+    async function loadTerraza(){
+      try{
+        const r = await fetch('/api/staff/terraza-hours', { headers:{ 'x-staff-code': localStorage.getItem(STAFF_KEY) || '' } });
+        if (!r.ok) return;
+        const cfg = await r.json();
+        document.getElementById('terraza-note').value = cfg.note || '';
+        document.getElementById('terraza-days').innerHTML = cfg.days.map((d, i) => `
+          <div style="display:flex; align-items:center; gap:8px; background:#fff; border:1.5px solid rgba(42,21,9,0.1); border-radius:12px; padding:9px 11px;">
+            <input type="checkbox" class="tz-open" data-i="${i}" ${d.open ? 'checked' : ''} onchange="tzToggleRow(${i}, this.checked)" style="width:20px; height:20px; accent-color:var(--wine); flex-shrink:0; padding:0;" />
+            <span style="flex:1; font-size:13px; font-weight:700; color:var(--text);">${TERRAZA_DAYS[i]}</span>
+            <input type="time" class="tz-from" data-i="${i}" value="${d.from}" ${d.open ? '' : 'disabled'} style="width:88px; padding:7px 4px; font-size:13px; letter-spacing:0; border-radius:9px; ${d.open ? '' : 'opacity:.4;'}" />
+            <span style="color:var(--text-muted); font-size:12px;">→</span>
+            <input type="time" class="tz-to" data-i="${i}" value="${d.to}" ${d.open ? '' : 'disabled'} style="width:88px; padding:7px 4px; font-size:13px; letter-spacing:0; border-radius:9px; ${d.open ? '' : 'opacity:.4;'}" />
+          </div>`).join('');
+      }catch(e){}
+    }
+    function tzToggleRow(i, on){
+      document.querySelector(`.tz-from[data-i="${i}"]`).disabled = !on;
+      document.querySelector(`.tz-to[data-i="${i}"]`).disabled = !on;
+      document.querySelector(`.tz-from[data-i="${i}"]`).style.opacity = on ? '1' : '.4';
+      document.querySelector(`.tz-to[data-i="${i}"]`).style.opacity = on ? '1' : '.4';
+    }
+    async function saveTerraza(btn){
+      const err = document.getElementById('terraza-err');
+      err.textContent = ''; err.style.color = '';
+      const days = TERRAZA_DAYS.map((_, i) => ({
+        open: document.querySelector(`.tz-open[data-i="${i}"]`).checked,
+        from: document.querySelector(`.tz-from[data-i="${i}"]`).value,
+        to: document.querySelector(`.tz-to[data-i="${i}"]`).value
+      }));
+      btn.disabled = true; btn.textContent = 'Guardando…';
+      try{
+        const r = await fetch('/api/staff/terraza-hours', {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json', 'x-staff-code': localStorage.getItem(STAFF_KEY) || '' },
+          body: JSON.stringify({ days, note: document.getElementById('terraza-note').value })
+        });
+        const d = await r.json().catch(()=>({}));
+        if (r.ok){ err.style.color = 'var(--green)'; err.textContent = '✅ Guardado — los clientes ya lo ven'; }
+        else err.textContent = d.error || 'No se pudo guardar';
+      }catch(e){ err.textContent = 'Error de red, inténtalo otra vez'; }
+      btn.disabled = false; btn.textContent = 'Guardar horario';
     }
 
     async function startScanner(){
       document.getElementById('gate').style.display = 'none';
       document.getElementById('scanner').style.display = 'block';
       document.getElementById('result').style.display = 'none';
+      document.getElementById('terraza-card').style.display = 'block'; // editor de horario (plegado)
       const status = document.getElementById('scan-status');
       status.textContent = 'Abriendo cámara…';
       try{

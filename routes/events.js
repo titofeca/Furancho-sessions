@@ -42,6 +42,16 @@ router.get('/vibe', (req, res) => {
   }
 });
 
+// GET /api/events/terraza-hours — horario semanal de la terraza (público)
+router.get('/terraza-hours', (req, res) => {
+  try {
+    const { days, note } = require('../services/terraza').getTerrazaHours();
+    res.json({ days, note }); // sin updatedBy/updatedAt: eso es cocina interna
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /api/events/rsvp — apuntarse o desapuntarse a un evento
 router.post('/rsvp', rsvpLimiter, (req, res) => {
   const { eventId, walletAddress, allergens } = req.body;
