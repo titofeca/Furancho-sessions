@@ -1231,26 +1231,31 @@
       </div>
 
 
-      <!-- Actividad reciente -->
+      <!-- Actividad reciente (plegable) -->
       <div class="glass-card">
-        <div class="card-header">
+        <div onclick="toggleSection('recent-activity-section', 'recent-activity-chevron')" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none;">
           <span class="card-title">Actividad reciente</span>
-          <button class="filter-btn" onclick="loadStats()">↻ Actualizar</button>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="filter-btn" onclick="loadStats(); event.stopPropagation();" style="font-size:11px;">↻ Actualizar</button>
+            <span id="recent-activity-chevron" style="font-size:16px; color:var(--text-muted); transition:transform 0.2s;">▼</span>
+          </div>
         </div>
-        <div style="overflow-x: auto;">
-          <table>
-            <thead>
-              <tr>
-                <th>Email</th>
-                <th>Nivel</th>
-                <th>Fecha</th>
-                <th>Estado</th>
-              </tr>
-            </thead>
-            <tbody id="recent-tbody">
-              <tr><td colspan="4"><div class="empty-state"><div class="loading-dots"><span></span><span></span><span></span></div></div></td></tr>
-            </tbody>
-          </table>
+        <div id="recent-activity-section" style="display:none; margin-top:14px;">
+          <div style="overflow-x: auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Nivel</th>
+                  <th>Fecha</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="recent-tbody">
+                <tr><td colspan="4"><div class="empty-state"><div class="loading-dots"><span></span><span></span><span></span></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
