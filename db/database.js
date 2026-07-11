@@ -562,6 +562,23 @@ try {
     hidden_at TEXT DEFAULT (datetime('now'))
   )`);
 } catch (_) {}
+// Cuentas regresivas dinámicas (admin crea/edita/borra; cliente las ve en la home).
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS countdowns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    subtitle TEXT,
+    emoji TEXT DEFAULT '⏳',
+    target_date TEXT NOT NULL,
+    logo_path TEXT,
+    theme TEXT DEFAULT 'light',
+    end_message TEXT,
+    hide_after_end INTEGER DEFAULT 1,
+    active INTEGER DEFAULT 1,
+    sort_order INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`);
+} catch (_) {}
 // Número de serie del mint dentro de su nivel (1 = primero en alcanzar ese nivel)
 try { db.exec(`ALTER TABLE mints ADD COLUMN mint_serial INTEGER`); } catch (_) {}
 try { db.exec(`ALTER TABLE mints ADD COLUMN mint_cost_matic REAL`); } catch (_) {}
@@ -1456,6 +1473,42 @@ function getEventFinancesSummary() {
       marginPct: totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : null
     }
   };
+}
+
+// ── CUENTAS REGRESIVAS ────────────────────────────────────────────────────────
+function getActiveCountdowns() {
+  return db.prepare(`SELECT * FROM countdowns WHERE active = 1 ORDER BY sort_order ASC, target_date ASC`).all();
+}
+function getAllCountdowns() {
+  return db.prepare(`SELECT * FROM countdowns ORDER BY sort_order ASC, target_date ASC`).all();
+}
+function getCountdown(id) {
+  return db.prepare(`SELECT * FROM countdowns WHERE id = ?`).get(id) || null;
+}
+function createCountdown({ title, subtitle, emoji, target_date, logo_path, theme, end_message, hide_after_end, sort_order }) {
+  const r = db.prepare(`INSERT INTO countdowns (title, subtitle, emoji, target_date, logo_path, theme, end_message, hide_after_end, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+    title, subtitle || null, emoji || '⏳', target_date, logo_path || null,
+    theme || 'light', end_message || null, hide_after_end != null ? (hide_after_end ? 1 : 0) : 1,
+    sort_order || 0
+  );
+  return r.lastInsertRowid;
+}
+function updateCountdown(id, fields) {
+  const allowed = ['title','subtitle','emoji','target_date','logo_path','theme','end_message','hide_after_end','active','sort_order'];
+  const sets = []; const vals = [];
+  for (const k of allowed) {
+    if (fields[k] !== undefined) {
+      sets.push(`${k} = ?`);
+      vals.push(k === 'hide_after_end' || k === 'active' ? (fields[k] ? 1 : 0) : fields[k]);
+    }
+  }
+  if (!sets.length) return;
+  vals.push(id);
+  db.prepare(`UPDATE countdowns SET ${sets.join(', ')} WHERE id = ?`).run(...vals);
+}
+function deleteCountdown(id) {
+  db.prepare(`DELETE FROM countdowns WHERE id = ?`).run(id);
 }
 
 // Textos canónicos de cada evento — editables desde el admin, pero estos son el fallback si la BD se reinicia.
@@ -2550,7 +2603,13 @@ module.exports = {
   insertScheduledMessage,
   updateScheduledMessage,
   deleteScheduledMessage,
-  getEventRecap
+  getEventRecap,
+  getActiveCountdowns,
+  getAllCountdowns,
+  getCountdown,
+  createCountdown,
+  updateCountdown,
+  deleteCountdown
 };
 
 function getEventRecap(eventDate) {

@@ -1944,6 +1944,9 @@
         .cd-lbl{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);margin-top:3px}
       </style>
 
+      <!-- Cuentas regresivas dinámicas (admin las crea/edita/borra) -->
+      <div id="dynamic-countdowns"></div>
+
       <div id="vacation-card" style="display:none; margin-bottom:20px; border-radius:20px; border:1.5px solid rgba(196,151,58,.45); background:linear-gradient(160deg, rgba(196,151,58,.12), rgba(139,25,24,.06));">
         <div style="padding:20px;">
           <!-- Estado A: cuenta atrás al último Furancho -->
@@ -1963,8 +1966,8 @@
           <!-- Estado B: modo vacaciones (a partir del 31 de julio) -->
           <div id="vacation-mode-state" style="display:none; text-align:center;">
             <span style="font-size:30px;">🏖️</span>
-            <h3 style="font-family:'Playfair Display',serif; font-size:19px; font-weight:900; color:var(--wine); margin:6px 0 4px;">Estamos de vacaciones, ho</h3>
-            <p style="font-size:12.5px; color:var(--text-muted); line-height:1.55; margin:0;">El Furancho descansa este verano. <strong>Volvemos en septiembre con ideas nuevas</strong> y muchas ganas. ¡Cuidaos! 🍷</p>
+            <h3 style="font-family:'Playfair Display',serif; font-size:19px; font-weight:900; color:var(--wine); margin:6px 0 4px;">¡Gracias por estas 9 sesiones, ho!</h3>
+            <p style="font-size:12.5px; color:var(--text-muted); line-height:1.55; margin:0;">Gracias por venir y darnos la oportunidad de compartir noches de viño, tapas y boa xente. Fueron 9 sesiones que no olvidaremos. <strong>En septiembre volvemos con ideas nuevas</strong> y muchas ganas. ¡Cuidaos este verano! 🍷</p>
           </div>
 
           <!-- Común (ambos estados): venir a la terraza da estatus -->
@@ -3317,6 +3320,7 @@
 
       // Tarjetas de vacaciones + eclipse (cuentas atrás visuales, cambian por fecha).
       initVacationCards();
+      loadDynamicCountdowns();
 
       // Hint
       const hint = document.getElementById('profile-progress-hint');
@@ -6140,23 +6144,14 @@
       }
     }
 
-    // Tarjeta eclipse: cuenta atrás → "está pasando" (2h) → oculta
+    // Tarjeta eclipse: cuenta atrás → desaparece completamente al llegar la hora
     const ec = document.getElementById('eclipse-card');
     if (ec) {
-      if (now > ecl + 2 * 3600 * 1000) {
+      if (now >= ecl) {
         ec.style.display = 'none';
       } else {
         ec.style.display = 'block';
-        const cd = document.getElementById('eclipse-countdown');
-        const live = document.getElementById('eclipse-live');
-        if (now >= ecl) {
-          if (cd) cd.style.display = 'none';
-          if (live) live.style.display = 'block';
-        } else {
-          if (cd) cd.style.display = 'flex';
-          if (live) live.style.display = 'none';
-          _setCd('ecl', _cdParts(ecl - now));
-        }
+        _setCd('ecl', _cdParts(ecl - now));
       }
     }
   }
@@ -6165,6 +6160,67 @@
     renderVacationCards();
     if (_vacationTimer) clearInterval(_vacationTimer);
     _vacationTimer = setInterval(renderVacationCards, 1000);
+  }
+
+  // ── CUENTAS REGRESIVAS DINÁMICAS ──────────────────────────────────────────
+  let _dynCountdowns = [];
+  let _dynTimer = null;
+
+  async function loadDynamicCountdowns() {
+    try {
+      const r = await fetch('/api/admin/countdowns-public');
+      if (!r.ok) return;
+      _dynCountdowns = await r.json();
+      renderDynamicCountdowns();
+      if (_dynTimer) clearInterval(_dynTimer);
+      if (_dynCountdowns.length) _dynTimer = setInterval(renderDynamicCountdowns, 1000);
+    } catch (_) {}
+  }
+
+  function renderDynamicCountdowns() {
+    const wrap = document.getElementById('dynamic-countdowns');
+    if (!wrap) return;
+    const now = Date.now();
+    let html = '';
+    for (const cd of _dynCountdowns) {
+      const target = new Date(cd.targetDate).getTime();
+      const ended = now >= target;
+      if (ended && cd.hideAfterEnd && !cd.endMessage) continue;
+      const isDark = cd.theme === 'dark';
+      const border = isDark ? 'rgba(42,21,9,.4)' : 'rgba(196,151,58,.45)';
+      const bg = isDark ? 'linear-gradient(160deg, #2a1509, #4a2a15)' : 'linear-gradient(160deg, rgba(196,151,58,.12), rgba(139,25,24,.06))';
+      const titleColor = isDark ? '#f5e6c8' : 'var(--wine)';
+      const subColor = isDark ? 'rgba(245,230,200,.72)' : 'var(--text-muted)';
+      const boxBg = isDark ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.6)';
+      const boxBorder = isDark ? 'rgba(245,230,200,.2)' : 'rgba(139,25,24,.15)';
+      const numColor = isDark ? '#f5e6c8' : 'var(--wine)';
+      const lblColor = isDark ? 'rgba(245,230,200,.6)' : 'var(--text-muted)';
+
+      html += `<div style="display:block; margin-bottom:20px; border-radius:20px; border:1.5px solid ${border}; background:${bg};">`;
+      html += `<div style="padding:20px; text-align:center;">`;
+      if (cd.logoPath) {
+        html += `<div style="display:flex; justify-content:center; margin-bottom:12px;">`;
+        html += `<img src="/prize-images/${cd.logoPath}" style="width:80px; height:80px; object-fit:contain; border-radius:14px;" alt="" />`;
+        html += `</div>`;
+      }
+      html += `<span style="font-size:26px;">${cd.emoji || '⏳'}</span>`;
+      html += `<h3 style="font-family:'Playfair Display',serif; font-size:19px; font-weight:900; color:${titleColor}; margin:4px 0 2px;">${cd.title}</h3>`;
+      if (cd.subtitle) html += `<p style="font-size:12px; color:${subColor}; line-height:1.5; margin:0 0 14px;">${cd.subtitle}</p>`;
+
+      if (ended) {
+        if (cd.endMessage) {
+          html += `<p style="font-size:13px; font-weight:700; color:${titleColor}; margin:10px 0 0;">${cd.endMessage}</p>`;
+        }
+      } else {
+        const p = _cdParts(target - now);
+        html += `<div style="display:flex; gap:8px; justify-content:center; margin-top:10px;">`;
+        const box = (v, l) => `<div class="cd-box" style="background:${boxBg}; border-color:${boxBorder};"><div class="cd-num" style="color:${numColor};">${String(v).padStart(2,'0')}</div><div class="cd-lbl" style="color:${lblColor};">${l}</div></div>`;
+        html += box(p.d, 'Días') + box(p.h, 'Horas') + box(p.m, 'Min') + box(p.s, 'Seg');
+        html += `</div>`;
+      }
+      html += `</div></div>`;
+    }
+    wrap.innerHTML = html;
   }
 
   function openPrizesModal() {

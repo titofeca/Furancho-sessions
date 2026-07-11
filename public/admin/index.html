@@ -2377,6 +2377,16 @@
         <div id="vip-content" style="color:var(--text-muted); font-size:13px;">Cargando...</div>
       </div>
 
+      <!-- Cuentas regresivas -->
+      <div class="card" style="margin-top:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <h2 style="font-family:'Playfair Display',serif; font-size:18px; font-weight:700; color:var(--text); margin:0;">⏳ Cuentas regresivas</h2>
+          <button onclick="openCountdownModal(null)" style="background:var(--wine); color:#fff; border:none; border-radius:50px; padding:8px 16px; font-size:12px; font-weight:700; cursor:pointer;">+ Nueva</button>
+        </div>
+        <p style="font-size:11px; color:var(--text-muted); margin:0 0 14px;">Las cuentas regresivas activas aparecen en la home de los clientes. Puedes añadir logo, mensaje al terminar y elegir si desaparece o queda visible.</p>
+        <div id="countdowns-list" style="display:flex; flex-direction:column; gap:10px;">Cargando...</div>
+      </div>
+
     </div>
 
     <!-- ==================== NFTs ==================== -->
@@ -2668,6 +2678,72 @@
     <div style="display:flex; gap:10px; padding:14px 22px 32px; flex-shrink:0; border-top:1px solid rgba(42,21,9,0.1);">
       <button id="event-delete-btn" onclick="deleteEventFromModal()" style="display:none; background:rgba(220,50,50,0.08); color:#cc3333; border:1.5px solid rgba(220,50,50,0.2); border-radius:12px; padding:14px 18px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; white-space:nowrap;">🗑 Ocultar</button>
       <button onclick="saveEvent()" style="flex:1; background:#8B1918; color:#fff; border:none; border-radius:12px; padding:16px; font-size:15px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Crear / Editar Cuenta Regresiva -->
+<div id="countdown-modal" onclick="if(event.target===this)closeCountdownModal()" style="display:none; position:fixed; inset:0; background:rgba(28,14,6,0.82); z-index:10000; align-items:flex-end; justify-content:center;">
+  <div style="background:#F2EDE3; border-radius:24px 24px 0 0; width:100%; max-width:520px; box-shadow:0 -8px 48px rgba(0,0,0,0.4); display:flex; flex-direction:column; max-height:92vh;">
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:22px 22px 16px; border-bottom:1px solid rgba(42,21,9,0.1); flex-shrink:0;">
+      <h2 id="countdown-modal-title" style="font-family:'Playfair Display',serif; font-size:20px; font-weight:700; color:#2A1509; margin:0;">Nueva cuenta regresiva</h2>
+      <button onclick="closeCountdownModal()" style="background:rgba(42,21,9,0.08); border:none; color:#7A6A5A; font-size:20px; cursor:pointer; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center;">×</button>
+    </div>
+    <div style="overflow-y:auto; padding:20px 22px; flex:1; display:flex; flex-direction:column; gap:16px;">
+      <input type="hidden" id="cd-id" />
+      <div>
+        <label style="font-size:11px; color:#8B1918; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; display:block; margin-bottom:8px;">Título</label>
+        <input id="cd-title" type="text" placeholder="Ej: Eclipse total sobre A Coruña" style="width:100%; background:#fff; color:#2A1509; border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; padding:13px 14px; font-size:16px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+      </div>
+      <div>
+        <label style="font-size:11px; color:#8B1918; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; display:block; margin-bottom:8px;">Subtítulo (opcional)</label>
+        <input id="cd-subtitle" type="text" placeholder="Ej: Un espectáculo único desde la terraza" style="width:100%; background:#fff; color:#2A1509; border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; padding:13px 14px; font-size:15px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+      </div>
+      <div style="display:flex; gap:12px;">
+        <div style="flex:1;">
+          <label style="font-size:11px; color:#8B1918; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; display:block; margin-bottom:8px;">Emoji</label>
+          <input id="cd-emoji" type="text" value="⏳" maxlength="4" style="width:100%; background:#fff; color:#2A1509; border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; padding:13px 14px; font-size:22px; font-family:'Outfit',sans-serif; box-sizing:border-box; text-align:center;" />
+        </div>
+        <div style="flex:2;">
+          <label style="font-size:11px; color:#8B1918; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; display:block; margin-bottom:8px;">Estilo</label>
+          <select id="cd-theme" style="width:100%; background:#fff; color:#2A1509; border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; padding:13px 14px; font-size:15px; font-family:'Outfit',sans-serif; box-sizing:border-box;">
+            <option value="light">☀️ Claro (dorado)</option>
+            <option value="dark">🌙 Oscuro (madera)</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:11px; color:#8B1918; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; display:block; margin-bottom:8px;">Fecha y hora objetivo</label>
+        <input id="cd-target" type="datetime-local" style="width:100%; background:#fff; color:#2A1509; border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; padding:13px 14px; font-size:16px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+      </div>
+      <div>
+        <label style="font-size:11px; color:#8B1918; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; display:block; margin-bottom:8px;">Mensaje al terminar (opcional)</label>
+        <input id="cd-end-message" type="text" placeholder="Ej: ¡Gracias por venir!" style="width:100%; background:#fff; color:#2A1509; border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; padding:13px 14px; font-size:15px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+        <p style="font-size:11px; color:#7A6A5A; margin:6px 0 0;">Si no pones mensaje, la tarjeta desaparece al llegar la fecha.</p>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between; background:#fff; border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; padding:14px 16px;">
+        <div>
+          <p style="font-size:14px; color:#2A1509; font-weight:600; margin:0 0 2px;">Ocultar al terminar</p>
+          <p style="font-size:12px; color:#7A6A5A; margin:0;">Si hay mensaje, se muestra y luego desaparece. Si no, se oculta directamente.</p>
+        </div>
+        <input id="cd-hide-after" type="checkbox" checked style="width:22px; height:22px; cursor:pointer; accent-color:#8B1918; flex-shrink:0;" />
+      </div>
+      <!-- Logo -->
+      <div>
+        <label style="font-size:11px; color:#8B1918; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; display:block; margin-bottom:8px;">Logo (opcional, JPG/PNG)</label>
+        <div id="cd-logo-preview" style="display:none; margin-bottom:10px; text-align:center;">
+          <img id="cd-logo-img" src="" style="max-width:80px; max-height:80px; border-radius:14px; object-fit:contain;" />
+        </div>
+        <input id="cd-logo-file" type="file" accept="image/jpeg,image/png" style="font-size:13px; font-family:'Outfit',sans-serif;" />
+      </div>
+      <div>
+        <label style="font-size:11px; color:#8B1918; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; display:block; margin-bottom:8px;">Orden (menor = primero)</label>
+        <input id="cd-sort" type="number" value="0" min="0" style="width:100%; background:#fff; color:#2A1509; border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; padding:13px 14px; font-size:16px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+      </div>
+    </div>
+    <div style="padding:16px 22px; border-top:1px solid rgba(42,21,9,0.1); flex-shrink:0; display:flex; gap:10px;">
+      <button onclick="saveCountdown()" style="flex:1; background:var(--wine); color:#fff; border:none; border-radius:50px; padding:14px; font-size:14px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">Guardar</button>
+      <button onclick="closeCountdownModal()" style="background:rgba(42,21,9,0.08); color:#7A6A5A; border:none; border-radius:50px; padding:14px 20px; font-size:14px; cursor:pointer; font-family:'Outfit',sans-serif;">Cancelar</button>
     </div>
   </div>
 </div>
@@ -6660,9 +6736,135 @@
     } catch(_) {}
   }
 
+  // ==================== CUENTAS REGRESIVAS ====================
+  async function loadCountdowns() {
+    try {
+      const rows = await fetch('/api/admin/countdowns', { headers: authHeaders() }).then(r => r.json());
+      const list = document.getElementById('countdowns-list');
+      if (!list) return;
+      if (!rows.length) { list.innerHTML = '<p style="font-size:13px; color:var(--text-muted);">No hay cuentas regresivas. Crea una para que aparezca en la home de los clientes.</p>'; return; }
+      list.innerHTML = rows.map(cd => {
+        const d = new Date(cd.target_date);
+        const dateStr = d.toLocaleDateString('es-ES', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+        const ended = Date.now() >= d.getTime();
+        const statusBadge = !cd.active
+          ? '<span style="background:rgba(122,106,90,.15); color:#7A6A5A; font-size:10px; font-weight:700; padding:2px 8px; border-radius:100px;">Inactiva</span>'
+          : ended
+            ? '<span style="background:rgba(139,25,24,.1); color:var(--wine); font-size:10px; font-weight:700; padding:2px 8px; border-radius:100px;">Finalizada</span>'
+            : '<span style="background:rgba(74,222,128,.15); color:#16a34a; font-size:10px; font-weight:700; padding:2px 8px; border-radius:100px;">Activa</span>';
+        const logoThumb = cd.logo_path ? `<img src="/prize-images/${cd.logo_path}" style="width:36px; height:36px; border-radius:8px; object-fit:contain; flex-shrink:0;" />` : '';
+        return `<div style="display:flex; align-items:center; gap:12px; background:#fff; border:1.5px solid rgba(42,21,9,0.1); border-radius:14px; padding:12px 14px;">
+          ${logoThumb}
+          <div style="flex:1; min-width:0;">
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <span style="font-size:18px;">${cd.emoji || '⏳'}</span>
+              <span style="font-size:14px; font-weight:700; color:var(--text);">${cd.title}</span>
+              ${statusBadge}
+            </div>
+            <p style="font-size:11px; color:var(--text-muted); margin:2px 0 0;">${dateStr}${cd.theme === 'dark' ? ' · 🌙 oscuro' : ''}</p>
+          </div>
+          <div style="display:flex; gap:6px; flex-shrink:0;">
+            <button onclick="openCountdownModal(${cd.id})" style="background:rgba(42,21,9,0.06); border:none; border-radius:8px; padding:8px 10px; font-size:12px; cursor:pointer; color:var(--wine); font-weight:600;">✏️</button>
+            <button onclick="deleteCountdown(${cd.id})" style="background:rgba(139,25,24,0.08); border:none; border-radius:8px; padding:8px 10px; font-size:12px; cursor:pointer; color:var(--wine); font-weight:600;">🗑️</button>
+          </div>
+        </div>`;
+      }).join('');
+    } catch (_) {}
+  }
+
+  let _cdData = {};
+  async function openCountdownModal(id) {
+    document.getElementById('cd-id').value = id || '';
+    document.getElementById('cd-title').value = '';
+    document.getElementById('cd-subtitle').value = '';
+    document.getElementById('cd-emoji').value = '⏳';
+    document.getElementById('cd-theme').value = 'light';
+    document.getElementById('cd-target').value = '';
+    document.getElementById('cd-end-message').value = '';
+    document.getElementById('cd-hide-after').checked = true;
+    document.getElementById('cd-sort').value = '0';
+    document.getElementById('cd-logo-preview').style.display = 'none';
+    document.getElementById('cd-logo-file').value = '';
+    document.getElementById('countdown-modal-title').textContent = id ? 'Editar cuenta regresiva' : 'Nueva cuenta regresiva';
+    _cdData = {};
+    if (id) {
+      try {
+        const rows = await fetch('/api/admin/countdowns', { headers: authHeaders() }).then(r => r.json());
+        const cd = rows.find(r => r.id === id);
+        if (cd) {
+          _cdData = cd;
+          document.getElementById('cd-title').value = cd.title || '';
+          document.getElementById('cd-subtitle').value = cd.subtitle || '';
+          document.getElementById('cd-emoji').value = cd.emoji || '⏳';
+          document.getElementById('cd-theme').value = cd.theme || 'light';
+          const dt = new Date(cd.target_date);
+          const local = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().slice(0,16);
+          document.getElementById('cd-target').value = local;
+          document.getElementById('cd-end-message').value = cd.end_message || '';
+          document.getElementById('cd-hide-after').checked = !!cd.hide_after_end;
+          document.getElementById('cd-sort').value = cd.sort_order || 0;
+          if (cd.logo_path) {
+            document.getElementById('cd-logo-img').src = '/prize-images/' + cd.logo_path;
+            document.getElementById('cd-logo-preview').style.display = 'block';
+          }
+        }
+      } catch (_) {}
+    }
+    document.getElementById('countdown-modal').style.display = 'flex';
+  }
+
+  function closeCountdownModal() {
+    document.getElementById('countdown-modal').style.display = 'none';
+  }
+
+  async function saveCountdown() {
+    const id = document.getElementById('cd-id').value;
+    const title = document.getElementById('cd-title').value.trim();
+    const target = document.getElementById('cd-target').value;
+    if (!title || !target) return showToast('Título y fecha son obligatorios');
+    const targetDate = new Date(target);
+    const isoWithTz = targetDate.toISOString();
+    const body = {
+      title,
+      subtitle: document.getElementById('cd-subtitle').value.trim() || null,
+      emoji: document.getElementById('cd-emoji').value.trim() || '⏳',
+      target_date: isoWithTz,
+      theme: document.getElementById('cd-theme').value,
+      end_message: document.getElementById('cd-end-message').value.trim() || null,
+      hide_after_end: document.getElementById('cd-hide-after').checked,
+      sort_order: parseInt(document.getElementById('cd-sort').value) || 0,
+      active: _cdData.active !== undefined ? !!_cdData.active : true
+    };
+    if (id) body.id = parseInt(id);
+    try {
+      const r = await fetch('/api/admin/countdowns', { method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await r.json();
+      if (!r.ok) return showToast(data.error || 'Error');
+      const savedId = data.id || parseInt(id);
+      const logoFile = document.getElementById('cd-logo-file').files[0];
+      if (logoFile) {
+        const fd = new FormData();
+        fd.append('logo', logoFile);
+        await fetch(`/api/admin/countdowns/${savedId}/logo`, { method: 'POST', headers: { 'x-admin-token': adminToken }, body: fd });
+      }
+      showToast('✅ Cuenta regresiva guardada');
+      closeCountdownModal();
+      loadCountdowns();
+    } catch (e) { showToast('Error: ' + e.message); }
+  }
+
+  async function deleteCountdown(id) {
+    if (!confirm('¿Eliminar esta cuenta regresiva?')) return;
+    try {
+      await fetch(`/api/admin/countdowns/${id}`, { method: 'DELETE', headers: authHeaders() });
+      showToast('✅ Eliminada');
+      loadCountdowns();
+    } catch (_) {}
+  }
+
   // ==================== EVENTOS & VIP ====================
   async function loadEventsPage() {
-    await Promise.all([loadAgenda(), loadAnalytics(), loadEventsData()]);
+    await Promise.all([loadAgenda(), loadAnalytics(), loadEventsData(), loadCountdowns()]);
   }
 
   // ==================== AGENDA ====================

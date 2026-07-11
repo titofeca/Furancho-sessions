@@ -27,9 +27,27 @@ const {
   upsertPartnerEstablishment,
   deletePartnerEstablishment
 } = require('../db/database');
+const multer = require('multer');
 const { DEMO_MODE } = require('../services/polygon');
 const { sendPushToAll, sendPushToWallet, sendPushToWallets } = require('../services/push');
 const metrics = require('../services/metrics');
+const { UPLOADS_DIR } = require('../db/database');
+const cdUploadsDir = UPLOADS_DIR;
+const cdStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, cdUploadsDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
+    cb(null, `countdown_${Date.now()}${ext}`);
+  }
+});
+const cdUpload = multer({
+  storage: cdStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (/image\/(jpeg|jpg|png)/.test(file.mimetype)) cb(null, true);
+    else cb(new Error('Solo JPG o PNG'));
+  }
+});
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'furancho2024';
 // ⚠️  IMPORTANTE: TOKEN_SECRET debe estar en Railway como variable de entorno.
@@ -1517,6 +1535,88 @@ router.delete('/scheduled-messages/:id', requireAuth, (req, res) => {
   try {
     const { deleteScheduledMessage } = require('../db/database');
     deleteScheduledMessage(id);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── CUENTAS REGRESIVAS ────────────────────────────────────────────────────────
+
+// GET /api/admin/countdowns — público: clientes ven las activas
+router.get('/countdowns-public', (req, res) => {
+  try {
+    const { getActiveCountdowns } = require('../db/database');
+    const rows = getActiveCountdowns();
+    res.json(rows.map(r => ({
+      id: r.id, title: r.title, subtitle: r.subtitle, emoji: r.emoji,
+      targetDate: r.target_date, logoPath: r.logo_path, theme: r.theme,
+      endMessage: r.end_message, hideAfterEnd: !!r.hide_after_end, sortOrder: r.sort_order
+    })));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/countdowns (ADMIN ONLY) — todas, incluidas inactivas
+router.get('/countdowns', requireAuth, (req, res) => {
+  try {
+    const { getAllCountdowns } = require('../db/database');
+    res.json(getAllCountdowns());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/countdowns (ADMIN ONLY) — crear o actualizar
+router.post('/countdowns', requireAuth, (req, res) => {
+  const { id, title, subtitle, emoji, target_date, theme, end_message, hide_after_end, active, sort_order } = req.body;
+  if (!title || !target_date) return res.status(400).json({ error: 'Título y fecha objetivo son obligatorios' });
+  try {
+    const { createCountdown: create, updateCountdown: update } = require('../db/database');
+    if (id) {
+      update(parseInt(id), { title, subtitle, emoji, target_date, theme, end_message, hide_after_end, active, sort_order });
+      res.json({ success: true, id: parseInt(id) });
+    } else {
+      const newId = create({ title, subtitle, emoji, target_date, theme, end_message, hide_after_end, sort_order });
+      res.json({ success: true, id: newId });
+    }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/countdowns/:id/logo (ADMIN ONLY) — subir logo
+router.post('/countdowns/:id/logo', requireAuth, cdUpload.single('logo'), (req, res) => {
+  const cdId = parseInt(req.params.id);
+  if (isNaN(cdId)) return res.status(400).json({ error: 'ID inválido' });
+  if (!req.file) return res.status(400).json({ error: 'No se recibió imagen' });
+  try {
+    const { updateCountdown: update, getCountdown: get } = require('../db/database');
+    const old = get(cdId);
+    if (old && old.logo_path) {
+      const oldFull = path.join(cdUploadsDir, old.logo_path);
+      if (fs.existsSync(oldFull)) try { fs.unlinkSync(oldFull); } catch (_) {}
+    }
+    update(cdId, { logo_path: req.file.filename });
+    res.json({ success: true, logoPath: req.file.filename });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /api/admin/countdowns/:id (ADMIN ONLY)
+router.delete('/countdowns/:id', requireAuth, (req, res) => {
+  const cdId = parseInt(req.params.id);
+  if (isNaN(cdId)) return res.status(400).json({ error: 'ID inválido' });
+  try {
+    const { deleteCountdown: del, getCountdown: get } = require('../db/database');
+    const old = get(cdId);
+    if (old && old.logo_path) {
+      const oldFull = path.join(cdUploadsDir, old.logo_path);
+      if (fs.existsSync(oldFull)) try { fs.unlinkSync(oldFull); } catch (_) {}
+    }
+    del(cdId);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
