@@ -32,6 +32,16 @@ router.get('/', (req, res) => {
   }
 });
 
+// GET /api/events/vibe — medidor de ambiente en vivo (público). Solo devuelve el
+// TRAMO (emoji/título/texto), nunca la cifra exacta de personas dentro.
+router.get('/vibe', (req, res) => {
+  try {
+    res.json(require('../services/vibe').getVibeNow());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /api/events/rsvp — apuntarse o desapuntarse a un evento
 router.post('/rsvp', rsvpLimiter, (req, res) => {
   const { eventId, walletAddress, allergens } = req.body;

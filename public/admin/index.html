@@ -2392,6 +2392,21 @@
         <div id="countdowns-list" style="display:flex; flex-direction:column; gap:10px;">Cargando...</div>
       </div>
 
+      <!-- Medidor de ambiente (FOMO) -->
+      <div class="card" style="margin-top:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <h2 style="font-family:'Playfair Display',serif; font-size:18px; font-weight:700; color:var(--text); margin:0;">🎚️ Medidor de ambiente</h2>
+          <span id="vibe-live-pill" style="font-size:11px; color:var(--text-muted); font-weight:600;"></span>
+        </div>
+        <p style="font-size:11px; color:var(--text-muted); margin:0 0 14px;">Durante los eventos, los clientes ven en su app el ambiente que hay según la gente fichada dentro (sin cifras exactas). Edita umbrales y textos a tu gusto.</p>
+        <label style="display:flex; align-items:center; justify-content:space-between; background:#fff; border:1.5px solid rgba(42,21,9,0.1); border-radius:12px; padding:12px 14px; margin-bottom:14px; cursor:pointer;">
+          <span style="font-size:13px; font-weight:600; color:var(--text);">Mostrar a los clientes</span>
+          <input id="vibe-enabled" type="checkbox" checked style="width:22px; height:22px; cursor:pointer; accent-color:#8B1918;" />
+        </label>
+        <div id="vibe-tiers-editor" style="display:flex; flex-direction:column; gap:10px;">Cargando...</div>
+        <button onclick="saveVibeTiers()" style="margin-top:14px; width:100%; background:var(--wine); color:#fff; border:none; border-radius:50px; padding:12px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">Guardar medidor</button>
+      </div>
+
     </div>
 
     <!-- ==================== NFTs ==================== -->
@@ -6867,9 +6882,65 @@
     } catch (_) {}
   }
 
+  // ==================== MEDIDOR DE AMBIENTE (FOMO) ====================
+  async function loadVibeAdmin() {
+    try {
+      const cfg = await fetch('/api/admin/vibe-tiers', { headers: authHeaders() }).then(r => r.json());
+      const editor = document.getElementById('vibe-tiers-editor');
+      if (!editor) return;
+      document.getElementById('vibe-enabled').checked = cfg.enabled !== false;
+      const pill = document.getElementById('vibe-live-pill');
+      if (pill) {
+        pill.textContent = cfg.live && cfg.live.active
+          ? `🟢 Ahora: ${cfg.live.count} dentro → ${cfg.live.title}`
+          : '⚪ Sin evento en marcha';
+      }
+      editor.innerHTML = (cfg.tiers || []).map((t, i) => `
+        <div class="vibe-tier-row" style="background:#fff; border:1.5px solid rgba(42,21,9,0.1); border-radius:14px; padding:12px 14px;">
+          <div style="display:flex; gap:8px; margin-bottom:8px;">
+            <div style="width:64px;">
+              <span style="font-size:10px; color:#7A6A5A; display:block; margin-bottom:3px;">Desde</span>
+              <input class="vibe-min" type="number" min="0" value="${t.min}" ${i === 0 ? 'disabled' : ''} style="width:100%; background:${i === 0 ? 'rgba(42,21,9,0.05)' : 'var(--bg)'}; color:var(--text); border:1px solid var(--border); border-radius:8px; padding:8px; font-size:14px; box-sizing:border-box; text-align:center;" />
+            </div>
+            <div style="width:56px;">
+              <span style="font-size:10px; color:#7A6A5A; display:block; margin-bottom:3px;">Emoji</span>
+              <input class="vibe-emoji" type="text" maxlength="4" value="${t.emoji}" style="width:100%; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:8px 4px; font-size:16px; box-sizing:border-box; text-align:center;" />
+            </div>
+            <div style="flex:1;">
+              <span style="font-size:10px; color:#7A6A5A; display:block; margin-bottom:3px;">Título</span>
+              <input class="vibe-title" type="text" maxlength="60" value="${(t.title || '').replace(/"/g, '&quot;')}" style="width:100%; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; font-weight:600; box-sizing:border-box;" />
+            </div>
+          </div>
+          <span style="font-size:10px; color:#7A6A5A; display:block; margin-bottom:3px;">Texto que ve el cliente</span>
+          <textarea class="vibe-text" rows="2" maxlength="220" style="width:100%; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:12px; box-sizing:border-box; resize:none; font-family:'Outfit',sans-serif; line-height:1.5;">${t.text || ''}</textarea>
+        </div>`).join('');
+    } catch (_) {}
+  }
+
+  async function saveVibeTiers() {
+    const rows = document.querySelectorAll('.vibe-tier-row');
+    const tiers = [...rows].map((row, i) => ({
+      min: i === 0 ? 0 : parseInt(row.querySelector('.vibe-min').value),
+      emoji: row.querySelector('.vibe-emoji').value.trim() || '🍷',
+      title: row.querySelector('.vibe-title').value.trim(),
+      text: row.querySelector('.vibe-text').value.trim()
+    }));
+    try {
+      const r = await fetch('/api/admin/vibe-tiers', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: document.getElementById('vibe-enabled').checked, tiers })
+      });
+      const data = await r.json();
+      if (!r.ok) return showToast(data.error || 'Error al guardar');
+      showToast('✅ Medidor de ambiente guardado');
+      loadVibeAdmin();
+    } catch (e) { showToast('Error: ' + e.message); }
+  }
+
   // ==================== EVENTOS & VIP ====================
   async function loadEventsPage() {
-    await Promise.all([loadAgenda(), loadAnalytics(), loadEventsData(), loadCountdowns()]);
+    await Promise.all([loadAgenda(), loadAnalytics(), loadEventsData(), loadCountdowns(), loadVibeAdmin()]);
   }
 
   // ==================== AGENDA ====================

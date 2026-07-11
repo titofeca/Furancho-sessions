@@ -1605,6 +1605,32 @@ router.post('/countdowns/:id/logo', requireAuth, cdUpload.single('logo'), (req, 
   }
 });
 
+// ── MEDIDOR DE AMBIENTE (FOMO) ───────────────────────────────────────────────
+
+// GET /api/admin/vibe-tiers (ADMIN ONLY) — config + estado en vivo (con cifra exacta)
+router.get('/vibe-tiers', requireAuth, (req, res) => {
+  try {
+    const vibe = require('../services/vibe');
+    const { getEligibleRaffleParticipants } = require('../db/database');
+    res.json({
+      ...vibe.getVibeConfig(),
+      live: { ...vibe.getVibeNow(), count: getEligibleRaffleParticipants().length }
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/vibe-tiers (ADMIN ONLY) — guardar tramos editados
+router.post('/vibe-tiers', requireAuth, (req, res) => {
+  try {
+    const saved = require('../services/vibe').saveVibeConfig({ enabled: req.body.enabled, tiers: req.body.tiers });
+    res.json({ success: true, ...saved });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 // DELETE /api/admin/countdowns/:id (ADMIN ONLY)
 router.delete('/countdowns/:id', requireAuth, (req, res) => {
   const cdId = parseInt(req.params.id);

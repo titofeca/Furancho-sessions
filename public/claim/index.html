@@ -1939,10 +1939,27 @@
       <style>
         @keyframes eclMoonCross { 0%{transform:translateX(-130%)} 42%,58%{transform:translateX(0)} 100%{transform:translateX(130%)} }
         @keyframes eclCorona { 0%,100%{box-shadow:0 0 16px 3px rgba(196,151,58,.45)} 50%{box-shadow:0 0 32px 9px rgba(196,151,58,.85)} }
+        .vibe-live-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;animation:vibePulse 1.4s ease-in-out infinite}
+        @keyframes vibePulse{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.5);opacity:1}50%{box-shadow:0 0 0 5px rgba(34,197,94,0);opacity:.75}}
+        @keyframes vibeBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
         .cd-box{min-width:56px;background:rgba(255,255,255,.6);border:1px solid rgba(139,25,24,.15);border-radius:12px;padding:8px 4px;text-align:center}
         .cd-num{font-family:'Playfair Display',serif;font-size:26px;font-weight:900;color:var(--wine);line-height:1;font-variant-numeric:tabular-nums}
         .cd-lbl{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);margin-top:3px}
       </style>
+
+      <!-- Medidor de ambiente en vivo (FOMO) — solo aparece con evento en marcha -->
+      <div id="vibe-card" style="display:none; margin-bottom:20px; border-radius:20px; border:1.5px solid rgba(139,25,24,.35); background:linear-gradient(160deg, rgba(139,25,24,.10), rgba(196,151,58,.10));">
+        <div style="padding:18px 20px; text-align:center;">
+          <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(139,25,24,.10); border-radius:100px; padding:4px 12px; margin-bottom:10px;">
+            <span class="vibe-live-dot"></span>
+            <span style="font-size:10px; font-weight:800; letter-spacing:1.5px; color:var(--wine);">EN DIRECTO NO FURANCHO</span>
+          </div>
+          <div id="vibe-emoji" style="font-size:40px; line-height:1; animation:vibeBounce 2.2s ease-in-out infinite;">🍷</div>
+          <h3 id="vibe-title" style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:var(--wine); margin:8px 0 4px;"></h3>
+          <p id="vibe-text" style="font-size:12.5px; color:var(--text-muted); line-height:1.55; margin:0 0 12px;"></p>
+          <div id="vibe-meter" style="display:flex; gap:5px; justify-content:center;"></div>
+        </div>
+      </div>
 
       <!-- Cuentas regresivas dinámicas (admin las crea/edita/borra) -->
       <div id="dynamic-countdowns"></div>
@@ -3321,6 +3338,7 @@
       // Tarjetas de vacaciones + eclipse (cuentas atrás visuales, cambian por fecha).
       initVacationCards();
       loadDynamicCountdowns();
+      initVibe(); // medidor de ambiente en vivo
 
       // Hint
       const hint = document.getElementById('profile-progress-hint');
@@ -6160,6 +6178,38 @@
     renderVacationCards();
     if (_vacationTimer) clearInterval(_vacationTimer);
     _vacationTimer = setInterval(renderVacationCards, 1000);
+  }
+
+  // ── MEDIDOR DE AMBIENTE (FOMO en vivo) ────────────────────────────────────
+  // Pinta el tramo de ambiente actual (sin cifras exactas). Se refresca solo.
+  let _vibeTimer = null;
+  async function loadVibe() {
+    try {
+      const r = await fetch('/api/events/vibe');
+      if (!r.ok) return;
+      const v = await r.json();
+      const card = document.getElementById('vibe-card');
+      if (!card) return;
+      if (!v.active) { card.style.display = 'none'; return; }
+      card.style.display = 'block';
+      document.getElementById('vibe-emoji').textContent = v.emoji || '🍷';
+      document.getElementById('vibe-title').textContent = v.title || '';
+      document.getElementById('vibe-text').textContent = v.text || '';
+      const meter = document.getElementById('vibe-meter');
+      if (meter && v.levels) {
+        let segs = '';
+        for (let i = 1; i <= v.levels; i++) {
+          const on = i <= v.level;
+          segs += `<div style="width:34px; height:7px; border-radius:100px; background:${on ? 'linear-gradient(90deg, var(--wine), var(--gold))' : 'rgba(42,21,9,.12)'};"></div>`;
+        }
+        meter.innerHTML = segs;
+      }
+    } catch (_) {}
+  }
+  function initVibe() {
+    loadVibe();
+    if (_vibeTimer) clearInterval(_vibeTimer);
+    _vibeTimer = setInterval(loadVibe, 60000);
   }
 
   // ── CUENTAS REGRESIVAS DINÁMICAS ──────────────────────────────────────────

@@ -2593,6 +2593,7 @@ module.exports = {
   getWeeklyRaffleTargetWeek,
   isWeeklyWindowOpen,
   getActiveEventWindow,
+  EVENT_EARLY_MARGIN_MS,
   countPendingVisitsDuringEvent,
   WEEKLY_DEFAULT_RULES,
   getPartnerEstablishments,
