@@ -2414,7 +2414,44 @@
           <span id="terraza-updated-pill" style="font-size:11px; color:var(--text-muted); font-weight:600;"></span>
         </div>
         <p style="font-size:11px; color:var(--text-muted); margin:0 0 14px;">Los clientes lo ven en su app al momento. También lo puede editar el staff desde su página (/staff), para que no dependa de ti.</p>
+
+        <!-- Aplicar un mismo horario a varios días de golpe -->
+        <div style="background:rgba(196,151,58,0.08); border:1.5px dashed rgba(196,151,58,0.45); border-radius:14px; padding:12px; margin-bottom:12px;">
+          <p style="font-size:10px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:#8B6914; margin:0 0 8px;">⚡ Aplicar a varios días</p>
+          <div id="tza-bulk-chips" style="display:flex; gap:6px; margin-bottom:10px;">
+            <!-- chips L M X J V S D generados por JS -->
+          </div>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <input type="time" id="tza-bulk-from" value="19:00" style="width:92px; padding:8px 4px; font-size:13px; border:1px solid var(--border); border-radius:9px; background:#fff; color:var(--text);" />
+            <span style="color:var(--text-muted); font-size:12px;">→</span>
+            <input type="time" id="tza-bulk-to" value="23:00" style="width:92px; padding:8px 4px; font-size:13px; border:1px solid var(--border); border-radius:9px; background:#fff; color:var(--text);" />
+            <button onclick="tzaBulkApply(true)" style="background:var(--wine); color:#fff; border:none; border-radius:100px; padding:8px 14px; font-size:11.5px; font-weight:700; cursor:pointer;">Abrir así</button>
+            <button onclick="tzaBulkApply(false)" style="background:rgba(42,21,9,0.08); color:var(--text-muted); border:none; border-radius:100px; padding:8px 14px; font-size:11.5px; font-weight:700; cursor:pointer;">Cerrar</button>
+          </div>
+        </div>
+
         <div id="terraza-days-admin" style="display:flex; flex-direction:column; gap:8px;">Cargando...</div>
+
+        <!-- Fechas concretas (mandan sobre el patrón semanal ese día) -->
+        <div style="margin-top:14px; background:rgba(139,25,24,0.04); border:1.5px solid rgba(139,25,24,0.12); border-radius:14px; padding:12px;">
+          <p style="font-size:10px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:var(--wine); margin:0 0 4px;">✨ Días especiales (por fecha)</p>
+          <p style="font-size:10.5px; color:var(--text-muted); margin:0 0 10px; line-height:1.4;">Festivos, cierres puntuales u horarios distintos: la fecha manda sobre el patrón semanal ese día. Las pasadas se borran solas.</p>
+          <div id="tza-overrides-list" style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;"></div>
+          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            <input type="date" id="tza-ov-date" style="padding:8px 6px; font-size:12.5px; border:1px solid var(--border); border-radius:9px; background:#fff; color:var(--text);" />
+            <select id="tza-ov-open" onchange="document.getElementById('tza-ov-times').style.display = this.value === '1' ? 'flex' : 'none'" style="padding:8px 6px; font-size:12.5px; border:1px solid var(--border); border-radius:9px; background:#fff; color:var(--text);">
+              <option value="1">Abierto</option>
+              <option value="0">Cerrado</option>
+            </select>
+            <span id="tza-ov-times" style="display:flex; gap:6px; align-items:center;">
+              <input type="time" id="tza-ov-from" value="19:00" style="width:86px; padding:8px 4px; font-size:12.5px; border:1px solid var(--border); border-radius:9px; background:#fff; color:var(--text);" />
+              <span style="color:var(--text-muted); font-size:12px;">→</span>
+              <input type="time" id="tza-ov-to" value="23:00" style="width:86px; padding:8px 4px; font-size:12.5px; border:1px solid var(--border); border-radius:9px; background:#fff; color:var(--text);" />
+            </span>
+            <button onclick="tzaAddOverride()" style="background:var(--wine); color:#fff; border:none; border-radius:100px; padding:8px 14px; font-size:11.5px; font-weight:700; cursor:pointer;">+ Añadir</button>
+          </div>
+        </div>
+
         <input id="terraza-note-admin" type="text" maxlength="140" placeholder="Nota opcional (ej: Si llueve, cerramos)" style="margin-top:10px; width:100%; background:#fff; color:var(--text); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:11px 13px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
         <button onclick="saveTerrazaAdmin()" style="margin-top:12px; width:100%; background:var(--wine); color:#fff; border:none; border-radius:50px; padding:12px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">Guardar horario</button>
       </div>
@@ -6966,12 +7003,75 @@
 
   // ==================== HORARIO DE LA TERRAZA ====================
   const TERRAZA_DAYS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+  const TERRAZA_CHIPS = ['L','M','X','J','V','S','D'];
+  let _tzaOverrides = []; // fechas especiales en edición (se guardan con el botón Guardar)
+
+  function tzaRenderChips() {
+    const wrap = document.getElementById('tza-bulk-chips');
+    if (!wrap || wrap.children.length) return; // solo una vez
+    wrap.innerHTML = TERRAZA_CHIPS.map((c, i) =>
+      `<button type="button" class="tza-chip" data-i="${i}" onclick="this.classList.toggle('on'); this.style.background = this.classList.contains('on') ? 'var(--wine)' : '#fff'; this.style.color = this.classList.contains('on') ? '#fff' : 'var(--text)';"
+        title="${TERRAZA_DAYS[i]}"
+        style="width:34px; height:34px; border-radius:50%; border:1.5px solid rgba(139,25,24,0.3); background:#fff; color:var(--text); font-size:12.5px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif;">${c}</button>`
+    ).join('');
+  }
+  function tzaBulkApply(open) {
+    const sel = [...document.querySelectorAll('.tza-chip.on')].map(ch => parseInt(ch.dataset.i));
+    if (!sel.length) return showToast('Marca primero los días (L M X J V S D)');
+    const from = document.getElementById('tza-bulk-from').value;
+    const to = document.getElementById('tza-bulk-to').value;
+    sel.forEach(i => {
+      document.querySelector(`.tza-open[data-i="${i}"]`).checked = open;
+      if (open) {
+        document.querySelector(`.tza-from[data-i="${i}"]`).value = from;
+        document.querySelector(`.tza-to[data-i="${i}"]`).value = to;
+      }
+      tzaToggleRow(i, open);
+    });
+    document.querySelectorAll('.tza-chip.on').forEach(ch => { ch.classList.remove('on'); ch.style.background = '#fff'; ch.style.color = 'var(--text)'; });
+    showToast(open ? `⚡ ${sel.length} día(s) abiertos ${from}–${to} — recuerda Guardar` : `⚡ ${sel.length} día(s) cerrados — recuerda Guardar`);
+  }
+
+  function tzaRenderOverrides() {
+    const list = document.getElementById('tza-overrides-list');
+    if (!list) return;
+    if (!_tzaOverrides.length) { list.innerHTML = '<p style="font-size:11.5px; color:var(--text-muted); margin:0;">Sin días especiales.</p>'; return; }
+    const fmt = s => new Date(`${s}T12:00:00`).toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+    list.innerHTML = _tzaOverrides.map((o, idx) => `
+      <div style="display:flex; align-items:center; gap:8px; background:#fff; border:1.5px solid rgba(42,21,9,0.1); border-radius:10px; padding:7px 10px;">
+        <span style="flex:1; font-size:12.5px; font-weight:700; color:var(--text);">✨ ${fmt(o.date)}</span>
+        <span style="font-size:12.5px; font-weight:${o.open ? '700' : '400'}; color:${o.open ? 'var(--wine)' : 'var(--text-muted)'};">${o.open ? `${o.from} – ${o.to}` : 'Cerrado'}</span>
+        <button onclick="tzaRemoveOverride(${idx})" style="background:rgba(139,25,24,0.08); border:none; border-radius:8px; padding:5px 8px; font-size:11px; cursor:pointer; color:var(--wine);">🗑️</button>
+      </div>`).join('');
+  }
+  function tzaAddOverride() {
+    const date = document.getElementById('tza-ov-date').value;
+    if (!date) return showToast('Elige la fecha');
+    const open = document.getElementById('tza-ov-open').value === '1';
+    const from = document.getElementById('tza-ov-from').value;
+    const to = document.getElementById('tza-ov-to').value;
+    _tzaOverrides = _tzaOverrides.filter(o => o.date !== date); // la nueva sustituye
+    _tzaOverrides.push({ date, open, from, to });
+    _tzaOverrides.sort((a, b) => a.date.localeCompare(b.date));
+    document.getElementById('tza-ov-date').value = '';
+    tzaRenderOverrides();
+    showToast('✨ Día especial añadido — recuerda Guardar');
+  }
+  function tzaRemoveOverride(idx) {
+    _tzaOverrides.splice(idx, 1);
+    tzaRenderOverrides();
+    showToast('Día especial quitado — recuerda Guardar');
+  }
+
   async function loadTerrazaAdmin() {
     try {
       const cfg = await fetch('/api/admin/terraza-hours', { headers: authHeaders() }).then(r => r.json());
       const wrap = document.getElementById('terraza-days-admin');
       if (!wrap) return;
+      tzaRenderChips();
       document.getElementById('terraza-note-admin').value = cfg.note || '';
+      _tzaOverrides = cfg.overrides || [];
+      tzaRenderOverrides();
       const pill = document.getElementById('terraza-updated-pill');
       if (pill) pill.textContent = cfg.updatedAt
         ? `Última edición: ${cfg.updatedBy === 'staff' ? 'staff' : 'tú'} · ${new Date(cfg.updatedAt).toLocaleDateString('es-ES', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}`
@@ -7002,7 +7102,7 @@
       const r = await fetch('/api/admin/terraza-hours', {
         method: 'POST',
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ days, note: document.getElementById('terraza-note-admin').value })
+        body: JSON.stringify({ days, overrides: _tzaOverrides, note: document.getElementById('terraza-note-admin').value })
       });
       const data = await r.json();
       if (!r.ok) return showToast(data.error || 'Error al guardar');

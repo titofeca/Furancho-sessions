@@ -1620,7 +1620,7 @@ router.get('/terraza-hours', requireAuth, (req, res) => {
 router.post('/terraza-hours', requireAuth, (req, res) => {
   try {
     const saved = require('../services/terraza').saveTerrazaHours(
-      { days: req.body.days, note: req.body.note }, 'admin'
+      { days: req.body.days, overrides: req.body.overrides, note: req.body.note }, 'admin'
     );
     res.json({ success: true, ...saved });
   } catch (e) {

@@ -192,7 +192,7 @@ router.get('/terraza-hours', requireStaff, (req, res) => {
 router.post('/terraza-hours', staffLimiter, requireStaff, (req, res) => {
   try {
     const saved = require('../services/terraza').saveTerrazaHours(
-      { days: req.body.days, note: req.body.note }, 'staff'
+      { days: req.body.days, overrides: req.body.overrides, note: req.body.note }, 'staff'
     );
     res.json({ success: true, ...saved });
   } catch (e) {

@@ -102,7 +102,42 @@
       </div>
       <div id="terraza-body" style="display:none; margin-top:12px;">
         <p class="lead" style="margin-bottom:12px; font-size:12.5px;">Lo que marques aquí lo ven los clientes en su app al momento. Marca los días abiertos y sus horas.</p>
+
+        <!-- Aplicar un mismo horario a varios días de golpe -->
+        <div style="background:rgba(196,151,58,0.1); border:1.5px dashed rgba(196,151,58,0.5); border-radius:14px; padding:11px; margin-bottom:12px;">
+          <p style="font-size:10px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:#8B6914; margin:0 0 8px;">⚡ Aplicar a varios días</p>
+          <div id="tz-bulk-chips" style="display:flex; gap:6px; margin-bottom:10px;"></div>
+          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            <input type="time" id="tz-bulk-from" value="19:00" style="width:88px; padding:8px 4px; font-size:13px; letter-spacing:0; text-align:center; border-radius:9px;" />
+            <span style="color:var(--text-muted); font-size:12px;">→</span>
+            <input type="time" id="tz-bulk-to" value="23:00" style="width:88px; padding:8px 4px; font-size:13px; letter-spacing:0; text-align:center; border-radius:9px;" />
+            <button onclick="tzBulkApply(true)" style="background:var(--wine); color:#fff; border:none; border-radius:100px; padding:9px 13px; font-size:11.5px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif;">Abrir así</button>
+            <button onclick="tzBulkApply(false)" style="background:rgba(42,21,9,0.08); color:var(--text-muted); border:none; border-radius:100px; padding:9px 13px; font-size:11.5px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif;">Cerrar</button>
+          </div>
+        </div>
+
         <div id="terraza-days" style="display:flex; flex-direction:column; gap:8px;"></div>
+
+        <!-- Fechas concretas (mandan sobre el patrón semanal ese día) -->
+        <div style="margin-top:12px; background:rgba(139,25,24,0.05); border:1.5px solid rgba(139,25,24,0.14); border-radius:14px; padding:11px;">
+          <p style="font-size:10px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:var(--wine); margin:0 0 4px;">✨ Días especiales (por fecha)</p>
+          <p style="font-size:10.5px; color:var(--text-muted); margin:0 0 10px; line-height:1.4;">Festivos o cierres puntuales: la fecha manda sobre el patrón ese día. Las pasadas se borran solas.</p>
+          <div id="tz-overrides-list" style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;"></div>
+          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            <input type="date" id="tz-ov-date" style="padding:8px 6px; font-size:12.5px; letter-spacing:0; text-align:left; border-radius:9px; width:auto;" />
+            <select id="tz-ov-open" onchange="document.getElementById('tz-ov-times').style.display = this.value === '1' ? 'flex' : 'none'" style="padding:9px 6px; font-size:12.5px; border:1.5px solid rgba(42,21,9,0.15); border-radius:9px; background:#fff; color:var(--text); font-family:'Outfit',sans-serif;">
+              <option value="1">Abierto</option>
+              <option value="0">Cerrado</option>
+            </select>
+            <span id="tz-ov-times" style="display:flex; gap:6px; align-items:center;">
+              <input type="time" id="tz-ov-from" value="19:00" style="width:84px; padding:8px 4px; font-size:12.5px; letter-spacing:0; text-align:center; border-radius:9px;" />
+              <span style="color:var(--text-muted); font-size:12px;">→</span>
+              <input type="time" id="tz-ov-to" value="23:00" style="width:84px; padding:8px 4px; font-size:12.5px; letter-spacing:0; text-align:center; border-radius:9px;" />
+            </span>
+            <button onclick="tzAddOverride()" style="background:var(--wine); color:#fff; border:none; border-radius:100px; padding:9px 13px; font-size:11.5px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif;">+ Añadir</button>
+          </div>
+        </div>
+
         <input id="terraza-note" type="text" maxlength="140" placeholder="Nota opcional (ej: Si llueve, cerramos)" style="margin-top:10px; font-size:13px; text-align:left; letter-spacing:0; padding:11px 13px;" />
         <button class="primary" style="margin-top:12px; padding:13px; font-size:14px;" onclick="saveTerraza(this)">Guardar horario</button>
         <div class="err" id="terraza-err"></div>
@@ -176,6 +211,9 @@
 
     // ── Horario de la terraza (editable por el camarero) ──
     const TERRAZA_DAYS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+    const TERRAZA_CHIPS = ['L','M','X','J','V','S','D'];
+    let tzOverrides = []; // fechas especiales en edición (se guardan con Guardar)
+
     function toggleTerraza(){
       const body = document.getElementById('terraza-body');
       const open = body.style.display !== 'none';
@@ -183,12 +221,72 @@
       document.getElementById('terraza-chevron').textContent = open ? '▼' : '▲';
       if (!open) loadTerraza();
     }
+    function tzRenderChips(){
+      const wrap = document.getElementById('tz-bulk-chips');
+      if (!wrap || wrap.children.length) return; // solo una vez
+      wrap.innerHTML = TERRAZA_CHIPS.map((c, i) =>
+        `<button type="button" class="tz-chip" data-i="${i}" title="${TERRAZA_DAYS[i]}"
+          onclick="this.classList.toggle('on'); this.style.background = this.classList.contains('on') ? 'var(--wine)' : '#fff'; this.style.color = this.classList.contains('on') ? '#fff' : 'var(--text)';"
+          style="width:34px; height:34px; border-radius:50%; border:1.5px solid rgba(139,25,24,0.3); background:#fff; color:var(--text); font-size:12.5px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif; padding:0;">${c}</button>`
+      ).join('');
+    }
+    function tzBulkApply(open){
+      const err = document.getElementById('terraza-err');
+      const sel = [...document.querySelectorAll('.tz-chip.on')].map(ch => parseInt(ch.dataset.i));
+      if (!sel.length){ err.style.color=''; err.textContent = 'Marca primero los días (L M X J V S D)'; return; }
+      const from = document.getElementById('tz-bulk-from').value;
+      const to = document.getElementById('tz-bulk-to').value;
+      sel.forEach(i => {
+        document.querySelector(`.tz-open[data-i="${i}"]`).checked = open;
+        if (open){
+          document.querySelector(`.tz-from[data-i="${i}"]`).value = from;
+          document.querySelector(`.tz-to[data-i="${i}"]`).value = to;
+        }
+        tzToggleRow(i, open);
+      });
+      document.querySelectorAll('.tz-chip.on').forEach(ch => { ch.classList.remove('on'); ch.style.background='#fff'; ch.style.color='var(--text)'; });
+      err.style.color = 'var(--green)';
+      err.textContent = open ? `⚡ ${sel.length} día(s) puestos ${from}–${to} — dale a Guardar` : `⚡ ${sel.length} día(s) cerrados — dale a Guardar`;
+    }
+    function tzRenderOverrides(){
+      const list = document.getElementById('tz-overrides-list');
+      if (!list) return;
+      if (!tzOverrides.length){ list.innerHTML = '<p style="font-size:11.5px; color:var(--text-muted); margin:0;">Sin días especiales.</p>'; return; }
+      const fmt = s => new Date(`${s}T12:00:00`).toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short' });
+      list.innerHTML = tzOverrides.map((o, idx) => `
+        <div style="display:flex; align-items:center; gap:8px; background:#fff; border:1.5px solid rgba(42,21,9,0.1); border-radius:10px; padding:7px 10px;">
+          <span style="flex:1; font-size:12.5px; font-weight:700; color:var(--text);">✨ ${fmt(o.date)}</span>
+          <span style="font-size:12.5px; font-weight:${o.open ? '700' : '400'}; color:${o.open ? 'var(--wine)' : 'var(--text-muted)'};">${o.open ? `${o.from} – ${o.to}` : 'Cerrado'}</span>
+          <button onclick="tzRemoveOverride(${idx})" style="background:rgba(139,25,24,0.08); border:none; border-radius:8px; padding:5px 8px; font-size:11px; cursor:pointer; color:var(--wine);">🗑️</button>
+        </div>`).join('');
+    }
+    function tzAddOverride(){
+      const err = document.getElementById('terraza-err');
+      const date = document.getElementById('tz-ov-date').value;
+      if (!date){ err.style.color=''; err.textContent = 'Elige la fecha, ho'; return; }
+      const open = document.getElementById('tz-ov-open').value === '1';
+      tzOverrides = tzOverrides.filter(o => o.date !== date); // la nueva sustituye
+      tzOverrides.push({ date, open, from: document.getElementById('tz-ov-from').value, to: document.getElementById('tz-ov-to').value });
+      tzOverrides.sort((a, b) => a.date.localeCompare(b.date));
+      document.getElementById('tz-ov-date').value = '';
+      tzRenderOverrides();
+      err.style.color = 'var(--green)'; err.textContent = '✨ Día especial añadido — dale a Guardar';
+    }
+    function tzRemoveOverride(idx){
+      tzOverrides.splice(idx, 1);
+      tzRenderOverrides();
+      const err = document.getElementById('terraza-err');
+      err.style.color = ''; err.textContent = 'Día especial quitado — dale a Guardar';
+    }
     async function loadTerraza(){
       try{
         const r = await fetch('/api/staff/terraza-hours', { headers:{ 'x-staff-code': localStorage.getItem(STAFF_KEY) || '' } });
         if (!r.ok) return;
         const cfg = await r.json();
+        tzRenderChips();
         document.getElementById('terraza-note').value = cfg.note || '';
+        tzOverrides = cfg.overrides || [];
+        tzRenderOverrides();
         document.getElementById('terraza-days').innerHTML = cfg.days.map((d, i) => `
           <div style="display:flex; align-items:center; gap:8px; background:#fff; border:1.5px solid rgba(42,21,9,0.1); border-radius:12px; padding:9px 11px;">
             <input type="checkbox" class="tz-open" data-i="${i}" ${d.open ? 'checked' : ''} onchange="tzToggleRow(${i}, this.checked)" style="width:20px; height:20px; accent-color:var(--wine); flex-shrink:0; padding:0;" />
@@ -218,7 +316,7 @@
         const r = await fetch('/api/staff/terraza-hours', {
           method:'POST',
           headers:{ 'Content-Type':'application/json', 'x-staff-code': localStorage.getItem(STAFF_KEY) || '' },
-          body: JSON.stringify({ days, note: document.getElementById('terraza-note').value })
+          body: JSON.stringify({ days, overrides: tzOverrides, note: document.getElementById('terraza-note').value })
         });
         const d = await r.json().catch(()=>({}));
         if (r.ok){ err.style.color = 'var(--green)'; err.textContent = '✅ Guardado — los clientes ya lo ven'; }

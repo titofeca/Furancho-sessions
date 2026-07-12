@@ -2065,6 +2065,7 @@
           </div>
           <p id="terraza-note-view" style="display:none; font-size:11.5px; color:var(--text-muted); line-height:1.5; margin:0 0 10px;"></p>
           <div id="terraza-week" style="display:flex; flex-direction:column; gap:5px; margin-top:8px;"></div>
+          <div id="terraza-specials" style="display:none;"></div>
         </div>
       </div>
 
@@ -6336,18 +6337,30 @@
   }
 
   // ── HORARIO DE LA TERRAZA ─────────────────────────────────────────────────
-  // Semana editable por admin/staff. Solo se pinta si hay algún día abierto.
+  // Patrón semanal + fechas especiales (mandan sobre el patrón ese día), editable
+  // por admin/staff. Solo se pinta si hay algún día u override abierto.
   async function loadTerrazaHours() {
     try {
       const r = await fetch('/api/events/terraza-hours');
       if (!r.ok) return;
       const cfg = await r.json();
       const card = document.getElementById('terraza-card');
-      if (!card || !cfg.days || !cfg.days.some(d => d.open)) return; // sin días → oculta
+      if (!card || !cfg.days) return;
+      const overrides = cfg.overrides || [];
+      const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const todayStr = ymd(new Date());
+      const upcoming = overrides.filter(o => o.date >= todayStr);
+      // Sin patrón NI fechas especiales abiertas → oculta
+      if (!cfg.days.some(d => d.open) && !upcoming.some(o => o.open)) return;
       const DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
       const todayIdx = (new Date().getDay() + 6) % 7; // getDay(): 0=domingo → lunes=0
       const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
       const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+      const ovByDate = {}; overrides.forEach(o => { ovByDate[o.date] = o; });
+      const yesterdayStr = ymd(new Date(Date.now() - 86400000));
+      // Config efectiva de un día: la fecha especial manda sobre el patrón semanal
+      const effToday = ovByDate[todayStr] || cfg.days[todayIdx];
+      const effYesterday = ovByDate[yesterdayStr] || cfg.days[(todayIdx + 6) % 7];
       // ¿Abierta ahora? Rango de hoy (con cierre de madrugada) o el de ayer cruzando medianoche
       const inRange = (d, sinceMidnight) => {
         if (!d || !d.open) return false;
@@ -6355,18 +6368,37 @@
         if (sinceMidnight) return t <= f && nowMin < t;      // tramo de ayer que sigue tras las 00:00
         return t > f ? (nowMin >= f && nowMin < t) : nowMin >= f; // normal o abre hoy y cierra de madrugada
       };
-      const openNow = inRange(cfg.days[todayIdx], false) || inRange(cfg.days[(todayIdx + 6) % 7], true);
+      const openNow = inRange(effToday, false) || inRange(effYesterday, true);
       const badge = document.getElementById('terraza-now-badge');
       if (badge) badge.style.display = openNow ? 'inline-block' : 'none';
       const noteEl = document.getElementById('terraza-note-view');
       if (noteEl && cfg.note) { noteEl.textContent = cfg.note; noteEl.style.display = 'block'; }
+      // Semana: la fila de HOY enseña el horario efectivo (si hay especial, marcado con ✨)
       document.getElementById('terraza-week').innerHTML = cfg.days.map((d, i) => {
         const isToday = i === todayIdx;
+        const eff = isToday ? effToday : d;
+        const special = isToday && !!ovByDate[todayStr];
         return `<div style="display:flex; justify-content:space-between; align-items:center; padding:7px 12px; border-radius:10px; ${isToday ? 'background:rgba(139,25,24,.08); border:1.5px solid rgba(139,25,24,.25);' : 'background:rgba(255,255,255,.4);'}">
-          <span style="font-size:12.5px; font-weight:${isToday ? '800' : '600'}; color:${isToday ? 'var(--wine)' : 'var(--text)'};">${DAYS[i]}${isToday ? ' · hoy' : ''}</span>
-          <span style="font-size:12.5px; font-weight:${d.open ? '700' : '400'}; color:${d.open ? 'var(--wine)' : 'var(--text-muted)'};">${d.open ? `${d.from} – ${d.to}` : 'Cerrado'}</span>
+          <span style="font-size:12.5px; font-weight:${isToday ? '800' : '600'}; color:${isToday ? 'var(--wine)' : 'var(--text)'};">${DAYS[i]}${isToday ? ' · hoy' : ''}${special ? ' ✨' : ''}</span>
+          <span style="font-size:12.5px; font-weight:${eff.open ? '700' : '400'}; color:${eff.open ? 'var(--wine)' : 'var(--text-muted)'};">${eff.open ? `${eff.from} – ${eff.to}` : 'Cerrado'}</span>
         </div>`;
       }).join('');
+      // Fechas especiales próximas (sin contar la de hoy, que ya va en su fila)
+      const specialEl = document.getElementById('terraza-specials');
+      if (specialEl) {
+        const future = upcoming.filter(o => o.date > todayStr).slice(0, 5);
+        if (future.length) {
+          const fmt = (s) => new Date(`${s}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+          specialEl.innerHTML = `<p style="font-size:10px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:var(--gold); margin:10px 0 5px;">✨ Días especiales</p>` +
+            future.map(o => `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 12px; border-radius:10px; background:rgba(196,151,58,.1); border:1px dashed rgba(196,151,58,.4); margin-bottom:4px;">
+              <span style="font-size:12px; font-weight:700; color:var(--text);">${fmt(o.date)}</span>
+              <span style="font-size:12px; font-weight:${o.open ? '700' : '400'}; color:${o.open ? 'var(--wine)' : 'var(--text-muted)'};">${o.open ? `${o.from} – ${o.to}` : 'Cerrado'}</span>
+            </div>`).join('');
+          specialEl.style.display = 'block';
+        } else {
+          specialEl.style.display = 'none';
+        }
+      }
       card.style.display = 'block';
     } catch (_) {}
   }
