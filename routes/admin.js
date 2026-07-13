@@ -1446,6 +1446,38 @@ router.post('/grant-achievement', requireAuth, (req, res) => {
   }
 });
 
+// POST /api/admin/mint-meme — acuña una copia del "Meme VIP" (Token ID 50). Límite de 50 copias.
+router.post('/mint-meme', requireAuth, (req, res) => {
+  const { walletAddress } = req.body;
+  if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) return res.status(400).json({ error: 'Wallet inválida' });
+  
+  try {
+    const { db, claimAchievement, getAchievementMint } = require('../db/database');
+    
+    // Contar cuántos Memes se han minteado (cualquier status que no sea failed)
+    const countQuery = db.prepare(`SELECT COUNT(*) as count FROM achievement_mints WHERE achievement_id = 'meme_vip' AND status != 'failed'`).get();
+    const mintedCount = countQuery ? countQuery.count : 0;
+    
+    if (mintedCount >= 50) {
+      return res.status(400).json({ error: 'Se ha alcanzado el límite máximo de 50 copias del Meme VIP.' });
+    }
+
+    const existing = getAchievementMint(walletAddress, 'meme_vip');
+    if (existing) {
+      return res.json({ success: true, alreadyGranted: true, status: existing.status, achievementId: 'meme_vip' });
+    }
+
+    // Registramos en achievement_mints (como id usamos meme_vip, token = 50)
+    // Nos aseguramos que services/achievements.js soporte este ID, o simplemente se mintea
+    claimAchievement(walletAddress, 'meme_vip', 50);
+    require('../services/polygon').notifyAchievementQueue();
+    
+    res.json({ success: true, status: 'pending', achievementId: 'meme_vip', serial: mintedCount + 1 });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── TEST RAFFLE — endpoints temporales para probar el flujo completo ────────
 // POST /api/admin/test-raffle/setup — crea sesiones de prueba para hoy
 // POST /api/admin/test-raffle/cleanup — borra TODO rastro del test
@@ -1521,6 +1553,76 @@ router.post('/test-raffle/cleanup', requireAuth, (req, res) => {
   }
 });
 
+
+const {
+  getPendingTransfers,
+  getTransferById,
+  updateTransferStatus,
+  getAppSetting,
+  setAppSetting
+} = require('../db/transfers');
+const { executeTransferOnChain } = require('../services/polygon');
+
+// GET /api/admin/settings/:key
+router.get('/settings/:key', requireAuth, (req, res) => {
+  try {
+    const value = getAppSetting(req.params.key);
+    res.json({ key: req.params.key, value });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/settings/:key
+router.post('/settings/:key', requireAuth, (req, res) => {
+  try {
+    const { value } = req.body;
+    setAppSetting(req.params.key, value);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/transfers
+router.get('/transfers', requireAuth, (req, res) => {
+  try {
+    res.json(getPendingTransfers());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/transfers/:id/approve
+router.post('/transfers/:id/approve', requireAuth, async (req, res) => {
+  try {
+    const transfer = getTransferById(req.params.id);
+    if (!transfer) return res.status(404).json({ error: 'Transfer not found' });
+    if (transfer.status !== 'pending') return res.status(400).json({ error: 'Already processed' });
+    
+    // Execute on-chain
+    const { from_wallet, to_wallet, token_id, private_key_enc } = transfer;
+    const result = await executeTransferOnChain(from_wallet, to_wallet, token_id, private_key_enc);
+    
+    // Update status
+    updateTransferStatus(transfer.id, 'success', result.txHash);
+    res.json({ success: true, txHash: result.txHash });
+  } catch (e) {
+    console.error(e);
+    updateTransferStatus(req.params.id, 'failed');
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/transfers/:id/reject
+router.post('/transfers/:id/reject', requireAuth, (req, res) => {
+  try {
+    updateTransferStatus(req.params.id, 'rejected');
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 module.exports = router;
 module.exports.requireAuth = requireAuth;

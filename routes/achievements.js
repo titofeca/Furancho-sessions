@@ -44,7 +44,8 @@ router.get('/status', (req, res) => {
         ruleDate: a.rule ? a.rule.date : null,   // solo visit_on_date
         unlocked: achievements.walletUnlocked(wallet, a),
         claimStatus: m ? m.status : null,   // null = sin reclamar; 'pending'|'success'|'failed'
-        txHash: m ? m.tx_hash : null
+        txHash: m ? m.tx_hash : null,
+        serial: m ? m.mint_serial : null
       };
     })
     // Los logros que el admin marcó como ocultos NO se muestran hasta conseguirlos;

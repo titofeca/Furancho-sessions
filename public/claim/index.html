@@ -1917,9 +1917,9 @@
       </div>
       <p class="nft-event">Furancho Sessions · Afterwork Viño, Tapas y Leria ochentera</p>
 
-      <div style="display: flex; gap: 12px; justify-content: center; align-items: center; margin: 16px 0 24px; padding: 0 4px;">
+      <div style="display: flex; gap: 12px; justify-content: center; align-items: center; margin: 16px 0 24px; padding: 0 4px; flex-wrap: wrap;">
         <button onclick="openIdModal()" style="
-          flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+          flex: 1; min-width: 140px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
           padding: 12px 16px; border-radius: 16px; border: 1.5px solid rgba(139,25,24,0.22);
           background: rgba(139,25,24,0.05); color: var(--wine);
           font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer;
@@ -1930,8 +1930,8 @@
           onmousedown="this.style.transform='scale(0.97)';">
           🪪 ID Socio (QR)
         </button>
-        <button onclick="openVirtualCard()" style="
-          flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        <button onclick="openVirtualCard()" id="btn-carne-vip" style="
+          flex: 1; min-width: 140px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
           padding: 12px 16px; border-radius: 16px; border: 1.5px solid rgba(196,151,58,0.35);
           background: rgba(196,151,58,0.08); color: var(--gold);
           font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer;
@@ -1941,6 +1941,31 @@
           onmouseout="this.style.background='rgba(196,151,58,0.08)'; this.style.transform='translateY(0)';"
           onmousedown="this.style.transform='scale(0.97)';">
           👑 Carné VIP
+        </button>
+        <button onclick="openMemeVipCard()" id="btn-meme-vip" style="
+          display: none;
+          flex: 1; min-width: 140px; align-items: center; justify-content: center; gap: 8px;
+          padding: 12px 16px; border-radius: 16px; border: 1.5px solid #d4af37;
+          background: linear-gradient(135deg, #d4af37 0%, #aa8529 100%); color: #fff;
+          font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 900; cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+          outline: none;"
+          onmouseover="this.style.transform='translateY(-2px) scale(1.02)';"
+          onmouseout="this.style.transform='translateY(0) scale(1)';"
+          onmousedown="this.style.transform='scale(0.95)';">
+          🎭 Tarjeta Dorada VIP
+        </button>
+        <button onclick="startTransferScan()" id="btn-transferir" style="
+          flex: 1; min-width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+          padding: 12px 16px; border-radius: 16px; border: 1.5px solid rgba(42,21,9,0.2);
+          background: rgba(42,21,9,0.05); color: var(--text);
+          font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+          outline: none;"
+          onmouseover="this.style.background='rgba(42,21,9,0.1)'; this.style.transform='translateY(-1px)';"
+          onmouseout="this.style.background='rgba(42,21,9,0.05)'; this.style.transform='translateY(0)';"
+          onmousedown="this.style.transform='scale(0.97)';">
+          🤝 Traspasar a un amigo
         </button>
       </div>
 
@@ -2713,6 +2738,31 @@
       const now = new Date();
       document.getElementById('live-clock').textContent = now.toLocaleTimeString('es-ES', { hour12: false });
     }, 1000);
+
+    let _memeVipClockInterval = null;
+    function openMemeVipCard() {
+      const modal = document.getElementById('meme-vip-modal');
+      const serialLabel = modal.querySelector('span'); // The first span is the serial tag
+      
+      const memeVip = window._achMap && window._achMap['meme_vip'];
+      const serialNum = (memeVip && memeVip.serial) ? memeVip.serial : '—';
+      serialLabel.textContent = `⭐ TITULAR VIP (${serialNum}/50) ⭐`;
+
+      modal.style.display = 'flex';
+      
+      const clockEl = document.getElementById('meme-vip-clock');
+      _memeVipClockInterval = setInterval(() => {
+        const now = new Date();
+        clockEl.textContent = now.toLocaleTimeString('es-ES', { hour12: false });
+      }, 1000);
+      clockEl.textContent = new Date().toLocaleTimeString('es-ES', { hour12: false });
+    }
+    
+    function closeMemeVipCard() {
+      const modal = document.getElementById('meme-vip-modal');
+      modal.style.display = 'none';
+      if (_memeVipClockInterval) clearInterval(_memeVipClockInterval);
+    }
 
     function openVirtualCard() {
       // Leer siempre desde los elementos del perfil (fuente de verdad)
@@ -4370,9 +4420,20 @@
       // también los logros OTORGADOS por el admin (no solo los de asistencia).
       let _achStatus = null;
       try { if (userWalletAddress) _achStatus = await fetch(`/api/achievements/status?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => null); } catch (e) {}
-      const _achMap = {};
-      if (_achStatus && _achStatus.achievements) _achStatus.achievements.forEach(a => { _achMap[a.id] = a; });
-      renderMuseoBadges(userVisits, userClaimedLevels, history, _achMap);
+      window._achMap = {}; // Make global for openMemeVipCard
+      if (_achStatus && _achStatus.achievements) {
+        _achStatus.achievements.forEach(a => { window._achMap[a.id] = a; });
+        const memeVip = window._achMap['meme_vip'];
+        const btnMeme = document.getElementById('btn-meme-vip');
+        if (btnMeme) {
+          if (memeVip && memeVip.claimStatus === 'success') {
+             btnMeme.style.display = 'inline-flex';
+          } else {
+             btnMeme.style.display = 'none';
+          }
+        }
+      }
+      renderMuseoBadges(userVisits, userClaimedLevels, history, window._achMap);
       renderNftAchievements(_achStatus); // logros NFT (usa el estado ya traído)
 
       const todayRaffles = history.filter(r => r.created_at && r.created_at.startsWith(today));
@@ -8033,6 +8094,107 @@
   }
   window.claimAchievementNft = claimAchievementNft;
 
+  // --- LOGICA DE TRASPASO DE NFTS ---
+  let transferScanner = null;
+  let transferTargetWallet = null;
+
+  function startTransferScan() {
+    if (!CURRENT_WALLET_ADDRESS) {
+      alert("Debes tener un pase activo para traspasarlo.");
+      return;
+    }
+    document.getElementById('transfer-modal').style.display = 'flex';
+    document.getElementById('transfer-confirm-view').style.display = 'none';
+    document.getElementById('transfer-scanner-status').innerText = 'Iniciando cámara...';
+    
+    // Asumimos que transferimos el NFT de nivel, si tiene. Para el meme será adaptado luego.
+    const tokenId = _claimedLevels && _claimedLevels.length > 0 ? Math.max(..._claimedLevels) : null;
+    if (!tokenId) {
+      alert("No tienes ningún NFT para traspasar.");
+      stopTransferScan();
+      return;
+    }
+
+    if (!transferScanner) {
+      transferScanner = new Html5Qrcode("transfer-scanner-reader");
+    }
+
+    transferScanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      (decodedText) => {
+        if (/^0x[a-fA-F0-9]{40}$/i.test(decodedText)) {
+          if (decodedText.toLowerCase() === CURRENT_WALLET_ADDRESS.toLowerCase()) {
+            document.getElementById('transfer-scanner-status').innerText = 'No puedes traspasarlo a ti mismo.';
+            return;
+          }
+          transferScanner.stop().then(() => {
+            document.getElementById('transfer-scanner-reader').style.display = 'none';
+            document.getElementById('transfer-scanner-status').innerText = '';
+            transferTargetWallet = decodedText;
+            document.getElementById('transfer-target-wallet').innerText = decodedText;
+            document.getElementById('transfer-confirm-view').style.display = 'block';
+          }).catch(err => console.error(err));
+        } else {
+          document.getElementById('transfer-scanner-status').innerText = 'QR no válido. Debe ser un ID de Socio.';
+        }
+      },
+      (error) => {}
+    ).then(() => {
+      document.getElementById('transfer-scanner-reader').style.display = 'block';
+      document.getElementById('transfer-scanner-status').innerText = 'Apunta al QR del ID de Socio';
+    }).catch(err => {
+      document.getElementById('transfer-scanner-status').innerText = 'Error al abrir la cámara.';
+    });
+  }
+  window.startTransferScan = startTransferScan;
+
+  function stopTransferScan() {
+    if (transferScanner && transferScanner.isScanning) {
+      transferScanner.stop().catch(err => console.error(err));
+    }
+    document.getElementById('transfer-modal').style.display = 'none';
+  }
+  window.stopTransferScan = stopTransferScan;
+
+  async function submitTransferRequest() {
+    if (!transferTargetWallet || !CURRENT_WALLET_ADDRESS || !CURRENT_PRIVATE_KEY) return;
+    
+    const tokenId = _claimedLevels && _claimedLevels.length > 0 ? Math.max(..._claimedLevels) : null;
+    if (!tokenId) return;
+
+    const btn = document.getElementById('btn-submit-transfer');
+    const originalText = btn.innerText;
+    btn.innerText = 'Solicitando...';
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('/api/mint/transfer-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fromWallet: CURRENT_WALLET_ADDRESS,
+          toWallet: transferTargetWallet,
+          tokenId: tokenId.toString(),
+          privateKey: CURRENT_PRIVATE_KEY
+        })
+      }).then(r => r.json());
+
+      if (res.success) {
+        alert("¡Solicitud enviada! El patrón debe aprobarla cuando se abone la consumición en barra.");
+        stopTransferScan();
+      } else {
+        alert("Error: " + (res.error || 'Desconocido'));
+      }
+    } catch (e) {
+      alert("Error de conexión");
+    } finally {
+      btn.innerText = originalText;
+      btn.disabled = false;
+    }
+  }
+  window.submitTransferRequest = submitTransferRequest;
+
   </script>
 
   <!-- ===================== MODAL RESERVA VIP ===================== -->
@@ -8476,5 +8638,69 @@
     </div>
   </div>
 
+  <!-- ==================== MODAL MEME VIP (TARJETA DORADA) ==================== -->
+  <div id="meme-vip-modal" style="display:none; position:fixed; inset:0; z-index:2200; background:rgba(0,0,0,0.85); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); align-items:center; justify-content:center; flex-direction:column; padding:20px; box-sizing:border-box;">
+    <div style="width:100%; max-width:340px; border-radius:24px; background:linear-gradient(135deg, #2a1509 0%, #150a04 100%); padding:2px; box-shadow: 0 10px 40px rgba(212, 175, 55, 0.25); position:relative; overflow:hidden;">
+      
+      <!-- Animación de brillo rotando de fondo -->
+      <div style="position:absolute; top:-50%; left:-50%; width:200%; height:200%; background:conic-gradient(from 0deg, transparent 0%, rgba(212,175,55,0.4) 25%, transparent 50%, rgba(212,175,55,0.4) 75%, transparent 100%); animation:rotateGold 6s linear infinite; z-index:0;"></div>
+      
+      <div style="position:relative; z-index:1; background:linear-gradient(135deg, #1f1107 0%, #0f0703 100%); border-radius:22px; padding:24px 20px; text-align:center; display:flex; flex-direction:column; align-items:center; border: 1px solid rgba(212, 175, 55, 0.1);">
+        
+        <div style="margin-bottom:16px;">
+          <img src="/assets/nft_meme_vip.jpg" onerror="this.src='/assets/logo.png'" style="width:160px; height:160px; border-radius:16px; object-fit:cover; border:3px solid #d4af37; box-shadow:0 8px 24px rgba(212, 175, 55, 0.3);" />
+        </div>
+        
+        <div style="background:rgba(212, 175, 55, 0.15); padding:6px 14px; border-radius:100px; border:1px solid rgba(212, 175, 55, 0.3); margin-bottom:12px;">
+          <span style="font-size:11px; font-weight:800; color:#d4af37; text-transform:uppercase; letter-spacing:1.5px;">⭐ TITULAR VIP (1/50) ⭐</span>
+        </div>
+        
+        <h2 style="font-family:'Playfair Display',serif; font-size:26px; color:#d4af37; font-weight:900; margin:0 0 6px 0; text-shadow: 0 2px 10px rgba(212,175,55,0.4);">Meme VIP</h2>
+        <p style="font-size:13px; color:rgba(255,255,255,0.7); margin:0 0 20px 0; line-height:1.4;">Acceso exclusivo a experiencias de hotel, eventos privados y privilegios Furancho Sessions.</p>
+        
+        <div style="width:100%; height:1px; background:linear-gradient(90deg, transparent, rgba(212,175,55,0.5), transparent); margin-bottom:20px;"></div>
+        
+        <!-- Live Clock -->
+        <div style="font-size:11px; color:rgba(255,255,255,0.5); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">Hora Oficial de Validez</div>
+        <div id="meme-vip-clock" style="font-family:monospace; font-size:24px; font-weight:700; color:#fff; letter-spacing:2px; text-shadow:0 0 10px rgba(255,255,255,0.3); margin-bottom:24px;">00:00:00</div>
+        
+        <button onclick="closeMemeVipCard()" style="width:100%; padding:14px; background:transparent; border:1.5px solid rgba(255,255,255,0.2); color:#fff; border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer; transition:all 0.2s;">Cerrar Tarjeta</button>
+      </div>
+    </div>
+  </div>
+  <style>
+    @keyframes rotateGold {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+  </style>
+
+  <!-- ==================== MODAL DE TRASPASO ==================== -->
+
+  <div id="transfer-modal" style="display:none; position:fixed; inset:0; z-index:2300; background:rgba(242,237,227,0.98); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); flex-direction:column; align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
+    <div style="width:100%; max-width:360px; text-align:center; display:flex; flex-direction:column; gap:20px; box-sizing:border-box;">
+      <h2 style="font-family:'Playfair Display',serif; font-size:24px; color:var(--wine); font-weight:900; margin:0;">🤝 Traspasar Pase</h2>
+      <p style="font-size:14px; color:var(--text-muted); margin:0;">Para pasarle este NFT a otro colega, escanea el QR de su "ID Socio".</p>
+
+      <div id="transfer-scanner-reader" style="width:100%; max-width:280px; margin:0 auto; border-radius:18px; overflow:hidden; border:2.5px solid var(--wine); background:#000;"></div>
+      
+      <div id="transfer-scanner-status" style="font-size:13px; font-weight:700; color:var(--wine); min-height:18px; margin:4px 0;"></div>
+
+      <div id="transfer-confirm-view" style="display:none; text-align:left; background:rgba(196,151,58,0.1); border:1px solid rgba(196,151,58,0.3); border-radius:14px; padding:16px;">
+        <p style="font-size:13px; margin-bottom:8px; font-weight:700; color:var(--text);">Destinatario encontrado:</p>
+        <p id="transfer-target-wallet" style="font-family:monospace; font-size:11px; background:rgba(0,0,0,0.05); padding:8px; border-radius:8px; word-break:break-all; margin-bottom:12px;"></p>
+        <p id="transfer-fee-warning" style="font-size:12px; color:var(--wine); line-height:1.4; margin-bottom:16px; font-weight:600;">
+          Para completar el traspaso, el nuevo propietario debe presentarse en barra y abonar el consumo mínimo (Peaje del Patrón).
+        </p>
+        <button onclick="submitTransferRequest()" id="btn-submit-transfer" style="width:100%; padding:14px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; box-shadow:0 4px 10px rgba(139,25,24,0.3);">
+          Confirmar Traspaso
+        </button>
+      </div>
+
+      <button onclick="stopTransferScan()" class="btn btn-ghost" style="margin-top:8px; border-radius:50px; padding:14px; width:100%; background:none; border:1.5px solid rgba(42,21,9,0.12); color:var(--text-muted); font-weight:700; cursor:pointer;">Cancelar</button>
+    </div>
+  </div>
+
+  <script src="/claim/app.js"></script>
 </body>
 </html>

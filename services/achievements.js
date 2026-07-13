@@ -47,6 +47,15 @@ const ACHIEVEMENTS = [
     tokenId: 104,
     edition: 'Miembro de Honor',
     rule: { type: 'vip_bookings', requiredCount: 2 }
+  },
+  {
+    id: 'meme_vip',
+    name: 'Meme VIP',
+    description: 'Edición Limitada. Meme oficial VIP para experiencias exclusivas de hotel y mucho más.',
+    image: 'nft_meme_vip.jpg',
+    tokenId: 50,
+    edition: 'Limitada (Max 50)',
+    rule: { type: 'raffle_only' } // No autodesbloqueable, solo admin/staff lo otorga
   }
   // Imágenes ya subidas, pendientes de su regla (día de asistencia):
   // { id:'maria_pita', name:'…', image:'furanchomariapita.jpg', tokenId:101, rule:{ type:'visit_on_date', date:'YYYY-MM-DD' } }

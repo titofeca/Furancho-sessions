@@ -33,6 +33,7 @@ const TOKEN_IDS = { 1: 1, 2: 2, 3: 3, 4: 4 };
 // ABI mínimo del contrato FuranchoNFT
 const ABI = [
   'function mint(address to, uint256 tokenId, uint256 amount) external',
+  'function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes data) external',
   'event TransferSingle(address indexed operator, address indexed from, address indexed to, uint256 id, uint256 value)'
 ];
 
@@ -250,4 +251,38 @@ function notifyAchievementQueue() {
 setTimeout(startQueueWorker, 1000);
 setTimeout(startAchievementQueueWorker, 1200);
 
-module.exports = { mintNFT, getMintStatus, getMinterBalance, getOnchainBalance, DEMO_MODE, notifyQueue, notifyAchievementQueue };
+// --- TRASPASO DE NFTS ENTRE USUARIOS ---
+// Funciona en dos pasos atómicos:
+// 1. El backend (MINTER_KEY) envía 0.05 MATIC a la wallet origen para pagar el gas.
+// 2. Con la private key origen firmamos y ejecutamos el safeTransferFrom.
+async function executeTransferOnChain(fromWallet, toWallet, tokenId, fromPrivateKey) {
+  if (DEMO_MODE) {
+    console.log(`[DEMO] Traspasando token ${tokenId} de ${fromWallet} a ${toWallet}`);
+    await new Promise(r => setTimeout(r, 1000));
+    return { success: true, txHash: `demo_transfer_${Date.now()}` };
+  }
+
+  const signer = await getHealthySigner(); // Minter admin
+  
+  // 1. Enviar MATIC para gas (0.05 MATIC suele sobrar en Polygon)
+  const txFund = await signer.sendTransaction({
+    to: fromWallet,
+    value: ethers.parseEther("0.05")
+  });
+  console.log(`[Polygon] Fondeando gas a ${fromWallet}... tx: ${txFund.hash}`);
+  await txFund.wait();
+
+  // 2. Ejecutar la transferencia con la clave del usuario
+  const userWallet = new ethers.Wallet(fromPrivateKey, signer.provider);
+  const contract = new ethers.Contract(CONTRACT_ADDR, ABI, userWallet);
+
+  console.log(`[Polygon] Traspasando token ${tokenId} → ${toWallet}`);
+  // safeTransferFrom(from, to, id, amount, data)
+  const txTransfer = await contract.safeTransferFrom(fromWallet, toWallet, tokenId, 1, "0x");
+  const receipt = await txTransfer.wait();
+
+  console.log(`[Polygon] ✅ Traspaso completado: ${receipt.hash}`);
+  return { success: true, txHash: receipt.hash };
+}
+
+module.exports = { mintNFT, getMintStatus, getMinterBalance, getOnchainBalance, DEMO_MODE, notifyQueue, notifyAchievementQueue, executeTransferOnChain };

@@ -95,6 +95,17 @@ const NFT_METADATA = {
       { trait_type: 'Blockchain', value: 'Polygon' },
       { trait_type: 'Edición', value: 'Furancho Sessions 2026' }
     ]
+  },
+  50: {
+    name: 'Meme VIP',
+    description: 'Edición Limitada. Meme oficial VIP para experiencias exclusivas de hotel y mucho más.',
+    image: `${APP_URL}/assets/nft_meme_vip.jpg`,
+    external_url: APP_URL,
+    attributes: [
+      { trait_type: 'Tipo', value: 'Meme VIP' },
+      { trait_type: 'Edición', value: 'Limitada (Max 50)' },
+      { trait_type: 'Blockchain', value: 'Polygon' }
+    ]
   }
 };
 

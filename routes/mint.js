@@ -456,5 +456,26 @@ router.get('/history', (req, res) => {
 
 
 
+// POST /api/mint/transfer-request
+// El cliente solicita un traspaso. Requiere enviar la privateKey temporalmente para que
+// el servidor pueda firmar la transacción (pagando el gas el servidor) tras la aprobación.
+router.post('/transfer-request', mintLimiter, (req, res) => {
+  const { fromWallet, toWallet, tokenId, privateKey } = req.body;
+  if (!fromWallet || !toWallet || !tokenId || !privateKey) {
+    return res.status(400).json({ error: 'Faltan datos para el traspaso' });
+  }
+  if (!/^0x[a-fA-F0-9]{40}$/i.test(toWallet) || !/^0x[a-fA-F0-9]{40}$/i.test(fromWallet)) {
+    return res.status(400).json({ error: 'La dirección destino o origen no es válida' });
+  }
+  try {
+    const { createTransferRequest } = require('../db/transfers');
+    const transferId = createTransferRequest(fromWallet, toWallet, parseInt(tokenId), privateKey);
+    res.json({ success: true, transferId });
+  } catch (e) {
+    console.error('Error creando transfer request:', e);
+    res.status(500).json({ error: 'Error al solicitar el traspaso' });
+  }
+});
+
 module.exports = router;
 module.exports.performCheckin = performCheckin;

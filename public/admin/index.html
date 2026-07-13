@@ -1668,6 +1668,24 @@
           <a id="nft-polygonscan-link" href="#" target="_blank" style="display:inline-block; font-size:12px; color:var(--wine); font-weight:600; text-decoration:none;">🔍 Ver en PolygonScan →</a>
         </div>
 
+        <!-- MEME VIP CONTROLS -->
+        <div class="glass-card" style="margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <div class="card-title">🎭 Emisión Meme VIP (Max 50)</div>
+            <div id="meme-vip-counter" style="font-size:12px; font-weight:700; color:var(--wine); background:rgba(139,25,24,0.1); padding:4px 8px; border-radius:8px;">0 / 50</div>
+          </div>
+          <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px; line-height:1.4;">Introduce el ID de socio (wallet) del cliente que ha comprado el Meme VIP. Se acuñará instantáneamente y se le otorgará un número de serie único.</p>
+          
+          <input type="text" id="meme-vip-wallet" placeholder="0x..." style="width:100%; padding:12px; border-radius:12px; border:1px solid rgba(42,21,9,0.15); margin-bottom:10px; font-family:monospace; font-size:12px; box-sizing:border-box;" />
+          
+          <div style="display:flex; gap:8px;">
+            <button onclick="startMemeVipScan()" style="flex:1; padding:12px; background:rgba(42,21,9,0.06); border:1px solid rgba(42,21,9,0.12); border-radius:12px; cursor:pointer; font-size:18px;">📷</button>
+            <button onclick="submitMintMemeVip()" style="flex:4; padding:12px; background:linear-gradient(135deg,var(--gold),#a47d2c); color:#fff; border:none; border-radius:12px; font-weight:700; cursor:pointer;">Mintear Meme VIP</button>
+          </div>
+          <div id="meme-vip-scanner-container" style="display:none; margin-top:10px; border-radius:12px; overflow:hidden; border:2px solid var(--gold);"></div>
+        </div>
+
+
         <!-- Historial de mints -->
         <div class="glass-card">
           <div class="card-header" style="margin-bottom:12px;">
@@ -2504,6 +2522,51 @@
     </div>
 
     <!-- ==================== PÁGINA: VISITAS ==================== -->
+    <!-- ==================== PÁGINA: TRASPASOS ==================== -->
+    <div class="page" id="page-transfers">
+      <div class="page-header">
+        <h1 class="page-title">🤝 Traspasos de NFTs</h1>
+        <div class="page-subtitle">Aprobación del mercado secundario</div>
+      </div>
+      
+      <div class="glass-card">
+        <div class="card-header">
+          <div class="card-title">Configuración de Tasa</div>
+        </div>
+        <div style="padding: 16px;">
+          <label class="form-label">Mensaje para el cliente (Peaje del Patrón)</label>
+          <div style="display:flex; gap:10px;">
+            <input type="text" id="transfer-fee-msg" class="input-field" placeholder="Ej: Para completar el traspaso debes consumir en barra 30€..." style="margin-bottom:0;" />
+            <button class="btn-primary" onclick="saveTransferSettings()" style="padding: 0 20px;">Guardar</button>
+          </div>
+          <p style="font-size:11px; color:var(--text-muted); margin-top:8px;">Este mensaje aparecerá en la app cuando alguien intente traspasar un NFT a otra persona.</p>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div class="card-header">
+          <div class="card-title">Traspasos Pendientes</div>
+          <button class="filter-btn active" onclick="loadPendingTransfers()">🔄 Refrescar</button>
+        </div>
+        <div style="overflow-x: auto;">
+          <table id="transfers-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Token</th>
+                <th>Origen</th>
+                <th>Destino</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="transfers-list">
+              <tr><td colspan="5" style="text-align:center;">Cargando traspasos...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- ==================== PÁGINA: EVENTOS ==================== -->
     <div class="page" id="page-events">
 
@@ -2724,6 +2787,10 @@
     <button class="nav-item" onclick="showPage('scanner')" id="nav-scanner">
       <span class="nav-icon">📷</span>
       <span>Escáner</span>
+    </button>
+    <button class="nav-item" onclick="showPage('transfers')" id="nav-transfers">
+      <span class="nav-icon">🤝</span>
+      <span>Traspasos</span>
     </button>
     <button class="nav-item" onclick="showPage('events')" id="nav-events" style="position:relative;">
       <span class="nav-icon">📅</span>
@@ -9357,6 +9424,181 @@
       else _scanPanel(`⚠️ ${r.error || 'No se pudo otorgar'}`);
     } catch (e) { _scanPanel('Error al otorgar logro.'); }
   }
+
+  // --- LOGICA DE TRASPASOS ---
+  async function loadPendingTransfers() {
+    try {
+      // Cargar configuracion de mensaje
+      const setRes = await fetch('/api/admin/settings/transfer_fee_text', { headers: authHeaders() }).then(r=>r.json());
+      if (setRes.value) {
+        document.getElementById('transfer-fee-msg').value = setRes.value;
+      }
+
+      // Cargar traspasos pendientes
+      const res = await fetch('/api/admin/transfers', { headers: authHeaders() });
+      if (res.status === 401) return;
+      const data = await res.json();
+      const list = document.getElementById('transfers-list');
+      
+      if (!data || data.length === 0) {
+        list.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay traspasos pendientes</td></tr>';
+        return;
+      }
+
+      list.innerHTML = data.map(t => `
+        <tr>
+          <td>${new Date(t.created_at).toLocaleString('es-ES', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })}</td>
+          <td>Token ID ${t.token_id}</td>
+          <td style="font-family:monospace; font-size:11px;">${t.from_wallet.slice(0,6)}...${t.from_wallet.slice(-4)}</td>
+          <td style="font-family:monospace; font-size:11px;">${t.to_wallet.slice(0,6)}...${t.to_wallet.slice(-4)}</td>
+          <td>
+            <div style="display:flex; gap:6px;">
+              <button onclick="approveTransfer(${t.id}, this)" class="btn-primary" style="padding: 6px 12px; font-size: 11px;">Aprobar</button>
+              <button onclick="rejectTransfer(${t.id}, this)" class="filter-btn" style="padding: 6px 12px; font-size: 11px; border-color: rgba(248,113,113,0.3); color: var(--error);">Rechazar</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    } catch (e) {
+      console.error(e);
+      document.getElementById('transfers-list').innerHTML = '<tr><td colspan="5" style="text-align:center;">Error cargando traspasos</td></tr>';
+    }
+  }
+
+  async function approveTransfer(id, btn) {
+    const originalText = btn.innerText;
+    btn.innerText = 'Ejecutando...';
+    btn.disabled = true;
+    try {
+      const res = await fetch(`/api/admin/transfers/${id}/approve`, {
+        method: 'POST',
+        headers: authHeaders()
+      }).then(r => r.json());
+      if (res.success) {
+        showToast('Traspaso completado en Polygon ✅');
+        loadPendingTransfers();
+      } else {
+        showToast('Error: ' + (res.error || 'Desconocido'));
+        btn.innerText = originalText;
+        btn.disabled = false;
+      }
+    } catch (e) {
+      showToast('Error de conexión');
+      btn.innerText = originalText;
+      btn.disabled = false;
+    }
+  }
+
+  async function rejectTransfer(id, btn) {
+    if (!confirm('¿Seguro que quieres rechazar y cancelar este traspaso?')) return;
+    try {
+      await fetch(`/api/admin/transfers/${id}/reject`, { method: 'POST', headers: authHeaders() });
+      loadPendingTransfers();
+    } catch (e) {
+      showToast('Error cancelando traspaso');
+    }
+  }
+
+  async function saveTransferSettings() {
+    const msg = document.getElementById('transfer-fee-msg').value;
+    try {
+      const res = await fetch('/api/admin/settings/transfer_fee_text', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: msg })
+      }).then(r => r.json());
+      if (res.success) showToast('Ajustes de traspaso guardados');
+    } catch (e) {
+      showToast('Error al guardar ajustes');
+    }
+  }
+
+  // Hook into showPage to load data
+  const originalShowPage = showPage;
+  window.showPage = function(pageId) {
+    originalShowPage(pageId);
+    if (pageId === 'transfers') {
+      loadPendingTransfers();
+    }
+  };
+
+  // --- MEME VIP LOGIC ---
+  let memeScanner = null;
+  function startMemeVipScan() {
+    const container = document.getElementById('meme-vip-scanner-container');
+    if (container.style.display === 'block') {
+      if (memeScanner) {
+        memeScanner.stop().catch(e => console.error(e));
+      }
+      container.style.display = 'none';
+      return;
+    }
+    container.style.display = 'block';
+    
+    if (!memeScanner) {
+      memeScanner = new Html5Qrcode("meme-vip-scanner-container");
+    }
+    memeScanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      (decodedText) => {
+        if (/^0x[a-fA-F0-9]{40}$/i.test(decodedText)) {
+          document.getElementById('meme-vip-wallet').value = decodedText;
+          memeScanner.stop().catch(e => console.error(e));
+          container.style.display = 'none';
+        }
+      },
+      (error) => {}
+    ).catch(err => {
+      alert("Error al abrir cámara");
+    });
+  }
+  
+  async function submitMintMemeVip() {
+    const wallet = document.getElementById('meme-vip-wallet').value.trim();
+    if (!/^0x[a-fA-F0-9]{40}$/i.test(wallet)) {
+      return alert("Wallet inválida.");
+    }
+    if (!confirm(`¿Seguro que quieres mintear un Meme VIP (limitado a 50) para ${wallet.slice(0,6)}...?`)) return;
+    
+    try {
+      const res = await fetch('/api/admin/mint-meme', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-token': localStorage.getItem('adminToken')
+        },
+        body: JSON.stringify({ walletAddress: wallet })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("¡Meme VIP minteado y encolado on-chain!");
+        document.getElementById('meme-vip-wallet').value = '';
+        updateMemeVipCounter();
+      } else {
+        alert("Error: " + data.error);
+      }
+    } catch (e) {
+      alert("Error de conexión");
+    }
+  }
+
+  async function updateMemeVipCounter() {
+    try {
+      const res = await fetch('/api/admin/achievement-stats', {
+        headers: { 'x-admin-token': localStorage.getItem('adminToken') }
+      });
+      const data = await res.json();
+      const memeVip = data.find(a => a.id === 'meme_vip');
+      if (memeVip) {
+        document.getElementById('meme-vip-counter').innerText = `${memeVip.minted + memeVip.pending} / 50`;
+      }
+    } catch (e) {}
+  }
+  
+  // Actualizar el contador cuando cargue la página
+  setInterval(updateMemeVipCounter, 60000); // 1 minuto
+  setTimeout(updateMemeVipCounter, 2000); // inicial
 </script>
 </body>
 </html>

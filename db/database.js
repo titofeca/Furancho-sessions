@@ -697,7 +697,15 @@ function getAchievementMint(walletAddress, achievementId) {
 }
 
 function getWalletAchievementMints(walletAddress) {
-  return db.prepare(`SELECT * FROM achievement_mints WHERE LOWER(wallet_address) = LOWER(?)`).all(walletAddress);
+  return db.prepare(`
+    WITH RankedMints AS (
+      SELECT id, wallet_address, achievement_id, token_id, status, tx_hash, cost_matic, created_at,
+             ROW_NUMBER() OVER (PARTITION BY achievement_id ORDER BY id ASC) as mint_serial
+      FROM achievement_mints
+      WHERE status != 'failed'
+    )
+    SELECT * FROM RankedMints WHERE LOWER(wallet_address) = LOWER(?)
+  `).all(walletAddress);
 }
 
 function getNextPendingAchievementMint() {
