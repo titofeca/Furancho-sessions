@@ -9057,17 +9057,23 @@
         html5QrScanner.start(
           { facingMode: 'environment' },
           config,
-          (decodedText) => {
-            // Extrae la wallet del QR: admite el ?inspect= del admin, el ?restore= del
-            // "ID Socio (QR)" del cliente, o una dirección 0x suelta. Coge la primera
-            // dirección 0x que aparezca, sea cual sea el formato de la URL.
-            let wallet = decodedText.trim();
-            const match = wallet.match(/(0x[a-fA-F0-9]{40})/);
-            if (match) wallet = match[1];
-            if (!/^0x[a-fA-F0-9]{40}$/.test(wallet)) {
-              statusEl.textContent = '⚠️ QR no reconocido como wallet Furancheiro';
-              return;
-            }
+           (decodedText) => {
+             const text = decodedText.trim();
+             if (text.startsWith('tapa_claim:')) {
+               stopScanner();
+               handleTapaClaimScan(text);
+               return;
+             }
+             // Extrae la wallet del QR: admite el ?inspect= del admin, el ?restore= del
+             // "ID Socio (QR)" del cliente, o una dirección 0x suelta. Coge la primera
+             // dirección 0x que aparezca, sea cual sea el formato de la URL.
+             let wallet = text;
+             const match = wallet.match(/(0x[a-fA-F0-9]{40})/);
+             if (match) wallet = match[1];
+             if (!/^0x[a-fA-F0-9]{40}$/.test(wallet)) {
+               statusEl.textContent = '⚠️ QR no reconocido como wallet Furancheiro';
+               return;
+             }
             if (wallet === lastScannedWallet) return; // evitar re-scan inmediato
             lastScannedWallet = wallet;
             stopScanner();
@@ -9702,6 +9708,158 @@
   // Actualizar el contador cuando cargue la página
   setInterval(updateMemeVipCounter, 60000); // 1 minuto
   setTimeout(updateMemeVipCounter, 2000); // inicial
+  // --- LOGICA DE CANJE DE TAPA DIARIA ---
+  let _currentTapaClaimData = null;
+
+  function closeTapaClaimModal() {
+    document.getElementById('tapa-claim-modal').style.display = 'none';
+    _currentTapaClaimData = null;
+    // Si el escáner sigue activo o queremos reanudarlo
+    if (html5QrScanner) {
+      try { startScanner(); } catch(e){}
+    }
+  }
+
+  async function handleTapaClaimScan(decodedText) {
+    const parts = decodedText.split(':');
+    if (parts.length < 6) {
+      alert("⚠️ Formato de QR de Tapa inválido");
+      return;
+    }
+
+    const wallet = parts[1];
+    const nftType = parts[2];
+    const nftId = parts[3];
+    const serial = parts[4];
+    const date = parts[5];
+
+    _currentTapaClaimData = { walletAddress: wallet, nftType, nftId, serial: parseInt(serial) || 0 };
+
+    const bodyEl = document.getElementById('tapa-claim-modal-body');
+    bodyEl.innerHTML = `
+      <div style="text-align:center; padding:12px; color:var(--text-muted);">Verificando disponibilidad en tiempo real...</div>
+    `;
+    
+    document.getElementById('tapa-claim-modal').style.display = 'flex';
+
+    try {
+      const res = await fetch(`/api/mint/daily-tapa-status?wallet=${wallet}`);
+      const data = await res.json();
+
+      let nftName = nftId;
+      if (nftType === 'level') {
+        nftName = nftId === '3' ? 'Nivel 3: Larpeiro' : 'Nivel 4: Presidente';
+      } else if (nftType === 'chave') {
+        nftName = '🔑 Chave do Furancho';
+      } else {
+        if (typeof getNftName === 'function') {
+          nftName = getNftName(nftId) || nftId;
+        }
+      }
+
+      if (data.claimed) {
+        const claimedTime = new Date(data.claimedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        bodyEl.innerHTML = `
+          <div style="background:rgba(220,38,38,0.1); border:1.5px solid #dc2626; border-radius:12px; padding:12px 16px; color:#b91c1c; font-size:13px; font-weight:700; line-height:1.4; text-align:center;">
+            ⚠️ ¡DOBLE CANJE DETECTADO / INTENTO DE FRAUDE!
+          </div>
+          <div style="font-size:13px; color:var(--text); line-height:1.6; margin:8px 0;">
+            Este cliente o su NFT ya han consumido su tapa gratuita hoy.<br/>
+            • <b>Billetera:</b> <span style="font-family:monospace; font-size:11px;">${wallet.substring(0,8)}...${wallet.substring(36)}</span><br/>
+            • <b>NFT Acreditador:</b> <strong>${data.nftUsed?.name || nftName} #${data.nftUsed?.serial || serial}</strong><br/>
+            • <b>Hora de Canje:</b> ${claimedTime}
+          </div>
+          <button onclick="closeTapaClaimModal()" class="btn-primary" style="width:100%; margin-top:8px; background:#b91c1c; border-color:#b91c1c;">Cerrar e Impedir Entrega</button>
+        `;
+      } else if (!data.eligible) {
+        bodyEl.innerHTML = `
+          <div style="background:rgba(220,38,38,0.1); border:1.5px solid #dc2626; border-radius:12px; padding:12px 16px; color:#b91c1c; font-size:13px; font-weight:700; text-align:center;">
+            ⚠️ CANJE RECHAZADO: ${data.reason || 'No elegible hoy'}
+          </div>
+          <button onclick="closeTapaClaimModal()" class="btn-primary" style="width:100%; margin-top:8px; background:#b91c1c; border-color:#b91c1c;">Cerrar</button>
+        `;
+      } else {
+        bodyEl.innerHTML = `
+          <div style="background:rgba(22,163,74,0.1); border:1.5px solid #16a34a; border-radius:12px; padding:12px 16px; color:#15803d; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:8px;">
+            <span>✅ LISTO PARA ENTREGAR</span>
+          </div>
+          <div style="font-size:13px; color:var(--text); line-height:1.6; margin:8px 0;">
+            • <b>Cliente:</b> <span style="font-family:monospace; font-size:11px; background:rgba(0,0,0,0.05); padding:2px 6px; border-radius:4px;">${wallet.substring(0,8)}...${wallet.substring(36)}</span><br/>
+            • <b>NFT Presentado:</b> <strong>${nftName} ${parseInt(serial) > 0 ? '#' + serial : ''}</strong><br/>
+            • <b>Fecha del Pase:</b> ${date} (Hoy)
+          </div>
+          <p style="font-size:11.5px; color:var(--text-muted); line-height:1.4; margin:0 0 12px;">
+            Entrega la consumición y la tapa física al cliente. Al pulsar el botón de abajo se marcará como entregada.
+          </p>
+          <button onclick="confirmTapaClaim()" class="btn-primary" style="width:100%; background:#16a34a; border-color:#16a34a; font-weight:700;">Confirmar y Registrar Canje</button>
+          <button onclick="closeTapaClaimModal()" class="btn-secondary" style="width:100%; margin-top:6px; background:none; border:1px solid rgba(0,0,0,0.15); color:var(--text-muted);">Cancelar</button>
+        `;
+      }
+    } catch (e) {
+      bodyEl.innerHTML = `
+        <div style="color:#b91c1c; font-size:13px; text-align:center;">Error verificando el estado: ${e.message}</div>
+        <button onclick="closeTapaClaimModal()" class="btn-primary" style="width:100%; margin-top:8px;">Cerrar</button>
+      `;
+    }
+  }
+
+  async function confirmTapaClaim() {
+    if (!_currentTapaClaimData) return;
+    const bodyEl = document.getElementById('tapa-claim-modal-body');
+    bodyEl.innerHTML = `
+      <div style="text-align:center; padding:12px; color:var(--text-muted);">Registrando entrega de tapa...</div>
+    `;
+
+    try {
+      const res = await fetch('/api/admin/claim-daily-tapa', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-token': localStorage.getItem('adminToken')
+        },
+        body: JSON.stringify(_currentTapaClaimData)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        bodyEl.innerHTML = `
+          <div style="background:rgba(22,163,74,0.1); border:1.5px solid #16a34a; border-radius:12px; padding:12px 16px; color:#15803d; font-size:13px; font-weight:700; text-align:center;">
+            🎉 ¡CANJE REGISTRADO CORRECTAMENTE!
+          </div>
+          <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; text-align:center; margin:8px 0 0;">
+            El bono ha sido cerrado para hoy. El cliente ya no podrá reclamar más tapas con este NFT ni con su wallet.
+          </p>
+          <button onclick="closeTapaClaimModal()" class="btn-primary" style="width:100%; margin-top:12px; background:#16a34a; border-color:#16a34a;">Listo</button>
+        `;
+      } else {
+        bodyEl.innerHTML = `
+          <div style="background:rgba(220,38,38,0.1); border:1.5px solid #dc2626; border-radius:12px; padding:12px 16px; color:#b91c1c; font-size:13px; font-weight:700;">
+            ⚠️ ERROR: ${data.error}
+          </div>
+          <button onclick="closeTapaClaimModal()" class="btn-primary" style="width:100%; margin-top:8px;">Cerrar</button>
+        `;
+      }
+    } catch (e) {
+      bodyEl.innerHTML = `
+        <div style="color:#b91c1c; font-size:13px;">Error de red: ${e.message}</div>
+        <button onclick="closeTapaClaimModal()" class="btn-primary" style="width:100%; margin-top:8px;">Cerrar</button>
+      `;
+    }
+  }
 </script>
+
+<!-- Modal de Canje de Tapa Diaria -->
+<div id="tapa-claim-modal" onclick="if(event.target===this)closeTapaClaimModal()" style="display:none; position:fixed; inset:0; background:rgba(28,14,6,0.82); z-index:10000; align-items:flex-end; justify-content:center;">
+  <div style="background:#F2EDE3; width:100%; max-width:440px; border-radius:24px 24px 0 0; padding:24px; box-sizing:border-box; box-shadow:0 -10px 40px rgba(0,0,0,0.15); display:flex; flex-direction:column; gap:16px;">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h2 style="font-family:'Playfair Display',serif; font-size:20px; font-weight:700; color:#2A1509; margin:0;">🍽️ Canje de Tapa y Cunca</h2>
+      <button onclick="closeTapaClaimModal()" style="border:none; background:none; font-size:20px; cursor:pointer; color:var(--text-muted); outline:none;">✕</button>
+    </div>
+    
+    <div id="tapa-claim-modal-body" style="display:flex; flex-direction:column; gap:12px;">
+      <!-- Dinámico -->
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

@@ -94,6 +94,23 @@ try {
 
 try {
   db.exec(`
+    CREATE TABLE IF NOT EXISTS daily_tapa_claims (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      wallet_address TEXT NOT NULL,
+      nft_type TEXT NOT NULL,
+      nft_id TEXT NOT NULL,
+      serial INTEGER NOT NULL DEFAULT 0,
+      claim_date TEXT NOT NULL,
+      claimed_at TEXT DEFAULT (datetime('now')),
+      staff_user TEXT
+    )
+  `);
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_daily_claims_unique_nft ON daily_tapa_claims(nft_type, nft_id, serial, claim_date)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_daily_claims_wallet_date ON daily_tapa_claims(wallet_address, claim_date)`);
+} catch (_) {}
+
+try {
+  db.exec(`
     CREATE TABLE IF NOT EXISTS weekly_claims (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       wallet_address TEXT NOT NULL,

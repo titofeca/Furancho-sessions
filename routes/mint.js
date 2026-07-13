@@ -499,6 +499,145 @@ router.post('/transfer-request', mintLimiter, (req, res) => {
     res.status(500).json({ error: 'Error al solicitar el traspaso' });
   }
 });
+// GET /api/mint/daily-tapa-status
+// Comprueba el estado del canje de tapa/cunca de hoy para una wallet
+router.get('/daily-tapa-status', (req, res) => {
+  const { wallet } = req.query;
+  if (!wallet || !/^0x[a-fA-F0-9]{40}$/i.test(wallet)) {
+    return res.status(400).json({ error: 'Wallet no válida' });
+  }
+
+  try {
+    const { db } = require('../db/database');
+    const achievements = require('../services/achievements');
+    
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+    const isJuly = today.split('-')[1] === '07';
+
+    // 1. Verificar que estamos en julio
+    if (!isJuly) {
+      return res.json({
+        eligible: false,
+        claimed: false,
+        reason: 'El beneficio de la Chave do Furancho solo está activo durante el mes de julio.'
+      });
+    }
+
+    // 2. Verificar si tiene sesión iniciada hoy (fichaje obligatorio)
+    const session = db.prepare(`
+      SELECT id, entry_time FROM sessions 
+      WHERE LOWER(wallet_address) = LOWER(?) 
+        AND date(entry_time, '+2 hours') = ?
+      ORDER BY entry_time DESC LIMIT 1
+    `).get(wallet, today);
+
+    if (!session) {
+      return res.json({
+        eligible: false,
+        claimed: false,
+        reason: 'No has fichado tu entrada hoy en el Furancho.'
+      });
+    }
+
+    // 3. Buscar si posee el NFT "El Guardián da Chave" (guardian_furancho o IDs con 'guardian'/'chave')
+    const queryAchievements = db.prepare(`
+      WITH RankedMints AS (
+        SELECT id, wallet_address, achievement_id, token_id, status,
+               ROW_NUMBER() OVER (PARTITION BY achievement_id ORDER BY id ASC) as mint_serial
+        FROM achievement_mints
+        WHERE status = 'success'
+      )
+      SELECT * FROM RankedMints WHERE LOWER(wallet_address) = LOWER(?)
+    `).all(wallet);
+
+    const catalog = achievements.list();
+    const eligibleNfts = [];
+
+    queryAchievements.forEach(am => {
+      const achId = am.achievement_id.toLowerCase();
+      if (am.achievement_id === 'guardian_furancho' || achId.includes('guardian') || achId.includes('chave')) {
+        const cat = catalog.find(c => c.id === am.achievement_id);
+        eligibleNfts.push({
+          type: 'achievement',
+          id: am.achievement_id,
+          name: cat ? cat.name : '🔑 Guardián de la Chave',
+          tokenId: am.token_id,
+          serial: am.mint_serial || 0
+        });
+      }
+    });
+
+    if (eligibleNfts.length === 0) {
+      return res.json({
+        eligible: false,
+        claimed: false,
+        reason: 'No tienes el NFT del Guardián de la Chave.'
+      });
+    }
+
+    // 4. Comprobar si esta wallet ya ha canjeado hoy
+    const walletClaim = db.prepare(`
+      SELECT * FROM daily_tapa_claims 
+      WHERE LOWER(wallet_address) = LOWER(?) AND claim_date = ?
+    `).get(wallet, today);
+
+    if (walletClaim) {
+      let nftUsedName = '🔑 Guardián de la Chave';
+      const cat = catalog.find(c => c.id === walletClaim.nft_id);
+      if (cat) nftUsedName = cat.name;
+
+      return res.json({
+        eligible: true,
+        claimed: true,
+        claimedAt: walletClaim.claimed_at,
+        nftUsed: {
+          type: walletClaim.nft_type,
+          id: walletClaim.nft_id,
+          name: nftUsedName,
+          serial: walletClaim.serial
+        },
+        reason: 'Ya has canjeado tu tapa y cunca de hoy.'
+      });
+    }
+
+    // 5. Verificar que el NFT en particular no haya sido usado hoy por nadie más (anti-bypass por traspaso)
+    const availableNfts = [];
+    for (const nft of eligibleNfts) {
+      const nftClaim = db.prepare(`
+        SELECT id FROM daily_tapa_claims
+        WHERE nft_type = 'achievement' AND nft_id = ? AND serial = ? AND claim_date = ?
+      `).get(nft.id, nft.serial, today);
+
+      if (!nftClaim) {
+        availableNfts.push(nft);
+      }
+    }
+
+    if (availableNfts.length === 0) {
+      return res.json({
+        eligible: false,
+        claimed: false,
+        reason: 'Tu NFT del Guardián ya ha sido utilizado para canjear hoy en otra billetera.'
+      });
+    }
+
+    // Seleccionamos el primer NFT disponible
+    const activeNft = availableNfts[0];
+    const qrData = `tapa_claim:${wallet}:achievement:${activeNft.id}:${activeNft.serial}:${today}`;
+
+    res.json({
+      eligible: true,
+      claimed: false,
+      activeNft,
+      availableNfts,
+      qrData
+    });
+
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
 
 module.exports = router;
 module.exports.performCheckin = performCheckin;

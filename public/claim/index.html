@@ -1969,6 +1969,9 @@
         </button>
       </div>
 
+      <!-- Tarjeta de Tapa y Cunca do Día -->
+      <div id="profile-tapa-card" style="display:none; margin-bottom: 18px;"></div>
+
       <!-- Mensaje del Furancho — aparece si el admin envió uno -->
       <!-- Banner mensaje nuevo (solo no leídos) -->
       <div id="profile-admin-msg" style="display:none; margin-bottom: 18px;">
@@ -3582,6 +3585,7 @@
       loadWeeklyRaffle();
       maybeShowRecoveryNudge();
       startNextRaffleCountdown();
+      checkDailyTapaStatus();
 
       // Mostrar toast si viene de restauración por QR
       if (_isQrRestore) {
@@ -6241,6 +6245,138 @@
     setTimeout(() => { panel.style.display = 'none'; }, 280);
   }
 
+  let _tapaClockInterval = null;
+
+  async function checkDailyTapaStatus() {
+    const container = document.getElementById('profile-tapa-card');
+    if (!container) return;
+    
+    try {
+      const res = await fetch(`/api/mint/daily-tapa-status?wallet=${userWalletAddress}`);
+      const data = await res.json();
+      
+      if (!data.eligible && !data.claimed) {
+        // Si no es elegible, mostramos un aviso sutil o no mostramos la tarjeta
+        container.style.display = 'block';
+        container.innerHTML = `
+          <div class="glass-card" style="border: 1.5px solid rgba(139,25,24,0.15); background: rgba(28,12,5,0.2); padding: 16px 20px; border-radius: 20px; text-align: left; position: relative;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:18px;">🍽️</span>
+                <span style="font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted);">Tapa y Cunca do Día</span>
+              </div>
+              <span style="font-size:9px; font-weight:800; text-transform:uppercase; padding:3px 8px; border-radius:100px; background:rgba(0,0,0,0.15); color:var(--text-muted);">No Disponible</span>
+            </div>
+            <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0;">
+              ${data.reason || 'Requiere tener un NFT de Nivel 3 o superior para activar el canje diario de tapa.'}
+            </p>
+          </div>
+        `;
+        return;
+      }
+      
+      container.style.display = 'block';
+      
+      if (data.claimed) {
+        const claimedTime = new Date(data.claimedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        container.innerHTML = `
+          <div class="glass-card" style="border: 1.5px solid #16a34a; background: linear-gradient(135deg, rgba(22,163,74,0.05) 0%, rgba(28,12,5,0.1) 100%); padding: 18px 20px; border-radius: 20px; text-align: left; position: relative; box-shadow: 0 10px 30px rgba(22,163,74,0.04);">
+            <div style="position:absolute; top:0; left:0; width:100%; height:4px; background: #16a34a;"></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:20px;">🍽️</span>
+                <span style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; color:#16a34a;">TAPA Y CUNCA DO DÍA</span>
+              </div>
+              <span style="font-size:10px; font-weight:800; text-transform:uppercase; padding:3px 10px; border-radius:100px; background:rgba(22,163,74,0.15); color:#16a34a;">✓ Canjeado</span>
+            </div>
+            <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; margin:0;">
+              ¡Buen provecho! Tapa y copa de vino entregadas hoy a las <strong>${claimedTime}</strong>. Usaste tu pase: <strong>${data.nftUsed.name}</strong>.
+            </p>
+          </div>
+        `;
+      } else {
+        // Disponible
+        window._tapaQrData = data.qrData;
+        window._tapaNftName = data.activeNft.name + (data.activeNft.serial > 0 ? ` #${data.activeNft.serial}` : '');
+        
+        container.innerHTML = `
+          <div class="glass-card" style="border: 1.5px solid rgba(139,25,24,0.3); background: linear-gradient(135deg, rgba(139,25,24,0.06) 0%, rgba(196,151,58,0.04) 100%); padding: 18px 20px; border-radius: 20px; text-align: left; position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(139,25,24,0.08);">
+            <div style="position:absolute; top:0; left:0; width:100%; height:4px; background: linear-gradient(90deg, var(--wine), var(--gold));"></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:20px;">🍽️</span>
+                <span style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; color:var(--gold);">TAPA Y CUNCA DO DÍA</span>
+              </div>
+              <span style="font-size:10px; font-weight:800; text-transform:uppercase; padding:3px 10px; border-radius:100px; background:rgba(139,25,24,0.1); color:var(--wine); border:1px solid rgba(139,25,24,0.2);">Disponible</span>
+            </div>
+            <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; margin:0 0 14px;">
+              Tienes disponible tu tapa y cunca gratis de hoy. Presenta tu vale digital en la barra del furancho.
+            </p>
+            <button onclick="openTapaModal()" style="
+              width:100%; display:inline-flex; align-items:center; justify-content:center; gap:8px;
+              padding:12px; border-radius:12px; border:none;
+              background:linear-gradient(135deg, var(--wine), var(--wine-dark)); color:#fff;
+              font-family:'Outfit',sans-serif; font-size:13px; font-weight:700; cursor:pointer;
+              box-shadow: 0 4px 12px rgba(139,25,24,0.25); outline:none;">
+              🎟️ Mostrar Vale de Tapa
+            </button>
+          </div>
+        `;
+      }
+    } catch (e) {
+      console.error('Error cargando estado de tapa:', e);
+    }
+  }
+
+  function openTapaModal() {
+    const modal = document.getElementById('daily-tapa-modal');
+    const qrImg = document.getElementById('tapa-qr-img');
+    const nftDesc = document.getElementById('tapa-qr-nft-desc');
+    
+    if (!modal || !qrImg) return;
+    
+    const parts = window._tapaQrData.split(':');
+    const wallet = parts[1];
+    const nftType = parts[2];
+    const nftId = parts[3];
+    const serial = parts[4];
+    
+    qrImg.src = `/api/qr/tapa/${wallet}/${nftType}/${nftId}/${serial}?t=${Date.now()}`;
+    nftDesc.textContent = `Pase Activo: ${window._tapaNftName}`;
+    
+    modal.style.display = 'flex';
+    modal.offsetHeight;
+    modal.style.opacity = '1';
+    modal.querySelector('div').style.transform = 'scale(1)';
+    
+    updateTapaClock();
+    _tapaClockInterval = setInterval(updateTapaClock, 1000);
+  }
+  
+  function closeTapaModal() {
+    const modal = document.getElementById('daily-tapa-modal');
+    if (!modal) return;
+    
+    if (_tapaClockInterval) {
+      clearInterval(_tapaClockInterval);
+      _tapaClockInterval = null;
+    }
+    
+    modal.style.opacity = '0';
+    modal.querySelector('div').style.transform = 'scale(0.95)';
+    setTimeout(() => {
+      modal.style.display = 'none';
+    }, 250);
+  }
+  
+  function updateTapaClock() {
+    const clockEl = document.getElementById('tapa-modal-clock');
+    if (clockEl) {
+      const now = new Date();
+      clockEl.textContent = now.toTimeString().split(' ')[0];
+    }
+  }
+
   function openIdModal() {
     const modal = document.getElementById('id-modal');
     const sheet = modal.firstElementChild || modal.querySelector('div');
@@ -8700,6 +8836,38 @@
       to { transform: rotate(360deg); }
     }
   </style>
+
+  <!-- ==================== MODAL DE CANJE TAPA DIARIA ==================== -->
+  <div id="daily-tapa-modal" style="display:none; position:fixed; inset:0; z-index:2200; background:rgba(12,6,3,0.95); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:20px; box-sizing:border-box; opacity:0; transition:opacity 0.25s ease;">
+    <div style="background:rgba(28,12,5,0.97); border:1.5px solid rgba(196,151,58,0.35); border-radius:24px; padding:32px 24px; max-width:360px; width:100%; display:flex; flex-direction:column; align-items:center; text-align:center; gap:16px; position:relative; box-shadow:0 20px 50px rgba(0,0,0,0.6); transform:scale(0.95); transition:transform 0.25s cubic-bezier(0.22,1,0.36,1);">
+      <button onclick="closeTapaModal()" style="position:absolute; top:14px; right:14px; width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,0.1); color:#F2EDE3; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; outline:none;">✕</button>
+      
+      <div style="background:rgba(196,151,58,0.15); padding:6px 14px; border-radius:100px; border:1px solid rgba(196,151,58,0.3); margin-bottom:4px;">
+        <span style="font-size:11px; font-weight:800; color:var(--gold); text-transform:uppercase; letter-spacing:1.5px;">🎟️ VALE DE TAPA Y CUNCA</span>
+      </div>
+      
+      <h2 style="font-family:'Playfair Display',serif; font-size:22px; color:var(--gold); font-weight:900; margin:0;">Cunca e Tapa Gratis</h2>
+      <p style="font-size:12.5px; color:rgba(255,255,255,0.7); margin:0 0 10px; line-height:1.45;">Enseña este QR en la barra. El camarero lo escaneará para entregarte la consumición de hoy.</p>
+      
+      <!-- Contenedor QR -->
+      <div style="background:#fff; padding:16px; border-radius:16px; display:inline-block; box-shadow:0 0 20px rgba(255,255,255,0.15); margin-bottom:10px;">
+        <div id="tapa-qr-container" style="width:200px; height:200px; display:flex; align-items:center; justify-content:center; color:#000;">
+          <!-- Se pintará el QR como imagen -->
+          <img id="tapa-qr-img" src="" style="width:200px; height:200px; display:block; border-radius:10px;" alt="QR Vale Tapa" />
+        </div>
+      </div>
+      
+      <p id="tapa-qr-nft-desc" style="font-size:12px; font-weight:700; color:var(--gold); margin:0;"></p>
+      
+      <div style="width:100%; height:1px; background:linear-gradient(90deg, transparent, rgba(196,151,58,0.3), transparent); margin-top:8px;"></div>
+      
+      <!-- Reloj en vivo para control anti-fraude -->
+      <div style="font-size:10px; color:rgba(255,255,255,0.5); text-transform:uppercase; letter-spacing:1px; margin-bottom:2px;">Control Anti-Fraude</div>
+      <div id="tapa-modal-clock" style="font-family:monospace; font-size:20px; font-weight:700; color:#fff; letter-spacing:2px; text-shadow:0 0 10px rgba(255,255,255,0.3);">00:00:00</div>
+      
+      <button onclick="closeTapaModal()" style="width:100%; padding:12px; background:rgba(196,151,58,0.15); border:1.5px solid rgba(196,151,58,0.4); color:var(--gold); border-radius:50px; font-family:'Outfit',sans-serif; font-size:13px; font-weight:700; cursor:pointer; margin-top:10px; outline:none;">Volver</button>
+    </div>
+  </div>
 
   <!-- ==================== MODAL DE TRASPASO ==================== -->
 

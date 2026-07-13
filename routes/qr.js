@@ -189,6 +189,29 @@ router.get('/campaign/:address', async (req, res) => {
   }
 });
 
+// GET /api/qr/tapa/:wallet/:nftType/:nftId/:serial — genera QR para canje de tapa
+// Codifica: "tapa_claim:<wallet>:<nftType>:<nftId>:<serial>:<date>"
+router.get('/tapa/:wallet/:nftType/:nftId/:serial', async (req, res) => {
+  const { wallet, nftType, nftId, serial } = req.params;
+  if (!/^0x[a-fA-F0-9]{40}$/i.test(wallet)) {
+    return res.status(400).send('Dirección no válida');
+  }
+
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+  const payload = `tapa_claim:${wallet}:${nftType}:${nftId}:${serial}:${today}`;
+  const options = { ...QR_OPTIONS, color: { dark: '#8B1918', light: '#FFFFFF' } }; // color vino
+
+  try {
+    const qrBuffer = await QRCode.toBuffer(payload, options);
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    res.set('Pragma', 'no-cache');
+    res.set('Content-Type', 'image/png');
+    res.send(qrBuffer);
+  } catch (e) {
+    res.status(500).send('Error generando QR: ' + e.message);
+  }
+});
+
 // GET /api/qr/:level — genera QR como imagen PNG (legacy)
 router.get('/:level', async (req, res) => {
   const level = parseInt(req.params.level);
