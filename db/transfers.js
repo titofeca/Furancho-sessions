@@ -26,8 +26,10 @@ function createTransferRequest(fromWallet, toWallet, tokenId, privateKeyEnc) {
   return stmt.run(fromWallet, toWallet, tokenId, privateKeyEnc).lastInsertRowid;
 }
 
+// OJO: nunca sacar private_key_enc de aquí — este listado viaja al navegador del admin.
 function getPendingTransfers() {
-  return db.prepare(`SELECT * FROM nft_transfers WHERE status = 'pending' ORDER BY created_at ASC`).all();
+  return db.prepare(`SELECT id, from_wallet, to_wallet, token_id, status, created_at, approved_at, tx_hash
+                     FROM nft_transfers WHERE status = 'pending' ORDER BY created_at ASC`).all();
 }
 
 function getTransferById(id) {
@@ -35,10 +37,13 @@ function getTransferById(id) {
 }
 
 function updateTransferStatus(id, status, txHash = null) {
+  // En cuanto el traspaso deja de estar pendiente, la clave privada del cliente se borra
+  // de la base de datos: solo hace falta en el momento de firmar.
+  const scrub = status !== 'pending' ? `, private_key_enc = ''` : '';
   if (txHash) {
-    db.prepare(`UPDATE nft_transfers SET status = ?, tx_hash = ?, approved_at = datetime('now') WHERE id = ?`).run(status, txHash, id);
+    db.prepare(`UPDATE nft_transfers SET status = ?, tx_hash = ?, approved_at = datetime('now')${scrub} WHERE id = ?`).run(status, txHash, id);
   } else {
-    db.prepare(`UPDATE nft_transfers SET status = ? WHERE id = ?`).run(status, id);
+    db.prepare(`UPDATE nft_transfers SET status = ?${scrub} WHERE id = ?`).run(status, id);
   }
 }
 

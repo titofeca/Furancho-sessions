@@ -1613,9 +1613,30 @@ router.post('/transfers/:id/approve', requireAuth, async (req, res) => {
     // Execute on-chain
     const { from_wallet, to_wallet, token_id, private_key_enc } = transfer;
     const result = await executeTransferOnChain(from_wallet, to_wallet, token_id, private_key_enc);
-    
+
     // Update status
     updateTransferStatus(transfer.id, 'success', result.txHash);
+
+    // La propiedad en la app sigue al NFT: para logros (tokens fuera de 1-4) movemos el
+    // registro a la wallet destino, conservando la fila (y por tanto su nº de serie), que
+    // es lo que espera el anti-trampas de la tapa diaria. Los niveles 1-4 NO se tocan:
+    // el historial de visitas es de quien lo ganó; solo viaja el coleccionable on-chain.
+    if (token_id < 1 || token_id > 4) {
+      try {
+        const { db } = require('../db/database');
+        const row = db.prepare(`
+          SELECT id FROM achievement_mints
+          WHERE LOWER(wallet_address) = LOWER(?) AND token_id = ? AND status = 'success'
+          ORDER BY id ASC LIMIT 1
+        `).get(from_wallet, token_id);
+        if (row) {
+          db.prepare(`UPDATE achievement_mints SET wallet_address = ? WHERE id = ?`).run(to_wallet, row.id);
+        }
+      } catch (moveErr) {
+        console.error('[Transfers] Traspaso on-chain OK pero fallo moviendo el logro en BD:', moveErr.message);
+      }
+    }
+
     res.json({ success: true, txHash: result.txHash });
   } catch (e) {
     console.error(e);

@@ -327,7 +327,7 @@ function getAchievementStats() {
   `).all();
   const byId = {};
   rows.forEach(r => { byId[r.achievement_id] = r; });
-  return _all().map(a => {
+  return list().map(a => {
     const s = byId[a.id] || {};
     return {
       id: a.id, name: a.name, edition: a.edition || null, tokenId: a.tokenId, custom: !!a.custom,

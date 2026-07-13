@@ -490,9 +490,43 @@ router.post('/transfer-request', mintLimiter, (req, res) => {
   if (!/^0x[a-fA-F0-9]{40}$/i.test(toWallet) || !/^0x[a-fA-F0-9]{40}$/i.test(fromWallet)) {
     return res.status(400).json({ error: 'La dirección destino o origen no es válida' });
   }
+  if (fromWallet.toLowerCase() === toWallet.toLowerCase()) {
+    return res.status(400).json({ error: 'No puedes traspasarte el NFT a ti mismo' });
+  }
   try {
+    // Anti-abuso: la clave enviada TIENE que corresponder a la wallet origen. Sin esto,
+    // cualquiera podría encolar traspasos falsos que al aprobarse quemarían el POL de
+    // gas del minter en transacciones que revierten on-chain.
+    const { ethers } = require('ethers');
+    let derived;
+    try { derived = new ethers.Wallet(privateKey.trim()).address; } catch (_) {
+      return res.status(400).json({ error: 'La clave de la cuenta no es válida' });
+    }
+    if (derived.toLowerCase() !== fromWallet.toLowerCase()) {
+      return res.status(403).json({ error: 'La clave no corresponde a la wallet origen' });
+    }
+
+    // La wallet origen tiene que POSEER el NFT que quiere traspasar (según nuestro registro).
+    const { db } = require('../db/database');
+    const tid = parseInt(tokenId);
+    let owns = false;
+    if (tid >= 1 && tid <= 4) {
+      owns = !!db.prepare(`SELECT 1 FROM mints WHERE LOWER(wallet_address) = LOWER(?) AND level = ? AND status = 'success'`).get(fromWallet, tid);
+    } else {
+      owns = !!db.prepare(`SELECT 1 FROM achievement_mints WHERE LOWER(wallet_address) = LOWER(?) AND token_id = ? AND status = 'success'`).get(fromWallet, tid);
+    }
+    if (!owns) {
+      return res.status(403).json({ error: 'Esa wallet no posee este NFT' });
+    }
+
+    // Un solo traspaso pendiente por NFT y wallet: evita llenar la cola del patrón.
+    const dupe = db.prepare(`SELECT 1 FROM nft_transfers WHERE LOWER(from_wallet) = LOWER(?) AND token_id = ? AND status = 'pending'`).get(fromWallet, tid);
+    if (dupe) {
+      return res.status(400).json({ error: 'Ya tienes un traspaso pendiente de este NFT. Espera a que el patrón lo gestione.' });
+    }
+
     const { createTransferRequest } = require('../db/transfers');
-    const transferId = createTransferRequest(fromWallet, toWallet, parseInt(tokenId), privateKey);
+    const transferId = createTransferRequest(fromWallet, toWallet, tid, privateKey.trim());
     res.json({ success: true, transferId });
   } catch (e) {
     console.error('Error creando transfer request:', e);
