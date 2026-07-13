@@ -9465,7 +9465,13 @@
       104: '🎖️ Furancheiro de Honor',
       105: '🛡️ Guardián del Furancho'
     };
-    return map[tokenId] || `Token ID ${tokenId}`;
+    if (map[tokenId]) return map[tokenId];
+    
+    if (typeof achievementRowsById !== 'undefined') {
+      const found = Object.values(achievementRowsById).find(a => Number(a.tokenId) === Number(tokenId));
+      if (found) return `🎭 ${found.name}`;
+    }
+    return `Token ID ${tokenId}`;
   }
 
   // --- LOGICA DE TRASPASOS ---

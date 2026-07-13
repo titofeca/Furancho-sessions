@@ -7957,7 +7957,7 @@
       cta = `<span style="font-size:12px; font-weight:800; color:#16a34a;">✅ NFT en tu wallet</span>
         <div style="margin-top:6px; display:flex; gap:8px;">
           <a href="https://polygonscan.com/token/0x30118E36F1E3681ac5B9D048659Bc22733c78913?a=${userWalletAddress}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:inline-block; font-size:11px; color:rgba(42,21,9,0.6); text-decoration:none; font-weight:600;">🔗 Verificar</a>
-          <button onclick="event.stopPropagation(); startTransferScan(${a.tokenId}, '${a.name}', '${a.id}')" style="background:transparent; border:none; padding:0; color:var(--wine); font-size:11px; font-weight:700; cursor:pointer; text-decoration:underline; font-family:'Outfit',sans-serif;">🤝 Traspasar</button>
+          <button onclick="event.stopPropagation(); startTransferScan(${a.tokenId}, '${a.name.replace(/'/g, "\\'")}', '${a.id}')" style="background:transparent; border:none; padding:0; color:var(--wine); font-size:11px; font-weight:700; cursor:pointer; text-decoration:underline; font-family:'Outfit',sans-serif;">🤝 Traspasar</button>
         </div>`;
     } else if (a.claimStatus === 'pending' || a.claimStatus === 'pending_approval') {
       cta = `<span style="font-size:12px; font-weight:800; color:var(--gold);">⏳ Generando tu NFT…</span>`;
