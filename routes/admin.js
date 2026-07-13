@@ -366,13 +366,13 @@ router.get('/multilevel', requireAuth, (req, res) => {
 // POST /api/admin/send-message
 // Body: { subject, body, levelFilter }
 router.post('/send-message', requireAuth, async (req, res) => {
-  const { subject, body, levelFilter, rsvpEventId } = req.body;
+  const { subject, body, levelFilter, rsvpEventId, actionType } = req.body;
 
   if (!subject || !body) {
     return res.status(400).json({ error: 'Asunto y cuerpo son obligatorios' });
   }
 
-  // Evento al que se adjunta el botón "¿te apetece?" (opcional). null = mensaje normal sin botón.
+  // Evento al que se adjunta el botón (opcional). null = mensaje normal sin botón.
   const rsvpEvent = rsvpEventId != null && rsvpEventId !== '' && !isNaN(parseInt(rsvpEventId))
     ? parseInt(rsvpEventId) : null;
 
@@ -392,7 +392,8 @@ router.post('/send-message', requireAuth, async (req, res) => {
     body,
     levelFilter: levelFilter || 'all',
     recipientCount: wallets.length,
-    rsvpEventId: rsvpEvent
+    rsvpEventId: rsvpEvent,
+    actionType: actionType || null
   });
 
   console.log(`[MESSAGE] Mensaje publicado. Destinatarios estimados: ${wallets.length}${checkedInOnly ? ' (solo fichados en local)' : ''}`);
@@ -1588,17 +1589,17 @@ router.get('/scheduled-messages', requireAuth, (req, res) => {
 
 // POST /api/admin/scheduled-messages (ADMIN ONLY)
 router.post('/scheduled-messages', requireAuth, (req, res) => {
-  const { id, subject, body, levelFilter, rsvpEventId, sendAt } = req.body;
+  const { id, subject, body, levelFilter, rsvpEventId, actionType, sendAt } = req.body;
   if (!subject || !body || !sendAt) {
     return res.status(400).json({ error: 'Asunto, cuerpo y fecha/hora de envío son obligatorios' });
   }
   try {
     const { insertScheduledMessage, updateScheduledMessage } = require('../db/database');
     if (id) {
-      updateScheduledMessage(parseInt(id), { subject, body, levelFilter, rsvpEventId, sendAt });
+      updateScheduledMessage(parseInt(id), { subject, body, levelFilter, rsvpEventId, actionType, sendAt });
       res.json({ success: true, id: parseInt(id) });
     } else {
-      const newId = insertScheduledMessage({ subject, body, levelFilter, rsvpEventId, sendAt });
+      const newId = insertScheduledMessage({ subject, body, levelFilter, rsvpEventId, actionType, sendAt });
       res.json({ success: true, id: newId });
     }
   } catch (e) {

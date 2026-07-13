@@ -53,6 +53,7 @@ try {
       body TEXT NOT NULL,
       level_filter TEXT DEFAULT 'all',
       rsvp_event_id INTEGER,
+      action_type TEXT,
       send_at TEXT NOT NULL,
       status TEXT DEFAULT 'pending',
       created_at TEXT DEFAULT (datetime('now'))
@@ -246,6 +247,7 @@ db.exec(`
     body TEXT NOT NULL,
     level_filter TEXT DEFAULT 'all',
     recipient_count INTEGER DEFAULT 0,
+    action_type TEXT,
     sent_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -631,6 +633,8 @@ try {
 try { db.exec(`ALTER TABLE rsvps ADD COLUMN allergens TEXT`); } catch (_) {}
 // Evento al que un mensaje adjunta el botón "¿te apetece?" (null = sin botón). Sustituye la detección por palabras clave.
 try { db.exec(`ALTER TABLE messages ADD COLUMN rsvp_event_id INTEGER`); } catch (_) {}
+try { db.exec(`ALTER TABLE messages ADD COLUMN action_type TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE scheduled_messages ADD COLUMN action_type TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE sessions ADD COLUMN exit_points INTEGER DEFAULT 0`); } catch (_) {}
 // Marca si la salida fue por auto-cierre de las 23:00 (1) o salida manual del cliente (0).
 // Para sorteos: una salida manual saca del bombo; el auto-cierre NO (seguía dentro al acabar el evento).
@@ -998,12 +1002,12 @@ function getWalletsByAchievement(achievementId) {
     .map(r => r.wallet_address);
 }
 
-function insertMessage({ subject, body, levelFilter, recipientCount, rsvpEventId = null }) {
+function insertMessage({ subject, body, levelFilter, recipientCount, rsvpEventId = null, actionType = null }) {
   const stmt = db.prepare(`
-    INSERT INTO messages (subject, body, level_filter, recipient_count, rsvp_event_id)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO messages (subject, body, level_filter, recipient_count, rsvp_event_id, action_type)
+    VALUES (?, ?, ?, ?, ?, ?)
   `);
-  return stmt.run(subject, body, levelFilter, recipientCount, rsvpEventId).lastInsertRowid;
+  return stmt.run(subject, body, levelFilter, recipientCount, rsvpEventId, actionType).lastInsertRowid;
 }
 
 function getMessages() {
@@ -3197,21 +3201,22 @@ function getScheduledMessages() {
   return db.prepare(`SELECT * FROM scheduled_messages ORDER BY send_at DESC`).all();
 }
 
-function insertScheduledMessage({ subject, body, levelFilter, rsvpEventId, sendAt }) {
+function insertScheduledMessage({ subject, body, levelFilter, rsvpEventId, actionType, sendAt }) {
   const stmt = db.prepare(`
-    INSERT INTO scheduled_messages (subject, body, level_filter, rsvp_event_id, send_at)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO scheduled_messages (subject, body, level_filter, rsvp_event_id, action_type, send_at)
+    VALUES (?, ?, ?, ?, ?, ?)
   `);
-  return stmt.run(subject, body, levelFilter || 'all', rsvpEventId || null, sendAt).lastInsertRowid;
+  return stmt.run(subject, body, levelFilter || 'all', rsvpEventId || null, actionType || null, sendAt).lastInsertRowid;
 }
 
-function updateScheduledMessage(id, { subject, body, levelFilter, rsvpEventId, sendAt, status }) {
+function updateScheduledMessage(id, { subject, body, levelFilter, rsvpEventId, actionType, sendAt, status }) {
   const fields = [];
   const vals = [];
   if (subject !== undefined)      { fields.push('subject = ?');       vals.push(subject); }
   if (body !== undefined)         { fields.push('body = ?');          vals.push(body); }
   if (levelFilter !== undefined)  { fields.push('level_filter = ?');  vals.push(levelFilter); }
   if (rsvpEventId !== undefined)  { fields.push('rsvp_event_id = ?');  vals.push(rsvpEventId); }
+  if (actionType !== undefined)   { fields.push('action_type = ?');   vals.push(actionType); }
   if (sendAt !== undefined)       { fields.push('send_at = ?');       vals.push(sendAt); }
   if (status !== undefined)       { fields.push('status = ?');        vals.push(status); }
   if (!fields.length) return;

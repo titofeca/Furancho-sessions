@@ -2819,6 +2819,7 @@
     let userVisits = [];
     let _globalEvents = [];
     let _globalMyRsvps = [];
+    let _globalMyVipReservations = [];
     const walletPreexistente = !!userWalletAddress; // true si ya había visitado antes
 
     // Fuente única de alérgenos — los 14 de declaración obligatoria UE (Reglamento 1169/2011, Anexo II)
@@ -3635,6 +3636,7 @@
         ]);
         _globalEvents = events;
         _globalMyRsvps = myRsvps;
+        _globalMyVipReservations = myVipReservations || [];
         // U1: mapa de alérgenos por evento (editar) y últimos usados (recordar en nuevos RSVP)
         _myRsvpAllergens = {};
         _lastAllergens = '';
@@ -5971,39 +5973,71 @@
       const nextEvent = _globalEvents.find(ev => ev.id === Number(m.rsvp_event_id));
       if (nextEvent) {
         const eventId = nextEvent.id;
-        const attending = _globalMyRsvps.includes(eventId);
         const formattedDate = new Date(nextEvent.event_date + 'T00:00:00').toLocaleDateString('es-ES', {
           weekday: 'short', day: 'numeric', month: 'short'
         });
-        
-        rsvpWidget = `
-          <div style="margin: 12px 0; padding: 12px; background: rgba(139,25,24,0.04); border: 1px solid rgba(139,25,24,0.1); border-radius: 8px; text-align: left;">
-            <p style="font-size: 12px; font-weight: 700; color: var(--wine); margin: 0 0 4px 0; font-family: 'Playfair Display', serif;">
-              🍷 ¿Te apetece esta sesión?
-            </p>
-            <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 10px 0; font-weight: 300; line-height:1.4;">
-              ${nextEvent.title} (${formattedDate}) · sin compromiso, es pa que la cocina calcule
-            </p>
-            <div style="display: flex; gap: 8px;">
-              <button onclick="event.stopPropagation(); setRsvpFromMsg(${eventId}, true, this)" style="
-                flex: 1; padding: 8px 12px; border-radius: 50px; font-size: 11px; font-weight: 700; cursor: pointer;
-                border: 1.5px solid ${attending ? 'var(--wine)' : 'rgba(42,21,9,0.15)'};
-                background: ${attending ? 'var(--wine)' : 'transparent'};
-                color: ${attending ? '#fff' : 'var(--text-muted)'};
-                font-family: 'Outfit', sans-serif;">
-                👍 Igual me paso
-              </button>
-              <button onclick="event.stopPropagation(); setRsvpFromMsg(${eventId}, false, this)" style="
-                flex: 1; padding: 8px 12px; border-radius: 50px; font-size: 11px; font-weight: 700; cursor: pointer;
-                border: 1.5px solid ${!attending && _globalMyRsvps.length > 0 ? 'var(--wine)' : 'rgba(42,21,9,0.15)'};
-                background: ${!attending && _globalMyRsvps.length > 0 ? 'rgba(139,25,24,0.05)' : 'transparent'};
-                color: ${!attending && _globalMyRsvps.length > 0 ? 'var(--wine)' : 'var(--text-muted)'};
-                font-family: 'Outfit', sans-serif;">
-                👎 Esta no
-              </button>
+
+        if (m.action_type === 'vip') {
+          // Si el mensaje tiene acción VIP
+          const myVip = (_globalMyVipReservations || []).find(r => r.event_id === eventId);
+          const hasVip = myVip && myVip.status !== 'cancelled';
+          const buttonText = hasVip 
+            ? (myVip.status === 'confirmed' ? `✅ VIP Confirmada (${myVip.group_size} pax)` : `⏳ VIP Pendiente (${myVip.group_size} pax)`)
+            : `⭐ Reservar Mesa VIP`;
+          const buttonStyle = hasVip
+            ? `flex: 1; padding: 10px 14px; border-radius: 50px; font-size: 11.5px; font-weight: 700; background: rgba(196,151,58,0.1); border: 1.5px solid rgba(196,151,58,0.3); color: var(--gold); font-family: 'Outfit', sans-serif; cursor: default;`
+            : `flex: 1; padding: 10px 14px; border-radius: 50px; font-size: 11.5px; font-weight: 700; background: linear-gradient(135deg, var(--gold), #a97b1f); border: none; color: #fff; font-family: 'Outfit', sans-serif; cursor: pointer; box-shadow: 0 2px 8px rgba(196,151,58,0.25);`;
+
+          const actionCall = hasVip ? '' : `onclick="event.stopPropagation(); openVipModal(${eventId}, '${nextEvent.title} · ${formattedDate}')"`;
+
+          rsvpWidget = `
+            <div style="margin: 12px 0; padding: 14px; background: linear-gradient(135deg, rgba(196,151,58,0.12), rgba(139,25,24,0.05)); border: 1.5px solid rgba(196,151,58,0.3); border-radius: 12px; text-align: left;">
+              <p style="font-size: 12px; font-weight: 700; color: var(--wine); margin: 0 0 4px 0; font-family: 'Playfair Display', serif;">
+                ⭐ Zona VIP Furancho
+              </p>
+              <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 10px 0; font-weight: 300; line-height:1.45;">
+                <strong>${nextEvent.title}</strong> (${formattedDate})<br>
+                Mesa VIP 4 personas + Botella Magnum + 4 tapas (1 por pax) + Postre.
+              </p>
+              <div style="display: flex;">
+                <button ${actionCall} style="${buttonStyle}">
+                  ${buttonText}
+                </button>
+              </div>
             </div>
-          </div>
-        `;
+          `;
+        } else {
+          // Acción de Asistencia RSVP normal
+          const attending = _globalMyRsvps.includes(eventId);
+          rsvpWidget = `
+            <div style="margin: 12px 0; padding: 12px; background: rgba(139,25,24,0.04); border: 1px solid rgba(139,25,24,0.1); border-radius: 8px; text-align: left;">
+              <p style="font-size: 12px; font-weight: 700; color: var(--wine); margin: 0 0 4px 0; font-family: 'Playfair Display', serif;">
+                🍷 ¿Te apetece esta sesión?
+              </p>
+              <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 10px 0; font-weight: 300; line-height:1.4;">
+                ${nextEvent.title} (${formattedDate}) · sin compromiso, es pa que la cocina calcule
+              </p>
+              <div style="display: flex; gap: 8px;">
+                <button onclick="event.stopPropagation(); setRsvpFromMsg(${eventId}, true, this)" style="
+                  flex: 1; padding: 8px 12px; border-radius: 50px; font-size: 11px; font-weight: 700; cursor: pointer;
+                  border: 1.5px solid ${attending ? 'var(--wine)' : 'rgba(42,21,9,0.15)'};
+                  background: ${attending ? 'var(--wine)' : 'transparent'};
+                  color: ${attending ? '#fff' : 'var(--text-muted)'};
+                  font-family: 'Outfit', sans-serif;">
+                  👍 Igual me paso
+                </button>
+                <button onclick="event.stopPropagation(); setRsvpFromMsg(${eventId}, false, this)" style="
+                  flex: 1; padding: 8px 12px; border-radius: 50px; font-size: 11px; font-weight: 700; cursor: pointer;
+                  border: 1.5px solid ${!attending && _globalMyRsvps.length > 0 ? 'var(--wine)' : 'rgba(42,21,9,0.15)'};
+                  background: ${!attending && _globalMyRsvps.length > 0 ? 'rgba(139,25,24,0.05)' : 'transparent'};
+                  color: ${!attending && _globalMyRsvps.length > 0 ? 'var(--wine)' : 'var(--text-muted)'};
+                  font-family: 'Outfit', sans-serif;">
+                  👎 Esta no
+                </button>
+              </div>
+            </div>
+          `;
+        }
       }
     }
 
@@ -7896,8 +7930,8 @@
       <!-- Pack -->
       <div style="background:linear-gradient(135deg,rgba(196,151,58,0.12),rgba(139,25,24,0.06)); border:1.5px solid rgba(196,151,58,0.3); border-radius:14px; padding:14px 16px; margin-bottom:14px; text-align:left;">
         <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--gold); margin:0 0 6px 0;">Pack incluido</p>
-        <p style="font-size:15px; font-weight:700; color:var(--text); margin:0 0 3px 0;">🍾 Magnum + Tapas + Zona VIP</p>
-        <p style="font-size:13px; color:var(--text-muted); margin:0;">PVP <strong style="color:var(--wine); font-size:15px;">140 €</strong> &nbsp;·&nbsp; Mínimo 4 personas</p>
+        <p style="font-size:14.5px; font-weight:700; color:var(--text); margin:0 0 3px 0;">🍾 Botella Magnum + 4 Tapas + Postre + Zona VIP</p>
+        <p style="font-size:12.5px; color:var(--text-muted); margin:0; line-height:1.45;">Mesa VIP reservada para 4 personas (incluye 1 tapa por persona y postre).<br>PVP <strong style="color:var(--wine); font-size:15px;">140 €</strong> &nbsp;·&nbsp; Mínimo 4 personas</p>
       </div>
 
       <p id="vip-capacity-text" style="font-size:13px; color:var(--text); margin:0 0 18px 0; font-weight:500;"></p>

@@ -561,9 +561,9 @@ function scheduleAutoMessages() {
 
         // Guardar en tabla histórica
         db.prepare(`
-          INSERT INTO messages (subject, body, level_filter, recipient_count, rsvp_event_id, sent_at)
-          VALUES (?, ?, ?, ?, ?, datetime('now'))
-        `).run(msg.subject, msg.body, levelFilter, wallets.length, msg.rsvp_event_id);
+          INSERT INTO messages (subject, body, level_filter, recipient_count, rsvp_event_id, action_type, sent_at)
+          VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+        `).run(msg.subject, msg.body, levelFilter, wallets.length, msg.rsvp_event_id, msg.action_type);
 
         // Marcar enviado
         db.prepare(`

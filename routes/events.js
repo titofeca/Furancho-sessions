@@ -208,6 +208,25 @@ router.patch('/vip/:id', requireAuth, (req, res) => {
           alias
         }, reservation.wallet_address);
       } catch(_) {}
+
+      // ENVIAR NOTIFICACIÓN PUSH PWA AUTOMÁTICA
+      try {
+        const { sendPushToWallet } = require('../services/push');
+        let pushTitle, pushBody;
+        if (status === 'confirmed') {
+          const aliasTxt = alias ? ` a nombre de "${alias}"` : '';
+          pushTitle = '⭐ ¡Reserva VIP Confirmada!';
+          pushBody = `Tu mesa VIP${aliasTxt} para "${reservation.event_title}" está confirmada. ¡Nos vemos allí, neno! 🥂`;
+        } else if (status === 'cancelled') {
+          pushTitle = '❌ Reserva VIP Cancelada';
+          pushBody = `Lo sentimos, pero tu mesa VIP para "${reservation.event_title}" no pudo ser confirmada. Escríbenos para solucionarlo.`;
+        }
+        if (pushTitle) {
+          sendPushToWallet(reservation.wallet_address, pushTitle, pushBody, { url: '/claim' });
+        }
+      } catch(err) {
+        console.error('[VIP Push] Error sending status push notification:', err.message);
+      }
     }
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
