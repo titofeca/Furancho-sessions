@@ -531,6 +531,169 @@ function getPresentByLevel() {
   return { total: present.length, byLevel, byAchievement };
 }
 
+// ── INFORME DE NEGOCIO (rango de fechas + comparativa con el periodo anterior) ──
+// Cruza las TRES fuentes con las definiciones canónicas de arriba:
+//   · afluencia (sessions→eventos)  · comunidad (altas)  · facturación (event_finances).
+// La adopción de la app = fichajes de la app vs comensales reales (covers) apuntados
+// en la facturación de cada evento — solo en eventos que tienen ambos datos.
+
+function _ymdAddDays(ymd, n) {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+function _ymdDiffDays(a, b) { // días de a→b inclusive
+  const toMs = (s) => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d); };
+  return Math.round((toMs(b) - toMs(a)) / 86400000) + 1;
+}
+function _pctDelta(cur, prev) {
+  if (cur == null || prev == null) return null;
+  if (prev === 0) return cur === 0 ? 0 : null; // sin base no hay %
+  return Math.round((cur - prev) / Math.abs(prev) * 1000) / 10;
+}
+function _round1(v) { return v == null ? null : Math.round(v * 10) / 10; }
+
+function _summarizeRange(from, to, ctx) {
+  const inRange = (d) => d >= from && d <= to;
+
+  // ── Afluencia: eventos del rango ya celebrados (con fichajes) ──
+  const rangeEvents = ctx.events.filter(ev => inRange(ev.event_date));
+  const uniques = new Set();
+  const stays = [];
+  let asistencias = 0, nuevos = 0, peakMax = 0, peakSum = 0;
+  const perEvent = [];
+  for (const ev of rangeEvents) {
+    const bucket = ctx.byDate.get(ev.event_date);
+    const sum = summarizeEvent(ev, bucket, ctx.walletFirstDate);
+    if (sum.attendees === 0) continue; // futuro o sin datos
+    asistencias += sum.attendees;
+    nuevos += sum.nuevos;
+    peakMax = Math.max(peakMax, sum.peak_inside);
+    peakSum += sum.peak_inside;
+    for (const [wallet, span] of bucket.walletSpans) {
+      uniques.add(wallet);
+      const mins = Math.round((span.lastExitMs - span.firstEntryMs) / 60000);
+      if (mins > 0 && mins <= MAX_STAY_MIN) stays.push(mins);
+    }
+    perEvent.push(sum);
+  }
+  const eventsHeld = perEvent.length;
+  const avgStay = stays.length ? Math.round(stays.reduce((a, b) => a + b, 0) / stays.length) : null;
+
+  // ── Comunidad: altas de usuarios en el rango (cualquier vía, cualquier día) ──
+  let newSignups = 0;
+  ctx.community.new_by_day.forEach(x => { if (inRange(x.day)) newSignups += x.count; });
+
+  // ── Facturación: eventos del rango con datos económicos ──
+  const finRows = ctx.finance.events.filter(f => inRange(f.date));
+  let revenue = null, costs = null, covers = 0, vip = 0, revenueEvents = 0;
+  const costsByCategory = { staff: 0, dj: 0, band: 0, fnb: 0, decor: 0, other: 0 };
+  finRows.forEach(f => {
+    if (f.revenue != null) { revenue = (revenue || 0) + f.revenue; revenueEvents++; }
+    if (f.costsTotal != null) costs = (costs || 0) + f.costsTotal;
+    Object.keys(costsByCategory).forEach(k => { if (f.costs && f.costs[k]) costsByCategory[k] += f.costs[k]; });
+    if (f.covers) covers += f.covers;
+    if (f.vipCount) vip += f.vipCount;
+  });
+  const profit = revenue != null ? revenue - (costs || 0) : null;
+  const marginPct = (profit != null && revenue > 0) ? _round1(profit / revenue * 100) : null;
+  const avgTicket = (revenue != null && covers > 0) ? _round1(revenue / covers) : null;
+
+  // ── Adopción de la app: fichajes vs comensales reales, solo eventos con ambos ──
+  const attByDate = {};
+  perEvent.forEach(e => { attByDate[e.event_date] = e.attendees; });
+  let adoptCovers = 0, adoptApp = 0, adoptEvents = 0;
+  finRows.forEach(f => {
+    if (f.covers > 0 && attByDate[f.date] != null) {
+      adoptCovers += f.covers;
+      adoptApp += attByDate[f.date];
+      adoptEvents++;
+    }
+  });
+  const adoptionPct = adoptCovers > 0 ? _round1(adoptApp / adoptCovers * 100) : null;
+
+  // ── Sorteos lanzados en el rango (fecha Madrid) ──
+  let raffles = 0;
+  ctx.raffleDates.forEach(d => { if (inRange(d)) raffles++; });
+
+  // Detalle por evento: afluencia + facturación fusionadas por fecha
+  const finByDate = {};
+  finRows.forEach(f => { finByDate[f.date] = f; });
+  const detail = perEvent.map(e => {
+    const f = finByDate[e.event_date] || {};
+    return {
+      date: e.event_date, title: e.title,
+      attendees: e.attendees, nuevos: e.nuevos, recurrentes: e.recurrentes,
+      avg_stay: e.avg_stay, peak: e.peak_inside,
+      covers: f.covers ?? null, revenue: f.revenue ?? null,
+      costsTotal: f.costsTotal ?? null, profit: f.profit ?? null, marginPct: _round1(f.marginPct),
+      avgTicket: _round1(f.avgTicket),
+      adoptionPct: (f.covers > 0) ? _round1(e.attendees / f.covers * 100) : null
+    };
+  });
+
+  return {
+    from, to,
+    events_held: eventsHeld,
+    asistencias,
+    unicos: uniques.size,
+    nuevos,
+    recurrentes: asistencias - nuevos,
+    recurrencia_pct: asistencias > 0 ? _round1((asistencias - nuevos) / asistencias * 100) : null,
+    avg_attendees: eventsHeld ? _round1(asistencias / eventsHeld) : null,
+    avg_stay: avgStay,
+    peak_max: peakMax,
+    peak_avg: eventsHeld ? _round1(peakSum / eventsHeld) : null,
+    new_signups: newSignups,
+    raffles,
+    revenue, costs, profit, marginPct,
+    covers: finRows.length ? covers : null,
+    vip: finRows.length ? vip : null,
+    revenueEvents,
+    avgTicket, costsByCategory,
+    adoption: { pct: adoptionPct, app: adoptApp, covers: adoptCovers, events: adoptEvents },
+    detail
+  };
+}
+
+function getBusinessReport(from, to) {
+  const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
+  const today = madridParts(Date.now()).date;
+  if (!YMD_RE.test(to || '')) to = today;
+  if (!YMD_RE.test(from || '')) from = _ymdAddDays(to, -29);
+  if (from > to) { const t = from; from = to; to = t; }
+
+  const { events, byDate, walletFirstDate } = analyze();
+  const community = getCommunityGrowth();
+  const finance = require('../db/database').getEventFinancesSummary();
+  const raffleDates = db.prepare(`SELECT created_at FROM raffles`).all()
+    .map(r => { const ms = utcStrToMs(r.created_at); return ms != null ? madridParts(ms).date : null; })
+    .filter(Boolean);
+  const ctx = { events, byDate, walletFirstDate, community, finance, raffleDates };
+
+  const len = _ymdDiffDays(from, to);
+  const prevTo = _ymdAddDays(from, -1);
+  const prevFrom = _ymdAddDays(prevTo, -(len - 1));
+
+  const current = _summarizeRange(from, to, ctx);
+  const previous = _summarizeRange(prevFrom, prevTo, ctx);
+
+  // Deltas % de los indicadores comparables (null = sin base para comparar)
+  const deltas = {};
+  ['events_held', 'asistencias', 'unicos', 'nuevos', 'recurrentes', 'avg_attendees', 'avg_stay',
+   'peak_max', 'new_signups', 'raffles', 'revenue', 'costs', 'profit', 'covers', 'avgTicket']
+    .forEach(k => { deltas[k] = _pctDelta(current[k], previous[k]); });
+  deltas.marginPct = (current.marginPct != null && previous.marginPct != null)
+    ? _round1(current.marginPct - previous.marginPct) : null;   // puntos, no %
+  deltas.adoptionPct = (current.adoption.pct != null && previous.adoption.pct != null)
+    ? _round1(current.adoption.pct - previous.adoption.pct) : null; // puntos
+
+  return {
+    generated_at: new Date().toISOString(),
+    total_users: community.total_users, // comunidad total histórica (contexto)
+    current, previous, deltas
+  };
+}
+
 module.exports = {
   getRealEvents,
   getOverview,
@@ -543,6 +706,7 @@ module.exports = {
   getAttendeeWalletsByDate,
   getCommunityGrowth,
   getVisitStats,
+  getBusinessReport,
   // helpers expuestos por si hacen falta en tests/otros módulos
   _internal: { madridWallToMs, madridParts, utcStrToMs, computePeak }
 };

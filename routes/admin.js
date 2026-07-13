@@ -242,6 +242,15 @@ router.get('/event-finances', requireAuth, (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET /api/admin/business-report?from=YYYY-MM-DD&to=YYYY-MM-DD — informe de negocio
+// (afluencia + comunidad + facturación + adopción de la app) con comparativa del
+// periodo anterior de igual longitud. Toda la lógica vive en services/metrics.js.
+router.get('/business-report', requireAuth, (req, res) => {
+  try {
+    res.json(require('../services/metrics').getBusinessReport(req.query.from, req.query.to));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // GET /api/admin/event-finances/:eventId — facturación de un evento (para precargar el modal)
 router.get('/event-finances/:eventId', requireAuth, (req, res) => {
   const eventId = parseInt(req.params.eventId, 10);

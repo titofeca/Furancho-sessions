@@ -1294,6 +1294,7 @@
         <button class="subpage-tab active" id="subtab-metrics" onclick="switchSubPage('metrics', this)">📊 Métricas y Afluencia</button>
         <button class="subpage-tab" id="subtab-clients" onclick="switchSubPage('clients', this)">👥 Listado y Segmentos</button>
         <button class="subpage-tab" id="subtab-nfts" onclick="switchSubPage('nfts', this)">🏅 NFTs Polygon</button>
+        <button class="subpage-tab" id="subtab-report" onclick="switchSubPage('report', this)">🖨️ Informes</button>
       </div>
 
       <!-- SUBPÁGINA 1: MÉTRICAS Y AFLUENCIA -->
@@ -1434,6 +1435,44 @@
       </div>
 
       <!-- SUBPÁGINA 2: LISTADO Y SEGMENTOS -->
+      <!-- SUBPÁGINA: INFORMES DEL NEGOCIO (imprimibles, con comparativas) -->
+      <div id="subpage-report" class="subpage-panel">
+        <div class="glass-card" style="margin-bottom:20px;">
+          <div class="card-title" style="margin-bottom:6px;">🖨️ Informe del negocio</div>
+          <p style="font-size:11.5px; color:var(--text-muted); margin:0 0 14px; line-height:1.5;">Elige el periodo y qué apartados quieres. El informe compara siempre con el periodo anterior de la misma duración y se puede imprimir o guardar en PDF.</p>
+
+          <!-- Rango de fechas + atajos -->
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
+            <input type="date" id="rep-from" style="padding:8px 6px; font-size:12.5px; border:1px solid var(--border); border-radius:9px; background:#fff; color:var(--text);" />
+            <span style="color:var(--text-muted); font-size:12px;">→</span>
+            <input type="date" id="rep-to" style="padding:8px 6px; font-size:12.5px; border:1px solid var(--border); border-radius:9px; background:#fff; color:var(--text);" />
+            <button onclick="repPreset('mes')" style="background:rgba(139,25,24,0.08); color:var(--wine); border:none; border-radius:100px; padding:7px 12px; font-size:11px; font-weight:700; cursor:pointer;">Este mes</button>
+            <button onclick="repPreset('mespasado')" style="background:rgba(139,25,24,0.08); color:var(--wine); border:none; border-radius:100px; padding:7px 12px; font-size:11px; font-weight:700; cursor:pointer;">Mes pasado</button>
+            <button onclick="repPreset('30d')" style="background:rgba(139,25,24,0.08); color:var(--wine); border:none; border-radius:100px; padding:7px 12px; font-size:11px; font-weight:700; cursor:pointer;">Últimos 30 días</button>
+            <button onclick="repPreset('verano')" style="background:rgba(196,151,58,0.15); color:#8B6914; border:none; border-radius:100px; padding:7px 12px; font-size:11px; font-weight:700; cursor:pointer;">☀️ Verano</button>
+          </div>
+
+          <!-- Apartados del informe (marcables) -->
+          <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px; background:rgba(196,151,58,0.07); border:1.5px dashed rgba(196,151,58,0.4); border-radius:12px; padding:10px 12px;">
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--text); cursor:pointer;"><input type="checkbox" id="rep-sec-kpis" checked style="accent-color:#8B1918;" /> Resumen ejecutivo</label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--text); cursor:pointer;"><input type="checkbox" id="rep-sec-compare" checked style="accent-color:#8B1918;" /> Comparativa</label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--text); cursor:pointer;"><input type="checkbox" id="rep-sec-finance" checked style="accent-color:#8B1918;" /> Facturación y costes</label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--text); cursor:pointer;"><input type="checkbox" id="rep-sec-adoption" checked style="accent-color:#8B1918;" /> Adopción de la app</label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--text); cursor:pointer;"><input type="checkbox" id="rep-sec-events" checked style="accent-color:#8B1918;" /> Detalle por evento</label>
+          </div>
+
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button onclick="generateReport()" style="flex:1; min-width:160px; background:var(--wine); color:#fff; border:none; border-radius:50px; padding:12px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">📊 Generar informe</button>
+            <button onclick="printReport()" style="flex:1; min-width:160px; background:rgba(42,21,9,0.85); color:#fff; border:none; border-radius:50px; padding:12px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">🖨️ Imprimir / PDF</button>
+          </div>
+        </div>
+
+        <!-- Vista previa del informe (mismo contenido que se imprime) -->
+        <div id="rep-preview-wrap" style="display:none; background:#fff; border-radius:16px; padding:22px; overflow-x:auto; box-shadow:0 4px 24px rgba(42,21,9,0.12);">
+          <div id="rep-preview"></div>
+        </div>
+      </div>
+
       <div id="subpage-clients" class="subpage-panel">
         <!-- KPIs de niveles -->
         <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:16px;">
@@ -8171,6 +8210,226 @@
     btn.classList.add('active');
     document.getElementById(`subpage-${subpage}`).classList.add('active');
     if (subpage === 'nfts') loadNftsPage();
+    if (subpage === 'report') initReportDates();
+  }
+
+  // ==================== INFORME DEL NEGOCIO (imprimible) ====================
+  let _repData = null;
+
+  function initReportDates() {
+    const from = document.getElementById('rep-from');
+    if (from && !from.value) repPreset('30d');
+  }
+  function repYmd(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+  function repPreset(kind) {
+    const now = new Date();
+    let from, to;
+    if (kind === 'mes') {
+      from = new Date(now.getFullYear(), now.getMonth(), 1); to = now;
+    } else if (kind === 'mespasado') {
+      from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      to = new Date(now.getFullYear(), now.getMonth(), 0);
+    } else if (kind === 'verano') {
+      from = new Date(now.getFullYear(), 5, 21); to = new Date(now.getFullYear(), 8, 20);
+    } else { // 30d
+      from = new Date(now.getTime() - 29 * 86400000); to = now;
+    }
+    document.getElementById('rep-from').value = repYmd(from);
+    document.getElementById('rep-to').value = repYmd(to);
+  }
+  function getRepSections() {
+    return {
+      kpis: document.getElementById('rep-sec-kpis').checked,
+      compare: document.getElementById('rep-sec-compare').checked,
+      finance: document.getElementById('rep-sec-finance').checked,
+      adoption: document.getElementById('rep-sec-adoption').checked,
+      events: document.getElementById('rep-sec-events').checked
+    };
+  }
+
+  async function generateReport() {
+    const from = document.getElementById('rep-from').value;
+    const to = document.getElementById('rep-to').value;
+    try {
+      const r = await fetch(`/api/admin/business-report?from=${from}&to=${to}`, { headers: authHeaders() });
+      const data = await r.json();
+      if (!r.ok) return showToast(data.error || 'Error al generar el informe');
+      _repData = data;
+      ensureReportCss(document);
+      document.getElementById('rep-preview').innerHTML = buildReportHTML(data, getRepSections());
+      document.getElementById('rep-preview-wrap').style.display = 'block';
+      showToast('📊 Informe generado');
+    } catch (e) { showToast('Error: ' + e.message); }
+  }
+
+  async function printReport() {
+    if (!_repData) await generateReport();
+    if (!_repData) return;
+    const html = buildReportHTML(_repData, getRepSections());
+    const frame = document.createElement('iframe');
+    frame.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0;';
+    document.body.appendChild(frame);
+    const doc = frame.contentDocument;
+    doc.open();
+    doc.write(`<!doctype html><html><head><meta charset="utf-8"><title>Informe Furancho Sessions</title><style>${REPORT_CSS}
+      @page { size: A4; margin: 13mm; }
+      body { margin:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+      .biz-report tr { page-break-inside: avoid; }
+      .biz-report h2 { page-break-after: avoid; }
+    </style></head><body>${html}</body></html>`);
+    doc.close();
+    setTimeout(() => {
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+      setTimeout(() => frame.remove(), 2000);
+    }, 250);
+  }
+
+  // Estilos del informe: UNA sola definición (vista previa + impresión), todo bajo .biz-report
+  const REPORT_CSS = `
+    .biz-report { font-family:'Outfit','Helvetica Neue',Arial,sans-serif; color:#2A1509; max-width:760px; margin:0 auto; }
+    .biz-report .rep-brand { font-size:11px; font-weight:800; letter-spacing:3px; text-transform:uppercase; color:#C4973A; margin:0; }
+    .biz-report h1 { font-family:Georgia,'Playfair Display',serif; font-size:26px; color:#8B1918; margin:4px 0 2px; }
+    .biz-report .rep-period { font-size:12.5px; color:#6b5b4d; margin:0 0 4px; }
+    .biz-report .rep-generated { font-size:10.5px; color:#9b8a7a; margin:0 0 18px; }
+    .biz-report h2 { font-family:Georgia,serif; font-size:16px; color:#8B1918; border-bottom:2px solid #C4973A; padding-bottom:4px; margin:22px 0 10px; }
+    .biz-report .rep-tiles { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+    .biz-report .rep-tile { border:1px solid #e8ddcf; border-radius:10px; padding:9px 10px; background:#FBF7F0; }
+    .biz-report .rep-tile .v { font-size:17px; font-weight:800; color:#2A1509; }
+    .biz-report .rep-tile .l { font-size:9.5px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:#9b8a7a; margin-top:2px; }
+    .biz-report .rep-tile .d { font-size:10px; font-weight:700; margin-top:3px; }
+    .biz-report table { width:100%; border-collapse:collapse; font-size:11.5px; }
+    .biz-report th { text-align:left; font-size:9.5px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; color:#9b8a7a; border-bottom:1.5px solid #C4973A; padding:5px 7px; }
+    .biz-report td { border-bottom:1px solid #efe7da; padding:5.5px 7px; }
+    .biz-report td.num, .biz-report th.num { text-align:right; font-variant-numeric:tabular-nums; }
+    .biz-report .up { color:#15803d; } .biz-report .down { color:#b91c1c; } .biz-report .flat { color:#9b8a7a; }
+    .biz-report .rep-note { font-size:10px; color:#9b8a7a; line-height:1.5; margin-top:6px; }
+    .biz-report .rep-adopt-bar { height:14px; border-radius:100px; background:#efe7da; overflow:hidden; margin:8px 0 4px; }
+    .biz-report .rep-adopt-fill { height:100%; background:linear-gradient(90deg,#8B1918,#C4973A); border-radius:100px; }
+    .biz-report .rep-foot { margin-top:26px; padding-top:8px; border-top:1px solid #efe7da; font-size:9.5px; color:#9b8a7a; line-height:1.5; }
+    @media (max-width:560px) { .biz-report .rep-tiles { grid-template-columns:repeat(2,1fr); } }
+  `;
+  function ensureReportCss(doc) {
+    if (doc.getElementById('biz-report-css')) return;
+    const st = doc.createElement('style');
+    st.id = 'biz-report-css';
+    st.textContent = REPORT_CSS;
+    doc.head.appendChild(st);
+  }
+
+  // ── Generador del HTML del informe (mismo contenido en pantalla y en papel) ──
+  function buildReportHTML(data, secs) {
+    const cur = data.current, prev = data.previous, d = data.deltas;
+    const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    const eur = (v) => v == null ? '—' : v.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const num = (v) => v == null ? '—' : v.toLocaleString('es-ES');
+    const pct = (v) => v == null ? '—' : `${v.toLocaleString('es-ES')}%`;
+    const mins = (v) => v == null ? '—' : `${v} min`;
+    const fdate = (s) => new Date(`${s}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+    const fday = (s) => new Date(`${s}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+    // Delta: verde si mejora, rojo si empeora (invert=true para costes); pts=diferencia en puntos
+    const delta = (v, { invert = false, pts = false } = {}) => {
+      if (v == null) return '<span class="flat">—</span>';
+      if (v === 0) return '<span class="flat">=</span>';
+      const good = invert ? v < 0 : v > 0;
+      const arrow = v > 0 ? '▲' : '▼';
+      return `<span class="${good ? 'up' : 'down'}">${arrow} ${Math.abs(v).toLocaleString('es-ES')}${pts ? ' pts' : '%'}</span>`;
+    };
+
+    let out = `<div class="biz-report">
+      <p class="rep-brand">Furancho Sessions · Afterwork viño e tapas</p>
+      <h1>Informe del negocio</h1>
+      <p class="rep-period"><strong>Del ${fdate(cur.from)} al ${fdate(cur.to)}</strong> · comparado con del ${fdate(prev.from)} al ${fdate(prev.to)}</p>
+      <p class="rep-generated">Generado el ${new Date(data.generated_at).toLocaleString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} · Comunidad total: ${num(data.total_users)} usuarios registrados</p>`;
+
+    if (secs.kpis) {
+      const tile = (v, l, dHtml) => `<div class="rep-tile"><div class="v">${v}</div><div class="l">${l}</div><div class="d">${dHtml}</div></div>`;
+      out += `<h2>📈 Resumen ejecutivo</h2><div class="rep-tiles">
+        ${tile(eur(cur.revenue), 'Ingresos', delta(d.revenue))}
+        ${tile(eur(cur.costs), 'Costes', delta(d.costs, { invert: true }))}
+        ${tile(eur(cur.profit), 'Beneficio', delta(d.profit))}
+        ${tile(pct(cur.marginPct), 'Margen', delta(d.marginPct, { pts: true }))}
+        ${tile(num(cur.events_held), 'Eventos', delta(d.events_held))}
+        ${tile(num(cur.asistencias), 'Asistencias app', delta(d.asistencias))}
+        ${tile(num(cur.covers || null), 'Comensales', delta(d.covers))}
+        ${tile(eur(cur.avgTicket), 'Ticket medio', delta(d.avgTicket))}
+        ${tile(num(cur.nuevos), 'Clientes nuevos', delta(d.nuevos))}
+        ${tile(pct(cur.recurrencia_pct), 'Recurrencia', '<span class="flat">del total</span>')}
+        ${tile(num(cur.new_signups), 'Altas en la app', delta(d.new_signups))}
+        ${tile(pct(cur.adoption.pct), 'Adopción app', delta(d.adoptionPct, { pts: true }))}
+      </div>`;
+    }
+
+    if (secs.compare) {
+      const row = (label, c, p, dHtml) => `<tr><td>${label}</td><td class="num">${c}</td><td class="num">${p}</td><td class="num">${dHtml}</td></tr>`;
+      out += `<h2>⚖️ Comparativa con el periodo anterior</h2>
+      <table><thead><tr><th>Indicador</th><th class="num">Periodo</th><th class="num">Anterior</th><th class="num">Δ</th></tr></thead><tbody>
+        ${row('Eventos celebrados', num(cur.events_held), num(prev.events_held), delta(d.events_held))}
+        ${row('Asistencias (fichajes app)', num(cur.asistencias), num(prev.asistencias), delta(d.asistencias))}
+        ${row('Clientes únicos (app)', num(cur.unicos), num(prev.unicos), delta(d.unicos))}
+        ${row('Clientes nuevos', num(cur.nuevos), num(prev.nuevos), delta(d.nuevos))}
+        ${row('Media de asistentes por evento', num(cur.avg_attendees), num(prev.avg_attendees), delta(d.avg_attendees))}
+        ${row('Estancia media', mins(cur.avg_stay), mins(prev.avg_stay), delta(d.avg_stay))}
+        ${row('Pico de aforo máximo', num(cur.peak_max || null), num(prev.peak_max || null), delta(d.peak_max))}
+        ${row('Altas de comunidad (app)', num(cur.new_signups), num(prev.new_signups), delta(d.new_signups))}
+        ${row('Sorteos lanzados', num(cur.raffles), num(prev.raffles), delta(d.raffles))}
+        ${row('Comensales (facturación)', num(cur.covers || null), num(prev.covers || null), delta(d.covers))}
+        ${row('Ingresos', eur(cur.revenue), eur(prev.revenue), delta(d.revenue))}
+        ${row('Costes', eur(cur.costs), eur(prev.costs), delta(d.costs, { invert: true }))}
+        ${row('Beneficio', eur(cur.profit), eur(prev.profit), delta(d.profit))}
+        ${row('Margen', pct(cur.marginPct), pct(prev.marginPct), delta(d.marginPct, { pts: true }))}
+        ${row('Ticket medio', eur(cur.avgTicket), eur(prev.avgTicket), delta(d.avgTicket))}
+        ${row('Adopción de la app', pct(cur.adoption.pct), pct(prev.adoption.pct), delta(d.adoptionPct, { pts: true }))}
+      </tbody></table>`;
+    }
+
+    if (secs.finance) {
+      const CAT_LABELS = { staff: 'Personal', dj: 'DJ', band: 'Grupo / música', fnb: 'Comida y bebida', decor: 'Decoración', other: 'Otros' };
+      const catRows = Object.entries(cur.costsByCategory)
+        .filter(([, v]) => v > 0)
+        .sort((a, b) => b[1] - a[1])
+        .map(([k, v]) => `<tr><td>${CAT_LABELS[k]}</td><td class="num">${eur(v)}</td><td class="num">${cur.costs ? pct(Math.round(v / cur.costs * 1000) / 10) : '—'}</td></tr>`)
+        .join('');
+      out += `<h2>💶 Facturación y costes</h2>
+      <div class="rep-tiles" style="grid-template-columns:repeat(4,1fr);">
+        <div class="rep-tile"><div class="v">${eur(cur.revenue)}</div><div class="l">Ingresos (${num(cur.revenueEvents)} eventos)</div><div class="d">${delta(d.revenue)}</div></div>
+        <div class="rep-tile"><div class="v">${eur(cur.costs)}</div><div class="l">Costes</div><div class="d">${delta(d.costs, { invert: true })}</div></div>
+        <div class="rep-tile"><div class="v">${eur(cur.profit)}</div><div class="l">Beneficio</div><div class="d">${delta(d.profit)}</div></div>
+        <div class="rep-tile"><div class="v">${pct(cur.marginPct)}</div><div class="l">Margen</div><div class="d">${delta(d.marginPct, { pts: true })}</div></div>
+      </div>
+      ${catRows ? `<table style="margin-top:10px;"><thead><tr><th>Coste por categoría</th><th class="num">Importe</th><th class="num">% de costes</th></tr></thead><tbody>${catRows}</tbody></table>` : '<p class="rep-note">Sin costes desglosados en este periodo.</p>'}
+      <p class="rep-note">Datos económicos apuntados a mano en la facturación de cada evento (privados, solo panel admin). Los eventos sin facturación apuntada no suman aquí.</p>`;
+    }
+
+    if (secs.adoption) {
+      const a = cur.adoption;
+      const width = a.pct == null ? 0 : Math.min(100, a.pct);
+      out += `<h2>📱 Adopción de la app</h2>
+      <div style="font-size:30px; font-weight:800; color:#8B1918;">${pct(a.pct)} <span style="font-size:12px; font-weight:600; color:#9b8a7a;">de los clientes usan la app${d.adoptionPct != null ? ' ' + delta(d.adoptionPct, { pts: true }) : ''}</span></div>
+      <div class="rep-adopt-bar"><div class="rep-adopt-fill" style="width:${width}%;"></div></div>
+      <p class="rep-note">${a.pct == null
+        ? 'Para medir la adopción hace falta apuntar los <strong>comensales</strong> en la facturación de los eventos: se cruzan con los fichajes de la app de esa noche.'
+        : `${num(a.app)} fichajes con la app frente a ${num(a.covers)} comensales reales, en ${a.events === 1 ? 'el único evento' : `los ${num(a.events)} eventos`} del periodo con ambos datos. El hueco entre ambos es la clientela a la que aún se puede captar para la comunidad (sorteos, niveles, push).`}</p>`;
+    }
+
+    if (secs.events && cur.detail.length) {
+      const rows = cur.detail.map(e => `<tr>
+        <td>${fday(e.date)}</td><td>${esc(e.title)}</td>
+        <td class="num">${num(e.attendees)}</td><td class="num">${num(e.nuevos)}</td>
+        <td class="num">${num(e.covers)}</td><td class="num">${eur(e.revenue)}</td>
+        <td class="num">${eur(e.costsTotal)}</td><td class="num">${eur(e.profit)}</td>
+        <td class="num">${pct(e.marginPct)}</td><td class="num">${pct(e.adoptionPct)}</td>
+      </tr>`).join('');
+      out += `<h2>🍷 Detalle por evento</h2>
+      <table><thead><tr><th>Fecha</th><th>Evento</th><th class="num">App</th><th class="num">Nuevos</th><th class="num">Comens.</th><th class="num">Ingresos</th><th class="num">Costes</th><th class="num">Benef.</th><th class="num">Margen</th><th class="num">Adopción</th></tr></thead>
+      <tbody>${rows}</tbody></table>`;
+    } else if (secs.events) {
+      out += `<h2>🍷 Detalle por evento</h2><p class="rep-note">No hubo eventos con datos en este periodo.</p>`;
+    }
+
+    out += `<div class="rep-foot">Definiciones: <strong>asistencia</strong> = un fichaje único por cliente y evento dentro de su horario (con 1h de margen). <strong>Clientes únicos</strong> = wallets distintas del periodo. <strong>Nuevo</strong> = su primera visita histórica cae en el periodo. <strong>Adopción</strong> = fichajes de la app ÷ comensales apuntados en facturación. <strong>Altas</strong> = usuarios que aparecen por primera vez por cualquier vía (mint, push, RSVP…). Importes según la facturación apuntada por evento. Informe privado — Furancho Sessions.</div>
+    </div>`;
+    return out;
   }
 
   function switchSegTab(name, btn) {
