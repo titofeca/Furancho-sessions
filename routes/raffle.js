@@ -1201,7 +1201,7 @@ router.post('/weekly/claim', claimLimiter, (req, res) => {
   }
   const weekStr = getWeeklyRaffleTargetWeek(); // <-- siempre server-side, ignoramos req.body.week
   try {
-    const { db } = require('../db/database');
+    const { db, getBoolSetting } = require('../db/database');
     const furancheiroRow = db.prepare(`
       SELECT 1 FROM mints WHERE LOWER(wallet_address) = LOWER(?)
       UNION
@@ -1210,7 +1210,14 @@ router.post('/weekly/claim', claimLimiter, (req, res) => {
     `).get(walletAddress.toLowerCase(), walletAddress.toLowerCase());
 
     if (!furancheiroRow) {
-      return res.status(403).json({ error: 'Solo los furancheiros que hayan visitado el local o tengan un carnet VIP pueden participar en La Chave Semanal, ho.' });
+      // Los que NO han venido nunca solo entran si está encendida la política de
+      // "abrir La Chave a los que tienen la app" Y tienen la app registrada. Aun así
+      // el filtro de nivel mínimo de abajo los excluye si el sorteo pide Nv2+.
+      const allowAppOnly = getBoolSetting('chave_allow_app_only', false);
+      const hasApp = allowAppOnly && db.prepare(`SELECT 1 FROM app_installs WHERE wallet_address = LOWER(?) LIMIT 1`).get(walletAddress.toLowerCase());
+      if (!hasApp) {
+        return res.status(403).json({ error: 'Solo los furancheiros que hayan visitado el local o tengan un carnet VIP pueden participar en La Chave Semanal, ho.' });
+      }
     }
 
     // Bloquear si el sorteo de esta semana ya fue realizado
@@ -1379,6 +1386,31 @@ router.post('/admin/weekly/forfeit', requireAuth, (req, res) => {
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
+});
+
+// GET /api/admin/weekly/app-policy (ADMIN) — política de "abrir La Chave a los de solo-app"
+router.get('/admin/weekly/app-policy', requireAuth, (req, res) => {
+  try {
+    const { getBoolSetting, getSetting } = require('../db/database');
+    res.json({
+      allowAppOnly: getBoolSetting('chave_allow_app_only', false),
+      visitorWeight: Math.max(1, parseInt(getSetting('chave_visitor_weight', '5')) || 5)
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/admin/weekly/app-policy (ADMIN) — guarda interruptor + peso del visitante
+router.post('/admin/weekly/app-policy', requireAuth, (req, res) => {
+  try {
+    const { setSetting } = require('../db/database');
+    const allow = !!req.body.allowAppOnly;
+    let w = parseInt(req.body.visitorWeight);
+    if (!Number.isFinite(w) || w < 1) w = 5;
+    if (w > 100) w = 100;
+    setSetting('chave_allow_app_only', allow ? '1' : '0');
+    setSetting('chave_visitor_weight', String(w));
+    res.json({ success: true, allowAppOnly: allow, visitorWeight: w });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // POST /api/admin/weekly/config (ADMIN)

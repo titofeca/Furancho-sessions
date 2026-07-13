@@ -351,6 +351,7 @@
     .stat-card.nivel-4::before { background: var(--nivel4); }
     .stat-card.total::before   { background: linear-gradient(90deg, var(--nivel1), var(--nivel3), var(--nivel2)); }
     .stat-card.visits::before  { background: var(--navy); }
+    .stat-card.app-installs::before { background: #3b82f6; }
 
     .stat-icon {
       font-size: 20px;
@@ -1031,6 +1032,12 @@
           <div class="stat-value" id="stat-visits">—</div>
           <div class="stat-sublabel">registradas →</div>
         </div>
+        <div class="stat-card app-installs" onclick="goToConAppSegment()" style="cursor:pointer;" title="Ver instalados con app">
+          <div class="stat-icon">📲</div>
+          <div class="stat-label">Instalaciones App</div>
+          <div class="stat-value" id="stat-app-total">—</div>
+          <div class="stat-sublabel" id="stat-app-conversion">0% han venido →</div>
+        </div>
         <div class="stat-card nivel-1" onclick="filterHolders('1', document.getElementById('fbtn-1')); showPage('holders');" style="cursor:pointer;" title="Ver Nivel 1">
           <div class="stat-icon">🫂</div>
           <div class="stat-label">Cautivo · Nv1</div>
@@ -1506,6 +1513,7 @@
             <button class="seg-tab" onclick="switchSegTab('habituales', this)">⭐ Habituales <span id="seg-count-habituales"></span></button>
             <button class="seg-tab" onclick="switchSegTab('vip', this)">💎 VIP <span id="seg-count-vip"></span></button>
             <button class="seg-tab" onclick="switchSegTab('inactivos', this)">💤 Inactivos <span id="seg-count-inactivos"></span></button>
+            <button class="seg-tab" onclick="switchSegTab('conapp', this)">📲 Con App <span id="seg-count-conapp"></span></button>
           </div>
           <div id="seg-panel-nuevos" class="seg-panel active">
             <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Cargando...</div>
@@ -1513,6 +1521,7 @@
           <div id="seg-panel-habituales" class="seg-panel"></div>
           <div id="seg-panel-vip" class="seg-panel"></div>
           <div id="seg-panel-inactivos" class="seg-panel"></div>
+          <div id="seg-panel-conapp" class="seg-panel"></div>
         </div>
 
         <!-- Holders con filtro por nivel -->
@@ -2201,6 +2210,22 @@
             <select class="input-field ach-filter-select" id="weekly-required-achievement" style="flex:1; margin:0; font-size:13px;">
               <option value="">Sin requisito de logro</option>
             </select>
+          </div>
+
+          <!-- Abrir La Chave a los que solo tienen la app (alcance sin tocar la operativa) -->
+          <div style="margin-bottom:14px; padding:12px; background:rgba(196,151,58,0.08); border:1.5px dashed rgba(196,151,58,0.45); border-radius:12px;">
+            <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:var(--wine); cursor:pointer;">
+              <input type="checkbox" id="chave-app-only-toggle" onchange="document.getElementById('chave-app-weight-wrap').style.display = this.checked ? 'block' : 'none'; saveChaveAppPolicy();" />
+              <span>📲 Dejar participar también a los que solo tienen la app (sin haber venido)</span>
+            </label>
+            <div id="chave-app-weight-wrap" style="display:none; margin-top:10px;">
+              <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">Ventaja de quien SÍ viene al local</label>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <input type="number" id="chave-visitor-weight" min="1" max="100" value="5" onchange="saveChaveAppPolicy()" style="width:80px; font-size:14px; text-align:center; padding:8px; border:1.5px solid rgba(42,21,9,0.15); border-radius:9px; background:#fff; color:var(--text); font-family:'Outfit',sans-serif;" />
+                <span style="font-size:12px; color:var(--text-muted);">× más probabilidad de ganar que uno de solo-app</span>
+              </div>
+              <p style="font-size:10.5px; color:var(--text-muted); margin:8px 0 0; line-height:1.5;">Solo afecta a La Chave. Los sorteos del evento, el canje de premios y los niveles no se tocan — y quien gane, venga de fuera o no, sigue teniendo que recoger el premio en persona. Si pones nivel mínimo Nv2+ arriba, los de solo-app quedan fuera esa semana.</p>
+            </div>
           </div>
 
           <!-- Premio NFT (opcional) -->
@@ -3102,7 +3127,7 @@
       loadVisits('__totales__');
       loadAnalyticsPage();
     }
-    if (pageId === 'raffles') { loadAchievementFilterOptions(); loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); loadScheduled(); loadWeeklyRaffleAdmin(); loadWeeklyTemplates(); loadPartnersAdmin(); populateSchedEstablishmentSelect(); }
+    if (pageId === 'raffles') { loadAchievementFilterOptions(); loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); loadScheduled(); loadWeeklyRaffleAdmin(); loadWeeklyTemplates(); loadChaveAppPolicy(); loadPartnersAdmin(); populateSchedEstablishmentSelect(); }
     if (pageId === 'scanner') { stopScanner(); document.getElementById('scanner-result').style.display='none'; document.getElementById('scanner-status').textContent=''; }
     if (pageId === 'nfts') loadNftsPage();
     if (pageId === 'qrcodes') { loadStaffCode(); loadEntryQrDates(); }
@@ -3441,6 +3466,12 @@
 
       document.getElementById('stat-total').textContent = data.total || 0;
       document.getElementById('stat-visits').textContent = data.totalVisits || 0;
+
+      if (data.appInstalls) {
+        const ai = data.appInstalls;
+        document.getElementById('stat-app-total').textContent = ai.total || 0;
+        document.getElementById('stat-app-conversion').textContent = `${ai.conversion_pct != null ? ai.conversion_pct : 0}% han venido →`;
+      }
 
       const levelMap = { 1: 'stat-nivel1', 2: 'stat-nivel2', 3: 'stat-nivel3', 4: 'stat-nivel4' };
       Object.values(levelMap).forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '0'; });
@@ -6458,6 +6489,36 @@
     }
   }
 
+  // ── Política "abrir La Chave a los de solo-app" (interruptor + peso del visitante) ──
+  async function loadChaveAppPolicy() {
+    try {
+      const res = await fetch('/api/raffle/admin/weekly/app-policy', { headers: authHeaders() });
+      if (!res.ok) return;
+      const p = await res.json();
+      const toggle = document.getElementById('chave-app-only-toggle');
+      const weight = document.getElementById('chave-visitor-weight');
+      const wrap = document.getElementById('chave-app-weight-wrap');
+      if (toggle) toggle.checked = !!p.allowAppOnly;
+      if (weight) weight.value = p.visitorWeight || 5;
+      if (wrap) wrap.style.display = p.allowAppOnly ? 'block' : 'none';
+    } catch (_) {}
+  }
+  async function saveChaveAppPolicy() {
+    const allowAppOnly = document.getElementById('chave-app-only-toggle')?.checked || false;
+    let visitorWeight = parseInt(document.getElementById('chave-visitor-weight')?.value) || 5;
+    if (visitorWeight < 1) visitorWeight = 1;
+    if (visitorWeight > 100) visitorWeight = 100;
+    try {
+      const res = await fetch('/api/raffle/admin/weekly/app-policy', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ allowAppOnly, visitorWeight })
+      });
+      if (!res.ok) { showToast('No se pudo guardar la política de La Chave', true); return; }
+      showToast(allowAppOnly ? `📲 La Chave abierta a los de app · visitante ×${visitorWeight}` : '📲 La Chave solo para quien viene');
+    } catch (e) { showToast('Error: ' + e.message, true); }
+  }
+
   async function saveWeeklyRaffleConfig() {
     const selectEl = document.getElementById('weekly-admin-week-select');
     const prizeInput = document.getElementById('weekly-prize-input');
@@ -8114,6 +8175,27 @@
         <div class="kpi-label">Nuevos este mes</div>
         <div style="font-size:10px;margin-top:3px;">${growthIcon} vs mes anterior (${funnelData.growth_last_month ?? 0})</div>
       </div>
+
+      <!-- SEPARADOR: Alcance y Conversión de la App -->
+      <div style="grid-column:1/-1; margin:8px 0 4px; border-top:1px solid var(--border); padding-top:12px;">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--text-muted);">📲 Alcance y Conversión de la App</div>
+      </div>
+
+      <div class="analytics-kpi">
+        <div class="kpi-value" style="color:var(--wine);">${funnelData.app_installs?.total ?? '—'}</div>
+        <div class="kpi-label">Instalaciones App</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">+${funnelData.app_installs?.last_7d ?? 0} en 7 días</div>
+      </div>
+      <div class="analytics-kpi">
+        <div class="kpi-value" style="color:var(--gold);">${funnelData.app_installs?.conversion_pct != null ? funnelData.app_installs.conversion_pct + '%' : '—'}</div>
+        <div class="kpi-label">Tasa de Conversión</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">clientes han venido al local</div>
+      </div>
+      <div class="analytics-kpi">
+        <div class="kpi-value" style="color:#ef4444;">${funnelData.app_installs?.only_app ?? '—'}</div>
+        <div class="kpi-label">App sin venir aún</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">por fidelizar / captar</div>
+      </div>
       ${funnelData.best_event ? `
       <div class="analytics-kpi" style="grid-column:1/-1; text-align:left; display:flex; align-items:center; gap:12px;">
         <div>
@@ -8202,6 +8284,83 @@
         <div><div class="seg-wallet">${c.wallet_masked}</div><div class="seg-meta">Nv${c.nivel || 1} · ${c.total_visits} visitas totales</div></div>
         <div style="text-align:right"><div style="font-size:13px;font-weight:700;color:#ef4444;">${c.dias_sin_visita}d sin visita</div></div>
       </div>`).join('') + (inact.length > 10 ? `<div style="text-align:center;font-size:11px;color:var(--text-muted);padding:6px;">+${inact.length-10} más</div>` : '') : emptyMsg;
+
+    document.getElementById('seg-count-conapp').textContent = counts.con_app_count ? `(${counts.con_app_count})` : '';
+
+    // Con App
+    _conAppData = segmentsData.con_app || [];
+    document.getElementById('seg-panel-conapp').innerHTML = _conAppData.length ? `
+      <div style="margin-bottom:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <button onclick="filterConAppSegment('all')" id="btn-conapp-all" style="background:var(--wine); color:#fff; border:none; border-radius:100px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer;">Todos (${_conAppData.length})</button>
+        <button onclick="filterConAppSegment('novisit')" id="btn-conapp-novisit" style="background:rgba(139,25,24,0.08); color:var(--wine); border:none; border-radius:100px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer;">Sin venir aún (${_conAppData.filter(c => !c.ha_venido).length})</button>
+        <button onclick="filterConAppSegment('visit')" id="btn-conapp-visit" style="background:rgba(139,25,24,0.08); color:var(--wine); border:none; border-radius:100px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer;">Ya han venido (${_conAppData.filter(c => c.ha_venido).length})</button>
+      </div>
+      <div id="conapp-rows-container">
+        ${renderConAppRows(_conAppData)}
+      </div>
+    ` : emptyMsg;
+  }
+
+  let _conAppData = [];
+
+  function filterConAppSegment(type) {
+    const btnAll = document.getElementById('btn-conapp-all');
+    const btnNoVisit = document.getElementById('btn-conapp-novisit');
+    const btnVisit = document.getElementById('btn-conapp-visit');
+    
+    [btnAll, btnNoVisit, btnVisit].forEach(b => {
+      if (b) {
+        b.style.background = 'rgba(139,25,24,0.08)';
+        b.style.color = 'var(--wine)';
+      }
+    });
+    
+    let filtered = _conAppData;
+    if (type === 'all') {
+      if (btnAll) { btnAll.style.background = 'var(--wine)'; btnAll.style.color = '#fff'; }
+    } else if (type === 'novisit') {
+      if (btnNoVisit) { btnNoVisit.style.background = 'var(--wine)'; btnNoVisit.style.color = '#fff'; }
+      filtered = _conAppData.filter(c => !c.ha_venido);
+    } else if (type === 'visit') {
+      if (btnVisit) { btnVisit.style.background = 'var(--wine)'; btnVisit.style.color = '#fff'; }
+      filtered = _conAppData.filter(c => c.ha_venido);
+    }
+    
+    document.getElementById('conapp-rows-container').innerHTML = renderConAppRows(filtered);
+  }
+
+  function renderConAppRows(list) {
+    if (!list.length) return '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Sin clientes para este filtro</div>';
+    
+    const limit = 50;
+    const items = list.slice(0, limit);
+    
+    return items.map(c => `
+      <div class="seg-row">
+        <div>
+          <div class="seg-wallet">${c.wallet_masked}</div>
+          <div class="seg-meta">Instalada: ${c.first_seen ? new Date(c.first_seen).toLocaleDateString('es-ES') : '—'}</div>
+        </div>
+        <div style="text-align:right">
+          ${c.ha_venido 
+            ? `<div style="font-size:12px;font-weight:700;color:#15803d;">Ha venido (${c.total_visits} visitas)</div>` 
+            : `<div style="font-size:12px;font-weight:700;color:#ef4444;">Sin venir aún</div>`
+          }
+        </div>
+      </div>
+    `).join('') + (list.length > limit ? `<div style="text-align:center;font-size:11px;color:var(--text-muted);padding:6px;">+${list.length - limit} más</div>` : '');
+  }
+
+  function goToConAppSegment() {
+    showPage('holders');
+    const clientsBtn = document.getElementById('subtab-clients');
+    if (clientsBtn) switchSubPage('clients', clientsBtn);
+    setTimeout(() => {
+      const conAppBtn = document.querySelector('button[onclick*="conapp"]');
+      if (conAppBtn) {
+        switchSegTab('conapp', conAppBtn);
+      }
+    }, 100);
   }
 
   function switchSubPage(subpage, btn) {

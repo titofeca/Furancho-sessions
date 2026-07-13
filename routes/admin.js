@@ -749,7 +749,8 @@ router.get('/funnel', requireAuth, (req, res) => {
       best_event: bestEventRow || null,
       growth_this_month: growthRow?.this_month || 0,
       growth_last_month: growthRow?.last_month || 0,
-      growth_pct
+      growth_pct,
+      app_installs: require('../db/database').getAppInstallStats()
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -843,16 +844,39 @@ router.get('/segments', requireAuth, (req, res) => {
       ORDER BY dias_sin_visita DESC
     `).all();
 
+    const con_app = db.prepare(`
+      SELECT
+        substr(a.wallet_address, 1, 6) || '...' || substr(a.wallet_address, -4) as wallet_masked,
+        a.wallet_address,
+        a.first_seen,
+        EXISTS (
+          SELECT 1 FROM sessions s WHERE LOWER(s.wallet_address) = LOWER(a.wallet_address) AND s.counted_as_visit = 1
+          UNION
+          SELECT 1 FROM visits v WHERE LOWER(v.wallet_address) = LOWER(a.wallet_address)
+        ) as ha_venido,
+        (
+          SELECT COUNT(*) FROM (
+            SELECT date(entry_time) as day FROM sessions WHERE LOWER(wallet_address) = LOWER(a.wallet_address) AND counted_as_visit = 1
+            UNION
+            SELECT date(visited_at) as day FROM visits WHERE LOWER(wallet_address) = LOWER(a.wallet_address)
+          )
+        ) as total_visits
+      FROM app_installs a
+      ORDER BY a.first_seen DESC
+    `).all();
+
     res.json({
       nuevos,
       habituales,
       vip_candidatos,
       inactivos,
+      con_app,
       counts: {
         nuevos_count: nuevos.length,
         habituales_count: habituales.length,
         vip_count: vip_candidatos.length,
-        inactivos_count: inactivos.length
+        inactivos_count: inactivos.length,
+        con_app_count: con_app.length
       }
     });
   } catch (e) {

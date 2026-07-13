@@ -876,7 +876,7 @@ function getStats() {
   return { total: total.count, totalMints: total.count, realMints: realMintsCount, totalMintCost,
            byLevel, recent: recentWithCost, byDate,
            totalVisits: canonVisits, visitsByDay: canonVisitsByDay, uniqueVisitors: canonUnique,
-           mintsByLevel };
+           mintsByLevel, appInstalls: getAppInstallStats() };
 }
 
 function getHolders(levelFilter) {
@@ -2831,11 +2831,32 @@ function drawWeeklyRaffle(weekStr) {
   const participantsList = participants.map(p => p.wallet_address);
   if (winnersCount > participantsList.length) winnersCount = participantsList.length;
 
-  // Pick random winners
+  // Sorteo PONDERADO: quien ha venido al local (tiene fichaje o pase) pesa más que
+  // quien solo tiene la app. El peso del visitante es configurable (chave_visitor_weight,
+  // por defecto 5); el de solo-app es 1. Si nadie es "solo-app" (lo normal cuando la
+  // política está apagada), todos pesan igual → sorteo uniforme de siempre.
+  const visitorWeight = Math.max(1, parseInt(getSetting('chave_visitor_weight', '5')) || 5);
+  const lowered = participantsList.map(w => String(w).toLowerCase());
+  const visitorSet = new Set();
+  if (lowered.length) {
+    const ph = lowered.map(() => '?').join(',');
+    db.prepare(`SELECT DISTINCT LOWER(wallet_address) w FROM sessions WHERE LOWER(wallet_address) IN (${ph})`).all(...lowered).forEach(r => visitorSet.add(r.w));
+    db.prepare(`SELECT DISTINCT LOWER(wallet_address) w FROM mints WHERE status != 'failed' AND LOWER(wallet_address) IN (${ph})`).all(...lowered).forEach(r => visitorSet.add(r.w));
+  }
+  const weightOf = (wallet) => (visitorSet.has(String(wallet).toLowerCase()) ? visitorWeight : 1);
+
+  // Selección ponderada SIN reemplazo (cada ganador es distinto).
   const winnerWallets = [];
-  const shuffled = participantsList.sort(() => 0.5 - Math.random());
-  for (let i = 0; i < winnersCount; i++) {
-    winnerWallets.push(shuffled[i]);
+  const pool = participantsList.slice();
+  for (let n = 0; n < winnersCount && pool.length; n++) {
+    let total = 0;
+    for (const w of pool) total += weightOf(w);
+    let r = Math.random() * total;
+    let idx = 0;
+    for (; idx < pool.length; idx++) { r -= weightOf(pool[idx]); if (r <= 0) break; }
+    if (idx >= pool.length) idx = pool.length - 1;
+    winnerWallets.push(pool[idx]);
+    pool.splice(idx, 1);
   }
 
   // Generar código de verificación tipo 'CHAVE-A3K9' para cada ganador
