@@ -468,6 +468,16 @@ try { db.exec(`ALTER TABLE event_finances ADD COLUMN cost_other_label TEXT`); } 
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected INTEGER DEFAULT 0`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_at TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_by TEXT`); } catch (_) {}
+
+// ── INSTALACIONES DE LA APP (contador de "furancheiros con app") ─────────────
+// Tabla TOTALMENTE AISLADA: registra la wallet cuando alguien crea/abre su cuenta,
+// aunque nunca venga al local. NO la tocan la asistencia, los sorteos, los niveles
+// ni ninguna métrica anterior — solo alimenta un contador propio para saber a
+// cuánta gente le ha llegado la app. Idempotente por wallet (una fila por wallet).
+try { db.exec(`CREATE TABLE IF NOT EXISTS app_installs (
+  wallet_address TEXT PRIMARY KEY,
+  first_seen TEXT DEFAULT (datetime('now'))
+)`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN status TEXT DEFAULT 'pending_acceptance'`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN acceptance_deadline TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN accepted_at TEXT`); } catch (_) {}
@@ -2469,8 +2479,42 @@ function hasEventOnThursday() {
   return !!row;
 }
 
+// ── INSTALACIONES DE LA APP ──────────────────────────────────────────────────
+// Registra una wallet como "tiene la app" (idempotente). No escribe en ninguna
+// otra tabla ni dispara nada de la operativa. Devuelve si era nueva.
+function registerAppInstall(walletAddress) {
+  if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) return { created: false };
+  const info = db.prepare(`INSERT OR IGNORE INTO app_installs (wallet_address) VALUES (?)`)
+    .run(walletAddress.toLowerCase());
+  return { created: info.changes > 0 };
+}
+
+// Métrica del contador: total de instalaciones + cuántas han llegado a fichar
+// alguna vez (conversión app→visita real). Cruza en LECTURA con sessions, sin
+// tocarla. Todo derivado; no altera ninguna métrica existente.
+function getAppInstallStats() {
+  const total = db.prepare(`SELECT COUNT(*) c FROM app_installs`).get().c;
+  const converted = db.prepare(`
+    SELECT COUNT(*) c FROM app_installs a
+    WHERE EXISTS (SELECT 1 FROM sessions s WHERE LOWER(s.wallet_address) = a.wallet_address)
+  `).get().c;
+  const last7 = db.prepare(`
+    SELECT COUNT(*) c FROM app_installs
+    WHERE first_seen >= datetime('now','-7 days')
+  `).get().c;
+  return {
+    total,
+    converted,                       // instalaciones que ya han fichado alguna vez
+    only_app: total - converted,     // tienen la app pero aún no han venido
+    conversion_pct: total ? Math.round(converted / total * 1000) / 10 : null,
+    last_7d: last7
+  };
+}
+
 module.exports = {
   UPLOADS_DIR,
+  registerAppInstall,
+  getAppInstallStats,
   hasEventOnThursday,
   openSession,
   closeSession,

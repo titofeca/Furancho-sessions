@@ -2905,6 +2905,10 @@
 
       updateManifestLink(userWalletAddress);
 
+      // Registrar (una sola vez por dispositivo) que esta wallet tiene la app.
+      // AISLADO: solo alimenta el contador de furancheiros con app; no toca nada más.
+      registerAppInstallOnce();
+
       // Mostrar la dirección en el claim (el elemento ya no existe tras quitar el formulario manual)
       const masked = userWalletAddress.substring(0, 8) + '...' + userWalletAddress.substring(userWalletAddress.length - 8);
       const walletDisplay = document.getElementById('wallet-address-display');
@@ -2915,6 +2919,23 @@
 
       // Cargar mensajes publicados por el admin para el nivel correspondiente
       loadAdminMessages();
+    }
+
+    // Avisa al servidor de que este dispositivo tiene la app (contador aislado).
+    // Se manda una vez por wallet+dispositivo; el servidor es idempotente igualmente.
+    // Silencioso: si falla la red no molesta al usuario ni rompe el arranque.
+    async function registerAppInstallOnce() {
+      try {
+        if (!userWalletAddress) return;
+        const flag = 'furancho_install_pinged_' + userWalletAddress;
+        if (localStorage.getItem(flag)) return;
+        await fetch('/api/mint/register-install', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ walletAddress: userWalletAddress })
+        });
+        localStorage.setItem(flag, '1');
+      } catch (_) { /* silencioso a propósito */ }
     }
 
     // Genera la wallet EN el dispositivo con ethers (la clave privada nunca sale del móvil).

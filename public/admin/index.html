@@ -8360,6 +8360,18 @@
       </div>`;
     }
 
+    if (secs.kpis && data.app_installs) {
+      const ai = data.app_installs;
+      out += `<h2>📲 Furancheiros con app <span style="font-size:11px; font-weight:600; color:#9b8a7a;">· total a día de hoy</span></h2>
+      <div class="rep-tiles">
+        <div class="rep-tile"><div class="v">${num(ai.total)}</div><div class="l">Con la app</div><div class="d"><span class="flat">+${num(ai.last_7d)} en 7 días</span></div></div>
+        <div class="rep-tile"><div class="v">${num(ai.converted)}</div><div class="l">Han venido al local</div><div class="d">${ai.conversion_pct != null ? `<span class="up">${pct(ai.conversion_pct)} conversión</span>` : '<span class="flat">—</span>'}</div></div>
+        <div class="rep-tile"><div class="v">${num(ai.only_app)}</div><div class="l">App sin venir aún</div><div class="d"><span class="flat">por captar</span></div></div>
+        <div class="rep-tile"><div class="v">${num(data.total_users)}</div><div class="l">Comunidad activa</div><div class="d"><span class="flat">han interactuado</span></div></div>
+      </div>
+      <p class="rep-note">Contador independiente: cuenta cada dispositivo que se instala la app aunque no venga al local. No afecta a asistencia, aforo, sorteos ni niveles — es solo alcance. "Han venido" = de los que tienen la app, cuántos han fichado alguna vez.</p>`;
+    }
+
     if (secs.compare) {
       const row = (label, c, p, dHtml) => `<tr><td>${label}</td><td class="num">${c}</td><td class="num">${p}</td><td class="num">${dHtml}</td></tr>`;
       out += `<h2>⚖️ Comparativa con el periodo anterior</h2>

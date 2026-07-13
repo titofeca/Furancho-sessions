@@ -690,6 +690,7 @@ function getBusinessReport(from, to) {
   return {
     generated_at: new Date().toISOString(),
     total_users: community.total_users, // comunidad total histórica (contexto)
+    app_installs: require('../db/database').getAppInstallStats(), // contador aislado (snapshot)
     current, previous, deltas
   };
 }

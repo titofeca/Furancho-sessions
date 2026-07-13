@@ -245,6 +245,20 @@ router.post('/create-wallet', mintLimiter, (req, res) => {
   }
 });
 
+// POST /api/mint/register-install — marca la wallet como "tiene la app instalada".
+// Se llama en silencio al crear/abrir la cuenta. AISLADO: no toca asistencia,
+// sorteos ni niveles; solo alimenta el contador de furancheiros con app. Idempotente.
+router.post('/register-install', mintLimiter, (req, res) => {
+  const { walletAddress } = req.body || {};
+  try {
+    const { registerAppInstall } = require('../db/database');
+    const r = registerAppInstall(walletAddress);
+    res.json({ success: true, created: r.created });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /api/mint/recover-from-phrase
 // Recupera una cuenta a partir de las 12 palabras mnemónicas
 router.post('/recover-from-phrase', mintLimiter, (req, res) => {
