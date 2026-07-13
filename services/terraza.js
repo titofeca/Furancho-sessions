@@ -70,7 +70,9 @@ function saveTerrazaHours({ days, overrides, note }, updatedBy) {
     if (open && (!HHMM.test(from) || !HHMM.test(to))) {
       throw new Error(`Horario inválido en el día especial ${date} (usa formato HH:MM)`);
     }
-    seen[date] = { date, open, from: open ? from : '19:00', to: open ? to : '23:00' };
+    // Observación del día (ej: "Conciertos"): opcional, la ve el cliente junto al horario
+    const dayNote = String(o.note || '').trim().slice(0, 80);
+    seen[date] = { date, open, from: open ? from : '19:00', to: open ? to : '23:00', note: dayNote };
   });
   const cleanOverrides = pruneOverrides(Object.values(seen));
 

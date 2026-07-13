@@ -2432,24 +2432,11 @@
 
         <div id="terraza-days-admin" style="display:flex; flex-direction:column; gap:8px;">Cargando...</div>
 
-        <!-- Fechas concretas (mandan sobre el patrón semanal ese día) -->
+        <!-- Próximas 2 semanas: cada fecha editable; tocarla la fija como día especial (manda sobre el patrón) -->
         <div style="margin-top:14px; background:rgba(139,25,24,0.04); border:1.5px solid rgba(139,25,24,0.12); border-radius:14px; padding:12px;">
-          <p style="font-size:10px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:var(--wine); margin:0 0 4px;">✨ Días especiales (por fecha)</p>
-          <p style="font-size:10.5px; color:var(--text-muted); margin:0 0 10px; line-height:1.4;">Festivos, cierres puntuales u horarios distintos: la fecha manda sobre el patrón semanal ese día. Las pasadas se borran solas.</p>
-          <div id="tza-overrides-list" style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;"></div>
-          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-            <input type="date" id="tza-ov-date" style="padding:8px 6px; font-size:12.5px; border:1px solid var(--border); border-radius:9px; background:#fff; color:var(--text);" />
-            <select id="tza-ov-open" onchange="document.getElementById('tza-ov-times').style.display = this.value === '1' ? 'flex' : 'none'" style="padding:8px 6px; font-size:12.5px; border:1px solid var(--border); border-radius:9px; background:#fff; color:var(--text);">
-              <option value="1">Abierto</option>
-              <option value="0">Cerrado</option>
-            </select>
-            <span id="tza-ov-times" style="display:flex; gap:6px; align-items:center;">
-              <input type="time" id="tza-ov-from" value="19:00" style="width:86px; padding:8px 4px; font-size:12.5px; border:1px solid var(--border); border-radius:9px; background:#fff; color:var(--text);" />
-              <span style="color:var(--text-muted); font-size:12px;">→</span>
-              <input type="time" id="tza-ov-to" value="23:00" style="width:86px; padding:8px 4px; font-size:12.5px; border:1px solid var(--border); border-radius:9px; background:#fff; color:var(--text);" />
-            </span>
-            <button onclick="tzaAddOverride()" style="background:var(--wine); color:#fff; border:none; border-radius:100px; padding:8px 14px; font-size:11.5px; font-weight:700; cursor:pointer;">+ Añadir</button>
-          </div>
+          <p style="font-size:10px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:var(--wine); margin:0 0 4px;">📅 Próximas 2 semanas (día a día)</p>
+          <p style="font-size:10.5px; color:var(--text-muted); margin:0 0 10px; line-height:1.4;">Cada día viene precargado del patrón semanal. Si le cambias horas o le pones una observación (ej: Conciertos), queda fijado ✨ y manda sobre el patrón ese día. Con ↺ vuelve al patrón. Los días pasados se archivan solos.</p>
+          <div id="tza-window-list" style="display:flex; flex-direction:column; gap:7px;">Cargando...</div>
         </div>
 
         <input id="terraza-note-admin" type="text" maxlength="140" placeholder="Nota opcional (ej: Si llueve, cerramos)" style="margin-top:10px; width:100%; background:#fff; color:var(--text); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:11px 13px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
@@ -7004,7 +6991,19 @@
   // ==================== HORARIO DE LA TERRAZA ====================
   const TERRAZA_DAYS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
   const TERRAZA_CHIPS = ['L','M','X','J','V','S','D'];
-  let _tzaOverrides = []; // fechas especiales en edición (se guardan con el botón Guardar)
+  let _tzaAllOverrides = []; // días especiales guardados (incluye fechas fuera de la ventana de 14 días)
+  let _tzaWinDates = [];     // las 14 fechas (YYYY-MM-DD) de la ventana en edición
+
+  function tzaYmd(offsetDays) {
+    const d = new Date(Date.now() + offsetDays * 86400000);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  function tzaDayIdx(dateStr) { return (new Date(`${dateStr}T12:00:00`).getDay() + 6) % 7; } // 0=lunes
+  function tzaFmtDate(dateStr) {
+    const s = new Date(`${dateStr}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  function tzaEsc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
 
   function tzaRenderChips() {
     const wrap = document.getElementById('tza-bulk-chips');
@@ -7032,35 +7031,74 @@
     showToast(open ? `⚡ ${sel.length} día(s) abiertos ${from}–${to} — recuerda Guardar` : `⚡ ${sel.length} día(s) cerrados — recuerda Guardar`);
   }
 
-  function tzaRenderOverrides() {
-    const list = document.getElementById('tza-overrides-list');
+  // Ventana de 14 días: cada fecha precargada del patrón (o de su día especial si lo tiene).
+  // Tocar un día lo "fija" (pinned) → se guarda como día especial que manda sobre el patrón.
+  function tzaRenderWindow(cfg) {
+    const list = document.getElementById('tza-window-list');
     if (!list) return;
-    if (!_tzaOverrides.length) { list.innerHTML = '<p style="font-size:11.5px; color:var(--text-muted); margin:0;">Sin días especiales.</p>'; return; }
-    const fmt = s => new Date(`${s}T12:00:00`).toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
-    list.innerHTML = _tzaOverrides.map((o, idx) => `
-      <div style="display:flex; align-items:center; gap:8px; background:#fff; border:1.5px solid rgba(42,21,9,0.1); border-radius:10px; padding:7px 10px;">
-        <span style="flex:1; font-size:12.5px; font-weight:700; color:var(--text);">✨ ${fmt(o.date)}</span>
-        <span style="font-size:12.5px; font-weight:${o.open ? '700' : '400'}; color:${o.open ? 'var(--wine)' : 'var(--text-muted)'};">${o.open ? `${o.from} – ${o.to}` : 'Cerrado'}</span>
-        <button onclick="tzaRemoveOverride(${idx})" style="background:rgba(139,25,24,0.08); border:none; border-radius:8px; padding:5px 8px; font-size:11px; cursor:pointer; color:var(--wine);">🗑️</button>
-      </div>`).join('');
+    _tzaWinDates = Array.from({ length: 14 }, (_, i) => tzaYmd(i));
+    const ovByDate = {}; (_tzaAllOverrides || []).forEach(o => { ovByDate[o.date] = o; });
+    list.innerHTML = _tzaWinDates.map((date, i) => {
+      const ov = ovByDate[date];
+      const eff = ov || cfg.days[tzaDayIdx(date)];
+      const pinned = !!ov;
+      return `<div class="tzaw-row" data-d="${date}" data-pinned="${pinned ? '1' : '0'}" style="background:#fff; border:1.5px solid ${pinned ? 'rgba(196,151,58,0.55)' : 'rgba(42,21,9,0.1)'}; border-radius:12px; padding:8px 11px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" class="tzaw-open" ${eff.open ? 'checked' : ''} onchange="tzaWinTouched('${date}'); tzaWinToggle('${date}', this.checked)" style="width:20px; height:20px; accent-color:#8B1918; flex-shrink:0; cursor:pointer;" />
+          <span style="flex:1; font-size:12.5px; font-weight:700; color:var(--text);">${tzaFmtDate(date)}${i === 0 ? ' <span style="font-size:9px; font-weight:800; letter-spacing:1px; color:#fff; background:var(--wine); border-radius:100px; padding:2px 7px; vertical-align:1px;">HOY</span>' : ''}<span class="tzaw-pin" style="display:${pinned ? 'inline' : 'none'};"> ✨</span></span>
+          <button type="button" class="tzaw-reset" onclick="tzaWinReset('${date}')" title="Volver al patrón semanal" style="display:${pinned ? 'inline-block' : 'none'}; background:rgba(139,25,24,0.08); border:none; border-radius:8px; padding:5px 8px; font-size:11px; cursor:pointer; color:var(--wine);">↺</button>
+          <input type="time" class="tzaw-from" value="${eff.from}" ${eff.open ? '' : 'disabled'} onchange="tzaWinTouched('${date}')" style="width:86px; padding:6px 4px; font-size:12.5px; border:1px solid var(--border); border-radius:9px; background:var(--bg); color:var(--text); ${eff.open ? '' : 'opacity:.4;'}" />
+          <span style="color:var(--text-muted); font-size:12px;">→</span>
+          <input type="time" class="tzaw-to" value="${eff.to}" ${eff.open ? '' : 'disabled'} onchange="tzaWinTouched('${date}')" style="width:86px; padding:6px 4px; font-size:12.5px; border:1px solid var(--border); border-radius:9px; background:var(--bg); color:var(--text); ${eff.open ? '' : 'opacity:.4;'}" />
+        </div>
+        <input type="text" class="tzaw-note" maxlength="80" value="${tzaEsc(ov && ov.note)}" oninput="tzaWinTouched('${date}')" placeholder="Observación del día (ej: Conciertos)" style="margin-top:6px; width:100%; background:var(--bg); color:var(--text); border:1px solid rgba(42,21,9,0.1); border-radius:9px; padding:6px 10px; font-size:12px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+      </div>`;
+    }).join('');
   }
-  function tzaAddOverride() {
-    const date = document.getElementById('tza-ov-date').value;
-    if (!date) return showToast('Elige la fecha');
-    const open = document.getElementById('tza-ov-open').value === '1';
-    const from = document.getElementById('tza-ov-from').value;
-    const to = document.getElementById('tza-ov-to').value;
-    _tzaOverrides = _tzaOverrides.filter(o => o.date !== date); // la nueva sustituye
-    _tzaOverrides.push({ date, open, from, to });
-    _tzaOverrides.sort((a, b) => a.date.localeCompare(b.date));
-    document.getElementById('tza-ov-date').value = '';
-    tzaRenderOverrides();
-    showToast('✨ Día especial añadido — recuerda Guardar');
+  function tzaWinTouched(date) {
+    const row = document.querySelector(`.tzaw-row[data-d="${date}"]`);
+    if (!row) return;
+    row.dataset.pinned = '1';
+    row.style.borderColor = 'rgba(196,151,58,0.55)';
+    row.querySelector('.tzaw-pin').style.display = 'inline';
+    row.querySelector('.tzaw-reset').style.display = 'inline-block';
   }
-  function tzaRemoveOverride(idx) {
-    _tzaOverrides.splice(idx, 1);
-    tzaRenderOverrides();
-    showToast('Día especial quitado — recuerda Guardar');
+  function tzaWinToggle(date, on) {
+    const row = document.querySelector(`.tzaw-row[data-d="${date}"]`);
+    if (!row) return;
+    ['tzaw-from', 'tzaw-to'].forEach(cls => {
+      const el = row.querySelector('.' + cls);
+      el.disabled = !on; el.style.opacity = on ? '1' : '.4';
+    });
+  }
+  function tzaWinReset(date) {
+    const row = document.querySelector(`.tzaw-row[data-d="${date}"]`);
+    if (!row) return;
+    const i = tzaDayIdx(date);
+    // vuelve a lo que diga AHORA el patrón semanal del editor
+    const open = document.querySelector(`.tza-open[data-i="${i}"]`).checked;
+    row.querySelector('.tzaw-open').checked = open;
+    row.querySelector('.tzaw-from').value = document.querySelector(`.tza-from[data-i="${i}"]`).value;
+    row.querySelector('.tzaw-to').value = document.querySelector(`.tza-to[data-i="${i}"]`).value;
+    row.querySelector('.tzaw-note').value = '';
+    tzaWinToggle(date, open);
+    row.dataset.pinned = '0';
+    row.style.borderColor = 'rgba(42,21,9,0.1)';
+    row.querySelector('.tzaw-pin').style.display = 'none';
+    row.querySelector('.tzaw-reset').style.display = 'none';
+    showToast('↺ Día devuelto al patrón — recuerda Guardar');
+  }
+  // El patrón semanal cambia → refresca los días de la ventana que NO están fijados
+  function tzaSyncWindow() {
+    document.querySelectorAll('.tzaw-row').forEach(row => {
+      if (row.dataset.pinned === '1') return;
+      const i = tzaDayIdx(row.dataset.d);
+      const open = document.querySelector(`.tza-open[data-i="${i}"]`).checked;
+      row.querySelector('.tzaw-open').checked = open;
+      row.querySelector('.tzaw-from').value = document.querySelector(`.tza-from[data-i="${i}"]`).value;
+      row.querySelector('.tzaw-to').value = document.querySelector(`.tza-to[data-i="${i}"]`).value;
+      tzaWinToggle(row.dataset.d, open);
+    });
   }
 
   async function loadTerrazaAdmin() {
@@ -7070,8 +7108,8 @@
       if (!wrap) return;
       tzaRenderChips();
       document.getElementById('terraza-note-admin').value = cfg.note || '';
-      _tzaOverrides = cfg.overrides || [];
-      tzaRenderOverrides();
+      _tzaAllOverrides = cfg.overrides || [];
+      tzaRenderWindow(cfg);
       const pill = document.getElementById('terraza-updated-pill');
       if (pill) pill.textContent = cfg.updatedAt
         ? `Última edición: ${cfg.updatedBy === 'staff' ? 'staff' : 'tú'} · ${new Date(cfg.updatedAt).toLocaleDateString('es-ES', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}`
@@ -7080,9 +7118,9 @@
         <div style="display:flex; align-items:center; gap:8px; background:#fff; border:1.5px solid rgba(42,21,9,0.1); border-radius:12px; padding:9px 11px;">
           <input type="checkbox" class="tza-open" data-i="${i}" ${d.open ? 'checked' : ''} onchange="tzaToggleRow(${i}, this.checked)" style="width:20px; height:20px; accent-color:#8B1918; flex-shrink:0; cursor:pointer;" />
           <span style="flex:1; font-size:13px; font-weight:700; color:var(--text);">${TERRAZA_DAYS[i]}</span>
-          <input type="time" class="tza-from" data-i="${i}" value="${d.from}" ${d.open ? '' : 'disabled'} style="width:92px; padding:7px 4px; font-size:13px; border:1px solid var(--border); border-radius:9px; background:var(--bg); color:var(--text); ${d.open ? '' : 'opacity:.4;'}" />
+          <input type="time" class="tza-from" data-i="${i}" value="${d.from}" ${d.open ? '' : 'disabled'} onchange="tzaSyncWindow()" style="width:92px; padding:7px 4px; font-size:13px; border:1px solid var(--border); border-radius:9px; background:var(--bg); color:var(--text); ${d.open ? '' : 'opacity:.4;'}" />
           <span style="color:var(--text-muted); font-size:12px;">→</span>
-          <input type="time" class="tza-to" data-i="${i}" value="${d.to}" ${d.open ? '' : 'disabled'} style="width:92px; padding:7px 4px; font-size:13px; border:1px solid var(--border); border-radius:9px; background:var(--bg); color:var(--text); ${d.open ? '' : 'opacity:.4;'}" />
+          <input type="time" class="tza-to" data-i="${i}" value="${d.to}" ${d.open ? '' : 'disabled'} onchange="tzaSyncWindow()" style="width:92px; padding:7px 4px; font-size:13px; border:1px solid var(--border); border-radius:9px; background:var(--bg); color:var(--text); ${d.open ? '' : 'opacity:.4;'}" />
         </div>`).join('');
     } catch (_) {}
   }
@@ -7091,6 +7129,7 @@
       const el = document.querySelector(`.${cls}[data-i="${i}"]`);
       if (el) { el.disabled = !on; el.style.opacity = on ? '1' : '.4'; }
     });
+    tzaSyncWindow();
   }
   async function saveTerrazaAdmin() {
     const days = TERRAZA_DAYS.map((_, i) => ({
@@ -7098,11 +7137,26 @@
       from: document.querySelector(`.tza-from[data-i="${i}"]`).value,
       to: document.querySelector(`.tza-to[data-i="${i}"]`).value
     }));
+    // Solo los días fijados (✨) o con observación se guardan como especiales; el resto sigue al patrón
+    const overrides = [];
+    document.querySelectorAll('.tzaw-row').forEach(row => {
+      const note = row.querySelector('.tzaw-note').value.trim();
+      if (row.dataset.pinned !== '1' && !note) return;
+      overrides.push({
+        date: row.dataset.d,
+        open: row.querySelector('.tzaw-open').checked,
+        from: row.querySelector('.tzaw-from').value,
+        to: row.querySelector('.tzaw-to').value,
+        note
+      });
+    });
+    const winSet = new Set(_tzaWinDates);
+    (_tzaAllOverrides || []).forEach(o => { if (!winSet.has(o.date)) overrides.push(o); }); // conserva fechas fuera de la ventana
     try {
       const r = await fetch('/api/admin/terraza-hours', {
         method: 'POST',
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ days, overrides: _tzaOverrides, note: document.getElementById('terraza-note-admin').value })
+        body: JSON.stringify({ days, overrides, note: document.getElementById('terraza-note-admin').value })
       });
       const data = await r.json();
       if (!r.ok) return showToast(data.error || 'Error al guardar');
