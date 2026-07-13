@@ -2161,7 +2161,26 @@ function getPendingNftPrizes(walletAddress) {
     });
   }
 
-  return [...raffleRows, ...weeklyPending];
+  // 3) Logro Furancheiro de Honor por reservas VIP
+  const honorPending = [];
+  try {
+    const achievements = require('../services/achievements');
+    const honor = achievements.getById('furancheiro_honor');
+    if (honor && achievements.walletUnlocked(walletAddress, honor)) {
+      const existing = db.prepare(`SELECT * FROM achievement_mints WHERE LOWER(wallet_address) = LOWER(?) AND achievement_id = ?`).get(walletAddress, honor.id);
+      if (!existing || existing.status === 'failed') {
+        honorPending.push({
+          source: 'honor', raffleId: null, week: null,
+          prize: 'Insignia Furancheiro de Honor (Logro VIP)',
+          nft_achievement_id: honor.id, prize_image: honor.image
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Error adding honor achievement to pending nft prizes:', err.message);
+  }
+
+  return [...raffleRows, ...weeklyPending, ...honorPending];
 }
 
 // Otorgamiento presencial del NFT al ganador desde el escáner del staff. Atómico:

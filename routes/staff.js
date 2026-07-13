@@ -120,7 +120,20 @@ router.post('/grant-nft-prize', staffLimiter, requireStaff, (req, res) => {
   try {
     const { grantNftPrize, grantWeeklyNftPrize } = require('../db/database');
     let result;
-    if (source === 'weekly') {
+    if (source === 'honor') {
+      const { claimAchievement, getAchievementMint } = require('../db/database');
+      const achievements = require('../services/achievements');
+      const honor = achievements.getById('furancheiro_honor');
+      if (!honor) return res.status(400).json({ error: 'Logro de honor no configurado' });
+      if (!achievements.walletUnlocked(walletAddress, honor)) {
+        return res.status(400).json({ error: 'El cliente no califica para este logro (requiere 2 reservas VIP confirmadas)' });
+      }
+      const existing = getAchievementMint(walletAddress, honor.id);
+      if (!existing || existing.status === 'failed') {
+        claimAchievement(walletAddress, honor.id, honor.tokenId, 'pending_approval');
+      }
+      result = { ok: true, achievement: honor };
+    } else if (source === 'weekly') {
       if (!week) return res.status(400).json({ error: 'Falta la semana del sorteo' });
       result = grantWeeklyNftPrize(week, walletAddress, 'staff');
     } else {

@@ -38,6 +38,15 @@ const ACHIEVEMENTS = [
     tokenId: 103,
     edition: 'Verano 2026',
     rule: { type: 'campaign_visits', campaignId: 'reto_5_verano_2026', requiredVisits: 5 }
+  },
+  {
+    id: 'furancheiro_honor',
+    name: 'Furancheiro de Honor',
+    description: 'Miembro de Honor do Furancho. NFT exclusivo por reservar mesa VIP en la app 2 veces y asistir a las sesiones.',
+    image: 'furancheiro_honor.jpg',
+    tokenId: 104,
+    edition: 'Miembro de Honor',
+    rule: { type: 'vip_bookings', requiredCount: 2 }
   }
   // Imágenes ya subidas, pendientes de su regla (día de asistencia):
   // { id:'maria_pita', name:'…', image:'furanchomariapita.jpg', tokenId:101, rule:{ type:'visit_on_date', date:'YYYY-MM-DD' } }
@@ -58,9 +67,9 @@ function _customList() {
     return db.prepare(`SELECT id, name, description, image, token_id AS tokenId, edition, rule_type, rule_date
                        FROM custom_achievements ORDER BY token_id ASC`).all()
       .map(r => ({
-        id: r.id, name: r.name, description: r.description, image: r.image,
+        id: r.id, name: r.name, description: r.description, image: _normImage(r.image),
         tokenId: r.tokenId, edition: r.edition,
-        rule: { type: r.rule_type || 'visit_on_date', date: r.rule_date },
+        rule: r.rule_type ? { type: r.rule_type, date: r.rule_date } : null,
         custom: true
       }));
   } catch (_) { return []; }
@@ -195,6 +204,14 @@ function walletMeetsRule(wallet, rule) {
       WHERE LOWER(wallet_address) = LOWER(?) AND campaign_id = ?
     `).get(wallet, rule.campaignId || 'reto_5_verano_2026');
     return (row ? row.c : 0) >= (rule.requiredVisits || 5);
+  }
+  if (rule.type === 'vip_bookings') {
+    // Desbloqueo por acumular N reservas VIP confirmadas
+    const row = db.prepare(`
+      SELECT COUNT(*) AS c FROM vip_reservations
+      WHERE LOWER(wallet_address) = LOWER(?) AND status = 'confirmed'
+    `).get(wallet);
+    return (row ? row.c : 0) >= (rule.requiredCount || 2);
   }
   return false;
 }

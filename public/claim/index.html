@@ -2040,6 +2040,7 @@
               <p id="vac-cd-sub" style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0;">La próxima sesión antes de las vacaciones. 🍷</p>
             </div>
             <div id="vac-cd-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+            <div id="vac-cd-actions" style="margin-top:14px; display:none; flex-direction:column; gap:8px;"></div>
           </div>
           <!-- Estado B: modo vacaciones (a partir del 31 de julio) -->
           <div id="vacation-mode-state" style="display:none; text-align:center;">
@@ -2367,10 +2368,20 @@
               </summary>
               <p class="guide-text">
                 ¡Qué canelo ni qué caralladas, neno! Cada nivel te da más caché en la barra. En nivel 3 (Larpeiro) y nivel 4 (Presidente) ya eres el puto amo del furancho: entras por duplicado en los sorteos, te invitamos a catas exclusivas y puedes pedir raciones secretas fuera de carta que el staff solo te sacará si les enseñas tu carné digital VIP. ¡Casi nada, ho!
+            </details>
+
+            <!-- Pregunta 5 (Nueva) -->
+            <details class="guide-details">
+              <summary class="guide-summary">
+                <span>¿Reservar la zona VIP por la app tiene algún premio especial?</span>
+                <span class="guide-arrow">▼</span>
+              </summary>
+              <p class="guide-text">
+                ¡Y tanto, ho! Si utilizas la app para reservar tu mesa VIP <strong>2 veces</strong> y asistes a las sesiones reservadas de forma correcta, te entregaremos el NFT conmemorativo exclusivo <strong>"Furancheiro de Honor"</strong> para presumir en tu vitrina digital de coleccionista.
               </p>
             </details>
   
-            <!-- Pregunta 5 -->
+            <!-- Pregunta 6 -->
             <details class="guide-details">
               <summary class="guide-summary">
                 <span>¿Y si se me rompe el peluco tecnológico o cambio de móvil, qué hago, rapaz?</span>
@@ -3922,6 +3933,33 @@
       } catch(e) {}
       btn.disabled = false;
     }
+
+    async function handleCdRsvp(eventId, btn) {
+      if (!userWalletAddress) {
+        showToast('⚠️ Primero debes estar registrado, rapaz.');
+        return;
+      }
+      const attending = btn.dataset.attending === 'true';
+      if (!attending) {
+        openAllergensModal(eventId, null, () => {
+          loadAgenda();
+        });
+        return;
+      }
+      
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/events/rsvp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventId, walletAddress: userWalletAddress })
+        });
+        const data = await res.json();
+        loadAgenda();
+      } catch(e) {}
+      btn.disabled = false;
+    }
+    window.handleCdRsvp = handleCdRsvp;
 
     async function setRsvpFromMsg(eventId, attend, btn) {
       if (!userWalletAddress) {
@@ -6286,7 +6324,7 @@
           const rollMs = new Date(`${e.event_date}T05:00:00+02:00`).getTime() + 24 * 3600 * 1000;
           const d = new Date(`${e.event_date}T12:00:00`);
           const dateLabel = d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
-          return { ms, rollMs, dateLabel };
+          return { id: e.id, title: e.title, ms, rollMs, dateLabel };
         })
         .filter(f => !isNaN(f.ms) && f.ms <= lastMs)
         .sort((a, b) => a.ms - b.ms);
@@ -6352,6 +6390,64 @@
               const p = _cdParts(next.ms - now);
               const box = (v, l) => `<div class="cd-box"><div class="cd-num">${String(v).padStart(2, '0')}</div><div class="cd-lbl">${l}</div></div>`;
               listEl.innerHTML = `<div style="display:flex; gap:8px; justify-content:center;">${box(p.d, 'Días')}${box(p.h, 'Horas')}${box(p.m, 'Min')}${box(p.s, 'Seg')}</div>`;
+            }
+          }
+
+          // Botones de acción directos
+          const actionsEl = document.getElementById('vac-cd-actions');
+          if (actionsEl) {
+            if (next.id) {
+              actionsEl.style.display = 'flex';
+              const attending = _globalMyRsvps.includes(next.id);
+              const myVip = (_globalMyVipReservations || []).find(r => r.event_id === next.id);
+              const hasVip = myVip && myVip.status !== 'cancelled';
+              const formattedDate = new Date(next.ms).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+              const eventTitleEscaped = (next.title || 'Furancho Sessions').replace(/'/g, "\\'");
+
+              let rsvpBtnHtml = `
+                <button onclick="event.stopPropagation(); handleCdRsvp(${next.id}, this)" 
+                  data-attending="${attending}" 
+                  style="flex: 1; padding: 12px; border-radius: 50px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; font-family: 'Outfit', sans-serif; box-sizing: border-box; outline: none;
+                    border: 1.5px solid ${attending ? 'var(--wine)' : 'rgba(139,25,24,0.3)'};
+                    background: ${attending ? 'var(--wine)' : 'rgba(139,25,24,0.03)'};
+                    color: ${attending ? '#fff' : 'var(--wine)'};">
+                  ${attending ? '👍 Apuntado' : '🍷 ¡Me apetece!'}
+                </button>
+              `;
+
+              let vipBtnHtml = '';
+              if (hasVip) {
+                const labelColor = myVip.status === 'confirmed' ? '#16a34a' : 'var(--gold)';
+                const labelBg = myVip.status === 'confirmed' ? 'rgba(74,222,128,0.12)' : 'rgba(196,151,58,0.1)';
+                const labelBorder = myVip.status === 'confirmed' ? 'rgba(74,222,128,0.4)' : 'rgba(196,151,58,0.35)';
+                const labelText = myVip.status === 'confirmed' ? '✅ VIP' : '⏳ VIP Pend.';
+
+                vipBtnHtml = `
+                  <div style="flex: 1; padding: 12px; border-radius: 50px; font-size: 12.5px; font-weight: 700; text-align: center; box-sizing: border-box; font-family: 'Outfit', sans-serif;
+                    background: ${labelBg}; border: 1.5px solid ${labelBorder}; color: ${labelColor}; line-height: 1.25; display: flex; align-items: center; justify-content: center; min-height: 43px;">
+                    ${labelText} (${myVip.group_size}p)
+                  </div>
+                `;
+              } else {
+                vipBtnHtml = `
+                  <button onclick="event.stopPropagation(); openVipModal(${next.id}, '${eventTitleEscaped} · ${formattedDate}')" 
+                    style="flex: 1; padding: 12px; border-radius: 50px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; font-family: 'Outfit', sans-serif; box-sizing: border-box; outline: none;
+                      border: none; background: linear-gradient(135deg, var(--gold), #a97b1f); color: #fff;
+                      box-shadow: 0 4px 10px rgba(196,151,58,0.22); text-transform: uppercase; letter-spacing: 0.5px;">
+                    ⭐ Reservar VIP
+                  </button>
+                `;
+              }
+
+              actionsEl.innerHTML = `
+                <div style="display: flex; gap: 8px; width: 100%; margin-top: 10px; flex-wrap: wrap;">
+                  ${rsvpBtnHtml}
+                  ${vipBtnHtml}
+                </div>
+              `;
+            } else {
+              actionsEl.style.display = 'none';
+              actionsEl.innerHTML = '';
             }
           }
         } else {
@@ -7932,6 +8028,14 @@
         <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--gold); margin:0 0 6px 0;">Pack incluido</p>
         <p style="font-size:14.5px; font-weight:700; color:var(--text); margin:0 0 3px 0;">🍾 Botella Magnum + 4 Tapas + Postre + Zona VIP</p>
         <p style="font-size:12.5px; color:var(--text-muted); margin:0; line-height:1.45;">Mesa VIP reservada para 4 personas (incluye 1 tapa por persona y postre).<br>PVP <strong style="color:var(--wine); font-size:15px;">140 €</strong> &nbsp;·&nbsp; Mínimo 4 personas</p>
+      </div>
+
+      <!-- Regalo / Fidelización VIP -->
+      <div style="background:rgba(196,151,58,0.08); border:1px dashed rgba(196,151,58,0.5); border-radius:12px; padding:10px 12px; margin-bottom:14px; text-align:left; display:flex; align-items:center; gap:10px; box-sizing:border-box;">
+        <span style="font-size:22px; flex-shrink:0;">🏆</span>
+        <p style="font-size:11.5px; color:var(--text); margin:0; line-height:1.45; font-family:'Outfit',sans-serif;">
+          <strong>Premio Furancheiro de Honor:</strong> Reserva la zona VIP <strong>2 veces</strong> por la app y asiste a las sesiones para recibir este NFT especial de coleccionista.
+        </p>
       </div>
 
       <p id="vip-capacity-text" style="font-size:13px; color:var(--text); margin:0 0 18px 0; font-weight:500;"></p>
