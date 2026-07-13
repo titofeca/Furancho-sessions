@@ -73,6 +73,16 @@ router.post('/claim', claimLimiter, (req, res) => {
     if (existing) {
       return res.json({ success: true, alreadyClaimed: true, status: existing.status, achievementId: a.id });
     }
+    
+    // Validar límite máximo (maxSupply)
+    if (a.maxSupply) {
+      const { db } = require('../db/database');
+      const countQuery = db.prepare(`SELECT COUNT(*) as count FROM achievement_mints WHERE achievement_id = ? AND status != 'failed'`).get(a.id);
+      const currentSupply = countQuery ? countQuery.count : 0;
+      if (currentSupply >= a.maxSupply) {
+        return res.status(400).json({ error: `Se ha alcanzado el límite máximo de ${a.maxSupply} unidades para este logro.` });
+      }
+    }
     // Logros de campaña (Reto de los 5) y reservas VIP: requieren aprobación admin antes de mintear
     // (anti-trampa / control de gas). No entran directos a la cola.
     if (a.rule && (a.rule.type === 'campaign_visits' || a.rule.type === 'vip_bookings')) {

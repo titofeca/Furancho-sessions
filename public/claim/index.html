@@ -7964,7 +7964,7 @@
     return `<div onclick="showNftDetail('${a.id}')" style="display:flex; gap:12px; align-items:center; background:rgba(196,151,58,0.08); border:1.5px solid rgba(196,151,58,0.3); border-radius:14px; padding:10px 12px; cursor:pointer;">
       <img src="${a.image}" alt="${a.name}" onclick="event.stopPropagation(); openImageLightbox(this.src, this.alt)" style="width:54px; height:54px; object-fit:cover; border-radius:10px; flex-shrink:0; cursor:zoom-in;" onerror="this.style.display='none'">
       <div style="flex:1; min-width:0;">
-        <p style="font-size:13px; font-weight:800; color:var(--wine); margin:0 0 2px;">${a.name}</p>
+        <p style="font-size:13px; font-weight:800; color:var(--wine); margin:0 0 2px;">${a.name}${a.serial ? ` #${a.serial}` : ''}</p>
         <p style="font-size:11px; color:var(--text-muted); margin:0 0 7px; line-height:1.35;">${a.description}</p>
         ${cta}
       </div>
@@ -8014,7 +8014,7 @@
         <button onclick="document.getElementById('nft-detail-overlay').remove(); document.removeEventListener('keydown', window._nftDetailKeyHandler);" style="position:absolute; top:14px; right:14px; width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,0.1); color:#F2EDE3; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
         <img src="${a.image}" alt="${a.name}" onclick="event.stopPropagation(); openImageLightbox(this.src, this.alt)" style="width:150px; height:150px; object-fit:cover; border-radius:18px; cursor:zoom-in; ${lock}" onerror="this.style.display='none'">
         <span style="font-size:11px; color:#F2EDE3; opacity:0.5; font-weight:500;">Toca a imaxe para ampliar</span>
-        <strong style="font-size:18px; color:var(--gold); font-family:'Outfit',sans-serif; line-height:1.3;">${a.name}</strong>
+        <strong style="font-size:18px; color:var(--gold); font-family:'Outfit',sans-serif; line-height:1.3;">${a.name}${a.serial ? ` #${a.serial}` : ''}</strong>
         <span style="font-size:14px; color:#F2EDE3; opacity:0.9; font-weight:400; line-height:1.5;">${a.description || ''}</span>
         <span style="font-size:13px; color:#F2EDE3; opacity:0.85; font-weight:500; line-height:1.5; margin-top:4px;">${hint}</span>
         <span style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; margin-top:8px; color:${unlocked ? '#4ade80' : '#7a6a5a'};">${statusText}</span>

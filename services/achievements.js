@@ -45,8 +45,19 @@ const ACHIEVEMENTS = [
     description: 'Miembro de Honor do Furancho. NFT exclusivo por reservar mesa VIP en la app 2 veces y asistir a las sesiones.',
     image: 'furancheiro_honor.jpg',
     tokenId: 104,
-    edition: 'Miembro de Honor',
-    rule: { type: 'vip_bookings', requiredCount: 2 }
+    edition: 'Miembro de Honor (Max 25)',
+    rule: { type: 'vip_bookings', requiredCount: 2 },
+    maxSupply: 25
+  },
+  {
+    id: 'guardian_furancho',
+    name: 'Guardián del Furancho',
+    description: 'Guardián Oficial do Furancho. NFT exclusivo para los protectores de la cunca y el barril.',
+    image: 'nft_guardian_furancho.jpg',
+    tokenId: 105,
+    edition: 'Limitada (Max 25)',
+    rule: { type: 'raffle_only' },
+    maxSupply: 25
   },
   {
     id: 'meme_vip',
@@ -55,7 +66,8 @@ const ACHIEVEMENTS = [
     image: 'nft_meme_vip.jpg',
     tokenId: 50,
     edition: 'Limitada (Max 50)',
-    rule: { type: 'raffle_only' } // No autodesbloqueable, solo admin/staff lo otorga
+    rule: { type: 'raffle_only' }, // No autodesbloqueable, solo admin/staff lo otorga
+    maxSupply: 50
   }
   // Imágenes ya subidas, pendientes de su regla (día de asistencia):
   // { id:'maria_pita', name:'…', image:'furanchomariapita.jpg', tokenId:101, rule:{ type:'visit_on_date', date:'YYYY-MM-DD' } }

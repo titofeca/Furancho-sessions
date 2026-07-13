@@ -96,6 +96,28 @@ const NFT_METADATA = {
       { trait_type: 'Edición', value: 'Furancho Sessions 2026' }
     ]
   },
+  104: {
+    name: 'Furancheiro de Honor',
+    description: 'Miembro de Honor do Furancho. NFT exclusivo por reservar mesa VIP en la app 2 veces y asistir a las sesiones.',
+    image: `${APP_URL}/assets/furancheiro_honor.jpg`,
+    external_url: APP_URL,
+    attributes: [
+      { trait_type: 'Tipo', value: 'Especial' },
+      { trait_type: 'Edición', value: 'Miembro de Honor (Max 25)' },
+      { trait_type: 'Blockchain', value: 'Polygon' }
+    ]
+  },
+  105: {
+    name: 'Guardián del Furancho',
+    description: 'Guardián Oficial do Furancho. NFT exclusivo para los protectores de la cunca y el barril.',
+    image: `${APP_URL}/assets/nft_guardian_furancho.jpg`,
+    external_url: APP_URL,
+    attributes: [
+      { trait_type: 'Tipo', value: 'Especial' },
+      { trait_type: 'Edición', value: 'Limitada (Max 25)' },
+      { trait_type: 'Blockchain', value: 'Polygon' }
+    ]
+  },
   50: {
     name: 'Meme VIP',
     description: 'Edición Limitada. Meme oficial VIP para experiencias exclusivas de hotel y mucho más.',

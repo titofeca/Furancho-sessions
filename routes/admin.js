@@ -1435,7 +1435,17 @@ router.post('/grant-achievement', requireAuth, (req, res) => {
   const a = achievements.getById(achievementId);
   if (!a) return res.status(404).json({ error: 'Logro no encontrado' });
   try {
-    const { claimAchievement, getAchievementMint } = require('../db/database');
+    const { db, claimAchievement, getAchievementMint } = require('../db/database');
+    
+    // Validar límite máximo (maxSupply)
+    if (a.maxSupply) {
+      const countQuery = db.prepare(`SELECT COUNT(*) as count FROM achievement_mints WHERE achievement_id = ? AND status != 'failed'`).get(a.id);
+      const currentSupply = countQuery ? countQuery.count : 0;
+      if (currentSupply >= a.maxSupply) {
+        return res.status(400).json({ error: `Se ha alcanzado el límite máximo de ${a.maxSupply} unidades para este logro.` });
+      }
+    }
+
     const existing = getAchievementMint(walletAddress, a.id);
     if (existing) return res.json({ success: true, alreadyGranted: true, status: existing.status, achievementId: a.id });
     claimAchievement(walletAddress, a.id, a.tokenId);
