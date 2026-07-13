@@ -1193,12 +1193,41 @@ router.post('/nft-backfill/run', requireAuth, async (req, res) => {
 // GET /api/admin/pending-mints — lista de NFTs esperando aprobación
 router.get('/pending-mints', requireAuth, (_req, res) => {
   try {
-    const mints = getPendingApprovalMints().map(m => ({
-      ...m,
+    const { getPendingApprovalAchievements } = require('../db/database');
+    const achievements = require('../services/achievements');
+
+    const levelMints = getPendingApprovalMints().map(m => ({
+      id: m.id,
+      type: 'level',
+      wallet_address: m.wallet_address,
       wallet_masked: `${m.wallet_address.slice(0, 6)}...${m.wallet_address.slice(-4)}`,
+      level: m.level,
+      level_name: m.level_name,
+      minted_at: m.minted_at,
       visit_count: getVisitCount(m.wallet_address)
     }));
-    res.json(mints);
+
+    const achievementMints = getPendingApprovalAchievements().map(m => {
+      const ach = achievements.getById(m.achievement_id);
+      return {
+        id: m.id,
+        type: 'achievement',
+        wallet_address: m.wallet_address,
+        wallet_masked: `${m.wallet_address.slice(0, 6)}...${m.wallet_address.slice(-4)}`,
+        achievement_id: m.achievement_id,
+        achievement_name: ach ? ach.name : m.achievement_id,
+        minted_at: m.created_at,
+        visit_count: getVisitCount(m.wallet_address)
+      };
+    });
+
+    const allMints = [...levelMints, ...achievementMints].sort((a, b) => {
+      const dateA = new Date(a.minted_at || 0);
+      const dateB = new Date(b.minted_at || 0);
+      return dateA - dateB;
+    });
+
+    res.json(allMints);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -1219,9 +1248,18 @@ router.post('/reconcile-mints', requireAuth, (req, res) => {
 router.post('/mints/:id/approve', requireAuth, (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    approveMint(id);
-    const { notifyQueue } = require('../services/polygon');
-    notifyQueue();
+    const type = req.query.type || 'level';
+    if (type === 'achievement') {
+      const { approveAchievementMint } = require('../db/database');
+      const { notifyAchievementQueue } = require('../services/polygon');
+      approveAchievementMint(id);
+      notifyAchievementQueue();
+    } else {
+      const { approveMint } = require('../db/database');
+      approveMint(id);
+      const { notifyQueue } = require('../services/polygon');
+      notifyQueue();
+    }
     res.json({ success: true, message: '¡Aprobado! El NFT entrará en la cola de Polygon ahora mismo.' });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -1232,7 +1270,14 @@ router.post('/mints/:id/approve', requireAuth, (req, res) => {
 router.post('/mints/:id/reject', requireAuth, (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    rejectMint(id);
+    const type = req.query.type || 'level';
+    if (type === 'achievement') {
+      const { rejectAchievementMint } = require('../db/database');
+      rejectAchievementMint(id);
+    } else {
+      const { rejectMint } = require('../db/database');
+      rejectMint(id);
+    }
     res.json({ success: true, message: 'Mint rechazado correctamente.' });
   } catch (e) {
     res.status(500).json({ error: e.message });
