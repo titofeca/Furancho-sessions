@@ -2534,25 +2534,25 @@
           <div class="card-title">Configuración de Peajes por NFT (Consumo Mínimo en €)</div>
         </div>
         <div style="padding: 16px;">
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:20px; margin-bottom:16px;">
             <div>
               <p style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">Niveles principales</p>
               <div style="display:flex; flex-direction:column; gap:8px;">
-                <label style="font-size:12px; display:flex; justify-content:space-between; align-items:center;">
-                  <span>Nivel 1 (Cautivo):</span>
-                  <input type="number" id="fee-level-1" value="0" min="0" style="width:70px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15);" />
+                <label style="font-size:12px; display:flex; align-items:center; gap:8px;">
+                  <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Nivel 1 (Cautivo):</span>
+                  <input type="number" id="fee-level-1" value="0" min="0" style="width:65px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15); flex-shrink:0;" />
                 </label>
-                <label style="font-size:12px; display:flex; justify-content:space-between; align-items:center;">
-                  <span>Nivel 2 (Cunqueiro):</span>
-                  <input type="number" id="fee-level-2" value="0" min="0" style="width:70px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15);" />
+                <label style="font-size:12px; display:flex; align-items:center; gap:8px;">
+                  <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Nivel 2 (Cunqueiro):</span>
+                  <input type="number" id="fee-level-2" value="0" min="0" style="width:65px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15); flex-shrink:0;" />
                 </label>
-                <label style="font-size:12px; display:flex; justify-content:space-between; align-items:center;">
-                  <span>Nivel 3 (Larpeiro):</span>
-                  <input type="number" id="fee-level-3" value="30" min="0" style="width:70px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15);" />
+                <label style="font-size:12px; display:flex; align-items:center; gap:8px;">
+                  <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Nivel 3 (Larpeiro):</span>
+                  <input type="number" id="fee-level-3" value="30" min="0" style="width:65px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15); flex-shrink:0;" />
                 </label>
-                <label style="font-size:12px; display:flex; justify-content:space-between; align-items:center;">
-                  <span>Nivel 4 (Presidente):</span>
-                  <input type="number" id="fee-level-4" value="30" min="0" style="width:70px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15);" />
+                <label style="font-size:12px; display:flex; align-items:center; gap:8px;">
+                  <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Nivel 4 (Presidente):</span>
+                  <input type="number" id="fee-level-4" value="30" min="0" style="width:65px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15); flex-shrink:0;" />
                 </label>
               </div>
             </div>
@@ -9505,10 +9505,10 @@
           const feeVal = feeRes.value !== undefined ? feeRes.value : '15'; // default 15
           
           const label = document.createElement('label');
-          label.style.cssText = 'font-size:12px; display:flex; justify-content:space-between; align-items:center; gap:8px;';
+          label.style.cssText = 'font-size:12px; display:flex; align-items:center; gap:8px;';
           label.innerHTML = `
-            <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;">${a.name}:</span>
-            <input type="number" id="fee-ach-${a.id}" value="${feeVal}" min="0" style="width:70px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15);" />
+            <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:8px;">${a.name}:</span>
+            <input type="number" id="fee-ach-${a.id}" value="${feeVal}" min="0" style="width:65px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15); flex-shrink:0;" />
           `;
           achContainer.appendChild(label);
         }
