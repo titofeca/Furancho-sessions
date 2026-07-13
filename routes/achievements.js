@@ -98,7 +98,8 @@ router.get('/admin/list', requireAuth, (req, res) => {
         id: a.id, name: a.name, description: a.description, image: a.image,
         tokenId: a.tokenId, edition: a.edition || null,
         ruleType: a.rule ? a.rule.type : null,
-        ruleDate: a.rule ? a.rule.date : null, custom: !!a.custom,
+        ruleDate: a.rule ? (a.rule.type === 'visit_on_date' ? a.rule.date : (a.rule.type === 'campaign_visits' ? String(a.rule.requiredVisits) : (a.rule.type === 'vip_bookings' ? String(a.rule.requiredCount) : null))) : null,
+        custom: !!a.custom,
         // hiddenLocked=true → los clientes NO lo ven hasta conseguirlo (por defecto se ve).
         hiddenLocked: hidden.has(a.id)
       })),

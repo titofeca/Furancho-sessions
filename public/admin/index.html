@@ -1210,9 +1210,17 @@
               <input type="radio" name="ach-rule-type" value="visit_on_date" checked onchange="toggleAchRuleType()" />
               <span><strong>Asistencia a fecha</strong> · el cliente lo reclama desde su museo si fichó ese día</span>
             </label>
-            <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer;">
+            <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; margin-bottom:6px; cursor:pointer;">
               <input type="radio" name="ach-rule-type" value="raffle_only" onchange="toggleAchRuleType()" />
               <span><strong>Solo premio de sorteo</strong> · lo entrega el camarero en persona (Chave Dourada, etc.)</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; margin-bottom:6px; cursor:pointer;">
+              <input type="radio" name="ach-rule-type" value="campaign_visits" onchange="toggleAchRuleType()" />
+              <span><strong>Campaña (Reto de los 5)</strong> · requiere acumular N visitas de campaña</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer;">
+              <input type="radio" name="ach-rule-type" value="vip_bookings" onchange="toggleAchRuleType()" />
+              <span><strong>Reservas VIP</strong> · requiere acumular N reservas VIP confirmadas</span>
             </label>
           </div>
 
@@ -1222,7 +1230,7 @@
               <input type="text" class="input-field" id="ach-edition" placeholder="Ej: María Pita 2026" style="margin:0; font-size:13px;" />
             </div>
             <div id="ach-rule-date-wrap">
-              <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">📅 Fecha de desbloqueo</label>
+              <label id="ach-rule-date-label" style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">📅 Fecha de desbloqueo</label>
               <input type="date" class="input-field" id="ach-rule-date" style="margin:0; font-size:13px;" />
             </div>
           </div>
@@ -5198,12 +5206,37 @@
   function toggleAchRuleType() {
     const rt = document.querySelector('input[name="ach-rule-type"]:checked')?.value || 'visit_on_date';
     const wrap = document.getElementById('ach-rule-date-wrap');
+    const label = document.getElementById('ach-rule-date-label');
+    const input = document.getElementById('ach-rule-date');
     const hint = document.getElementById('ach-rule-hint');
     if (rt === 'raffle_only') {
       if (wrap) wrap.style.display = 'none';
       if (hint) hint.textContent = 'Este logro solo se otorga como premio de sorteo. El camarero lo entrega al ganador desde su escáner cuando llega al furancho.';
+    } else if (rt === 'campaign_visits') {
+      if (wrap) wrap.style.display = '';
+      if (label) label.textContent = '🔢 Visitas de campaña';
+      if (input) {
+        input.type = 'number';
+        input.placeholder = 'Ej: 5';
+        input.min = '1';
+      }
+      if (hint) hint.textContent = 'Requiere acumular el número especificado de visitas de campaña (Reto de los 5).';
+    } else if (rt === 'vip_bookings') {
+      if (wrap) wrap.style.display = '';
+      if (label) label.textContent = '🔢 Reservas VIP';
+      if (input) {
+        input.type = 'number';
+        input.placeholder = 'Ej: 2';
+        input.min = '1';
+      }
+      if (hint) hint.textContent = 'Requiere acumular el número especificado de reservas VIP confirmadas.';
     } else {
       if (wrap) wrap.style.display = '';
+      if (label) label.textContent = '📅 Fecha de desbloqueo';
+      if (input) {
+        input.type = 'date';
+        input.placeholder = '';
+      }
       if (hint) hint.textContent = 'Quien haya fichado entrada ESE día podrá reclamar el logro desde su museo.';
     }
   }
@@ -5290,8 +5323,10 @@
         const badge = a.ruleType === 'raffle_only'
           ? '<span style="display:inline-block; font-size:9px; font-weight:800; letter-spacing:0.3px; color:#8B6914; background:rgba(196,151,58,0.18); border:1px solid rgba(196,151,58,0.4); border-radius:20px; padding:1px 7px;">🏅 PREMIO DE SORTEO</span>'
           : (a.ruleType === 'campaign_visits'
-            ? '<span style="display:inline-block; font-size:9px; font-weight:800; letter-spacing:0.3px; color:var(--wine); background:rgba(139,25,24,0.1); border:1px solid rgba(139,25,24,0.25); border-radius:20px; padding:1px 7px;">👑 CAMPAÑA</span>'
-            : `<span style="display:inline-block; font-size:9px; font-weight:800; letter-spacing:0.3px; color:var(--text-muted); background:rgba(0,0,0,0.04); border:1px solid rgba(0,0,0,0.08); border-radius:20px; padding:1px 7px;">📅 ${a.ruleDate || 'asistencia'}</span>`);
+            ? `<span style="display:inline-block; font-size:9px; font-weight:800; letter-spacing:0.3px; color:var(--wine); background:rgba(139,25,24,0.1); border:1px solid rgba(139,25,24,0.25); border-radius:20px; padding:1px 7px;">👑 CAMPAÑA (${a.ruleDate || 5} vis.)</span>`
+            : (a.ruleType === 'vip_bookings'
+              ? `<span style="display:inline-block; font-size:9px; font-weight:800; letter-spacing:0.3px; color:#0f766e; background:rgba(15,118,110,0.1); border:1px solid rgba(15,118,110,0.25); border-radius:20px; padding:1px 7px;">⭐ RESERVAS VIP (${a.ruleDate || 2} res.)</span>`
+              : `<span style="display:inline-block; font-size:9px; font-weight:800; letter-spacing:0.3px; color:var(--text-muted); background:rgba(0,0,0,0.04); border:1px solid rgba(0,0,0,0.08); border-radius:20px; padding:1px 7px;">📅 ${a.ruleDate || 'asistencia'}</span>`));
         return `
         <div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; margin-bottom:6px; padding:8px;">
           <div style="display:flex; align-items:center; gap:10px;">
@@ -5300,12 +5335,12 @@
               <p style="font-size:13px; font-weight:700; color:var(--text); margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.name} <span style="font-size:10px; color:var(--text-muted); font-weight:600;">· token ${a.tokenId}</span></p>
               <div style="margin-top:3px;">${badge}${a.custom ? '' : ' <span style="font-size:9px; color:var(--text-muted); font-style:italic;">· en el código</span>'}</div>
             </div>
-            ${a.custom
-              ? `<div style="display:flex; gap:6px; flex-shrink:0;">
-                   <button onclick="editAchievement('${a.id}')" style="padding:5px 10px; background:rgba(196,151,58,0.12); border:1px solid rgba(196,151,58,0.35); border-radius:8px; font-size:11px; font-weight:700; color:#8B6914; cursor:pointer; font-family:'Outfit',sans-serif;">Editar</button>
-                   <button onclick="deleteAchievement('${a.id}')" style="padding:5px 10px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:8px; font-size:11px; font-weight:700; color:#ef4444; cursor:pointer; font-family:'Outfit',sans-serif;">Borrar</button>
-                 </div>`
-              : `<span style="font-size:10px; color:var(--text-muted); font-style:italic; flex-shrink:0;">fijo</span>`}
+            <div style="display:flex; gap:6px; flex-shrink:0; align-items:center;">
+               <button onclick="editAchievement('${a.id}')" style="padding:5px 10px; background:rgba(196,151,58,0.12); border:1px solid rgba(196,151,58,0.35); border-radius:8px; font-size:11px; font-weight:700; color:#8B6914; cursor:pointer; font-family:'Outfit',sans-serif;">Editar</button>
+               ${a.custom
+                 ? `<button onclick="deleteAchievement('${a.id}')" style="padding:5px 10px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:8px; font-size:11px; font-weight:700; color:#ef4444; cursor:pointer; font-family:'Outfit',sans-serif;">Borrar</button>`
+                 : '<span style="font-size:10px; color:var(--text-muted); font-style:italic; margin-left:4px;">fijo</span>'}
+            </div>
           </div>
           <label style="display:flex; align-items:center; gap:7px; margin-top:8px; padding-top:8px; border-top:1px solid var(--border); cursor:pointer;">
             <input type="checkbox" ${a.hiddenLocked ? '' : 'checked'} onchange="toggleAchVisibility('${a.id}', this)" style="width:15px; height:15px; flex-shrink:0;" />
@@ -5333,7 +5368,7 @@
       document.getElementById('ach-image-preview').style.display = 'none';
     }
     // Tipo de desbloqueo
-    const rt = a.ruleType === 'raffle_only' ? 'raffle_only' : 'visit_on_date';
+    const rt = a.ruleType || 'visit_on_date';
     const radio = document.querySelector(`input[name="ach-rule-type"][value="${rt}"]`);
     if (radio) { radio.checked = true; toggleAchRuleType(); }
     // Botones

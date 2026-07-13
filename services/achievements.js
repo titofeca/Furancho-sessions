@@ -66,12 +66,24 @@ function _customList() {
   try {
     return db.prepare(`SELECT id, name, description, image, token_id AS tokenId, edition, rule_type, rule_date
                        FROM custom_achievements ORDER BY token_id ASC`).all()
-      .map(r => ({
-        id: r.id, name: r.name, description: r.description, image: _normImage(r.image),
-        tokenId: r.tokenId, edition: r.edition,
-        rule: r.rule_type ? { type: r.rule_type, date: r.rule_date } : null,
-        custom: true
-      }));
+      .map(r => {
+        let rule = null;
+        if (r.rule_type === 'visit_on_date') {
+          rule = { type: 'visit_on_date', date: r.rule_date };
+        } else if (r.rule_type === 'campaign_visits') {
+          rule = { type: 'campaign_visits', campaignId: 'reto_5_verano_2026', requiredVisits: parseInt(r.rule_date || '5') };
+        } else if (r.rule_type === 'vip_bookings') {
+          rule = { type: 'vip_bookings', requiredCount: parseInt(r.rule_date || '2') };
+        } else if (r.rule_type === 'raffle_only') {
+          rule = { type: 'raffle_only' };
+        }
+        return {
+          id: r.id, name: r.name, description: r.description, image: _normImage(r.image),
+          tokenId: r.tokenId, edition: r.edition,
+          rule,
+          custom: true
+        };
+      });
   } catch (_) { return []; }
 }
 
@@ -82,22 +94,51 @@ function _overrides() {
 }
 
 // Catálogo COMPLETO = logros del código + los creados desde el panel. Aplica overrides.
-function _all() {
+function list() {
+  const dbList = _customList();
+  const dbMap = {};
+  dbList.forEach(a => { dbMap[a.id] = a; });
+
   const ov = _overrides();
-  return [...ACHIEVEMENTS, ..._customList()].map(a => {
-    if (ov[a.id]) return { ...a, image: ov[a.id] };
-    return a;
+
+  const codeList = ACHIEVEMENTS.map(a => {
+    const imageNorm = _normImage(a.image);
+    let finalAch = { ...a, image: imageNorm, custom: false };
+    if (ov[a.id]) finalAch.image = ov[a.id];
+
+    // Si está en la base de datos (se ha editado), sobreescribimos
+    if (dbMap[a.id]) {
+      const dbVal = dbMap[a.id];
+      finalAch = {
+        ...finalAch,
+        name: dbVal.name,
+        description: dbVal.description,
+        image: dbVal.image || finalAch.image,
+        edition: dbVal.edition,
+        rule: dbVal.rule,
+        custom: false // conserva custom=false para no permitir borrarlo
+      };
+    }
+    return finalAch;
   });
+
+  const codeIds = new Set(ACHIEVEMENTS.map(a => a.id));
+  const onlyCustom = dbList.filter(a => !codeIds.has(a.id)).map(a => ({ ...a, custom: true }));
+
+  return codeList.concat(onlyCustom);
 }
-function _withImage(a) { return a ? { ...a, image: _normImage(a.image) } : null; }
 
-function list() { return _all().map(_withImage); }
-function getById(id) { return _withImage(_all().find(a => a.id === id)); }
-function getByTokenId(tokenId) { return _withImage(_all().find(a => Number(a.tokenId) === Number(tokenId))); }
+function getById(id) {
+  return list().find(a => a.id === id);
+}
 
-// Siguiente token libre para un logro nuevo (≥ 101; el 100 y demás ya usados se saltan).
+function getByTokenId(tokenId) {
+  return list().find(a => Number(a.tokenId) === Number(tokenId));
+}
+
+// Siguiente token libre para un logro nuevo (≥ 100).
 function nextTokenId() {
-  const used = _all().map(a => Number(a.tokenId)).filter(n => !isNaN(n));
+  const used = list().map(a => Number(a.tokenId)).filter(n => !isNaN(n));
   return Math.max(100, ...used) + 1;
 }
 
@@ -110,7 +151,7 @@ function createCustom({ id, name, description, image, edition, ruleDate, tokenId
     .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
   if (!slug) throw new Error('Falta el nombre del logro');
   if (!name || !String(name).trim()) throw new Error('Falta el nombre del logro');
-  const rt = (ruleType === 'raffle_only') ? 'raffle_only' : 'visit_on_date';
+  const rt = ruleType || 'visit_on_date';
   if (rt === 'visit_on_date') {
     if (!ruleDate || !/^\d{4}-\d{2}-\d{2}$/.test(ruleDate)) throw new Error('Falta la fecha de desbloqueo (YYYY-MM-DD)');
   }
@@ -119,26 +160,40 @@ function createCustom({ id, name, description, image, edition, ruleDate, tokenId
   if (getByTokenId(tid)) throw new Error(`El token ${tid} ya está en uso`);
   db.prepare(`INSERT INTO custom_achievements (id, name, description, image, token_id, edition, rule_type, rule_date)
               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-    .run(slug, String(name).trim(), description || null, image || null, tid, edition || null, rt, rt === 'visit_on_date' ? ruleDate : null);
+    .run(slug, String(name).trim(), description || null, image || null, tid, edition || null, rt, ruleDate || null);
   return getById(slug);
 }
 
 // Devuelve solo los logros que se otorgan como premio de sorteo. Útil para el
 // desplegable "Premio NFT" al programar sorteos.
 function listRaffleOnly() {
-  return _all().filter(a => a.rule && a.rule.type === 'raffle_only').map(_withImage);
+  return list().filter(a => a.rule && a.rule.type === 'raffle_only');
 }
 
-// Edita un logro creado desde el panel (nunca los del código). Solo actualiza los
-// campos presentes en el objeto. Permite cambiar el tipo (asistencia ↔ premio de sorteo).
+// Edita un logro creado desde el panel (y soporta inicializar los del código).
 // El token_id NO se toca (es la identidad on-chain del NFT).
 function updateCustom(id, { name, description, image, edition, ruleType, ruleDate }) {
-  const existing = db.prepare(`SELECT * FROM custom_achievements WHERE id = ?`).get(id);
+  let existing = db.prepare(`SELECT * FROM custom_achievements WHERE id = ?`).get(id);
   if (!existing) {
-    // Si intentan editar un logro del código, avisamos claramente.
-    if (ACHIEVEMENTS.some(a => a.id === id)) throw new Error('Ese logro está definido en el código y no se edita desde aquí');
-    throw new Error('Logro no encontrado');
+    const codeAch = ACHIEVEMENTS.find(a => a.id === id);
+    if (!codeAch) {
+      throw new Error('Logro no encontrado');
+    }
+    const rule_type = codeAch.rule ? codeAch.rule.type : 'visit_on_date';
+    let rule_date = null;
+    if (rule_type === 'visit_on_date') {
+      rule_date = codeAch.rule.date;
+    } else if (rule_type === 'campaign_visits') {
+      rule_date = String(codeAch.rule.requiredVisits || 5);
+    } else if (rule_type === 'vip_bookings') {
+      rule_date = String(codeAch.rule.requiredCount || 2);
+    }
+    db.prepare(`INSERT INTO custom_achievements (id, name, description, image, token_id, edition, rule_type, rule_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(codeAch.id, codeAch.name, codeAch.description, codeAch.image, codeAch.tokenId, codeAch.edition || null, rule_type, rule_date);
+    existing = db.prepare(`SELECT * FROM custom_achievements WHERE id = ?`).get(id);
   }
+
   const fields = [], vals = [];
   if (name !== undefined) {
     if (!String(name).trim()) throw new Error('El nombre no puede quedar vacío');
@@ -147,10 +202,8 @@ function updateCustom(id, { name, description, image, edition, ruleType, ruleDat
   if (description !== undefined) { fields.push('description = ?'); vals.push(description || null); }
   if (image !== undefined && image) { fields.push('image = ?'); vals.push(image); }
   if (edition !== undefined) { fields.push('edition = ?'); vals.push(edition || null); }
-  // Tipo de desbloqueo: valida coherencia con la fecha.
-  const nextRuleType = ruleType !== undefined
-    ? ((ruleType === 'raffle_only') ? 'raffle_only' : 'visit_on_date')
-    : existing.rule_type;
+  
+  const nextRuleType = ruleType !== undefined ? ruleType : existing.rule_type;
   if (ruleType !== undefined) { fields.push('rule_type = ?'); vals.push(nextRuleType); }
   if (nextRuleType === 'visit_on_date') {
     const effectiveDate = ruleDate !== undefined ? ruleDate : existing.rule_date;
@@ -159,9 +212,9 @@ function updateCustom(id, { name, description, image, edition, ruleType, ruleDat
     }
     if (ruleDate !== undefined) { fields.push('rule_date = ?'); vals.push(ruleDate); }
   } else {
-    // raffle_only no usa fecha: la limpiamos para no dejar datos incoherentes.
-    fields.push('rule_date = ?'); vals.push(null);
+    if (ruleDate !== undefined) { fields.push('rule_date = ?'); vals.push(ruleDate || null); }
   }
+
   if (!fields.length) return getById(id);
   vals.push(id);
   db.prepare(`UPDATE custom_achievements SET ${fields.join(', ')} WHERE id = ?`).run(...vals);
