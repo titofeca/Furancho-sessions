@@ -3408,8 +3408,9 @@
     const totalEl = document.getElementById('present-total');
     if (!el) return;
     try {
-      const d = await fetch('/api/admin/present-by-level', { headers: authHeaders() }).then(r => r.json());
-      if (totalEl) totalEl.textContent = `(${d.total})`;
+      const r = await fetch('/api/admin/present-by-level', { headers: authHeaders() });
+      const d = r.ok ? await r.json() : { total: 0, byLevel: {}, byAchievement: [] };
+      if (totalEl) totalEl.textContent = `(${d.total ?? 0})`;
       const names = { 1: 'Cautivo', 2: 'Cunqueiro', 3: 'Larpeiro', 4: 'Presidente' };
       const lvlCards = [1, 2, 3, 4].map(n => `
         <div style="flex:1; min-width:62px; text-align:center; background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:12px; padding:10px 6px;">
