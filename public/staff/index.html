@@ -116,14 +116,8 @@
           </div>
         </div>
 
-        <div id="terraza-days" style="display:flex; flex-direction:column; gap:8px;"></div>
-
-        <!-- Próximas 2 semanas: cada fecha editable; tocarla la fija como día especial (manda sobre el patrón) -->
-        <div style="margin-top:12px; background:rgba(139,25,24,0.05); border:1.5px solid rgba(139,25,24,0.14); border-radius:14px; padding:11px;">
-          <p style="font-size:10px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:var(--wine); margin:0 0 4px;">📅 Próximas 2 semanas (día a día)</p>
-          <p style="font-size:10.5px; color:var(--text-muted); margin:0 0 10px; line-height:1.4;">Cada día viene del patrón semanal. Si le cambias horas o le pones una observación (ej: Conciertos), queda fijado ✨ y manda ese día. Con ↺ vuelve al patrón. Los pasados se archivan solos.</p>
-          <div id="tz-window-list" style="display:flex; flex-direction:column; gap:7px;"></div>
-        </div>
+        <p style="font-size:10.5px; color:var(--text-muted); margin:0 0 10px; line-height:1.4;">Cada día viene del patrón semanal. Si editas horas o añades observación queda fijado ✨. Con ↺ vuelve al patrón. Los pasados se archivan solos.</p>
+        <div id="tz-window-list" style="display:flex; flex-direction:column; gap:7px;"></div>
 
         <input id="terraza-note" type="text" maxlength="140" placeholder="Nota opcional (ej: Si llueve, cerramos)" style="margin-top:10px; font-size:13px; text-align:left; letter-spacing:0; padding:11px 13px;" />
         <button class="primary" style="margin-top:12px; padding:13px; font-size:14px;" onclick="saveTerraza(this)">Guardar horario</button>
@@ -199,8 +193,9 @@
     // ── Horario de la terraza (editable por el camarero) ──
     const TERRAZA_DAYS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
     const TERRAZA_CHIPS = ['L','M','X','J','V','S','D'];
-    let tzAllOverrides = []; // días especiales guardados (incluye fechas fuera de la ventana de 14 días)
-    let tzWinDates = [];     // las 14 fechas (YYYY-MM-DD) de la ventana en edición
+    let tzAllOverrides = [];
+    let tzWinDates = [];
+    let tzPattern = [];
 
     function tzYmd(offsetDays){
       const d = new Date(Date.now() + offsetDays * 86400000);
@@ -236,12 +231,15 @@
       const from = document.getElementById('tz-bulk-from').value;
       const to = document.getElementById('tz-bulk-to').value;
       sel.forEach(i => {
-        document.querySelector(`.tz-open[data-i="${i}"]`).checked = open;
-        if (open){
-          document.querySelector(`.tz-from[data-i="${i}"]`).value = from;
-          document.querySelector(`.tz-to[data-i="${i}"]`).value = to;
-        }
-        tzToggleRow(i, open);
+        tzPattern[i] = { open, from: open ? from : tzPattern[i].from, to: open ? to : tzPattern[i].to };
+      });
+      document.querySelectorAll('.tzw-row').forEach(row => {
+        const di = tzDayIdx(row.dataset.d);
+        if (!sel.includes(di)) return;
+        if (row.dataset.pinned === '1') return;
+        row.querySelector('.tzw-open').checked = open;
+        if (open) { row.querySelector('.tzw-from').value = from; row.querySelector('.tzw-to').value = to; }
+        tzWinToggle(row.dataset.d, open);
       });
       document.querySelectorAll('.tz-chip.on').forEach(ch => { ch.classList.remove('on'); ch.style.background='#fff'; ch.style.color='var(--text)'; });
       err.style.color = 'var(--green)';
@@ -290,32 +288,18 @@
     function tzWinReset(date){
       const row = document.querySelector(`.tzw-row[data-d="${date}"]`);
       if (!row) return;
-      const i = tzDayIdx(date);
-      // vuelve a lo que diga AHORA el patrón semanal del editor
-      const open = document.querySelector(`.tz-open[data-i="${i}"]`).checked;
-      row.querySelector('.tzw-open').checked = open;
-      row.querySelector('.tzw-from').value = document.querySelector(`.tz-from[data-i="${i}"]`).value;
-      row.querySelector('.tzw-to').value = document.querySelector(`.tz-to[data-i="${i}"]`).value;
+      const p = tzPattern[tzDayIdx(date)];
+      row.querySelector('.tzw-open').checked = p.open;
+      row.querySelector('.tzw-from').value = p.from;
+      row.querySelector('.tzw-to').value = p.to;
       row.querySelector('.tzw-note').value = '';
-      tzWinToggle(date, open);
+      tzWinToggle(date, p.open);
       row.dataset.pinned = '0';
       row.style.borderColor = 'rgba(42,21,9,0.1)';
       row.querySelector('.tzw-pin').style.display = 'none';
       row.querySelector('.tzw-reset').style.display = 'none';
       const err = document.getElementById('terraza-err');
       err.style.color = ''; err.textContent = '↺ Día devuelto al patrón — dale a Guardar';
-    }
-    // El patrón semanal cambia → refresca los días de la ventana que NO están fijados
-    function tzSyncWindow(){
-      document.querySelectorAll('.tzw-row').forEach(row => {
-        if (row.dataset.pinned === '1') return;
-        const i = tzDayIdx(row.dataset.d);
-        const open = document.querySelector(`.tz-open[data-i="${i}"]`).checked;
-        row.querySelector('.tzw-open').checked = open;
-        row.querySelector('.tzw-from').value = document.querySelector(`.tz-from[data-i="${i}"]`).value;
-        row.querySelector('.tzw-to').value = document.querySelector(`.tz-to[data-i="${i}"]`).value;
-        tzWinToggle(row.dataset.d, open);
-      });
     }
     async function loadTerraza(){
       try{
@@ -324,33 +308,15 @@
         const cfg = await r.json();
         tzRenderChips();
         document.getElementById('terraza-note').value = cfg.note || '';
+        tzPattern = cfg.days;
         tzAllOverrides = cfg.overrides || [];
         tzRenderWindow(cfg);
-        document.getElementById('terraza-days').innerHTML = cfg.days.map((d, i) => `
-          <div style="display:flex; align-items:center; gap:8px; background:#fff; border:1.5px solid rgba(42,21,9,0.1); border-radius:12px; padding:9px 11px;">
-            <input type="checkbox" class="tz-open" data-i="${i}" ${d.open ? 'checked' : ''} onchange="tzToggleRow(${i}, this.checked)" style="width:20px; height:20px; accent-color:var(--wine); flex-shrink:0; padding:0;" />
-            <span style="flex:1; font-size:13px; font-weight:700; color:var(--text);">${TERRAZA_DAYS[i]}</span>
-            <input type="time" class="tz-from" data-i="${i}" value="${d.from}" ${d.open ? '' : 'disabled'} onchange="tzSyncWindow()" style="width:88px; padding:7px 4px; font-size:13px; letter-spacing:0; border-radius:9px; ${d.open ? '' : 'opacity:.4;'}" />
-            <span style="color:var(--text-muted); font-size:12px;">→</span>
-            <input type="time" class="tz-to" data-i="${i}" value="${d.to}" ${d.open ? '' : 'disabled'} onchange="tzSyncWindow()" style="width:88px; padding:7px 4px; font-size:13px; letter-spacing:0; border-radius:9px; ${d.open ? '' : 'opacity:.4;'}" />
-          </div>`).join('');
       }catch(e){}
-    }
-    function tzToggleRow(i, on){
-      document.querySelector(`.tz-from[data-i="${i}"]`).disabled = !on;
-      document.querySelector(`.tz-to[data-i="${i}"]`).disabled = !on;
-      document.querySelector(`.tz-from[data-i="${i}"]`).style.opacity = on ? '1' : '.4';
-      document.querySelector(`.tz-to[data-i="${i}"]`).style.opacity = on ? '1' : '.4';
-      tzSyncWindow();
     }
     async function saveTerraza(btn){
       const err = document.getElementById('terraza-err');
       err.textContent = ''; err.style.color = '';
-      const days = TERRAZA_DAYS.map((_, i) => ({
-        open: document.querySelector(`.tz-open[data-i="${i}"]`).checked,
-        from: document.querySelector(`.tz-from[data-i="${i}"]`).value,
-        to: document.querySelector(`.tz-to[data-i="${i}"]`).value
-      }));
+      const days = tzPattern;
       // Solo los días fijados (✨) o con observación se guardan como especiales; el resto sigue al patrón
       const overrides = [];
       document.querySelectorAll('.tzw-row').forEach(row => {

@@ -2582,14 +2582,8 @@
           </div>
         </div>
 
-        <div id="terraza-days-admin" style="display:flex; flex-direction:column; gap:8px;">Cargando...</div>
-
-        <!-- Próximas 2 semanas: cada fecha editable; tocarla la fija como día especial (manda sobre el patrón) -->
-        <div style="margin-top:14px; background:rgba(139,25,24,0.04); border:1.5px solid rgba(139,25,24,0.12); border-radius:14px; padding:12px;">
-          <p style="font-size:10px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:var(--wine); margin:0 0 4px;">📅 Próximas 2 semanas (día a día)</p>
-          <p style="font-size:10.5px; color:var(--text-muted); margin:0 0 10px; line-height:1.4;">Cada día viene precargado del patrón semanal. Si le cambias horas o le pones una observación (ej: Conciertos), queda fijado ✨ y manda sobre el patrón ese día. Con ↺ vuelve al patrón. Los días pasados se archivan solos.</p>
-          <div id="tza-window-list" style="display:flex; flex-direction:column; gap:7px;">Cargando...</div>
-        </div>
+        <p style="font-size:10.5px; color:var(--text-muted); margin:0 0 10px; line-height:1.4;">Cada día viene del patrón semanal. Si editas horas o añades observación queda fijado ✨. Con ↺ vuelve al patrón. Los pasados se archivan solos.</p>
+        <div id="tza-window-list" style="display:flex; flex-direction:column; gap:7px;">Cargando...</div>
 
         <input id="terraza-note-admin" type="text" maxlength="140" placeholder="Nota opcional (ej: Si llueve, cerramos)" style="margin-top:10px; width:100%; background:#fff; color:var(--text); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:11px 13px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
         <button onclick="saveTerrazaAdmin()" style="margin-top:12px; width:100%; background:var(--wine); color:#fff; border:none; border-radius:50px; padding:12px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">Guardar horario</button>
@@ -7274,8 +7268,9 @@
   // ==================== HORARIO DE LA TERRAZA ====================
   const TERRAZA_DAYS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
   const TERRAZA_CHIPS = ['L','M','X','J','V','S','D'];
-  let _tzaAllOverrides = []; // días especiales guardados (incluye fechas fuera de la ventana de 14 días)
-  let _tzaWinDates = [];     // las 14 fechas (YYYY-MM-DD) de la ventana en edición
+  let _tzaAllOverrides = [];
+  let _tzaWinDates = [];
+  let _tzaPattern = [];
 
   function tzaYmd(offsetDays) {
     const d = new Date(Date.now() + offsetDays * 86400000);
@@ -7303,12 +7298,15 @@
     const from = document.getElementById('tza-bulk-from').value;
     const to = document.getElementById('tza-bulk-to').value;
     sel.forEach(i => {
-      document.querySelector(`.tza-open[data-i="${i}"]`).checked = open;
-      if (open) {
-        document.querySelector(`.tza-from[data-i="${i}"]`).value = from;
-        document.querySelector(`.tza-to[data-i="${i}"]`).value = to;
-      }
-      tzaToggleRow(i, open);
+      _tzaPattern[i] = { open, from: open ? from : _tzaPattern[i].from, to: open ? to : _tzaPattern[i].to };
+    });
+    document.querySelectorAll('.tzaw-row').forEach(row => {
+      const di = tzaDayIdx(row.dataset.d);
+      if (!sel.includes(di)) return;
+      if (row.dataset.pinned === '1') return;
+      row.querySelector('.tzaw-open').checked = open;
+      if (open) { row.querySelector('.tzaw-from').value = from; row.querySelector('.tzaw-to').value = to; }
+      tzaWinToggle(row.dataset.d, open);
     });
     document.querySelectorAll('.tza-chip.on').forEach(ch => { ch.classList.remove('on'); ch.style.background = '#fff'; ch.style.color = 'var(--text)'; });
     showToast(open ? `⚡ ${sel.length} día(s) abiertos ${from}–${to} — recuerda Guardar` : `⚡ ${sel.length} día(s) cerrados — recuerda Guardar`);
@@ -7357,69 +7355,35 @@
   function tzaWinReset(date) {
     const row = document.querySelector(`.tzaw-row[data-d="${date}"]`);
     if (!row) return;
-    const i = tzaDayIdx(date);
-    // vuelve a lo que diga AHORA el patrón semanal del editor
-    const open = document.querySelector(`.tza-open[data-i="${i}"]`).checked;
-    row.querySelector('.tzaw-open').checked = open;
-    row.querySelector('.tzaw-from').value = document.querySelector(`.tza-from[data-i="${i}"]`).value;
-    row.querySelector('.tzaw-to').value = document.querySelector(`.tza-to[data-i="${i}"]`).value;
+    const p = _tzaPattern[tzaDayIdx(date)];
+    row.querySelector('.tzaw-open').checked = p.open;
+    row.querySelector('.tzaw-from').value = p.from;
+    row.querySelector('.tzaw-to').value = p.to;
     row.querySelector('.tzaw-note').value = '';
-    tzaWinToggle(date, open);
+    tzaWinToggle(date, p.open);
     row.dataset.pinned = '0';
     row.style.borderColor = 'rgba(42,21,9,0.1)';
     row.querySelector('.tzaw-pin').style.display = 'none';
     row.querySelector('.tzaw-reset').style.display = 'none';
     showToast('↺ Día devuelto al patrón — recuerda Guardar');
   }
-  // El patrón semanal cambia → refresca los días de la ventana que NO están fijados
-  function tzaSyncWindow() {
-    document.querySelectorAll('.tzaw-row').forEach(row => {
-      if (row.dataset.pinned === '1') return;
-      const i = tzaDayIdx(row.dataset.d);
-      const open = document.querySelector(`.tza-open[data-i="${i}"]`).checked;
-      row.querySelector('.tzaw-open').checked = open;
-      row.querySelector('.tzaw-from').value = document.querySelector(`.tza-from[data-i="${i}"]`).value;
-      row.querySelector('.tzaw-to').value = document.querySelector(`.tza-to[data-i="${i}"]`).value;
-      tzaWinToggle(row.dataset.d, open);
-    });
-  }
 
   async function loadTerrazaAdmin() {
     try {
       const cfg = await fetch('/api/admin/terraza-hours', { headers: authHeaders() }).then(r => r.json());
-      const wrap = document.getElementById('terraza-days-admin');
-      if (!wrap) return;
       tzaRenderChips();
       document.getElementById('terraza-note-admin').value = cfg.note || '';
+      _tzaPattern = cfg.days;
       _tzaAllOverrides = cfg.overrides || [];
       tzaRenderWindow(cfg);
       const pill = document.getElementById('terraza-updated-pill');
       if (pill) pill.textContent = cfg.updatedAt
         ? `Última edición: ${cfg.updatedBy === 'staff' ? 'staff' : 'tú'} · ${new Date(cfg.updatedAt).toLocaleDateString('es-ES', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}`
         : 'Sin configurar todavía';
-      wrap.innerHTML = cfg.days.map((d, i) => `
-        <div style="display:flex; align-items:center; gap:8px; background:#fff; border:1.5px solid rgba(42,21,9,0.1); border-radius:12px; padding:9px 11px;">
-          <input type="checkbox" class="tza-open" data-i="${i}" ${d.open ? 'checked' : ''} onchange="tzaToggleRow(${i}, this.checked)" style="width:20px; height:20px; accent-color:#8B1918; flex-shrink:0; cursor:pointer;" />
-          <span style="flex:1; font-size:13px; font-weight:700; color:var(--text);">${TERRAZA_DAYS[i]}</span>
-          <input type="time" class="tza-from" data-i="${i}" value="${d.from}" ${d.open ? '' : 'disabled'} onchange="tzaSyncWindow()" style="width:92px; padding:7px 4px; font-size:13px; border:1px solid var(--border); border-radius:9px; background:var(--bg); color:var(--text); ${d.open ? '' : 'opacity:.4;'}" />
-          <span style="color:var(--text-muted); font-size:12px;">→</span>
-          <input type="time" class="tza-to" data-i="${i}" value="${d.to}" ${d.open ? '' : 'disabled'} onchange="tzaSyncWindow()" style="width:92px; padding:7px 4px; font-size:13px; border:1px solid var(--border); border-radius:9px; background:var(--bg); color:var(--text); ${d.open ? '' : 'opacity:.4;'}" />
-        </div>`).join('');
     } catch (_) {}
   }
-  function tzaToggleRow(i, on) {
-    ['tza-from', 'tza-to'].forEach(cls => {
-      const el = document.querySelector(`.${cls}[data-i="${i}"]`);
-      if (el) { el.disabled = !on; el.style.opacity = on ? '1' : '.4'; }
-    });
-    tzaSyncWindow();
-  }
   async function saveTerrazaAdmin() {
-    const days = TERRAZA_DAYS.map((_, i) => ({
-      open: document.querySelector(`.tza-open[data-i="${i}"]`).checked,
-      from: document.querySelector(`.tza-from[data-i="${i}"]`).value,
-      to: document.querySelector(`.tza-to[data-i="${i}"]`).value
-    }));
+    const days = _tzaPattern;
     // Solo los días fijados (✨) o con observación se guardan como especiales; el resto sigue al patrón
     const overrides = [];
     document.querySelectorAll('.tzaw-row').forEach(row => {
