@@ -2557,20 +2557,9 @@
               </div>
             </div>
             <div>
-              <p style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">Logros especiales</p>
-              <div style="display:flex; flex-direction:column; gap:8px;">
-                <label style="font-size:12px; display:flex; justify-content:space-between; align-items:center;">
-                  <span>Meme VIP (ID 50):</span>
-                  <input type="number" id="fee-ach-meme_vip" value="15" min="0" style="width:70px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15);" />
-                </label>
-                <label style="font-size:12px; display:flex; justify-content:space-between; align-items:center;">
-                  <span>Furancheiro de Honor:</span>
-                  <input type="number" id="fee-ach-furancheiro_honor" value="15" min="0" style="width:70px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15);" />
-                </label>
-                <label style="font-size:12px; display:flex; justify-content:space-between; align-items:center;">
-                  <span>Guardián del Furancho:</span>
-                  <input type="number" id="fee-ach-guardian_furancho" value="15" min="0" style="width:70px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15);" />
-                </label>
+              <p style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">Logros especiales y Memes</p>
+              <div id="transfer-fees-achievements-container" style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto; padding-right:4px;">
+                <!-- Cargados dinámicamente -->
               </div>
             </div>
           </div>
@@ -9480,26 +9469,44 @@
   }
 
   // --- LOGICA DE TRASPASOS ---
+  let loadedAchievementIdsForFees = [];
+
   async function loadPendingTransfers() {
     try {
-      // Cargar configuracion de peajes
+      // Cargar configuracion de peajes de niveles
       const level1 = await fetch('/api/admin/settings/transfer_fee_1', { headers: authHeaders() }).then(r=>r.json());
       const level2 = await fetch('/api/admin/settings/transfer_fee_2', { headers: authHeaders() }).then(r=>r.json());
       const level3 = await fetch('/api/admin/settings/transfer_fee_3', { headers: authHeaders() }).then(r=>r.json());
       const level4 = await fetch('/api/admin/settings/transfer_fee_4', { headers: authHeaders() }).then(r=>r.json());
-      
-      const achMeme = await fetch('/api/admin/settings/transfer_fee_ach_meme_vip', { headers: authHeaders() }).then(r=>r.json());
-      const achHonor = await fetch('/api/admin/settings/transfer_fee_ach_furancheiro_honor', { headers: authHeaders() }).then(r=>r.json());
-      const achGuardian = await fetch('/api/admin/settings/transfer_fee_ach_guardian_furancho', { headers: authHeaders() }).then(r=>r.json());
 
       if (level1.value !== undefined) document.getElementById('fee-level-1').value = level1.value || 0;
       if (level2.value !== undefined) document.getElementById('fee-level-2').value = level2.value || 0;
       if (level3.value !== undefined) document.getElementById('fee-level-3').value = level3.value || 30;
       if (level4.value !== undefined) document.getElementById('fee-level-4').value = level4.value || 30;
       
-      if (achMeme.value !== undefined) document.getElementById('fee-ach-meme_vip').value = achMeme.value || 15;
-      if (achHonor.value !== undefined) document.getElementById('fee-ach-furancheiro_honor').value = achHonor.value || 15;
-      if (achGuardian.value !== undefined) document.getElementById('fee-ach-guardian_furancho').value = achGuardian.value || 15;
+      // Cargar catálogo de logros y sus peajes correspondientes
+      const achCatalogRes = await fetch('/api/achievements/admin/list', { headers: authHeaders() }).then(r=>r.json());
+      const achievements = achCatalogRes.achievements || [];
+      
+      loadedAchievementIdsForFees = achievements.map(a => a.id);
+      
+      const achContainer = document.getElementById('transfer-fees-achievements-container');
+      if (achContainer) {
+        achContainer.innerHTML = '';
+        for (const a of achievements) {
+          // Fetch dynamic fee for this achievement
+          const feeRes = await fetch(`/api/admin/settings/transfer_fee_ach_${a.id}`, { headers: authHeaders() }).then(r=>r.json());
+          const feeVal = feeRes.value !== undefined ? feeRes.value : '15'; // default 15
+          
+          const label = document.createElement('label');
+          label.style.cssText = 'font-size:12px; display:flex; justify-content:space-between; align-items:center; gap:8px;';
+          label.innerHTML = `
+            <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;">${a.name}:</span>
+            <input type="number" id="fee-ach-${a.id}" value="${feeVal}" min="0" style="width:70px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15);" />
+          `;
+          achContainer.appendChild(label);
+        }
+      }
 
       // Cargar traspasos pendientes
       const res = await fetch('/api/admin/transfers', { headers: authHeaders() });
@@ -9568,16 +9575,14 @@
 
   async function saveTransferFeesSettings() {
     try {
-      const mappings = [
+      // Guardar niveles
+      const levelMappings = [
         { key: '1', id: 'fee-level-1' },
         { key: '2', id: 'fee-level-2' },
         { key: '3', id: 'fee-level-3' },
-        { key: '4', id: 'fee-level-4' },
-        { key: 'ach_meme_vip', id: 'fee-ach-meme_vip' },
-        { key: 'ach_furancheiro_honor', id: 'fee-ach-furancheiro_honor' },
-        { key: 'ach_guardian_furancho', id: 'fee-ach-guardian_furancho' }
+        { key: '4', id: 'fee-level-4' }
       ];
-      for (const m of mappings) {
+      for (const m of levelMappings) {
         const val = document.getElementById(m.id).value;
         await fetch(`/api/admin/settings/transfer_fee_${m.key}`, {
           method: 'POST',
@@ -9585,6 +9590,20 @@
           body: JSON.stringify({ value: val })
         });
       }
+      
+      // Guardar logros dinamicos
+      for (const achId of loadedAchievementIdsForFees) {
+        const inputEl = document.getElementById(`fee-ach-${achId}`);
+        if (inputEl) {
+          const val = inputEl.value;
+          await fetch(`/api/admin/settings/transfer_fee_ach_${achId}`, {
+            method: 'POST',
+            headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ value: val })
+          });
+        }
+      }
+      
       showToast('Tarifas de traspaso guardadas ✅');
     } catch (e) {
       showToast('Error al guardar tarifas ❌');
