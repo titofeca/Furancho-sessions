@@ -188,7 +188,11 @@ function updateCustom(id, { name, description, image, edition, ruleType, ruleDat
     } else if (rule_type === 'vip_bookings') {
       rule_date = String(codeAch.rule.requiredCount || 2);
     }
-    db.prepare(`INSERT INTO custom_achievements (id, name, description, image, token_id, edition, rule_type, rule_date)
+    const conflict = db.prepare(`SELECT id FROM custom_achievements WHERE token_id = ? AND id != ?`).get(codeAch.tokenId, codeAch.id);
+    if (conflict) {
+      db.prepare(`UPDATE custom_achievements SET token_id = ? WHERE id = ?`).run(nextTokenId(), conflict.id);
+    }
+    db.prepare(`INSERT OR IGNORE INTO custom_achievements (id, name, description, image, token_id, edition, rule_type, rule_date)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
       .run(codeAch.id, codeAch.name, codeAch.description, codeAch.image, codeAch.tokenId, codeAch.edition || null, rule_type, rule_date);
     existing = db.prepare(`SELECT * FROM custom_achievements WHERE id = ?`).get(id);
