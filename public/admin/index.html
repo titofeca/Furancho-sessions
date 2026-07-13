@@ -52,6 +52,9 @@
     #weekly-archived-list-container[open] .archived-arrow {
       transform: rotate(180deg);
     }
+    details[open] .chevron {
+      transform: rotate(180deg);
+    }
 
     /* ========== LOGIN ========== */
     #login-screen {
@@ -315,13 +318,38 @@
     /* ========== STATS GRID ========== */
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 12px;
       margin-bottom: 24px;
     }
 
-    @media (min-width: 600px) {
-      .stats-grid { grid-template-columns: repeat(3, 1fr); }
+    @media (max-width: 600px) {
+      .stats-grid {
+        gap: 6px;
+      }
+      .stat-card {
+        padding: 10px 8px;
+        border-radius: 12px;
+      }
+      .stat-card::before {
+        border-radius: 12px 12px 0 0;
+      }
+      .stat-icon {
+        font-size: 14px;
+        margin-bottom: 4px;
+      }
+      .stat-label {
+        font-size: 7px;
+        letter-spacing: 0.5px;
+        margin-bottom: 2px;
+      }
+      .stat-value {
+        font-size: 19px;
+      }
+      .stat-sublabel {
+        font-size: 8px;
+        margin-top: 2px;
+      }
     }
 
     .stat-card {
@@ -1019,67 +1047,96 @@
         <p class="page-subtitle" id="dash-subtitle">Cargando datos...</p>
       </div>
 
-      <div class="stats-grid">
-        <div class="stat-card total" onclick="showPage('holders')" style="cursor:pointer;" title="Ver clientes">
-          <div class="stat-icon">🍷</div>
-          <div class="stat-label">Total NFTs</div>
-          <div class="stat-value" id="stat-total">—</div>
-          <div class="stat-sublabel">minteados →</div>
+      <!-- Resumen de Métricas Clave y Niveles (Plegable) -->
+      <details class="glass-card" style="margin-bottom:20px; outline:none; -webkit-tap-highlight-color:transparent;">
+        <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; outline:none; user-select:none; padding:14px 18px;">
+          <span class="card-title" style="display:flex; align-items:center; gap:6px;">
+            📊 Métricas Clave y Niveles
+            <span style="font-size:11px; font-weight:normal; color:var(--text-muted); margin-left:8px;">
+              (NFTs: <span id="summary-total-nfts">—</span> · Visitas: <span id="summary-total-visits">—</span>)
+            </span>
+          </span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="btn-download" onclick="loadStats(); event.stopPropagation();" style="font-size:11px; padding:6px 12px;">↻</button>
+            <span style="font-size:12px; color:var(--text-muted); transition: transform 0.2s;" class="chevron">▼</span>
+          </div>
+        </summary>
+        <div style="padding:0 18px 18px;">
+          <div class="stats-grid" style="margin-bottom:0;">
+            <div class="stat-card total" onclick="showPage('holders')" style="cursor:pointer;" title="Ver clientes">
+              <div class="stat-icon">🍷</div>
+              <div class="stat-label">Total NFTs</div>
+              <div class="stat-value" id="stat-total">—</div>
+              <div class="stat-sublabel">minteados →</div>
+            </div>
+            <div class="stat-card visits" onclick="showPage('holders')" style="cursor:pointer;" title="Ver visitas">
+              <div class="stat-icon">📍</div>
+              <div class="stat-label">Total Visitas</div>
+              <div class="stat-value" id="stat-visits">—</div>
+              <div class="stat-sublabel">registradas →</div>
+            </div>
+            <div class="stat-card app-installs" onclick="goToConAppSegment()" style="cursor:pointer;" title="Ver instalados con app">
+              <div class="stat-icon">📲</div>
+              <div class="stat-label">Instalaciones App</div>
+              <div class="stat-value" id="stat-app-total">—</div>
+              <div class="stat-sublabel" id="stat-app-conversion">0% han venido →</div>
+            </div>
+            <div class="stat-card nivel-1" onclick="filterHolders('1', document.getElementById('fbtn-1')); showPage('holders');" style="cursor:pointer;" title="Ver Nivel 1">
+              <div class="stat-icon">🫂</div>
+              <div class="stat-label">Cautivo · Nv1</div>
+              <div class="stat-value" id="stat-nivel1">—</div>
+              <div class="stat-sublabel">holders →</div>
+            </div>
+            <div class="stat-card nivel-2" onclick="filterHolders('2', document.getElementById('fbtn-2')); showPage('holders');" style="cursor:pointer;" title="Ver Nivel 2">
+              <div class="stat-icon">🥂</div>
+              <div class="stat-label">Cunqueiro · Nv2</div>
+              <div class="stat-value" id="stat-nivel2">—</div>
+              <div class="stat-sublabel">holders →</div>
+            </div>
+            <div class="stat-card nivel-3" onclick="filterHolders('3', document.getElementById('fbtn-3')); showPage('holders');" style="cursor:pointer;" title="Ver Nivel 3">
+              <div class="stat-icon">🌿</div>
+              <div class="stat-label">Larpeiro · Nv3</div>
+              <div class="stat-value" id="stat-nivel3">—</div>
+              <div class="stat-sublabel">holders →</div>
+            </div>
+            <div class="stat-card nivel-4" onclick="filterHolders('4', document.getElementById('fbtn-4')); showPage('holders');" style="cursor:pointer; grid-column: span 3;" title="Ver Nivel 4">
+              <div class="stat-icon">👑</div>
+              <div class="stat-label">Presidente · Nv4</div>
+              <div class="stat-value" id="stat-nivel4">—</div>
+              <div class="stat-sublabel">holders →</div>
+            </div>
+          </div>
         </div>
-        <div class="stat-card visits" onclick="showPage('holders')" style="cursor:pointer;" title="Ver visitas">
-          <div class="stat-icon">📍</div>
-          <div class="stat-label">Total Visitas</div>
-          <div class="stat-value" id="stat-visits">—</div>
-          <div class="stat-sublabel">registradas →</div>
-        </div>
-        <div class="stat-card app-installs" onclick="goToConAppSegment()" style="cursor:pointer;" title="Ver instalados con app">
-          <div class="stat-icon">📲</div>
-          <div class="stat-label">Instalaciones App</div>
-          <div class="stat-value" id="stat-app-total">—</div>
-          <div class="stat-sublabel" id="stat-app-conversion">0% han venido →</div>
-        </div>
-        <div class="stat-card nivel-1" onclick="filterHolders('1', document.getElementById('fbtn-1')); showPage('holders');" style="cursor:pointer;" title="Ver Nivel 1">
-          <div class="stat-icon">🫂</div>
-          <div class="stat-label">Cautivo · Nv1</div>
-          <div class="stat-value" id="stat-nivel1">—</div>
-          <div class="stat-sublabel">holders →</div>
-        </div>
-        <div class="stat-card nivel-2" onclick="filterHolders('2', document.getElementById('fbtn-2')); showPage('holders');" style="cursor:pointer;" title="Ver Nivel 2">
-          <div class="stat-icon">🥂</div>
-          <div class="stat-label">Cunqueiro · Nv2</div>
-          <div class="stat-value" id="stat-nivel2">—</div>
-          <div class="stat-sublabel">holders →</div>
-        </div>
-        <div class="stat-card nivel-3" onclick="filterHolders('3', document.getElementById('fbtn-3')); showPage('holders');" style="cursor:pointer;" title="Ver Nivel 3">
-          <div class="stat-icon">🌿</div>
-          <div class="stat-label">Larpeiro · Nv3</div>
-          <div class="stat-value" id="stat-nivel3">—</div>
-          <div class="stat-sublabel">holders →</div>
-        </div>
-        <div class="stat-card nivel-4" onclick="filterHolders('4', document.getElementById('fbtn-4')); showPage('holders');" style="cursor:pointer;" title="Ver Nivel 4">
-          <div class="stat-icon">👑</div>
-          <div class="stat-label">Presidente · Nv4</div>
-          <div class="stat-value" id="stat-nivel4">—</div>
-          <div class="stat-sublabel">holders →</div>
-        </div>
-      </div>
+      </details>
 
-      <!-- Logros NFT especiales (holders) + Aforo por nivel AHORA (día de evento) -->
-      <div class="glass-card" style="margin-bottom:20px;">
-        <div class="card-header" style="margin-bottom:12px;">
-          <span class="card-title">🎟️ Logros NFT especiales</span>
-          <button class="btn-download" onclick="loadAchievementStats(); loadPresentByLevel();" style="font-size:11px; padding:6px 12px;">↻</button>
-        </div>
-        <div id="achievement-stats-list" style="display:flex; flex-direction:column; gap:8px;">
+      <!-- Logros NFT especiales (Plegable) -->
+      <details class="glass-card" style="margin-bottom:20px; outline:none; -webkit-tap-highlight-color:transparent;">
+        <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; outline:none; user-select:none; padding:14px 18px; border-bottom:1px solid rgba(42,21,9,0.06);">
+          <span class="card-title" style="display:flex; align-items:center; gap:6px;">
+            🎟️ Logros NFT especiales 
+            <span id="summary-achievements-total" style="font-size:11px; font-weight:normal; color:var(--text-muted); margin-left:8px;">—</span>
+          </span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="btn-download" onclick="loadAchievementStats(); event.stopPropagation();" style="font-size:11px; padding:6px 12px;">↻</button>
+            <span style="font-size:12px; color:var(--text-muted); transition: transform 0.2s;" class="chevron">▼</span>
+          </div>
+        </summary>
+        <div id="achievement-stats-list" style="display:flex; flex-direction:column; gap:8px; padding:14px 18px;">
           <p style="font-size:12px; color:var(--text-muted);">Cargando…</p>
         </div>
+      </details>
 
-        <div style="margin-top:18px; padding-top:14px; border-top:1px solid rgba(42,21,9,0.1);">
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-            <span class="card-title" style="font-size:14px;">🟢 En el local ahora <span id="present-total" style="color:var(--wine); font-weight:900;"></span></span>
+      <!-- En el local ahora (Tal cual está, sin cambios) -->
+      <div class="glass-card" style="margin-bottom:20px;">
+        <div class="card-header" style="margin-bottom:12px;">
+          <span class="card-title">🟢 En el local ahora <span id="present-total" style="color:var(--wine); font-weight:900;"></span></span>
+          <div style="display:flex; align-items:center; gap:8px;">
             <span style="font-size:10px; color:var(--text-muted);">por nivel y logro</span>
+            <button class="btn-download" onclick="loadPresentByLevel();" style="font-size:11px; padding:6px 12px;">↻</button>
           </div>
-          <div id="present-by-level-list"><p style="font-size:12px; color:var(--text-muted);">Cargando…</p></div>
+        </div>
+        <div id="present-by-level-list" style="padding:14px 18px; padding-top:0;">
+          <p style="font-size:12px; color:var(--text-muted);">Cargando…</p>
         </div>
       </div>
 
@@ -1134,57 +1191,67 @@
       </div>
 
       <!-- Crear logro NFT desde la app -->
-      <div class="glass-card" style="margin-bottom:20px;">
-        <div class="card-header" style="margin-bottom:12px;">
+      <!-- Crear logro NFT desde la app (Plegable) -->
+      <details class="glass-card" style="margin-bottom:20px; outline:none; -webkit-tap-highlight-color:transparent;">
+        <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; outline:none; user-select:none; padding:14px 18px; border-bottom:1px solid rgba(42,21,9,0.06);">
           <span class="card-title">✨ Crear logro NFT</span>
-          <button class="btn-download" onclick="loadAchievementManager()" style="font-size:11px; padding:6px 12px;">↻</button>
-        </div>
-        <p style="font-size:11px; color:var(--text-muted); margin:0 0 12px; line-height:1.5;">Ediciones especiales (San Xoán, María Pita…) o premios de sorteo (Chave Dourada). Crearlas NO gasta gas.</p>
+          <span style="font-size:12px; color:var(--text-muted); transition: transform 0.2s;" class="chevron">▼</span>
+        </summary>
+        <div style="padding:14px 18px;">
+          <p style="font-size:11px; color:var(--text-muted); margin:0 0 12px; line-height:1.5;">Ediciones especiales (San Xoán, María Pita…) o premios de sorteo (Chave Dourada). Crearlas NO gasta gas.</p>
+          <p style="font-size:11px; color:var(--text-muted); margin:0 0 16px; padding:11px; background:var(--bg); border:1px solid rgba(42,21,9,0.08); border-radius:10px; line-height:1.5;">👁 En cada logro de abajo decides si los clientes lo ven <strong>sombreado antes de conseguirlo</strong>. Desmárcalo para ocultarlo hasta que lo consigan.</p>
 
-        <!-- Visibilidad en el museo: se controla POR LOGRO, en cada fila de abajo. -->
-        <p style="font-size:11px; color:var(--text-muted); margin:0 0 16px; padding:11px; background:var(--bg); border:1px solid rgba(42,21,9,0.08); border-radius:10px; line-height:1.5;">👁 En cada logro de abajo decides si los clientes lo ven <strong>sombreado antes de conseguirlo</strong>. Desmárcalo para ocultarlo hasta que lo consigan.</p>
+          <input type="text" class="input-field" id="ach-name" placeholder="Nombre (ej: Furancheiro de María Pita)" style="margin-bottom:8px; font-size:14px;" />
+          <textarea class="input-field" id="ach-description" placeholder="Descripción (ej: Edición especial por asistir a la sesión de María Pita)" rows="2" style="font-size:13px; resize:vertical; font-family:'Outfit',sans-serif; margin-bottom:8px;"></textarea>
 
-        <input type="text" class="input-field" id="ach-name" placeholder="Nombre (ej: Furancheiro de María Pita)" style="margin-bottom:8px; font-size:14px;" />
-        <textarea class="input-field" id="ach-description" placeholder="Descripción (ej: Edición especial por asistir a la sesión de María Pita)" rows="2" style="font-size:13px; resize:vertical; font-family:'Outfit',sans-serif; margin-bottom:8px;"></textarea>
-
-        <div style="margin-bottom:10px; padding:10px; background:var(--bg); border:1px solid rgba(42,21,9,0.08); border-radius:10px;">
-          <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:6px;">🔓 Cómo se otorga</label>
-          <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; margin-bottom:6px; cursor:pointer;">
-            <input type="radio" name="ach-rule-type" value="visit_on_date" checked onchange="toggleAchRuleType()" />
-            <span><strong>Asistencia a fecha</strong> · el cliente lo reclama desde su museo si fichó ese día</span>
-          </label>
-          <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer;">
-            <input type="radio" name="ach-rule-type" value="raffle_only" onchange="toggleAchRuleType()" />
-            <span><strong>Solo premio de sorteo</strong> · lo entrega el camarero en persona (Chave Dourada, etc.)</span>
-          </label>
-        </div>
-
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
-          <div>
-            <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">🏷️ Edición</label>
-            <input type="text" class="input-field" id="ach-edition" placeholder="Ej: María Pita 2026" style="margin:0; font-size:13px;" />
+          <div style="margin-bottom:10px; padding:10px; background:var(--bg); border:1px solid rgba(42,21,9,0.08); border-radius:10px;">
+            <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:6px;">🔓 Cómo se otorga</label>
+            <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; margin-bottom:6px; cursor:pointer;">
+              <input type="radio" name="ach-rule-type" value="visit_on_date" checked onchange="toggleAchRuleType()" />
+              <span><strong>Asistencia a fecha</strong> · el cliente lo reclama desde su museo si fichó ese día</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer;">
+              <input type="radio" name="ach-rule-type" value="raffle_only" onchange="toggleAchRuleType()" />
+              <span><strong>Solo premio de sorteo</strong> · lo entrega el camarero en persona (Chave Dourada, etc.)</span>
+            </label>
           </div>
-          <div id="ach-rule-date-wrap">
-            <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">📅 Fecha de desbloqueo</label>
-            <input type="date" class="input-field" id="ach-rule-date" style="margin:0; font-size:13px;" />
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
+            <div>
+              <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">🏷️ Edición</label>
+              <input type="text" class="input-field" id="ach-edition" placeholder="Ej: María Pita 2026" style="margin:0; font-size:13px;" />
+            </div>
+            <div id="ach-rule-date-wrap">
+              <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">📅 Fecha de desbloqueo</label>
+              <input type="date" class="input-field" id="ach-rule-date" style="margin:0; font-size:13px;" />
+            </div>
           </div>
+          <p id="ach-rule-hint" style="font-size:10px; color:var(--text-muted); margin:0 0 8px; line-height:1.4;">Quien haya fichado entrada ESE día podrá reclamar el logro desde su museo.</p>
+
+          <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:5px;">🖼️ Imagen del logro (el propio NFT)</label>
+          <label for="ach-image-input" style="display:block; background:var(--surface); border:1.5px dashed var(--border); border-radius:12px; padding:9px 16px; font-size:12px; color:var(--text-muted); cursor:pointer; text-align:center;">📁 Seleccionar imagen (JPG, PNG o webp)</label>
+          <input type="file" id="ach-image-input" accept="image/*" style="display:none;" onchange="uploadAchievementImage(this)" />
+          <input type="hidden" id="ach-image-url" />
+          <div id="ach-image-preview" style="display:none; margin-top:6px; text-align:center;"><img id="ach-image-thumb" style="max-height:80px; border-radius:10px; border:1px solid var(--border);" /></div>
+
+          <button id="ach-submit-btn" onclick="createAchievement(this)" style="width:100%; margin-top:12px; padding:12px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:12px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer;">✨ Crear logro</button>
+          <button id="ach-cancel-edit-btn" onclick="clearAchievementForm()" style="display:none; width:100%; margin-top:8px; padding:9px; background:transparent; color:var(--text-muted); border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; font-family:'Outfit',sans-serif; font-size:12px; font-weight:700; cursor:pointer;">Cancelar edición</button>
         </div>
-        <p id="ach-rule-hint" style="font-size:10px; color:var(--text-muted); margin:0 0 8px; line-height:1.4;">Quien haya fichado entrada ESE día podrá reclamar el logro desde su museo.</p>
+      </details>
 
-        <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:5px;">🖼️ Imagen del logro (el propio NFT)</label>
-        <label for="ach-image-input" style="display:block; background:var(--surface); border:1.5px dashed var(--border); border-radius:12px; padding:9px 16px; font-size:12px; color:var(--text-muted); cursor:pointer; text-align:center;">📁 Seleccionar imagen (JPG, PNG o webp)</label>
-        <input type="file" id="ach-image-input" accept="image/*" style="display:none;" onchange="uploadAchievementImage(this)" />
-        <input type="hidden" id="ach-image-url" />
-        <div id="ach-image-preview" style="display:none; margin-top:6px; text-align:center;"><img id="ach-image-thumb" style="max-height:80px; border-radius:10px; border:1px solid var(--border);" /></div>
-
-        <button id="ach-submit-btn" onclick="createAchievement(this)" style="width:100%; margin-top:12px; padding:12px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:12px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer;">✨ Crear logro</button>
-        <button id="ach-cancel-edit-btn" onclick="clearAchievementForm()" style="display:none; width:100%; margin-top:8px; padding:9px; background:transparent; color:var(--text-muted); border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; font-family:'Outfit',sans-serif; font-size:12px; font-weight:700; cursor:pointer;">Cancelar edición</button>
-
-        <div style="margin-top:18px; padding-top:14px; border-top:1px solid rgba(42,21,9,0.1);">
-          <span class="card-title" style="font-size:14px;">Logros existentes</span>
-          <div id="ach-manager-list" style="margin-top:8px;"><p style="font-size:12px; color:var(--text-muted);">Cargando…</p></div>
+      <!-- Logros existentes (Plegable) -->
+      <details class="glass-card" style="margin-bottom:20px; outline:none; -webkit-tap-highlight-color:transparent;">
+        <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; outline:none; user-select:none; padding:14px 18px; border-bottom:1px solid rgba(42,21,9,0.06);">
+          <span class="card-title">📦 Logros existentes</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="btn-download" onclick="loadAchievementManager(); event.stopPropagation();" style="font-size:11px; padding:6px 12px;">↻</button>
+            <span style="font-size:12px; color:var(--text-muted); transition: transform 0.2s;" class="chevron">▼</span>
+          </div>
+        </summary>
+        <div style="padding:14px 18px;">
+          <div id="ach-manager-list"><p style="font-size:12px; color:var(--text-muted);">Cargando…</p></div>
         </div>
-      </div>
+      </details>
 
       <!-- Gráfica de entradas por hora (tiempo real) -->
       <div class="glass-card" style="margin-bottom:20px;" id="hourly-chart-card">
@@ -1196,32 +1263,37 @@
         <p id="hourly-chart-empty" style="display:none; font-size:12px; color:var(--text-muted); text-align:center; padding:16px 0;">Sin entradas registradas hoy todavía 🍷</p>
       </div>
 
-      <!-- 💶 FACTURACIÓN POR EVENTO (PRIVADO — nunca visible para clientes) -->
-      <div class="glass-card" style="margin-bottom:20px;" id="finance-stats-card">
-        <div class="card-header" style="margin-bottom:6px;">
+      <!-- 💶 FACTURACIÓN POR EVENTO (PRIVADO — Plegable) -->
+      <details class="glass-card" style="margin-bottom:20px;" id="finance-stats-card">
+        <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; outline:none; user-select:none; padding:14px 18px; border-bottom:1px solid rgba(42,21,9,0.06);">
           <span class="card-title">💶 Facturación por evento</span>
-          <button class="btn-download" onclick="loadEventFinanceStats()" style="font-size:11px; padding:6px 12px;">↻</button>
-        </div>
-        <p style="font-size:11px; color:var(--text-muted); margin:0 0 14px;">🔒 Privado — solo tú. Añade los datos desde cada evento (Eventos → editar → Facturación).</p>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="btn-download" onclick="loadEventFinanceStats(); event.stopPropagation();" style="font-size:11px; padding:6px 12px;">↻</button>
+            <span style="font-size:12px; color:var(--text-muted); transition: transform 0.2s;" class="chevron">▼</span>
+          </div>
+        </summary>
+        <div style="padding:14px 18px;">
+          <p style="font-size:11px; color:var(--text-muted); margin:0 0 14px;">🔒 Privado — solo tú. Añade los datos desde cada evento (Eventos → editar → Facturación).</p>
 
-        <!-- Tiles resumen -->
-        <div id="finance-tiles" style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:16px;"></div>
+          <!-- Tiles resumen -->
+          <div id="finance-tiles" style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:16px;"></div>
 
-        <!-- Gráfico de barras: facturación por evento -->
-        <div id="finance-chart-wrap">
-          <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:8px;">Facturación por evento</div>
-          <div id="finance-bar-chart" style="display:flex; align-items:flex-end; gap:8px; height:120px; padding:0 2px;"></div>
-          <div id="finance-bar-labels" style="display:flex; gap:8px; margin-top:6px;"></div>
-        </div>
+          <!-- Gráfico de barras: facturación por evento -->
+          <div id="finance-chart-wrap">
+            <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:8px;">Facturación por evento</div>
+            <div id="finance-bar-chart" style="display:flex; align-items:flex-end; gap:8px; height:120px; padding:0 2px;"></div>
+            <div id="finance-bar-labels" style="display:flex; gap:8px; margin-top:6px;"></div>
+          </div>
 
-        <!-- 🏆 Ranking: qué eventos rentan más (beneficio = facturación − costes) -->
-        <div id="finance-ranking-wrap" style="display:none; margin-top:18px; padding-top:14px; border-top:1px solid rgba(42,21,9,0.08);">
-          <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;">🏆 Qué renta más (por beneficio)</div>
-          <div id="finance-ranking"></div>
-          <div id="finance-cost-breakdown" style="margin-top:14px;"></div>
+          <!-- 🏆 Ranking: qué eventos rentan más (beneficio = facturación − costes) -->
+          <div id="finance-ranking-wrap" style="display:none; margin-top:18px; padding-top:14px; border-top:1px solid rgba(42,21,9,0.08);">
+            <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px;">🏆 Qué renta más (por beneficio)</div>
+            <div id="finance-ranking"></div>
+            <div id="finance-cost-breakdown" style="margin-top:14px;"></div>
+          </div>
+          <p id="finance-empty" style="display:none; font-size:12px; color:var(--text-muted); text-align:center; padding:16px 0;">Aún no hay facturación registrada. Ábrela desde un evento para empezar, ho 🍷</p>
         </div>
-        <p id="finance-empty" style="display:none; font-size:12px; color:var(--text-muted); text-align:center; padding:16px 0;">Aún no hay facturación registrada. Ábrela desde un evento para empezar, ho 🍷</p>
-      </div>
+      </details>
 
       <!-- QR Acceso Clientes — destacado en dashboard -->
       <div style="background: rgba(196,151,58,0.06); border: 1px solid rgba(196,151,58,0.22); border-radius: 20px; padding: 22px; margin-bottom: 24px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
@@ -3299,7 +3371,14 @@
     if (!el) return;
     try {
       const data = await fetch('/api/admin/achievement-stats', { headers: authHeaders() }).then(r => r.json());
-      if (!Array.isArray(data) || !data.length) { el.innerHTML = '<p style="font-size:12px; color:var(--text-muted);">Aún no hay logros especiales configurados.</p>'; return; }
+      const summary = document.getElementById('summary-achievements-total');
+      if (!Array.isArray(data) || !data.length) {
+        if (summary) summary.textContent = '(0)';
+        el.innerHTML = '<p style="font-size:12px; color:var(--text-muted);">Aún no hay logros especiales configurados.</p>';
+        return;
+      }
+      const totalIssued = data.reduce((acc, a) => acc + (a.total || 0), 0);
+      if (summary) summary.textContent = `(${data.length} tipos · ${totalIssued} emitidos)`;
       el.innerHTML = data.map(a => `
         <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; background:rgba(196,151,58,0.07); border:1px solid rgba(196,151,58,0.2); border-radius:12px;">
           <div style="min-width:0;">
@@ -3466,6 +3545,11 @@
 
       document.getElementById('stat-total').textContent = data.total || 0;
       document.getElementById('stat-visits').textContent = data.totalVisits || 0;
+
+      const summaryTotal = document.getElementById('summary-total-nfts');
+      if (summaryTotal) summaryTotal.textContent = data.total || 0;
+      const summaryVisits = document.getElementById('summary-total-visits');
+      if (summaryVisits) summaryVisits.textContent = data.totalVisits || 0;
 
       if (data.appInstalls) {
         const ai = data.appInstalls;
