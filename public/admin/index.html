@@ -2531,15 +2531,50 @@
       
       <div class="glass-card">
         <div class="card-header">
-          <div class="card-title">Configuración de Tasa</div>
+          <div class="card-title">Configuración de Peajes por NFT (Consumo Mínimo en €)</div>
         </div>
         <div style="padding: 16px;">
-          <label class="form-label">Mensaje para el cliente (Peaje del Patrón)</label>
-          <div style="display:flex; gap:10px;">
-            <input type="text" id="transfer-fee-msg" class="input-field" placeholder="Ej: Para completar el traspaso debes consumir en barra 30€..." style="margin-bottom:0;" />
-            <button class="btn-primary" onclick="saveTransferSettings()" style="padding: 0 20px;">Guardar</button>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
+            <div>
+              <p style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">Niveles principales</p>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <label style="font-size:12px; display:flex; justify-content:space-between; align-items:center;">
+                  <span>Nivel 1 (Cautivo):</span>
+                  <input type="number" id="fee-level-1" value="0" min="0" style="width:70px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15);" />
+                </label>
+                <label style="font-size:12px; display:flex; justify-content:space-between; align-items:center;">
+                  <span>Nivel 2 (Cunqueiro):</span>
+                  <input type="number" id="fee-level-2" value="0" min="0" style="width:70px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15);" />
+                </label>
+                <label style="font-size:12px; display:flex; justify-content:space-between; align-items:center;">
+                  <span>Nivel 3 (Larpeiro):</span>
+                  <input type="number" id="fee-level-3" value="30" min="0" style="width:70px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15);" />
+                </label>
+                <label style="font-size:12px; display:flex; justify-content:space-between; align-items:center;">
+                  <span>Nivel 4 (Presidente):</span>
+                  <input type="number" id="fee-level-4" value="30" min="0" style="width:70px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15);" />
+                </label>
+              </div>
+            </div>
+            <div>
+              <p style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">Logros especiales</p>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <label style="font-size:12px; display:flex; justify-content:space-between; align-items:center;">
+                  <span>Meme VIP (ID 50):</span>
+                  <input type="number" id="fee-ach-meme_vip" value="15" min="0" style="width:70px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15);" />
+                </label>
+                <label style="font-size:12px; display:flex; justify-content:space-between; align-items:center;">
+                  <span>Furancheiro de Honor:</span>
+                  <input type="number" id="fee-ach-furancheiro_honor" value="15" min="0" style="width:70px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15);" />
+                </label>
+                <label style="font-size:12px; display:flex; justify-content:space-between; align-items:center;">
+                  <span>Guardián del Furancho:</span>
+                  <input type="number" id="fee-ach-guardian_furancho" value="15" min="0" style="width:70px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15);" />
+                </label>
+              </div>
+            </div>
           </div>
-          <p style="font-size:11px; color:var(--text-muted); margin-top:8px;">Este mensaje aparecerá en la app cuando alguien intente traspasar un NFT a otra persona.</p>
+          <button class="btn-primary" onclick="saveTransferFeesSettings()" style="width:100%;">Guardar tarifas</button>
         </div>
       </div>
 
@@ -9429,14 +9464,42 @@
     } catch (e) { _scanPanel('Error al otorgar logro.'); }
   }
 
+  function getNftName(tokenId) {
+    const map = {
+      1: 'Nivel 1: Cautivo',
+      2: 'Nivel 2: Cunqueiro',
+      3: 'Nivel 3: Larpeiro',
+      4: 'Nivel 4: Presidente',
+      50: '👑 Meme VIP',
+      100: '🔥 Furancheiro Fiesteiro',
+      103: '🏆 Furancho Legend 2026',
+      104: '🎖️ Furancheiro de Honor',
+      105: '🛡️ Guardián del Furancho'
+    };
+    return map[tokenId] || `Token ID ${tokenId}`;
+  }
+
   // --- LOGICA DE TRASPASOS ---
   async function loadPendingTransfers() {
     try {
-      // Cargar configuracion de mensaje
-      const setRes = await fetch('/api/admin/settings/transfer_fee_text', { headers: authHeaders() }).then(r=>r.json());
-      if (setRes.value) {
-        document.getElementById('transfer-fee-msg').value = setRes.value;
-      }
+      // Cargar configuracion de peajes
+      const level1 = await fetch('/api/admin/settings/transfer_fee_1', { headers: authHeaders() }).then(r=>r.json());
+      const level2 = await fetch('/api/admin/settings/transfer_fee_2', { headers: authHeaders() }).then(r=>r.json());
+      const level3 = await fetch('/api/admin/settings/transfer_fee_3', { headers: authHeaders() }).then(r=>r.json());
+      const level4 = await fetch('/api/admin/settings/transfer_fee_4', { headers: authHeaders() }).then(r=>r.json());
+      
+      const achMeme = await fetch('/api/admin/settings/transfer_fee_ach_meme_vip', { headers: authHeaders() }).then(r=>r.json());
+      const achHonor = await fetch('/api/admin/settings/transfer_fee_ach_furancheiro_honor', { headers: authHeaders() }).then(r=>r.json());
+      const achGuardian = await fetch('/api/admin/settings/transfer_fee_ach_guardian_furancho', { headers: authHeaders() }).then(r=>r.json());
+
+      if (level1.value !== undefined) document.getElementById('fee-level-1').value = level1.value || 0;
+      if (level2.value !== undefined) document.getElementById('fee-level-2').value = level2.value || 0;
+      if (level3.value !== undefined) document.getElementById('fee-level-3').value = level3.value || 30;
+      if (level4.value !== undefined) document.getElementById('fee-level-4').value = level4.value || 30;
+      
+      if (achMeme.value !== undefined) document.getElementById('fee-ach-meme_vip').value = achMeme.value || 15;
+      if (achHonor.value !== undefined) document.getElementById('fee-ach-furancheiro_honor').value = achHonor.value || 15;
+      if (achGuardian.value !== undefined) document.getElementById('fee-ach-guardian_furancho').value = achGuardian.value || 15;
 
       // Cargar traspasos pendientes
       const res = await fetch('/api/admin/transfers', { headers: authHeaders() });
@@ -9452,7 +9515,7 @@
       list.innerHTML = data.map(t => `
         <tr>
           <td>${new Date(t.created_at).toLocaleString('es-ES', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })}</td>
-          <td>Token ID ${t.token_id}</td>
+          <td>${getNftName(t.token_id)}</td>
           <td style="font-family:monospace; font-size:11px;">${t.from_wallet.slice(0,6)}...${t.from_wallet.slice(-4)}</td>
           <td style="font-family:monospace; font-size:11px;">${t.to_wallet.slice(0,6)}...${t.to_wallet.slice(-4)}</td>
           <td>
@@ -9503,17 +9566,28 @@
     }
   }
 
-  async function saveTransferSettings() {
-    const msg = document.getElementById('transfer-fee-msg').value;
+  async function saveTransferFeesSettings() {
     try {
-      const res = await fetch('/api/admin/settings/transfer_fee_text', {
-        method: 'POST',
-        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ value: msg })
-      }).then(r => r.json());
-      if (res.success) showToast('Ajustes de traspaso guardados');
+      const mappings = [
+        { key: '1', id: 'fee-level-1' },
+        { key: '2', id: 'fee-level-2' },
+        { key: '3', id: 'fee-level-3' },
+        { key: '4', id: 'fee-level-4' },
+        { key: 'ach_meme_vip', id: 'fee-ach-meme_vip' },
+        { key: 'ach_furancheiro_honor', id: 'fee-ach-furancheiro_honor' },
+        { key: 'ach_guardian_furancho', id: 'fee-ach-guardian_furancho' }
+      ];
+      for (const m of mappings) {
+        const val = document.getElementById(m.id).value;
+        await fetch(`/api/admin/settings/transfer_fee_${m.key}`, {
+          method: 'POST',
+          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: val })
+        });
+      }
+      showToast('Tarifas de traspaso guardadas ✅');
     } catch (e) {
-      showToast('Error al guardar ajustes');
+      showToast('Error al guardar tarifas ❌');
     }
   }
 

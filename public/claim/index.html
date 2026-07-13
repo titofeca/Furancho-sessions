@@ -3497,6 +3497,7 @@
       renderProfileVipBadge();
 
       // Reto de los 5 (campaña verano): carga y pinta su tarjeta si aplica.
+      loadTransferFees();
       loadCampaignProgress();
 
       // Tarjetas de vacaciones + eclipse (cuentas atrás visuales, cambian por fecha).
@@ -7954,7 +7955,10 @@
     let cta;
     if (a.claimStatus === 'success') {
       cta = `<span style="font-size:12px; font-weight:800; color:#16a34a;">✅ NFT en tu wallet</span>
-        <a href="https://polygonscan.com/token/0x30118E36F1E3681ac5B9D048659Bc22733c78913?a=${userWalletAddress}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:inline-block; margin-left:8px; font-size:11px; color:rgba(42,21,9,0.6); text-decoration:none; font-weight:600;">🔗 Verificar</a>`;
+        <div style="margin-top:6px; display:flex; gap:8px;">
+          <a href="https://polygonscan.com/token/0x30118E36F1E3681ac5B9D048659Bc22733c78913?a=${userWalletAddress}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:inline-block; font-size:11px; color:rgba(42,21,9,0.6); text-decoration:none; font-weight:600;">🔗 Verificar</a>
+          <button onclick="event.stopPropagation(); startTransferScan(${a.tokenId}, '${a.name}', '${a.id}')" style="background:transparent; border:none; padding:0; color:var(--wine); font-size:11px; font-weight:700; cursor:pointer; text-decoration:underline; font-family:'Outfit',sans-serif;">🤝 Traspasar</button>
+        </div>`;
     } else if (a.claimStatus === 'pending' || a.claimStatus === 'pending_approval') {
       cta = `<span style="font-size:12px; font-weight:800; color:var(--gold);">⏳ Generando tu NFT…</span>`;
     } else {
@@ -8097,23 +8101,47 @@
   // --- LOGICA DE TRASPASO DE NFTS ---
   let transferScanner = null;
   let transferTargetWallet = null;
+  let _transferTokenId = null;
+  let _transferAchievementId = null;
 
-  function startTransferScan() {
+  async function loadTransferFees() {
+    try {
+      const res = await fetch('/api/mint/transfer-settings').then(r => r.json());
+      window._transferFees = res.fees || {};
+    } catch (e) {
+      console.error("Error loading transfer fees:", e);
+    }
+  }
+
+  function startTransferScan(tokenId = null, nftName = null, achievementId = null) {
     if (!userWalletAddress) {
       alert("Debes tener un pase activo para traspasarlo.");
       return;
     }
+    
+    _transferTokenId = tokenId || (userClaimedLevels && userClaimedLevels.length > 0 ? Math.max(...userClaimedLevels) : null);
+    _transferAchievementId = achievementId;
+
+    if (!_transferTokenId) {
+      alert("No tienes ningún NFT para traspasar.");
+      return;
+    }
+
+    // Configurar el aviso de peaje
+    let fee = '0';
+    if (_transferAchievementId) {
+      fee = (window._transferFees && window._transferFees['ach_' + _transferAchievementId]) || '15';
+    } else {
+      fee = (window._transferFees && window._transferFees['level_' + _transferTokenId]) || '30';
+    }
+    
+    document.getElementById('transfer-fee-warning').innerHTML = `
+      Para completar el traspaso de <strong>${nftName || 'tu pase'}</strong>, el nuevo propietario debe abonar el peaje de consumo mínimo de <strong>${fee}€</strong> en barra.
+    `;
+
     document.getElementById('transfer-modal').style.display = 'flex';
     document.getElementById('transfer-confirm-view').style.display = 'none';
     document.getElementById('transfer-scanner-status').innerText = 'Iniciando cámara...';
-    
-    // Asumimos que transferimos el NFT de nivel, si tiene. Para el meme será adaptado luego.
-    const tokenId = userClaimedLevels && userClaimedLevels.length > 0 ? Math.max(...userClaimedLevels) : null;
-    if (!tokenId) {
-      alert("No tienes ningún NFT para traspasar.");
-      stopTransferScan();
-      return;
-    }
 
     if (!transferScanner) {
       transferScanner = new Html5Qrcode("transfer-scanner-reader");
@@ -8159,9 +8187,7 @@
 
   async function submitTransferRequest() {
     if (!transferTargetWallet || !userWalletAddress || !userWalletPrivateKey) return;
-    
-    const tokenId = userClaimedLevels && userClaimedLevels.length > 0 ? Math.max(...userClaimedLevels) : null;
-    if (!tokenId) return;
+    if (!_transferTokenId) return;
 
     const btn = document.getElementById('btn-submit-transfer');
     const originalText = btn.innerText;
@@ -8175,7 +8201,7 @@
         body: JSON.stringify({
           fromWallet: userWalletAddress,
           toWallet: transferTargetWallet,
-          tokenId: tokenId.toString(),
+          tokenId: _transferTokenId.toString(),
           privateKey: userWalletPrivateKey
         })
       }).then(r => r.json());

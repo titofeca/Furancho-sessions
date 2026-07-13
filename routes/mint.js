@@ -456,6 +456,29 @@ router.get('/history', (req, res) => {
 
 
 
+// GET /api/mint/transfer-settings
+// Retorna las tarifas/peajes configurados para los traspasos de cada NFT
+router.get('/transfer-settings', (req, res) => {
+  try {
+    const { getAppSetting } = require('../db/transfers');
+    const achievements = require('../services/achievements');
+    const fees = {};
+    
+    fees['level_1'] = getAppSetting('transfer_fee_1', '0');
+    fees['level_2'] = getAppSetting('transfer_fee_2', '0');
+    fees['level_3'] = getAppSetting('transfer_fee_3', '30');
+    fees['level_4'] = getAppSetting('transfer_fee_4', '30');
+    
+    achievements.list().forEach(a => {
+      fees[`ach_${a.id}`] = getAppSetting(`transfer_fee_ach_${a.id}`, '15');
+    });
+
+    res.json({ fees });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /api/mint/transfer-request
 // El cliente solicita un traspaso. Requiere enviar la privateKey temporalmente para que
 // el servidor pueda firmar la transacción (pagando el gas el servidor) tras la aprobación.
