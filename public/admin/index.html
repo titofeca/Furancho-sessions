@@ -5413,11 +5413,15 @@
     } catch (e) { el.innerHTML = '<p style="font-size:12px; color:#ef4444;">Error cargando logros.</p>'; }
   }
 
-  // Rellena el formulario con un logro existente para editarlo (PATCH al guardar).
   function editAchievement(id) {
     const a = achievementRowsById[id];
     if (!a) return;
     editingAchievementId = id;
+    
+    // Auto-expand details block
+    const details = document.getElementById('ach-name').closest('details');
+    if (details) details.open = true;
+
     document.getElementById('ach-name').value = a.name || '';
     document.getElementById('ach-description').value = a.description || '';
     document.getElementById('ach-edition').value = a.edition || '';

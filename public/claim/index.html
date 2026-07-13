@@ -8099,7 +8099,7 @@
   let transferTargetWallet = null;
 
   function startTransferScan() {
-    if (!CURRENT_WALLET_ADDRESS) {
+    if (!userWalletAddress) {
       alert("Debes tener un pase activo para traspasarlo.");
       return;
     }
@@ -8108,7 +8108,7 @@
     document.getElementById('transfer-scanner-status').innerText = 'Iniciando cámara...';
     
     // Asumimos que transferimos el NFT de nivel, si tiene. Para el meme será adaptado luego.
-    const tokenId = _claimedLevels && _claimedLevels.length > 0 ? Math.max(..._claimedLevels) : null;
+    const tokenId = userClaimedLevels && userClaimedLevels.length > 0 ? Math.max(...userClaimedLevels) : null;
     if (!tokenId) {
       alert("No tienes ningún NFT para traspasar.");
       stopTransferScan();
@@ -8124,7 +8124,7 @@
       { fps: 10, qrbox: { width: 250, height: 250 } },
       (decodedText) => {
         if (/^0x[a-fA-F0-9]{40}$/i.test(decodedText)) {
-          if (decodedText.toLowerCase() === CURRENT_WALLET_ADDRESS.toLowerCase()) {
+          if (decodedText.toLowerCase() === userWalletAddress.toLowerCase()) {
             document.getElementById('transfer-scanner-status').innerText = 'No puedes traspasarlo a ti mismo.';
             return;
           }
@@ -8158,9 +8158,9 @@
   window.stopTransferScan = stopTransferScan;
 
   async function submitTransferRequest() {
-    if (!transferTargetWallet || !CURRENT_WALLET_ADDRESS || !CURRENT_PRIVATE_KEY) return;
+    if (!transferTargetWallet || !userWalletAddress || !userWalletPrivateKey) return;
     
-    const tokenId = _claimedLevels && _claimedLevels.length > 0 ? Math.max(..._claimedLevels) : null;
+    const tokenId = userClaimedLevels && userClaimedLevels.length > 0 ? Math.max(...userClaimedLevels) : null;
     if (!tokenId) return;
 
     const btn = document.getElementById('btn-submit-transfer');
@@ -8173,10 +8173,10 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fromWallet: CURRENT_WALLET_ADDRESS,
+          fromWallet: userWalletAddress,
           toWallet: transferTargetWallet,
           tokenId: tokenId.toString(),
-          privateKey: CURRENT_PRIVATE_KEY
+          privateKey: userWalletPrivateKey
         })
       }).then(r => r.json());
 
