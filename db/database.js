@@ -478,6 +478,27 @@ try { db.exec(`CREATE TABLE IF NOT EXISTS app_installs (
   wallet_address TEXT PRIMARY KEY,
   first_seen TEXT DEFAULT (datetime('now'))
 )`); } catch (_) {}
+
+// Backfill automático e idempotente de instalaciones iniciales para que el admin vea los históricos
+try {
+  db.exec('BEGIN TRANSACTION');
+  db.exec(`
+    INSERT OR IGNORE INTO app_installs (wallet_address, first_seen)
+    SELECT LOWER(wallet_address) as wallet, MIN(created_at) as first_seen FROM (
+      SELECT wallet_address, minted_at as created_at FROM mints WHERE status != 'failed'
+      UNION ALL
+      SELECT wallet_address, entry_time as created_at FROM sessions WHERE counted_as_visit = 1
+      UNION ALL
+      SELECT wallet_address, visited_at as created_at FROM visits
+    )
+    WHERE wallet_address IS NOT NULL AND wallet_address != ''
+    GROUP BY LOWER(wallet_address)
+  `);
+  db.exec('COMMIT');
+} catch (e) {
+  try { db.exec('ROLLBACK'); } catch(_) {}
+  console.error('[DB] Error al realizar backfill de app_installs:', e);
+}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN status TEXT DEFAULT 'pending_acceptance'`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN acceptance_deadline TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN accepted_at TEXT`); } catch (_) {}
