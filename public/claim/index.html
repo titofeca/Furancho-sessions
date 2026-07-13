@@ -1910,6 +1910,7 @@
         <span id="profile-level-label">Nivel 1</span>
       </div>
       <h1 class="nft-title" id="profile-nft-name">CAUTIVO</h1>
+      <div id="profile-vip-badge" style="display:none; margin: 8px auto 4px; max-width:320px;"></div>
       <!-- Número de serie del mint -->
       <div id="profile-mint-serial" style="display:none; margin: 4px 0 2px;">
         <span id="profile-mint-serial-text" style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:2px; color:var(--gold); background:rgba(196,151,58,0.1); border:1px solid rgba(196,151,58,0.25); border-radius:100px; padding:3px 12px;"></span>
@@ -3440,6 +3441,9 @@
       document.getElementById('visit-count-display').textContent = visitCount;
       document.getElementById('visit-total-display').textContent = visitCount >= 12 ? '✓ ¡El puto amo, ho!' : 'visitas';
 
+      // Badge VIP si hay reserva activa (confirmed/pending) para un evento futuro
+      renderProfileVipBadge();
+
       // Reto de los 5 (campaña verano): carga y pinta su tarjeta si aplica.
       loadCampaignProgress();
 
@@ -3648,6 +3652,7 @@
         _globalEvents = events;
         _globalMyRsvps = myRsvps;
         _globalMyVipReservations = myVipReservations || [];
+        renderProfileVipBadge();
         // U1: mapa de alérgenos por evento (editar) y últimos usados (recordar en nuevos RSVP)
         _myRsvpAllergens = {};
         _lastAllergens = '';
@@ -3903,7 +3908,8 @@
         if (data.error) { errEl.textContent = data.error; errEl.style.display='block'; btn.disabled=false; btn.textContent='Reservar Zona VIP'; return; }
         closeVipModal();
         loadAgenda();
-        showProfileBanner(`✅ Reserva VIP para ${vipGroupSize} personas a las ${timeVal} registrada.<br><span style="color: var(--gold); font-weight:700;">Pendiente de confirmación por parte de Furancho.</span>`, 'gold');
+        showProfileBanner(`✅ Reserva VIP para ${vipGroupSize} personas a las ${timeVal} registrada.<br><span style="color: var(--gold); font-weight:700;">Pendiente de confirmación por parte de Furancho.</span><br><span style="font-size:12px; color:var(--text-muted);">Al llegar, enseña tu perfil al equipo de hostes para que te identifiquen y te lleven a tu mesa.</span>`, 'gold');
+        renderProfileVipBadge();
       } catch(e) { errEl.textContent = 'Error de conexión'; errEl.style.display='block'; btn.disabled=false; btn.textContent='Reservar Zona VIP'; }
     }
 
@@ -6225,8 +6231,26 @@
     setTimeout(() => { modal.style.display = 'none'; }, 280);
   }
 
-  // Carga el progreso del Reto de los 5 y pinta su tarjeta en el perfil. La tarjeta
-  // se muestra si la campaña está activa o si el cliente ya tiene visitas de campaña.
+  function renderProfileVipBadge() {
+    const el = document.getElementById('profile-vip-badge');
+    if (!el) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const active = (_globalMyVipReservations || []).filter(v => v.status !== 'cancelled' && v.event_date >= today);
+    if (!active.length) { el.style.display = 'none'; return; }
+    const v = active[0];
+    const confirmed = v.status === 'confirmed';
+    const dateStr = new Date(v.event_date + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'short' });
+    el.innerHTML = `
+      <div style="background:${confirmed ? 'linear-gradient(135deg,rgba(196,151,58,0.2),rgba(139,25,24,0.08))' : 'rgba(196,151,58,0.12)'}; border:1.5px solid rgba(196,151,58,0.5); border-radius:14px; padding:12px 14px; text-align:center; position:relative; overflow:hidden;">
+        ${confirmed ? '<div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--gold),var(--wine));"></div>' : ''}
+        <div style="font-size:11px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; color:var(--gold); margin-bottom:4px;">⭐ RESERVA VIP ${confirmed ? 'CONFIRMADA' : 'PENDIENTE'}</div>
+        <div style="font-size:14px; font-weight:700; color:var(--wine);">${dateStr} · ${v.group_size} personas</div>
+        ${v.alias ? `<div style="font-size:13px; font-weight:800; color:var(--gold); margin-top:3px;">🏷️ Mesa: ${v.alias}</div>` : ''}
+        <div style="font-size:11px; color:var(--text-muted); margin-top:6px; line-height:1.4;">Al llegar, enseña este perfil al equipo de hostes para que te lleven a tu mesa.</div>
+      </div>`;
+    el.style.display = 'block';
+  }
+
   async function loadCampaignProgress() {
     if (!userWalletAddress) return;
     try {
@@ -8071,8 +8095,11 @@
       <p style="font-size:11px; color:var(--text-muted); margin-bottom:12px; line-height:1.5; text-align:left;">
         Al reservar aceptas que tu teléfono sea usado únicamente para confirmar esta reserva.
       </p>
-      <p style="font-size:12px; color:var(--wine); font-weight:700; margin-bottom:16px; text-align:center; line-height:1.4;">
+      <p style="font-size:12px; color:var(--wine); font-weight:700; margin-bottom:10px; text-align:center; line-height:1.4;">
         ⚠️ Quedará pendiente de confirmación por parte del Furancho.
+      </p>
+      <p style="font-size:11.5px; color:var(--text-muted); margin-bottom:16px; text-align:center; line-height:1.5;">
+        📲 Cuando llegues, enseña tu perfil de la app al equipo de hostes — te identificarán y te llevarán a tu mesa VIP directamente.
       </p>
 
       <p id="vip-error" style="color:var(--wine); font-size:13px; margin-bottom:12px; display:none; text-align:center; font-weight:600;"></p>

@@ -1104,6 +1104,18 @@ router.get('/inspect-wallet/:address', requireAuth, (req, res) => {
       });
     } catch (_) {}
 
+    let vipReservations = [];
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      vipReservations = db.prepare(`
+        SELECT vr.event_id, vr.status, vr.group_size, vr.alias, vr.notes, e.title, e.event_date
+        FROM vip_reservations vr
+        JOIN events e ON e.id = vr.event_id
+        WHERE vr.wallet_address = ? AND e.event_date >= ? AND vr.status != 'cancelled'
+        ORDER BY e.event_date ASC
+      `).all(address, today);
+    } catch (_) {}
+
     res.json({
       walletAddress: address,
       level,
@@ -1114,7 +1126,8 @@ router.get('/inspect-wallet/:address', requireAuth, (req, res) => {
       activeSessionStart: activeSession ? activeSession.entry_time : null,
       claimedLevels: getClaimedLevels(address),
       tapasByDay,
-      pendingNftPrizes
+      pendingNftPrizes,
+      vipReservations
     });
   } catch (e) {
     res.status(500).json({ error: e.message });

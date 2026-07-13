@@ -9070,6 +9070,21 @@
          </div>`
       : '';
 
+    const vipBadgeHtml = (d.vipReservations || []).length
+      ? d.vipReservations.map(v => {
+          const dateStr = new Date(v.event_date + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short' });
+          const hora = (v.notes || '').replace(/^Hora:\s*/i, '');
+          const confirmed = v.status === 'confirmed';
+          return `<div style="display:flex; align-items:center; gap:8px; margin-top:8px; background:${confirmed ? 'linear-gradient(135deg,rgba(196,151,58,0.18),rgba(139,25,24,0.08))' : 'rgba(196,151,58,0.1)'}; border:1.5px solid rgba(196,151,58,0.45); border-radius:12px; padding:10px 13px;">
+            <span style="font-size:22px;">⭐</span>
+            <div style="flex:1;">
+              <div style="font-size:12px; font-weight:800; color:var(--wine); text-transform:uppercase; letter-spacing:.5px;">RESERVA VIP ${confirmed ? '✅ CONFIRMADA' : '⏳ PENDIENTE'}</div>
+              <div style="font-size:13px; font-weight:600; color:var(--text); margin-top:2px;">${v.title || dateStr} · ${v.group_size} pax${hora ? ' · ' + hora : ''}${v.alias ? ' · Mesa: ' + v.alias : ''}</div>
+            </div>
+          </div>`;
+        }).join('')
+      : '';
+
     // Premios NFT ganados pendientes de entrega presencial: banner dorado ARRIBA
     // del todo con el botón de entrega (mismo flujo que la página de camareros).
     const nftPrizesHtml = (d.pendingNftPrizes || []).map((p, idx) => {
@@ -9108,6 +9123,7 @@
             ${activeBadge}
           </div>
         </div>
+        ${vipBadgeHtml}
 
         <!-- Stats rápidas -->
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;">
