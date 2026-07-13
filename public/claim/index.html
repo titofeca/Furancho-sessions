@@ -3425,6 +3425,8 @@
 
     function showProfileScreen(visitCount, claimedLevels, pendingApproval) {
       try {
+      visitCount = visitCount || 0;
+      claimedLevels = Array.isArray(claimedLevels) ? claimedLevels : [];
       const lvl = getDisplayLevel(visitCount, claimedLevels);
       currentLevel = lvl; // Actualizar variable global para los canales push
       const levelName = LEVEL_NAMES[lvl] || 'CAUTIVO';
