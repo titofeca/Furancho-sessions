@@ -1218,9 +1218,13 @@
               <input type="radio" name="ach-rule-type" value="campaign_visits" onchange="toggleAchRuleType()" />
               <span><strong>Campaña (Reto de los 5)</strong> · requiere acumular N visitas de campaña</span>
             </label>
-            <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer;">
+            <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; margin-bottom:6px; cursor:pointer;">
               <input type="radio" name="ach-rule-type" value="vip_bookings" onchange="toggleAchRuleType()" />
               <span><strong>Reservas VIP</strong> · requiere acumular N reservas VIP confirmadas</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer;">
+              <input type="radio" name="ach-rule-type" value="referrals" onchange="toggleAchRuleType()" />
+              <span><strong>Recomendaciones (Plan Amigo)</strong> · requiere que N amigos recomendados asistan</span>
             </label>
           </div>
 
@@ -5383,6 +5387,15 @@
         input.min = '1';
       }
       if (hint) hint.textContent = 'Requiere acumular el número especificado de reservas VIP confirmadas.';
+    } else if (rt === 'referrals') {
+      if (wrap) wrap.style.display = '';
+      if (label) label.textContent = '🔢 Amigos recomendados';
+      if (input) {
+        input.type = 'number';
+        input.placeholder = 'Ej: 10';
+        input.min = '1';
+      }
+      if (hint) hint.textContent = 'Requiere que la cantidad especificada de amigos recomendados asista al furancho (Plan Amigo).';
     } else {
       if (wrap) wrap.style.display = '';
       if (label) label.textContent = '📅 Fecha de desbloqueo';
@@ -5479,7 +5492,9 @@
             ? `<span style="display:inline-block; font-size:9px; font-weight:800; letter-spacing:0.3px; color:var(--wine); background:rgba(139,25,24,0.1); border:1px solid rgba(139,25,24,0.25); border-radius:20px; padding:1px 7px;">👑 CAMPAÑA (${a.ruleDate || 5} vis.)</span>`
             : (a.ruleType === 'vip_bookings'
               ? `<span style="display:inline-block; font-size:9px; font-weight:800; letter-spacing:0.3px; color:#0f766e; background:rgba(15,118,110,0.1); border:1px solid rgba(15,118,110,0.25); border-radius:20px; padding:1px 7px;">⭐ RESERVAS VIP (${a.ruleDate || 2} res.)</span>`
-              : `<span style="display:inline-block; font-size:9px; font-weight:800; letter-spacing:0.3px; color:var(--text-muted); background:rgba(0,0,0,0.04); border:1px solid rgba(0,0,0,0.08); border-radius:20px; padding:1px 7px;">📅 ${a.ruleDate || 'asistencia'}</span>`));
+              : (a.ruleType === 'referrals'
+                ? `<span style="display:inline-block; font-size:9px; font-weight:800; letter-spacing:0.3px; color:#16a34a; background:rgba(22,163,74,0.1); border:1px solid rgba(22,163,74,0.25); border-radius:20px; padding:1px 7px;">👥 PLAN AMIGO (${a.ruleDate || 10} amigos)</span>`
+                : `<span style="display:inline-block; font-size:9px; font-weight:800; letter-spacing:0.3px; color:var(--text-muted); background:rgba(0,0,0,0.04); border:1px solid rgba(0,0,0,0.08); border-radius:20px; padding:1px 7px;">📅 ${a.ruleDate || 'asistencia'}</span>`)));
         return `
         <div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; margin-bottom:6px; padding:8px;">
           <div style="display:flex; align-items:center; gap:10px;">

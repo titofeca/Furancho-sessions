@@ -68,6 +68,15 @@ const ACHIEVEMENTS = [
     edition: 'Limitada (Max 50)',
     rule: { type: 'raffle_only' }, // No autodesbloqueable, solo admin/staff lo otorga
     maxSupply: 50
+  },
+  {
+    id: 'embajador_furancho',
+    name: 'Embaixador do Furancho',
+    description: 'Embajador Oficial do Furancho. NFT exclusivo por invitar a 15 amigos NUEVOS que vengan al furancho por primera vez.',
+    image: 'nft_embaixador_furancho.jpg',
+    tokenId: 106,
+    edition: 'Plan Amigo',
+    rule: { type: 'referrals', requiredCount: 15 }
   }
   // Imágenes ya subidas, pendientes de su regla (día de asistencia):
   // { id:'maria_pita', name:'…', image:'furanchomariapita.jpg', tokenId:101, rule:{ type:'visit_on_date', date:'YYYY-MM-DD' } }
@@ -95,6 +104,8 @@ function _customList() {
           rule = { type: 'campaign_visits', campaignId: 'reto_5_verano_2026', requiredVisits: parseInt(r.rule_date || '5') };
         } else if (r.rule_type === 'vip_bookings') {
           rule = { type: 'vip_bookings', requiredCount: parseInt(r.rule_date || '2') };
+        } else if (r.rule_type === 'referrals') {
+          rule = { type: 'referrals', requiredCount: parseInt(r.rule_date || '15') };
         } else if (r.rule_type === 'raffle_only') {
           rule = { type: 'raffle_only' };
         }
@@ -208,6 +219,8 @@ function updateCustom(id, { name, description, image, edition, ruleType, ruleDat
       rule_date = String(codeAch.rule.requiredVisits || 5);
     } else if (rule_type === 'vip_bookings') {
       rule_date = String(codeAch.rule.requiredCount || 2);
+    } else if (rule_type === 'referrals') {
+      rule_date = String(codeAch.rule.requiredCount || 10);
     }
     const conflict = db.prepare(`SELECT id FROM custom_achievements WHERE token_id = ? AND id != ?`).get(codeAch.tokenId, codeAch.id);
     if (conflict) {
@@ -290,6 +303,28 @@ function walletMeetsRule(wallet, rule) {
       WHERE LOWER(wallet_address) = LOWER(?) AND status = 'confirmed'
     `).get(wallet);
     return (row ? row.c : 0) >= (rule.requiredCount || 2);
+  }
+  if (rule.type === 'referrals') {
+    // Desbloqueo por acumular N amigos NUEVOS que visitaron después de ser referidos.
+    const row = db.prepare(`
+      SELECT COUNT(DISTINCT r.referred_wallet) as count
+      FROM referrals r
+      WHERE LOWER(r.referrer_wallet) = LOWER(?)
+        AND (
+          EXISTS (
+            SELECT 1 FROM visits v
+            WHERE LOWER(v.wallet_address) = LOWER(r.referred_wallet)
+              AND v.visited_at >= r.created_at
+          )
+          OR EXISTS (
+            SELECT 1 FROM sessions s
+            WHERE LOWER(s.wallet_address) = LOWER(r.referred_wallet)
+              AND s.counted_as_visit = 1
+              AND s.entry_time >= r.created_at
+          )
+        )
+    `).get(wallet);
+    return (row ? row.count : 0) >= (rule.requiredCount || 15);
   }
   return false;
 }

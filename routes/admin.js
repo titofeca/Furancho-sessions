@@ -1730,19 +1730,28 @@ router.post('/claim-daily-tapa', requireAuth, (req, res) => {
     }
 
     // 2.2. Si es de tipo referral, validar que tenga créditos disponibles
+    //      Solo cuentan amigos NUEVOS que visitaron después de ser referidos (anti-trampa).
     if (nftType === 'referral') {
       const activeReferredFriendsRow = db.prepare(`
         SELECT COUNT(DISTINCT r.referred_wallet) as count
         FROM referrals r
-        JOIN (
-          SELECT LOWER(wallet_address) as wallet_address FROM visits
-          UNION
-          SELECT LOWER(wallet_address) as wallet_address FROM sessions WHERE counted_as_visit = 1
-        ) v ON LOWER(r.referred_wallet) = LOWER(v.wallet_address)
         WHERE LOWER(r.referrer_wallet) = LOWER(?)
+          AND (
+            EXISTS (
+              SELECT 1 FROM visits v
+              WHERE LOWER(v.wallet_address) = LOWER(r.referred_wallet)
+                AND v.visited_at >= r.created_at
+            )
+            OR EXISTS (
+              SELECT 1 FROM sessions s
+              WHERE LOWER(s.wallet_address) = LOWER(r.referred_wallet)
+                AND s.counted_as_visit = 1
+                AND s.entry_time >= r.created_at
+            )
+          )
       `).get(walletAddress);
       const activeReferredFriends = activeReferredFriendsRow ? activeReferredFriendsRow.count : 0;
-      const referralCredits = Math.floor(activeReferredFriends / 10);
+      const referralCredits = Math.floor(activeReferredFriends / 15);
 
       const referralClaimsRow = db.prepare(`
         SELECT COUNT(*) as count FROM daily_tapa_claims 

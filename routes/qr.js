@@ -281,4 +281,6 @@ router.get('/all/generate', async (req, res) => {
     }
   }
   res.json({ success: true, qrCodes: results });
+});
+
 module.exports = router;

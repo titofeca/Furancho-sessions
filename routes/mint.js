@@ -74,13 +74,44 @@ router.post('/entry', mintLimiter, async (req, res) => {
   try {
     const { getVisitCount, openSession, getActiveEventWindow, db } = require('../db/database');
 
-    // Registrar recomendación si existe
-    if (referrer && /^0x[a-fA-F0-9]{40}$/i.test(referrer) && referrer.toLowerCase() !== walletAddress.toLowerCase()) {
+    // Registrar recomendación si existe — solo si el amigo es un cliente NUEVO
+    // (sin visitas ni sesiones previas antes de hoy) y el referrer no se auto-refiere.
+    if (referrer && /^0x[a-fA-F0-9]{40}$/i.test(referrer)
+        && referrer.toLowerCase() !== walletAddress.toLowerCase()) {
       try {
-        db.prepare(`
-          INSERT OR IGNORE INTO referrals (referrer_wallet, referred_wallet)
-          VALUES (?, ?)
-        `).run(referrer.toLowerCase(), walletAddress.toLowerCase());
+        const refWallet  = referrer.toLowerCase();
+        const newWallet  = walletAddress.toLowerCase();
+
+        // 1. Comprobar que el amigo es realmente nuevo (ninguna visita/sesión previa)
+        const hadPriorVisit = db.prepare(`
+          SELECT 1 FROM (
+            SELECT wallet_address FROM visits WHERE LOWER(wallet_address) = ?
+            UNION
+            SELECT wallet_address FROM sessions WHERE LOWER(wallet_address) = ? AND counted_as_visit = 1
+          ) LIMIT 1
+        `).get(newWallet, newWallet);
+
+        // 2. Comprobar que el referrer tampoco está siendo referido por el amigo
+        //    (evita intercambios circulares entre dos wallets)
+        const isCircular = db.prepare(`
+          SELECT 1 FROM referrals
+          WHERE LOWER(referrer_wallet) = ? AND LOWER(referred_wallet) = ?
+          LIMIT 1
+        `).get(newWallet, refWallet);
+
+        // 3. Límite anti-abuso: un referrer no puede tener más de 100 referidos registrados
+        //    (frena bots que crean miles de wallets de un golpe)
+        const referrerCount = db.prepare(`
+          SELECT COUNT(*) as c FROM referrals WHERE LOWER(referrer_wallet) = ?
+        `).get(refWallet);
+        const tooMany = referrerCount && referrerCount.c >= 100;
+
+        if (!hadPriorVisit && !isCircular && !tooMany) {
+          db.prepare(`
+            INSERT OR IGNORE INTO referrals (referrer_wallet, referred_wallet)
+            VALUES (?, ?)
+          `).run(refWallet, newWallet);
+        }
       } catch (err) {
         console.error('Error al registrar referido:', err.message);
       }
@@ -469,25 +500,36 @@ router.get('/history', (req, res) => {
       `).get(wallet);
       const referredCount = referredCountRow ? referredCountRow.count : 0;
 
-      // 2. Contar cuántos de esos amigos han visitado al menos una vez (visitas reales o sesiones válidas)
+      // 2. Contar cuántos de esos amigos vinieron al furancho POR PRIMERA VEZ después de
+      //    ser referidos (garantía de cliente nuevo). Se requiere que la visita sea
+      //    posterior a la fecha del referral (r.created_at).
       const activeReferredFriendsRow = db.prepare(`
         SELECT COUNT(DISTINCT r.referred_wallet) as count
         FROM referrals r
-        JOIN (
-          SELECT LOWER(wallet_address) as wallet_address FROM visits
-          UNION
-          SELECT LOWER(wallet_address) as wallet_address FROM sessions WHERE counted_as_visit = 1
-        ) v ON LOWER(r.referred_wallet) = LOWER(v.wallet_address)
         WHERE LOWER(r.referrer_wallet) = LOWER(?)
+          AND (
+            EXISTS (
+              SELECT 1 FROM visits v
+              WHERE LOWER(v.wallet_address) = LOWER(r.referred_wallet)
+                AND v.visited_at >= r.created_at
+            )
+            OR EXISTS (
+              SELECT 1 FROM sessions s
+              WHERE LOWER(s.wallet_address) = LOWER(r.referred_wallet)
+                AND s.counted_as_visit = 1
+                AND s.entry_time >= r.created_at
+            )
+          )
       `).get(wallet);
       const activeReferredFriends = activeReferredFriendsRow ? activeReferredFriendsRow.count : 0;
 
-      // 3. Créditos de bonos totales ganados
-      const referralCredits = Math.floor(activeReferredFriends / 10);
+      // 3. Créditos de bonos totales ganados (1 bono cada 15 amigos nuevos activos)
+      const referralCredits = Math.floor(activeReferredFriends / 15);
 
-      // 4. Bonos ya canjeados históricamente
+      // 4. Bonos ya canjeados históricamente (registrados en daily_tapa_claims como tipo 'referral')
       const referralClaimsRow = db.prepare(`
-        SELECT COUNT(*) as count FROM referral_claims WHERE LOWER(referrer_wallet) = LOWER(?)
+        SELECT COUNT(*) as count FROM daily_tapa_claims
+        WHERE LOWER(wallet_address) = LOWER(?) AND nft_type = 'referral'
       `).get(wallet);
       const referralClaims = referralClaimsRow ? referralClaimsRow.count : 0;
 
@@ -496,8 +538,8 @@ router.get('/history', (req, res) => {
       // 5. ¿Ha canjeado hoy?
       const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
       const claimedToday = !!db.prepare(`
-        SELECT 1 FROM referral_claims 
-        WHERE LOWER(referrer_wallet) = LOWER(?) AND claim_date = ? 
+        SELECT 1 FROM daily_tapa_claims
+        WHERE LOWER(wallet_address) = LOWER(?) AND nft_type = 'referral' AND claim_date = ?
         LIMIT 1
       `).get(wallet, today);
 
@@ -675,19 +717,28 @@ router.get('/daily-tapa-status', (req, res) => {
       }
     });
 
-    // 2.2. ¿Tiene créditos de Plan Amigo?
+    // 2.2. ¿Tiene créditos de Plan Amigo? Solo cuentan amigos NUEVOS que vinieron
+    //      después de ser referidos (anti-trampa).
     const activeReferredFriendsRow = db.prepare(`
       SELECT COUNT(DISTINCT r.referred_wallet) as count
       FROM referrals r
-      JOIN (
-        SELECT LOWER(wallet_address) as wallet_address FROM visits
-        UNION
-        SELECT LOWER(wallet_address) as wallet_address FROM sessions WHERE counted_as_visit = 1
-      ) v ON LOWER(r.referred_wallet) = LOWER(v.wallet_address)
       WHERE LOWER(r.referrer_wallet) = LOWER(?)
+        AND (
+          EXISTS (
+            SELECT 1 FROM visits v
+            WHERE LOWER(v.wallet_address) = LOWER(r.referred_wallet)
+              AND v.visited_at >= r.created_at
+          )
+          OR EXISTS (
+            SELECT 1 FROM sessions s
+            WHERE LOWER(s.wallet_address) = LOWER(r.referred_wallet)
+              AND s.counted_as_visit = 1
+              AND s.entry_time >= r.created_at
+          )
+        )
     `).get(wallet);
     const activeReferredFriends = activeReferredFriendsRow ? activeReferredFriendsRow.count : 0;
-    const referralCredits = Math.floor(activeReferredFriends / 10);
+    const referralCredits = Math.floor(activeReferredFriends / 15);
 
     const referralClaimsRow = db.prepare(`
       SELECT COUNT(*) as count FROM daily_tapa_claims 

@@ -40,8 +40,8 @@ router.get('/status', (req, res) => {
         image: a.image,   // ya viene normalizada desde el catálogo
         tokenId: a.tokenId,
         edition: a.edition || null,
-        ruleType: a.rule ? a.rule.type : null,   // visit_on_date | campaign_visits | raffle_only
-        ruleDate: a.rule ? a.rule.date : null,   // solo visit_on_date
+        ruleType: a.rule ? a.rule.type : null,   // visit_on_date | campaign_visits | raffle_only | referrals | vip_bookings
+        ruleDate: a.rule ? (a.rule.type === 'referrals' ? String(a.rule.requiredCount || 10) : a.rule.date) : null,
         unlocked: achievements.walletUnlocked(wallet, a),
         claimStatus: m ? m.status : null,   // null = sin reclamar; 'pending'|'success'|'failed'
         txHash: m ? m.tx_hash : null,
@@ -109,7 +109,7 @@ router.get('/admin/list', requireAuth, (req, res) => {
         id: a.id, name: a.name, description: a.description, image: a.image,
         tokenId: a.tokenId, edition: a.edition || null,
         ruleType: a.rule ? a.rule.type : null,
-        ruleDate: a.rule ? (a.rule.type === 'visit_on_date' ? a.rule.date : (a.rule.type === 'campaign_visits' ? String(a.rule.requiredVisits) : (a.rule.type === 'vip_bookings' ? String(a.rule.requiredCount) : null))) : null,
+        ruleDate: a.rule ? (a.rule.type === 'visit_on_date' ? a.rule.date : (a.rule.type === 'campaign_visits' ? String(a.rule.requiredVisits) : (a.rule.type === 'vip_bookings' ? String(a.rule.requiredCount) : (a.rule.type === 'referrals' ? String(a.rule.requiredCount) : null)))) : null,
         custom: !!a.custom,
         // hiddenLocked=true → los clientes NO lo ven hasta conseguirlo (por defecto se ve).
         hiddenLocked: hidden.has(a.id)

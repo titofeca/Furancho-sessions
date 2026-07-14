@@ -6425,8 +6425,9 @@
     const referralLink = `${window.location.origin}/entry?ref=${userWalletAddress}`;
     const friendsCount = ref.referredCount || 0;
     const activeCount = ref.activeReferredFriends || 0;
-    const progress = activeCount % 10;
-    const progressPercent = (progress / 10) * 100;
+    _referralActiveCount = activeCount; // guardamos para usarlo en el detalle del logro
+    const progress = activeCount % 15;
+    const progressPercent = (progress / 15) * 100;
     const claimsRemaining = ref.referralClaimsRemaining || 0;
     const claimedToday = ref.claimedToday;
 
@@ -6469,7 +6470,7 @@
         </div>
         
         <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; margin:0 0 12px;">
-          Trae aos teus amigos ao furancho! Por cada <strong>10 amigos</strong> que veñan e fichen por primeira vez, conseguirás un bono de <strong>tapa e cunca de balde</strong> (máx. 1 ao día).
+          Trae aos teus amigos ao furancho! Por cada <strong>15 amigos novos</strong> que veñan por primeira vez e fichen, conseguirás un bono de <strong>tapa e cunca de balde</strong> (máx. 1 ao día). Os amigos deben ser clientes novos que nunca viñeron antes.
         </p>
 
         <!-- Input para copiar el enlace -->
@@ -6494,7 +6495,7 @@
         <div>
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
             <span style="font-size:11px; font-weight:700; color:var(--text-muted);">Progreso para o vindeiro bono</span>
-            <span style="font-size:11px; font-weight:800; color:var(--gold);">${progress}/10 amigos</span>
+            <span style="font-size:11px; font-weight:800; color:var(--gold);">${progress}/15 amigos</span>
           </div>
           <div style="width:100%; height:8px; background:rgba(0,0,0,0.07); border-radius:10px; overflow:hidden;">
             <div style="width:${progressPercent}%; height:100%; background:linear-gradient(90deg, var(--wine), var(--gold)); border-radius:10px; transition:width 0.6s ease;"></div>
@@ -8214,6 +8215,7 @@
   // ediciones que puede aspirar a conseguir; al tocarlos se abre el detalle (showNftDetail).
   // El servidor verifica la regla; aquí solo pintamos estado.
   let _nftAchById = {};
+  let _referralActiveCount = 0; // amigos activos del Plan Amigo (actualizado en renderReferralCard)
   async function renderNftAchievements(prefetched) {
     const section = document.getElementById('museo-nft-section');
     const grid = document.getElementById('museo-nft-grid');
@@ -8303,6 +8305,15 @@
       hint = 'Se desbloquea completando o Reto dos 5 (5 visitas de verán).';
     } else if (a.ruleType === 'raffle_only') {
       hint = 'Premio especial: entrégache o Furancho en persoa. ¡Atento aos sorteos, ho!';
+    } else if (a.ruleType === 'referrals') {
+      const needed = parseInt(a.ruleDate || '10');
+      const current = _referralActiveCount;
+      const pct = Math.min(100, Math.round((current / needed) * 100));
+      hint = `Plan Amigo · ${current} de ${needed} amigos teñen que vir ao Furancho.
+        <div style="margin-top:8px; background:rgba(255,255,255,0.08); border-radius:100px; height:8px; overflow:hidden;">
+          <div style="height:100%; width:${pct}%; background:linear-gradient(90deg,#16a34a,#4ade80); border-radius:100px; transition:width 0.6s ease;"></div>
+        </div>
+        <span style="font-size:10px; opacity:0.6; display:block; margin-top:4px;">${pct}% completado</span>`;
     } else {
       hint = 'Segue vindo ao Furancho para desbloquealo.';
     }
