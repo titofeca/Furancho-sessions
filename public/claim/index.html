@@ -1955,18 +1955,6 @@
           onmousedown="this.style.transform='scale(0.95)';">
           🎭 Tarjeta Dorada VIP
         </button>
-        <button onclick="startTransferScan()" id="btn-transferir" style="
-          flex: 1; min-width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-          padding: 12px 16px; border-radius: 16px; border: 1.5px solid rgba(42,21,9,0.2);
-          background: rgba(42,21,9,0.05); color: var(--text);
-          font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer;
-          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-          outline: none;"
-          onmouseover="this.style.background='rgba(42,21,9,0.1)'; this.style.transform='translateY(-1px)';"
-          onmouseout="this.style.background='rgba(42,21,9,0.05)'; this.style.transform='translateY(0)';"
-          onmousedown="this.style.transform='scale(0.97)';">
-          🤝 Traspasar a un amigo
-        </button>
       </div>
 
       <!-- Tarjeta de Tapa y Cunca do Día -->
@@ -8683,6 +8671,20 @@
           🏆 <strong style="color:var(--wine);">¡El museo del Furancheiro!</strong> Aquí se graban a fuego todas tus visitas, los premios que trincas y tus insignias ganadas. Tus datos de aforo y tiempos están a salvo, neno — ¡aquí solo lucen tus medallas!
         </p>
       </div>
+
+      <!-- Traspaso de NFTs: acción propia del museo (aquí viven los NFT del cliente) -->
+      <button onclick="startTransferScan()" id="btn-transferir" style="
+        width:100%; display:inline-flex; align-items:center; justify-content:center; gap:8px;
+        padding:13px 16px; border-radius:16px; border:1.5px solid rgba(42,21,9,0.18);
+        background:rgba(42,21,9,0.04); color:var(--text); margin-bottom:20px;
+        font-family:'Outfit',sans-serif; font-size:13px; font-weight:700; cursor:pointer;
+        transition:all 0.2s cubic-bezier(0.4,0,0.2,1); outline:none;"
+        onmouseover="this.style.background='rgba(42,21,9,0.09)';"
+        onmouseout="this.style.background='rgba(42,21,9,0.04)';"
+        onmousedown="this.style.transform='scale(0.98)';"
+        onmouseup="this.style.transform='scale(1)';">
+        🤝 Traspasar un NFT a un amigo
+      </button>
 
       <!-- Contenido del estado y listado de premios -->
       <div style="text-align:left; margin-bottom:24px;">
