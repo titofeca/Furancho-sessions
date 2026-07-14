@@ -1960,6 +1960,9 @@
       <!-- Tarjeta de Tapa y Cunca do Día -->
       <div id="profile-tapa-card" style="display:none; margin-bottom: 18px;"></div>
 
+      <!-- Tarjeta Plan Amigo -->
+      <div id="profile-referral-card" style="display:none; margin-bottom: 18px;"></div>
+
       <!-- Mensaje del Furancho — aparece si el admin envió uno -->
       <!-- Banner mensaje nuevo (solo no leídos) -->
       <div id="profile-admin-msg" style="display:none; margin-bottom: 18px;">
@@ -2854,6 +2857,13 @@
       document.title = `Furancho Sessions — ${nft.name}`;
     }
 
+    // Capturar prescriptor si viene en la URL
+    const urlParamsForRef = new URLSearchParams(window.location.search);
+    const refParam = urlParamsForRef.get('ref');
+    if (refParam && /^0x[a-fA-F0-9]{40}$/i.test(refParam)) {
+      localStorage.setItem('furancho_referrer', refParam.toLowerCase());
+    }
+
     // Restaurar cuenta desde QR de recuperación (?restore=0x...). La wallet ya guardada
     // en este dispositivo es SIEMPRE la autoridad: un ?restore= de la URL solo se adopta
     // si aquí no había ninguna todavía. Así un enlace/manifest con una dirección antigua
@@ -2889,6 +2899,7 @@
     let userWalletPrivateKey = localStorage.getItem('furancho_wallet_private_key');
     let userClaimedLevels = [];
     let userVisits = [];
+    let userReferralData = null; // Plan Amigo
     let _globalEvents = [];
     let _globalMyRsvps = [];
     let _globalMyVipReservations = [];
@@ -3109,6 +3120,7 @@
           userVisitCount = refreshed.visitCount || userVisitCount;
           userClaimedLevels = refreshed.levels || userClaimedLevels;
           userVisits = refreshed.visits || userVisits;
+          userReferralData = refreshed.referral || userReferralData; // Plan Amigo
           showProfileScreen(userVisitCount, userClaimedLevels);
         }
       } catch(e) {
@@ -3132,6 +3144,7 @@
         userVisitCount = data.visitCount || 0;
         userClaimedLevels = data.levels || [];
         userVisits = data.visits || [];
+        userReferralData = data.referral || null; // Plan Amigo
         // Mostrar número de serie del nivel actual
         if (data.serialsByLevel) {
           const maxLevel = userClaimedLevels.length ? Math.max(...userClaimedLevels) : 0;
@@ -3158,6 +3171,7 @@
             userVisitCount = refreshed.visitCount || userVisitCount;
             userClaimedLevels = refreshed.levels || userClaimedLevels;
             userVisits = refreshed.visits || userVisits;
+            userReferralData = refreshed.referral || userReferralData; // Plan Amigo
           }
           showProfileScreen(userVisitCount, userClaimedLevels, data.pendingApproval || null);
           return;
@@ -3251,6 +3265,7 @@
             userVisitCount = refreshed.visitCount || 0;
             userClaimedLevels = refreshed.levels || [];
             userVisits = refreshed.visits || [];
+            userReferralData = refreshed.referral || userReferralData; // Plan Amigo
             showProfileScreen(userVisitCount, userClaimedLevels);
             showLevelUpReveal(targetLevel, targetLevelName);
           } else if (attempts >= 20) {
@@ -3593,6 +3608,7 @@
       maybeShowRecoveryNudge();
       startNextRaffleCountdown();
       checkDailyTapaStatus();
+      renderReferralCard(userReferralData);
 
       // Mostrar toast si viene de restauración por QR
       if (_isQrRestore) {
@@ -3670,6 +3686,7 @@
             userVisitCount = refreshed.visitCount || 0; 
             userClaimedLevels = refreshed.levels || []; 
             userVisits = refreshed.visits || [];
+            userReferralData = refreshed.referral || userReferralData; // Plan Amigo
           }
           showProfileScreen(userVisitCount, userClaimedLevels);
           if (data.action === 'mint_queued') {
@@ -4423,6 +4440,7 @@
         userVisits = mintHistory.visits || [];
         userVisitCount = mintHistory.visitCount || userVisitCount;
         userClaimedLevels = mintHistory.levels || userClaimedLevels;
+        userReferralData = mintHistory.referral || userReferralData; // Plan Amigo
       }
 
       // El museo (logros/insignias) se pinta SIEMPRE, por ASISTENCIA — antes quedaba
@@ -5049,6 +5067,7 @@
         userVisitCount = refreshed.visitCount || 0;
         userClaimedLevels = refreshed.levels || [];
         userVisits = refreshed.visits || [];
+        userReferralData = refreshed.referral || userReferralData; // Plan Amigo
 
         showProfileScreen(userVisitCount, userClaimedLevels);
 
@@ -6323,8 +6342,8 @@
             <div style="position:absolute; top:0; left:0; width:100%; height:4px; background: linear-gradient(90deg, var(--wine), var(--gold));"></div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
               <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-size:20px;">🔑</span>
-                <span style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; color:var(--gold);">${tTitle}</span>
+                <span style="font-size:20px;">${data.activeNft.type === 'referral' ? '🎁' : '🔑'}</span>
+                <span style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; color:var(--gold);">${data.activeNft.type === 'referral' ? 'Bono Plan Amigo' : tTitle}</span>
               </div>
               <span style="font-size:10px; font-weight:800; text-transform:uppercase; padding:3px 10px; border-radius:100px; background:rgba(139,25,24,0.1); color:var(--wine); border:1px solid rgba(139,25,24,0.2);">Disponible</span>
             </div>
@@ -6332,7 +6351,7 @@
               Hoy te toca <strong>${tBenefit}</strong> gratis. Enseña tu vale en la barra del furancho.
             </p>
             <p style="font-size:11px; color:var(--gold); line-height:1.5; margin:0 0 14px; font-weight:600;">
-              🔑 Un privilexio do teu NFT «${data.activeNft.name}». Mentres o teñas, cada día.
+              ${data.activeNft.type === 'referral' ? '🎁 ¡Activado por traer a 10 amigos al Furancho!' : `🔑 Un privilexio do teu NFT «${data.activeNft.name}». Mentres o teñas, cada día.`}
             </p>
             <button onclick="openTapaModal()" style="
               width:100%; display:inline-flex; align-items:center; justify-content:center; gap:8px;
@@ -6390,12 +6409,114 @@
       _tapaClockInterval = null;
     }
     
-    modal.style.opacity = '0';
-    modal.querySelector('div').style.transform = 'scale(0.95)';
-    setTimeout(() => {
-      modal.style.display = 'none';
-    }, 250);
   }
+
+  function renderReferralCard(ref) {
+    const container = document.getElementById('profile-referral-card');
+    if (!container) return;
+
+    if (!ref) {
+      container.style.display = 'none';
+      return;
+    }
+
+    container.style.display = 'block';
+
+    const referralLink = `${window.location.origin}/entry?ref=${userWalletAddress}`;
+    const friendsCount = ref.referredCount || 0;
+    const activeCount = ref.activeReferredFriends || 0;
+    const progress = activeCount % 10;
+    const progressPercent = (progress / 10) * 100;
+    const claimsRemaining = ref.referralClaimsRemaining || 0;
+    const claimedToday = ref.claimedToday;
+
+    let bonusSectionHtml = '';
+    if (claimsRemaining > 0) {
+      if (claimedToday) {
+        bonusSectionHtml = `
+          <div style="background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); border-radius:12px; padding:12px; margin-top:14px; text-align:center;">
+            <span style="font-size:16px;">⚠️</span>
+            <p style="font-size:11.5px; color:#b45309; font-weight:700; margin:4px 0 0;">Xa canxeaches un bono amigo hoxe. Podes canxear o seguinte mañá!</p>
+          </div>
+        `;
+      } else {
+        bonusSectionHtml = `
+          <div style="background:rgba(22,163,74,0.1); border:1.5px solid #16a34a; border-radius:14px; padding:14px; margin-top:14px; text-align:center; box-shadow:0 4px 12px rgba(22,163,74,0.15);">
+            <span style="font-size:22px;">🎁</span>
+            <p style="font-size:13px; font-weight:800; color:#15803d; margin:4px 0 8px;">¡Tes ${claimsRemaining} bono(s) de tapa e cunca de balde dispoñible(s)!</p>
+            <button onclick="document.getElementById('profile-tapa-card').scrollIntoView({behavior: 'smooth'}); showToast('👆 Utiliza a tarxeta do Privilexio de arriba para canxear o teu bono!');" style="
+              width:100%; display:inline-flex; align-items:center; justify-content:center; gap:8px;
+              padding:12px; border-radius:12px; border:none;
+              background:linear-gradient(135deg, #16a34a, #15803d); color:#fff;
+              font-family:'Outfit',sans-serif; font-size:13px; font-weight:700; cursor:pointer;
+              box-shadow: 0 4px 12px rgba(22,163,74,0.25); outline:none;">
+              🎟️ ¡Bono dispoñible! Canxear arriba
+            </button>
+          </div>
+        `;
+      }
+    }
+
+    container.innerHTML = `
+      <div class="glass-card" style="border: 1.5px solid rgba(196,151,58,0.3); background: linear-gradient(135deg, rgba(196,151,58,0.06) 0%, rgba(139,25,24,0.04) 100%); padding: 18px 20px; border-radius: 20px; text-align: left; position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(139,25,24,0.08);">
+        <div style="position:absolute; top:0; left:0; width:100%; height:4px; background: linear-gradient(90deg, var(--gold), var(--wine));"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:20px;">👥</span>
+            <span style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; color:var(--gold);">Plan Amigo Furancheiro</span>
+          </div>
+          <span style="font-size:10px; font-weight:800; text-transform:uppercase; padding:3px 10px; border-radius:100px; background:rgba(196,151,58,0.15); color:var(--gold);">Activo</span>
+        </div>
+        
+        <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; margin:0 0 12px;">
+          Trae aos teus amigos ao furancho! Por cada <strong>10 amigos</strong> que veñan e fichen por primeira vez, conseguirás un bono de <strong>tapa e cunca de balde</strong> (máx. 1 ao día).
+        </p>
+
+        <!-- Input para copiar el enlace -->
+        <div style="display:flex; gap:8px; margin-bottom:14px; background:rgba(0,0,0,0.04); border-radius:12px; padding:6px 8px; border:1px solid rgba(0,0,0,0.06);">
+          <input type="text" readonly value="${referralLink}" id="ref-link-input" style="flex:1; background:none; border:none; font-size:11px; color:var(--text-muted); font-family:monospace; outline:none; text-overflow:ellipsis;" />
+          <button onclick="copyReferralLink()" style="background:var(--wine); color:#fff; border:none; border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; outline:none;">Copiar 📋</button>
+        </div>
+
+        <!-- Estadísticas -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; text-align:center;">
+          <div style="background:rgba(0,0,0,0.03); border-radius:10px; padding:8px 6px;">
+            <div style="font-size:16px; font-weight:800; color:var(--text);">${friendsCount}</div>
+            <div style="font-size:9.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Amigos convidados</div>
+          </div>
+          <div style="background:rgba(0,0,0,0.03); border-radius:10px; padding:8px 6px;">
+            <div style="font-size:16px; font-weight:800; color:var(--wine);">${activeCount}</div>
+            <div style="font-size:9.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Amigos que viñeron</div>
+          </div>
+        </div>
+
+        <!-- Barra de progreso -->
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <span style="font-size:11px; font-weight:700; color:var(--text-muted);">Progreso para o vindeiro bono</span>
+            <span style="font-size:11px; font-weight:800; color:var(--gold);">${progress}/10 amigos</span>
+          </div>
+          <div style="width:100%; height:8px; background:rgba(0,0,0,0.07); border-radius:10px; overflow:hidden;">
+            <div style="width:${progressPercent}%; height:100%; background:linear-gradient(90deg, var(--wine), var(--gold)); border-radius:10px; transition:width 0.6s ease;"></div>
+          </div>
+        </div>
+
+        ${bonusSectionHtml}
+      </div>
+    `;
+  }
+
+  function copyReferralLink() {
+    const input = document.getElementById('ref-link-input');
+    if (input) {
+      input.select();
+      input.setSelectionRange(0, 99999);
+      navigator.clipboard.writeText(input.value);
+      showToast('📋 Ligazón copiada! Compártea con amigos.');
+    }
+  }
+
+
   
   function updateTapaClock() {
     const clockEl = document.getElementById('tapa-modal-clock');
@@ -7811,6 +7932,7 @@
         userVisitCount = refreshed.visitCount || userVisitCount;
         userClaimedLevels = refreshed.levels || userClaimedLevels;
         userVisits = refreshed.visits || userVisits;
+        userReferralData = refreshed.referral || userReferralData; // Plan Amigo
         showProfileScreen(userVisitCount, userClaimedLevels);
       }
     }, 500);

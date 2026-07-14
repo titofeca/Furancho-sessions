@@ -670,6 +670,23 @@ try {
   `);
 } catch (_) {}
 
+// Tablas de referidos / Plan Amigo
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS referrals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      referrer_wallet TEXT NOT NULL,
+      referred_wallet TEXT NOT NULL UNIQUE,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_wallet);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_referrals_referred ON referrals(referred_wallet);
+  `);
+} catch (e) {
+  console.error('Error al crear tabla de referidos:', e.message);
+}
+
+
 // =====================
 // HELPERS
 // =====================

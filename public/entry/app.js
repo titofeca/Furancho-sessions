@@ -52,6 +52,13 @@ function cancelAutoEntryAndShowRecovery() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // Capturar prescriptor si viene en la URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const refParam = urlParams.get('ref');
+  if (refParam && /^0x[a-fA-F0-9]{40}$/i.test(refParam)) {
+    localStorage.setItem('furancho_referrer', refParam.toLowerCase());
+  }
+
   let walletAddress = localStorage.getItem('furancho_wallet_address');
   const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
 
@@ -150,10 +157,11 @@ async function doEntry(walletAddress) {
 
   try {
     const evParam = new URLSearchParams(window.location.search).get('ev') || undefined;
+    const refParam = localStorage.getItem('furancho_referrer') || undefined;
     const res = await fetch('/api/mint/entry', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ walletAddress, ev: evParam })
+      body: JSON.stringify({ walletAddress, ev: evParam, referrer: refParam })
     });
     const data = await res.json();
 

@@ -66,13 +66,25 @@ function awardLevelByVisits({ walletAddress, email = null, visitCount, ipAddress
 
 // POST /api/mint/entry — abre sesión y cuenta la visita en el momento de entrada
 router.post('/entry', mintLimiter, async (req, res) => {
-  const { walletAddress, ev } = req.body;
+  const { walletAddress, ev, referrer } = req.body;
   if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
     return res.status(400).json({ error: 'Dirección de wallet no válida' });
   }
 
   try {
-    const { getVisitCount, openSession, getActiveEventWindow } = require('../db/database');
+    const { getVisitCount, openSession, getActiveEventWindow, db } = require('../db/database');
+
+    // Registrar recomendación si existe
+    if (referrer && /^0x[a-fA-F0-9]{40}$/i.test(referrer) && referrer.toLowerCase() !== walletAddress.toLowerCase()) {
+      try {
+        db.prepare(`
+          INSERT OR IGNORE INTO referrals (referrer_wallet, referred_wallet)
+          VALUES (?, ?)
+        `).run(referrer.toLowerCase(), walletAddress.toLowerCase());
+      } catch (err) {
+        console.error('Error al registrar referido:', err.message);
+      }
+    }
 
     // Anti-picaresca: el QR DEBE llevar la fecha del evento (ev=YYYY-MM-DD) y
     // coincidir con el evento activo. Sin fecha o fecha incorrecta → rechazado.
@@ -448,7 +460,61 @@ router.get('/history', (req, res) => {
       ORDER BY day DESC
     `).all(wallet, wallet);
 
-    res.json({ levels, visitCount, hasActiveSession: !!activeSession, pendingApproval: pendingApproval || null, serialsByLevel, visits });
+    // Estadísticas de referidos (Plan Amigo)
+    let referral = null;
+    try {
+      // 1. Contar cuántos amigos ha invitado
+      const referredCountRow = db.prepare(`
+        SELECT COUNT(*) as count FROM referrals WHERE LOWER(referrer_wallet) = LOWER(?)
+      `).get(wallet);
+      const referredCount = referredCountRow ? referredCountRow.count : 0;
+
+      // 2. Contar cuántos de esos amigos han visitado al menos una vez (visitas reales o sesiones válidas)
+      const activeReferredFriendsRow = db.prepare(`
+        SELECT COUNT(DISTINCT r.referred_wallet) as count
+        FROM referrals r
+        JOIN (
+          SELECT LOWER(wallet_address) as wallet_address FROM visits
+          UNION
+          SELECT LOWER(wallet_address) as wallet_address FROM sessions WHERE counted_as_visit = 1
+        ) v ON LOWER(r.referred_wallet) = LOWER(v.wallet_address)
+        WHERE LOWER(r.referrer_wallet) = LOWER(?)
+      `).get(wallet);
+      const activeReferredFriends = activeReferredFriendsRow ? activeReferredFriendsRow.count : 0;
+
+      // 3. Créditos de bonos totales ganados
+      const referralCredits = Math.floor(activeReferredFriends / 10);
+
+      // 4. Bonos ya canjeados históricamente
+      const referralClaimsRow = db.prepare(`
+        SELECT COUNT(*) as count FROM referral_claims WHERE LOWER(referrer_wallet) = LOWER(?)
+      `).get(wallet);
+      const referralClaims = referralClaimsRow ? referralClaimsRow.count : 0;
+
+      const referralClaimsRemaining = Math.max(0, referralCredits - referralClaims);
+
+      // 5. ¿Ha canjeado hoy?
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+      const claimedToday = !!db.prepare(`
+        SELECT 1 FROM referral_claims 
+        WHERE LOWER(referrer_wallet) = LOWER(?) AND claim_date = ? 
+        LIMIT 1
+      `).get(wallet, today);
+
+      referral = {
+        code: wallet.toLowerCase(),
+        referredCount,
+        activeReferredFriends,
+        referralCredits,
+        referralClaims,
+        referralClaimsRemaining,
+        claimedToday
+      };
+    } catch (e) {
+      console.error('Error calculando referidos en /history:', e.message);
+    }
+
+    res.json({ levels, visitCount, hasActiveSession: !!activeSession, pendingApproval: pendingApproval || null, serialsByLevel, visits, referral });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -609,11 +675,35 @@ router.get('/daily-tapa-status', (req, res) => {
       }
     });
 
-    if (eligibleNfts.length === 0) {
-      return res.json({ visible: false, eligible: false, claimed: false, ...meta, reason: `Necesitas el NFT «${nftName}» para disfrutar este privilexio.` });
+    // 2.2. ¿Tiene créditos de Plan Amigo?
+    const activeReferredFriendsRow = db.prepare(`
+      SELECT COUNT(DISTINCT r.referred_wallet) as count
+      FROM referrals r
+      JOIN (
+        SELECT LOWER(wallet_address) as wallet_address FROM visits
+        UNION
+        SELECT LOWER(wallet_address) as wallet_address FROM sessions WHERE counted_as_visit = 1
+      ) v ON LOWER(r.referred_wallet) = LOWER(v.wallet_address)
+      WHERE LOWER(r.referrer_wallet) = LOWER(?)
+    `).get(wallet);
+    const activeReferredFriends = activeReferredFriendsRow ? activeReferredFriendsRow.count : 0;
+    const referralCredits = Math.floor(activeReferredFriends / 10);
+
+    const referralClaimsRow = db.prepare(`
+      SELECT COUNT(*) as count FROM daily_tapa_claims 
+      WHERE LOWER(wallet_address) = LOWER(?) AND nft_type = 'referral'
+    `).get(wallet);
+    const referralClaims = referralClaimsRow ? referralClaimsRow.count : 0;
+    const referralClaimsRemaining = Math.max(0, referralCredits - referralClaims);
+
+    const hasReferralCredits = referralClaimsRemaining > 0;
+    const hasNft = eligibleNfts.length > 0;
+
+    if (!hasNft && !hasReferralCredits) {
+      return res.json({ visible: false, eligible: false, claimed: false, ...meta, reason: `Necesitas o bien el NFT «${nftName}» o bien invitar a 10 amigos activos para disfrutar este privilexio.` });
     }
 
-    // 3. Tiene el NFT y el beneficio está activo: a partir de aquí SÍ ve la tarjeta.
+    // 3. Tiene el NFT o créditos de referido: a partir de aquí SÍ ve la tarjeta.
     //    Verificar fichaje de hoy (obligatorio para canjear).
     const session = db.prepare(`
       SELECT id, entry_time FROM sessions
@@ -626,7 +716,7 @@ router.get('/daily-tapa-status', (req, res) => {
       return res.json({ visible: true, eligible: false, claimed: false, ...meta, reason: 'Ficha tu entrada hoy en el Furancho para activarlo.' });
     }
 
-    // 4. Comprobar si esta wallet ya ha canjeado hoy
+    // 4. Comprobar si esta wallet ya ha canjeado hoy (límite de 1 al día sea cual sea el método)
     const walletClaim = db.prepare(`
       SELECT * FROM daily_tapa_claims 
       WHERE LOWER(wallet_address) = LOWER(?) AND claim_date = ?
@@ -634,8 +724,12 @@ router.get('/daily-tapa-status', (req, res) => {
 
     if (walletClaim) {
       let nftUsedName = nftName;
-      const cat = catalog.find(c => c.id === walletClaim.nft_id);
-      if (cat) nftUsedName = cat.name;
+      if (walletClaim.nft_type === 'referral') {
+        nftUsedName = 'Bono Plan Amigo 🍇';
+      } else {
+        const cat = catalog.find(c => c.id === walletClaim.nft_id);
+        if (cat) nftUsedName = cat.name;
+      }
 
       return res.json({
         visible: true,
@@ -653,7 +747,7 @@ router.get('/daily-tapa-status', (req, res) => {
       });
     }
 
-    // 5. Verificar que el NFT en particular no haya sido usado hoy por nadie más (anti-bypass por traspaso)
+    // 5. Verificar NFT y/o créditos de referidos disponibles
     const availableNfts = [];
     for (const nft of eligibleNfts) {
       const nftClaim = db.prepare(`
@@ -666,19 +760,33 @@ router.get('/daily-tapa-status', (req, res) => {
       }
     }
 
-    if (availableNfts.length === 0) {
+    let activeNft = null;
+    let qrData = null;
+
+    if (availableNfts.length > 0) {
+      activeNft = availableNfts[0];
+      qrData = `tapa_claim:${wallet}:achievement:${activeNft.id}:${activeNft.serial}:${today}`;
+    } else if (hasReferralCredits) {
+      activeNft = {
+        type: 'referral',
+        id: 'referral',
+        name: 'Bono Plan Amigo 🍇',
+        tokenId: 0,
+        serial: 0
+      };
+      availableNfts.push(activeNft);
+      qrData = `tapa_claim:${wallet}:referral:referral:0:${today}`;
+    }
+
+    if (!activeNft) {
       return res.json({
         visible: true,
         eligible: false,
         claimed: false,
         ...meta,
-        reason: `Tu «${nftName}» ya se usó hoy para un canje en otra billetera.`
+        reason: hasNft ? `Tu «${nftName}» ya se usó hoy para un canje en otra billetera.` : 'No te quedan bonos de recomendados disponibles hoy.'
       });
     }
-
-    // Seleccionamos el primer NFT disponible
-    const activeNft = availableNfts[0];
-    const qrData = `tapa_claim:${wallet}:achievement:${activeNft.id}:${activeNft.serial}:${today}`;
 
     res.json({
       visible: true,

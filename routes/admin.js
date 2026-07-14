@@ -1729,6 +1729,32 @@ router.post('/claim-daily-tapa', requireAuth, (req, res) => {
       return res.status(400).json({ error: 'Este NFT ya ha sido usado para un canje hoy.' });
     }
 
+    // 2.2. Si es de tipo referral, validar que tenga créditos disponibles
+    if (nftType === 'referral') {
+      const activeReferredFriendsRow = db.prepare(`
+        SELECT COUNT(DISTINCT r.referred_wallet) as count
+        FROM referrals r
+        JOIN (
+          SELECT LOWER(wallet_address) as wallet_address FROM visits
+          UNION
+          SELECT LOWER(wallet_address) as wallet_address FROM sessions WHERE counted_as_visit = 1
+        ) v ON LOWER(r.referred_wallet) = LOWER(v.wallet_address)
+        WHERE LOWER(r.referrer_wallet) = LOWER(?)
+      `).get(walletAddress);
+      const activeReferredFriends = activeReferredFriendsRow ? activeReferredFriendsRow.count : 0;
+      const referralCredits = Math.floor(activeReferredFriends / 10);
+
+      const referralClaimsRow = db.prepare(`
+        SELECT COUNT(*) as count FROM daily_tapa_claims 
+        WHERE LOWER(wallet_address) = LOWER(?) AND nft_type = 'referral'
+      `).get(walletAddress);
+      const referralClaims = referralClaimsRow ? referralClaimsRow.count : 0;
+
+      if (referralClaims >= referralCredits) {
+        return res.status(400).json({ error: 'No tienes bonos de recomendados disponibles para canjear.' });
+      }
+    }
+
     // 3. Registrar el canje
     db.prepare(`
       INSERT INTO daily_tapa_claims (wallet_address, nft_type, nft_id, serial, claim_date, staff_user)
@@ -1980,6 +2006,70 @@ router.delete('/countdowns/:id', requireAuth, (req, res) => {
     del(cdId);
     res.json({ success: true });
   } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+
+
+// GET /api/admin/referral/stats (ADMIN ONLY)
+router.get('/referral/stats', requireAuth, (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const stats = db.prepare(`
+      WITH friend_visits AS (
+        SELECT DISTINCT wallet_address FROM visits
+        UNION
+        SELECT DISTINCT wallet_address FROM sessions WHERE counted_as_visit = 1
+      ),
+      referrer_stats AS (
+        SELECT 
+          r.referrer_wallet,
+          COUNT(r.referred_wallet) as total_referred,
+          SUM(CASE WHEN fv.wallet_address IS NOT NULL THEN 1 ELSE 0 END) as active_referred
+        FROM referrals r
+        LEFT JOIN friend_visits fv ON LOWER(r.referred_wallet) = LOWER(fv.wallet_address)
+        GROUP BY r.referrer_wallet
+      )
+      SELECT 
+        rs.referrer_wallet,
+        rs.total_referred,
+        rs.active_referred,
+        (SELECT COUNT(*) FROM daily_tapa_claims dtc WHERE LOWER(dtc.wallet_address) = LOWER(rs.referrer_wallet) AND dtc.nft_type = 'referral') as total_claimed
+      FROM referrer_stats rs
+      ORDER BY rs.active_referred DESC, rs.total_referred DESC
+    `).all();
+
+    const details = stats.map(s => {
+      const friends = db.prepare(`
+        WITH friend_visits_count AS (
+          SELECT LOWER(wallet_address) as wallet_address, COUNT(*) as visit_count
+          FROM (
+            SELECT LOWER(wallet_address) as wallet_address FROM visits
+            UNION ALL
+            SELECT LOWER(wallet_address) as wallet_address FROM sessions WHERE counted_as_visit = 1
+          )
+          GROUP BY wallet_address
+        )
+        SELECT 
+          r.referred_wallet,
+          r.created_at,
+          COALESCE(fv.visit_count, 0) as visit_count
+        FROM referrals r
+        LEFT JOIN friend_visits_count fv ON LOWER(fv.wallet_address) = LOWER(r.referred_wallet)
+        WHERE LOWER(r.referrer_wallet) = LOWER(?)
+        ORDER BY visit_count DESC, r.created_at DESC
+      `).all(s.referrer_wallet);
+
+      return {
+        ...s,
+        friends
+      };
+    });
+
+    res.json({ success: true, stats: details });
+  } catch (e) {
+    console.error('Error fetching referral stats:', e.message);
     res.status(500).json({ error: e.message });
   }
 });

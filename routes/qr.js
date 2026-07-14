@@ -280,8 +280,5 @@ router.get('/all/generate', async (req, res) => {
       results.push({ level, error: e.message });
     }
   }
-
   res.json({ success: true, qrCodes: results });
-});
-
 module.exports = router;

@@ -1381,6 +1381,7 @@
         <button class="subpage-tab active" id="subtab-metrics" onclick="switchSubPage('metrics', this)">📊 Métricas y Afluencia</button>
         <button class="subpage-tab" id="subtab-clients" onclick="switchSubPage('clients', this)">👥 Listado y Segmentos</button>
         <button class="subpage-tab" id="subtab-nfts" onclick="switchSubPage('nfts', this)">🏅 NFTs Polygon</button>
+        <button class="subpage-tab" id="subtab-referrals" onclick="switchSubPage('referrals', this)">🔗 Recomendados</button>
         <button class="subpage-tab" id="subtab-report" onclick="switchSubPage('report', this)">🖨️ Informes</button>
       </div>
 
@@ -1694,6 +1695,32 @@
           <p style="font-size:13px; color:var(--text-muted); margin:0 0 14px;">Todos los NFTs entregados a clientes en la blockchain de Polygon. Los mints son automáticos al alcanzar el nivel.</p>
           <div id="nfts-history-list" style="display:flex; flex-direction:column; gap:8px;">
             <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Cargando...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUBPÁGINA 5: RECOMENDADOS (REFERIDOS) -->
+      <div id="subpage-referrals" class="subpage-panel">
+        <div class="glass-card" style="margin-bottom:20px;">
+          <div class="card-title" style="margin-bottom:6px;">🔗 Programa de Prescriptores (Amigos)</div>
+          <p style="font-size:11.5px; color:var(--text-muted); margin:0 0 14px; line-height:1.5;">Listado de clientes que recomiendan el Furancho y su red de amigos. Por cada 10 amigos activos (que han fichado al menos una visita), el cliente gana un bono de tapa y cunca gratis.</p>
+
+          <div style="overflow-x: auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Prescriptor (Wallet)</th>
+                  <th style="text-align:center;">Amigos Invitados</th>
+                  <th style="text-align:center;">Amigos Activos (Han venido)</th>
+                  <th style="text-align:center;">Bonos Cobrados</th>
+                  <th style="text-align:center;">Bonos Disponibles</th>
+                  <th style="text-align:center;">Detalles</th>
+                </tr>
+              </thead>
+              <tbody id="referrals-tbody">
+                <tr><td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">Cargando estadísticas de referidos...</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -8699,6 +8726,7 @@
     document.getElementById(`subpage-${subpage}`).classList.add('active');
     if (subpage === 'nfts') loadNftsPage();
     if (subpage === 'report') initReportDates();
+    if (subpage === 'referrals') loadReferralsPage();
   }
 
   // ==================== INFORME DEL NEGOCIO (imprimible) ====================
@@ -9837,6 +9865,8 @@
         nftName = nftId === '3' ? 'Nivel 3: Larpeiro' : 'Nivel 4: Presidente';
       } else if (nftType === 'chave') {
         nftName = '🔑 Chave do Furancho';
+      } else if (nftType === 'referral') {
+        nftName = '🎁 Bono Plan Amigo';
       } else {
         if (typeof getNftName === 'function') {
           nftName = getNftName(nftId) || nftId;
@@ -9929,6 +9959,117 @@
         <div style="color:#b91c1c; font-size:13px;">Error de red: ${e.message}</div>
         <button onclick="closeTapaClaimModal()" class="btn-primary" style="width:100%; margin-top:8px;">Cerrar</button>
       `;
+    }
+  }
+
+  // ==================== REFERIDOS (PLAN AMIGO) ====================
+  let _referralsData = [];
+  let _currentReferralClaimData = null;
+
+  async function loadReferralsPage() {
+    const tbody = document.getElementById('referrals-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">
+          Cargando estadísticas de referidos...
+        </td>
+      </tr>
+    `;
+    try {
+      const res = await fetch('/api/admin/referral/stats', { headers: authHeaders() });
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Error al obtener estadísticas');
+      }
+
+      _referralsData = data.stats || [];
+
+      if (_referralsData.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">
+              Aún no hay recomendaciones registradas.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = '';
+      _referralsData.forEach((row, index) => {
+        const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.onclick = () => toggleReferralFriendsDetail(index);
+        
+        const remaining = Math.max(0, Math.floor(row.active_referred / 10) - row.total_claimed);
+
+        tr.innerHTML = `
+          <td style="font-family:monospace; font-size:12px; font-weight:600;">${row.referrer_wallet.substring(0,8)}...${row.referrer_wallet.substring(36)}</td>
+          <td style="text-align:center; font-weight:700;">${row.total_referred}</td>
+          <td style="text-align:center; font-weight:700; color:var(--wine);">${row.active_referred}</td>
+          <td style="text-align:center; font-weight:700; color:var(--text-muted);">${row.total_claimed}</td>
+          <td style="text-align:center; font-weight:700; color:#16a34a;">${remaining}</td>
+          <td style="text-align:center; font-size:12px; color:var(--gold); font-weight:700;">Ver amigos ▾</td>
+        `;
+        tbody.appendChild(tr);
+
+        // Fila de detalles (oculta por defecto)
+        const detailTr = document.createElement('tr');
+        detailTr.id = `referral-detail-${index}`;
+        detailTr.style.display = 'none';
+        detailTr.style.background = 'rgba(196,151,58,0.03)';
+        
+        let friendsRows = '';
+        if (row.friends && row.friends.length > 0) {
+          row.friends.forEach(f => {
+            const dateStr = new Date(f.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+            friendsRows += `
+              <tr style="background:none; border-bottom:1px solid rgba(0,0,0,0.03);">
+                <td style="font-family:monospace; font-size:11.5px; padding:6px 10px;">${f.referred_wallet}</td>
+                <td style="font-size:11.5px; padding:6px 10px; text-align:center;">${f.visit_count} visitas</td>
+                <td style="font-size:11px; padding:6px 10px; color:var(--text-muted); text-align:right;">${dateStr}</td>
+              </tr>
+            `;
+          });
+        } else {
+          friendsRows = `<tr><td colspan="3" style="text-align:center; padding:10px; color:var(--text-muted); font-size:12px;">No hay detalles de amigos.</td></tr>`;
+        }
+
+        detailTr.innerHTML = `
+          <td colspan="6" style="padding:12px 18px; border-top:1px dashed rgba(196,151,58,0.3);">
+            <div style="border:1.5px solid rgba(196,151,58,0.2); border-radius:12px; background:#fff; overflow:hidden;">
+              <div style="background:rgba(196,151,58,0.07); padding:8px 12px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--gold); border-bottom:1px solid rgba(196,151,58,0.15);">
+                👥 Grupo de amigos vinculados (${row.total_referred} total)
+              </div>
+              <table style="width:100%; margin:0; border-collapse:collapse; background:transparent;">
+                <thead>
+                  <tr style="background:rgba(0,0,0,0.02); border-bottom:1px solid rgba(0,0,0,0.05);">
+                    <th style="font-size:11px; text-align:left; padding:6px 10px;">Wallet del amigo</th>
+                    <th style="font-size:11px; text-align:center; padding:6px 10px; width:100px;">Actividad</th>
+                    <th style="font-size:11px; text-align:right; padding:6px 10px; width:150px;">Fecha de enlace</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${friendsRows}
+                </tbody>
+              </table>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(detailTr);
+      });
+
+    } catch (e) {
+      console.error(e);
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#ef4444; font-weight:700;">⚠️ Error: ${e.message}</td></tr>`;
+    }
+  }
+
+  function toggleReferralFriendsDetail(index) {
+    const el = document.getElementById(`referral-detail-${index}`);
+    if (el) {
+      el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
     }
   }
 </script>
