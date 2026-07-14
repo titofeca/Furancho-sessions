@@ -7649,24 +7649,56 @@
       const events = await fetch('/api/events/all', { headers: authHeaders() }).then(r => r.json());
       const container = document.getElementById('agenda-list');
       if (!events.length) {
-        container.innerHTML = `<p style="color:var(--text-muted); font-size:13px; text-align:center; padding:16px;">No hay eventos. Crea el primero.</p>`;
+        container.innerHTML = '<p style="color:var(--text-muted); font-size:13px; text-align:center; padding:16px;">No hay eventos. Crea el primero.</p>';
         return;
       }
-      container.innerHTML = events.map(ev => {
+
+      // Ordenar por fecha ASC (próximos primero)
+      const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+      events.sort((a, b) => a.event_date.localeCompare(b.event_date));
+      const upcoming = events.filter(ev => ev.event_date >= todayStr);
+      const past     = events.filter(ev => ev.event_date <  todayStr).reverse();
+
+      function cardHtml(ev) {
         const isActive = ev.active === 1;
-        const dateStr = new Date(ev.event_date + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'long', year:'numeric' });
-        return `<div onclick="openEventModal(${ev.id})" style="background:var(--bg); border:1px solid ${isActive ? 'var(--border)' : 'rgba(255,255,255,0.04)'}; border-radius:14px; padding:14px 16px; cursor:pointer; opacity:${isActive ? '1' : '0.45'}; display:flex; justify-content:space-between; align-items:center; gap:12px;">
-          <div style="flex:1; min-width:0;">
-            <div style="font-size:11px; color:var(--gold); font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:3px;">${dateStr}</div>
-            <div style="font-size:14px; color:var(--text); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${ev.title}</div>
-            ${ev.description ? `<div style="font-size:11px; color:var(--text-muted); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${ev.description}</div>` : ''}
-          </div>
-          <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0;">
-            <span style="font-size:10px; font-weight:700; padding:3px 8px; border-radius:100px; ${isActive ? 'background:rgba(196,151,58,0.15); color:#7A5A00;' : 'background:rgba(255,255,255,0.06); color:var(--text-muted);'}">${isActive ? 'activo' : 'oculto'}</span>
-            <span style="font-size:11px; color:var(--text-muted);">👤 ${ev.rsvp_count || 0}</span>
-          </div>
-        </div>`;
-      }).join('');
+        const isPast   = ev.event_date < todayStr;
+        const dateStr  = new Date(ev.event_date + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'long', year:'numeric' });
+        const border   = isPast ? 'rgba(42,21,9,0.08)' : (isActive ? 'var(--border)' : 'rgba(255,255,255,0.04)');
+        const opacity  = isPast ? '0.5' : (isActive ? '1' : '0.45');
+        const badgeStyle = isPast
+          ? 'background:rgba(42,21,9,0.07); color:var(--text-muted);'
+          : (isActive ? 'background:rgba(196,151,58,0.15); color:#7A5A00;' : 'background:rgba(255,255,255,0.06); color:var(--text-muted);');
+        const badgeLabel = isPast ? 'pasado' : (isActive ? 'activo' : 'oculto');
+        return '<div onclick="openEventModal(' + ev.id + ')" style="background:var(--bg); border:1px solid ' + border + '; border-radius:14px; padding:14px 16px; cursor:pointer; opacity:' + opacity + '; display:flex; justify-content:space-between; align-items:center; gap:12px;">'
+          + '<div style="flex:1; min-width:0;">'
+          + '<div style="font-size:11px; color:' + (isPast ? 'var(--text-muted)' : 'var(--gold)') + '; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:3px;">' + dateStr + '</div>'
+          + '<div style="font-size:14px; color:var(--text); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + ev.title + '</div>'
+          + (ev.description ? '<div style="font-size:11px; color:var(--text-muted); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + ev.description + '</div>' : '')
+          + '</div>'
+          + '<div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0;">'
+          + '<span style="font-size:10px; font-weight:700; padding:3px 8px; border-radius:100px; ' + badgeStyle + '">' + badgeLabel + '</span>'
+          + '<span style="font-size:11px; color:var(--text-muted);">&#128100; ' + (ev.rsvp_count || 0) + '</span>'
+          + '</div></div>';
+      }
+
+      let html = '';
+      if (upcoming.length) {
+        html += upcoming.map(cardHtml).join('');
+      } else {
+        html += '<p style="font-size:13px; color:var(--text-muted); text-align:center; padding:12px 0;">No hay eventos próximos.</p>';
+      }
+      if (past.length) {
+        const pastId = 'agenda-past-list';
+        html += '<button type="button" onclick="toggleAgendaPast(this)"'
+          + ' style="width:100%; margin-top:14px; padding:11px 14px; display:flex; align-items:center; justify-content:space-between; background:rgba(42,21,9,0.03); border:1px dashed rgba(42,21,9,0.15); border-radius:12px; color:var(--text-muted); font-family:Outfit,sans-serif; font-size:12px; font-weight:700; cursor:pointer;">'
+          + '<span>🕓 Eventos pasados <span style="opacity:.6;">(' + past.length + ')</span></span>'
+          + '<span class="ag-caret">▾</span>'
+          + '</button>'
+          + '<div id="' + pastId + '" style="display:none; flex-direction:column; gap:8px; margin-top:8px;">'
+          + past.map(cardHtml).join('')
+          + '</div>';
+      }
+      container.innerHTML = '<div style="display:flex; flex-direction:column; gap:8px;">' + html + '</div>';
     } catch(e) {
       document.getElementById('agenda-list').textContent = 'Error cargando agenda';
     }
@@ -8134,6 +8166,16 @@
     const willOpen = c.style.display === 'none';
     c.style.display = willOpen ? 'block' : 'none';
     btn.innerHTML = willOpen ? '▴ Ver menos' : `▾ Ver más <span style="opacity:.6">(${count})</span>`;
+  }
+
+  // Plegar/desplegar eventos pasados en la agenda
+  function toggleAgendaPast(btn) {
+    const panel = btn.nextElementSibling;
+    if (!panel) return;
+    const open = panel.style.display !== 'flex';
+    panel.style.display = open ? 'flex' : 'none';
+    const caret = btn.querySelector('.ag-caret');
+    if (caret) caret.textContent = open ? '▴' : '▾';
   }
 
   // Pinta una lista de eventos mostrando por defecto semana actual + siguiente,
