@@ -6914,7 +6914,7 @@
         const isToday = i === 0;
         return `<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; padding:7px 12px; border-radius:10px; ${isToday ? 'background:rgba(139,25,24,.08); border:1.5px solid rgba(139,25,24,.25);' : 'background:rgba(255,255,255,.4);'}">
           <span style="font-size:12.5px; font-weight:${isToday ? '800' : '600'}; color:${isToday ? 'var(--wine)' : 'var(--text)'};">${fmtDay(ds)}${isToday ? ' · hoy' : ''}${ov ? ' ✨' : ''}</span>
-          <span style="font-size:12.5px; font-weight:${eff.open ? '700' : '400'}; color:${eff.open ? 'var(--wine)' : 'var(--text-muted)'};">${eff.open ? `${eff.from} – ${eff.to}` : 'Cerrado'}</span>
+          <span style="font-size:12.5px; font-weight:${eff.open ? '700' : '400'}; color:${eff.open ? 'var(--wine)' : 'var(--text-muted)'};">${eff.open ? `${eff.from} – ${eff.to}` : (ov ? 'Fiesta privada' : 'Cerrado')}</span>
           ${note ? `<span style="width:100%; font-size:11.5px; font-style:italic; font-weight:600; color:var(--gold); margin-top:2px;">🎪 ${esc(note)}</span>` : ''}
         </div>`;
       }).join('');
@@ -6930,7 +6930,7 @@
           const note = (ov && ov.note) || '';
           return `<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; padding:7px 12px; border-radius:10px; background:rgba(255,255,255,.4);">
             <span style="font-size:12.5px; font-weight:600; color:var(--text);">${fmtDay(ds)}${ov ? ' ✨' : ''}</span>
-            <span style="font-size:12.5px; font-weight:${eff.open ? '700' : '400'}; color:${eff.open ? 'var(--wine)' : 'var(--text-muted)'};">${eff.open ? `${eff.from} – ${eff.to}` : 'Cerrado'}</span>
+            <span style="font-size:12.5px; font-weight:${eff.open ? '700' : '400'}; color:${eff.open ? 'var(--wine)' : 'var(--text-muted)'};">${eff.open ? `${eff.from} – ${eff.to}` : (ov ? 'Fiesta privada' : 'Cerrado')}</span>
             ${note ? `<span style="width:100%; font-size:11.5px; font-style:italic; font-weight:600; color:var(--gold); margin-top:2px;">🎪 ${esc(note)}</span>` : ''}
           </div>`;
         }).join('');
