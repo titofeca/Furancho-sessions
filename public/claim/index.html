@@ -3336,7 +3336,7 @@
     // Cargar mensajes publicados
     async function loadAdminMessages() {
       try {
-        const res = await fetch(`/api/admin/current-message?level=${currentLevel}`);
+        const res = await resilientFetch(`/api/admin/current-message?level=${currentLevel}`);
         const msg = await res.json();
 
         if (msg) {
@@ -3397,7 +3397,7 @@
     async function loadNextRaffleCountdown() {
       try {
         const today = new Date().toISOString().slice(0, 10);
-        const raffles = await fetch(`/api/raffle/scheduled?date=${today}`).then(r => r.json());
+        const raffles = await resilientFetch(`/api/raffle/scheduled?date=${today}`).then(r => r.json());
         const nowMadrid = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
         const nowMins = nowMadrid.getHours() * 60 + nowMadrid.getMinutes();
 
@@ -3416,7 +3416,7 @@
         let checkedInTonight = false;
         if (userWalletAddress) {
           try {
-            const elig = await fetch(`/api/raffle/eligible-check?wallet=${userWalletAddress}`).then(r => r.json());
+            const elig = await resilientFetch(`/api/raffle/eligible-check?wallet=${userWalletAddress}`).then(r => r.json());
             checkedInTonight = !!elig.hasSessionToday;
           } catch(_) {}
         }
@@ -3707,10 +3707,10 @@
     async function loadAgenda() {
       try {
         const [events, myRsvps, myVipReservations, myRsvpDetail] = await Promise.all([
-          fetch('/api/events').then(r => r.json()),
-          fetch(`/api/events/my-rsvps?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => []),
-          fetch(`/api/events/vip/my-reservations?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => []),
-          fetch(`/api/events/my-rsvps-detail?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => [])
+          resilientFetch('/api/events').then(r => r.json()),
+          resilientFetch(`/api/events/my-rsvps?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => []),
+          resilientFetch(`/api/events/vip/my-reservations?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => []),
+          resilientFetch(`/api/events/my-rsvps-detail?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => [])
         ]);
         _globalEvents = events;
         _globalMyRsvps = myRsvps;
@@ -3726,7 +3726,7 @@
         // Cargar tapas de todos los eventos en paralelo
         const tapasMap = {};
         await Promise.all(events.map(ev =>
-          fetch(`/api/events/${ev.id}/tapas`).then(r => r.json()).then(t => { tapasMap[ev.id] = t; }).catch(() => { tapasMap[ev.id] = []; })
+          resilientFetch(`/api/events/${ev.id}/tapas`).then(r => r.json()).then(t => { tapasMap[ev.id] = t; }).catch(() => { tapasMap[ev.id] = []; })
         ));
         if (!events.length) return;
         const section = document.getElementById('agenda-section');
@@ -4222,14 +4222,14 @@
       const wallet = localStorage.getItem('furancho_wallet_address') || '';
       let scheduled = [];
       try {
-        scheduled = await fetch(`/api/raffle/scheduled?date=${today}${wallet ? '&wallet=' + wallet : ''}`).then(r => r.json());
+        scheduled = await resilientFetch(`/api/raffle/scheduled?date=${today}${wallet ? '&wallet=' + wallet : ''}`).then(r => r.json());
       } catch(_) {}
 
       // ¿Ha fichado entrada esta noche dentro de la ventana del evento? Solo entonces se ven.
       let checkedInTonight = false;
       if (userWalletAddress) {
         try {
-          const elig = await fetch(`/api/raffle/eligible-check?wallet=${userWalletAddress}`).then(r => r.json());
+          const elig = await resilientFetch(`/api/raffle/eligible-check?wallet=${userWalletAddress}`).then(r => r.json());
           checkedInTonight = !!elig.hasSessionToday;
         } catch(_) {}
       }
@@ -4410,11 +4410,11 @@
       let history = [], eligibility = { hasSessionToday: false, rafflesDoneTonight: 0 }, events = [], scheduled = [], mintHistory = {};
       try {
         [history, eligibility, events, scheduled, mintHistory] = await Promise.all([
-          fetch(`/api/raffle/my-history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => []),
-          fetch(`/api/raffle/eligible-check?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => ({})),
-          fetch('/api/events').then(r => r.json()).catch(() => []),
-          fetch(`/api/raffle/scheduled?date=${today}`).then(r => r.json()).catch(() => []),
-          fetch(`/api/mint/history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => ({}))
+          resilientFetch(`/api/raffle/my-history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => []),
+          resilientFetch(`/api/raffle/eligible-check?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => ({})),
+          resilientFetch('/api/events').then(r => r.json()).catch(() => []),
+          resilientFetch(`/api/raffle/scheduled?date=${today}`).then(r => r.json()).catch(() => []),
+          resilientFetch(`/api/mint/history?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => ({}))
         ]);
       } catch(e) {}
 
@@ -4430,7 +4430,7 @@
       // Estado de logros NFT — se trae UNA vez y se pasa a ambos renders, para reflejar
       // también los logros OTORGADOS por el admin (no solo los de asistencia).
       let _achStatus = null;
-      try { if (userWalletAddress) _achStatus = await fetch(`/api/achievements/status?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => null); } catch (e) {}
+      try { if (userWalletAddress) _achStatus = await resilientFetch(`/api/achievements/status?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => null); } catch (e) {}
       window._achMap = {}; // Make global for openMemeVipCard
       if (_achStatus && _achStatus.achievements) {
         _achStatus.achievements.forEach(a => { window._achMap[a.id] = a; });
@@ -5098,7 +5098,7 @@
       const wallet = localStorage.getItem('furancho_wallet_address');
       if (!wallet) return;
       try {
-        const data = await fetch(`/api/raffle/active?wallet=${wallet}`).then(r => r.json());
+        const data = await resilientFetch(`/api/raffle/active?wallet=${wallet}`).then(r => r.json());
         if (!data.active) return;
         if (data.phase === 'start') {
           // Mostrar modal de animación
@@ -5211,7 +5211,7 @@
 
     async function loadPartnerEstablishments() {
       try {
-        const list = await fetch('/api/admin/partners-public').then(r => r.json());
+        const list = await resilientFetch('/api/admin/partners-public').then(r => r.json());
         if (Array.isArray(list)) {
           // Si el fetch es exitoso, sobrescribimos completamente el mapa local
           PARTNER_ESTABLISHMENTS = {};
@@ -6019,7 +6019,7 @@
     const since = localStorage.getItem('furancho_account_created_at') || '';
     const url = `/api/admin/inbox?level=${_inboxLevel}&wallet=${encodeURIComponent(_inboxWallet)}` + (since ? `&since=${encodeURIComponent(since)}` : '');
     try {
-      const res = await fetch(url);
+      const res = await resilientFetch(url);
       const msgs = await res.json();
       if (!Array.isArray(msgs)) return;
       const prevUnread = _allMessages.filter(m => !getReadIds().includes(msgKey(m))).length;
@@ -6481,7 +6481,7 @@
   async function loadCampaignProgress() {
     if (!userWalletAddress) return;
     try {
-      const r = await fetch(`/api/campaign/progress?wallet=${userWalletAddress}`);
+      const r = await resilientFetch(`/api/campaign/progress?wallet=${userWalletAddress}`);
       if (!r.ok) return;
       const p = await r.json();
       window._campaignState = p;
@@ -6564,7 +6564,7 @@
   let _furanchoList = null; // [{ ms, rollMs, dateLabel }]
   async function loadUpcomingFuranchos() {
     try {
-      const r = await fetch('/api/events');
+      const r = await resilientFetch('/api/events');
       if (!r.ok) return;
       const events = await r.json();
       const lastMs = new Date(VACATION.lastFurancho).getTime();
@@ -6743,7 +6743,7 @@
   // por admin/staff. Solo se pinta si hay algún día u override abierto.
   async function loadTerrazaHours() {
     try {
-      const r = await fetch('/api/events/terraza-hours');
+      const r = await resilientFetch('/api/events/terraza-hours');
       if (!r.ok) return;
       const cfg = await r.json();
       const card = document.getElementById('terraza-card');
@@ -6821,7 +6821,7 @@
   let _vibeTimer = null;
   async function loadVibe() {
     try {
-      const r = await fetch('/api/events/vibe');
+      const r = await resilientFetch('/api/events/vibe');
       if (!r.ok) return;
       const v = await r.json();
       const card = document.getElementById('vibe-card');
@@ -6854,7 +6854,7 @@
 
   async function loadDynamicCountdowns() {
     try {
-      const r = await fetch('/api/admin/countdowns-public');
+      const r = await resilientFetch('/api/admin/countdowns-public');
       if (!r.ok) return;
       _dynCountdowns = await r.json();
       renderDynamicCountdowns();
@@ -6980,7 +6980,7 @@
     if (!container) return;
     container.innerHTML = `<p style="color:var(--text-muted); text-align:center; font-size:13px; padding:12px;">Cargando locales furancheiros...</p>`;
     try {
-      const partners = await fetch('/api/admin/partners-public').then(r => r.json());
+      const partners = await resilientFetch('/api/admin/partners-public').then(r => r.json());
       if (!partners || partners.length === 0) {
         container.innerHTML = `<p style="color:var(--text-muted); text-align:center; font-size:13px; padding:12px;">Próximamente más amigos furancheiros... 🤫</p>`;
         return;
@@ -8083,7 +8083,7 @@
     const grid = document.getElementById('museo-nft-grid');
     if (!section || !grid || !userWalletAddress) return;
     try {
-      const data = prefetched || await fetch(`/api/achievements/status?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => null);
+      const data = prefetched || await resilientFetch(`/api/achievements/status?wallet=${userWalletAddress}`).then(r => r.json()).catch(() => null);
       const all = (data && data.achievements) ? data.achievements.slice() : [];
       if (!all.length) { section.style.display = 'none'; return; }
       _nftAchById = {};
