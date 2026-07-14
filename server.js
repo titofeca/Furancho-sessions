@@ -363,15 +363,14 @@ function scheduleWeeklyLifecyclePushes() {
         _lastWeeklyReminderPush = todayStr;
         const weekStr = getWeeklyRaffleTargetWeek(madrid);
         const raffle = db.prepare(`SELECT prize FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
-        const claimCount = db.prepare(`SELECT COUNT(*) as n FROM weekly_claims WHERE claimed_week = ?`).get(weekStr)?.n || 0;
         if (raffle && raffle.prize) {
           const { sendPushToAll } = require('./services/push');
           sendPushToAll(
             '⏰ Mañá se sortea a Chave!',
-            `${claimCount} participante${claimCount !== 1 ? 's' : ''} xa están dentro. Premio: ${raffle.prize}. Se non te apuntaches, hoxe é o último día, ho.`,
+            `O sorteo xa está en marcha. Premio: ${raffle.prize}. Se non te apuntaches, hoxe é o último día, ho.`,
             { url: '/claim' }
           );
-          console.log(`[WeeklyPush] ⏰ Recordatorio Chave martes — ${claimCount} participantes`);
+          console.log(`[WeeklyPush] ⏰ Recordatorio Chave martes`);
         }
       }
     } catch (e) {
