@@ -247,6 +247,47 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
     }
   } catch (e) {}
 
+  // Doble Oportunidad para los Embaixadores do Furancho (Plan Amigo: ≥15 amigos nuevos activos).
+  // Se verifica que la visita del amigo sea POSTERIOR al referral (anti-trampa, igual que el
+  // resto del sistema Plan Amigo). Solo se aplica a wallets que ya están en la bolsa de elegibles.
+  try {
+    const { db } = require('../db/database');
+    // Obtener wallets elegibles que tienen ≥15 amigos nuevos y activos
+    const planAmigoWallets = db.prepare(`
+      SELECT LOWER(r.referrer_wallet) as wallet
+      FROM referrals r
+      WHERE (
+        EXISTS (
+          SELECT 1 FROM visits v
+          WHERE LOWER(v.wallet_address) = LOWER(r.referred_wallet)
+            AND v.visited_at >= r.created_at
+        )
+        OR EXISTS (
+          SELECT 1 FROM sessions s
+          WHERE LOWER(s.wallet_address) = LOWER(r.referred_wallet)
+            AND s.counted_as_visit = 1
+            AND s.entry_time >= r.created_at
+        )
+      )
+      GROUP BY LOWER(r.referrer_wallet)
+      HAVING COUNT(DISTINCT r.referred_wallet) >= 15
+    `).all().map(r => r.wallet);
+
+    const planAmigoSet = new Set(planAmigoWallets);
+    let planAmigoCount = 0;
+    eligibleWallets.forEach(w => {
+      if (planAmigoSet.has(String(w).toLowerCase())) {
+        eligibleWallets.push(w);   // segundo boleto
+        planAmigoCount++;
+      }
+    });
+    if (planAmigoCount > 0) {
+      console.log(`[Raffle] Doble boleto Plan Amigo para ${planAmigoCount} embaixador(es)`);
+    }
+  } catch (e) {
+    console.error('[Raffle] Error calculando doble boleto Plan Amigo:', e.message);
+  }
+
   const eligibleSet = new Set(eligibleWallets);
   const connectedCount = clients.filter(c => c.walletAddress && eligibleSet.has(c.walletAddress)).length;
 
