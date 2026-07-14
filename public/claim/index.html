@@ -2663,6 +2663,24 @@
   </div>
 
   <script>
+    // fetch con reintento SOLO ante fallo de red (TypeError: Failed to fetch), no de HTTP.
+    // Un blip de cobertura en el móvil o un reinicio momentáneo del servidor no debe
+    // ensuciar la consola ni dejar tarjetas a medias: reintenta un par de veces con una
+    // pequeña espera. Los errores HTTP (4xx/5xx) devuelven Response normal y cada llamada
+    // los gestiona como siempre — esto NO cambia ninguna lógica, solo aguanta cortes de red.
+    async function resilientFetch(url, opts, retries = 2) {
+      try {
+        return await fetch(url, opts);
+      } catch (e) {
+        const isNetwork = e instanceof TypeError; // "Failed to fetch" = red caída, no HTTP
+        if (isNetwork && retries > 0) {
+          await new Promise(r => setTimeout(r, 500));
+          return resilientFetch(url, opts, retries - 1);
+        }
+        throw e;
+      }
+    }
+
     // Registro Service Worker para PWA
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
@@ -3108,7 +3126,7 @@
       const hasLevel = urlParams.has('level') && [1,2,3,4].includes(levelParam);
 
       try {
-        const res = await fetch(`/api/mint/history?wallet=${userWalletAddress}`);
+        const res = await resilientFetch(`/api/mint/history?wallet=${userWalletAddress}`);
         const data = await res.json();
         userVisitCount = data.visitCount || 0;
         userClaimedLevels = data.levels || [];
@@ -6240,7 +6258,7 @@
     if (!container) return;
     
     try {
-      const res = await fetch(`/api/mint/daily-tapa-status?wallet=${userWalletAddress}`);
+      const res = await resilientFetch(`/api/mint/daily-tapa-status?wallet=${userWalletAddress}`);
       const data = await res.json();
 
       // La tarjeta SOLO se muestra a quien tiene el NFT y con el beneficio activo. Al resto
@@ -7182,7 +7200,7 @@
     if (!card || !prizeText || !btn) return;
 
     try {
-      const res = await fetch(`/api/raffle/weekly/status?wallet=${userWalletAddress}`);
+      const res = await resilientFetch(`/api/raffle/weekly/status?wallet=${userWalletAddress}`);
       const data = await res.json();
 
       card.style.display = 'block';
@@ -8251,7 +8269,7 @@
 
   async function loadTransferFees() {
     try {
-      const res = await fetch('/api/mint/transfer-settings').then(r => r.json());
+      const res = await resilientFetch('/api/mint/transfer-settings').then(r => r.json());
       window._transferFees = res.fees || {};
     } catch (e) {
       console.error("Error loading transfer fees:", e);
