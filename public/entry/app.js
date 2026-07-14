@@ -189,7 +189,9 @@ async function doEntry(walletAddress) {
 
     // Pie del mensaje según si la visita contó (evento en agenda + 1ª de la semana)
     let footer;
-    if (data.isNew) {
+    if (data.referralOnly) {
+      footer = '<small style="color:var(--gold); font-weight:700;">¡Invitación registrada! Cuando vengas al Furancho, escanea el QR de la entrada para registrar tu primera visita y activar el premio de tu amigo. 🍇</small>';
+    } else if (data.isNew) {
       footer = '<small style="color:var(--gold); font-weight:700;">¡Esta ya cuenta como tu 1ª visita!</small>';
     } else if (data.counted) {
       footer = `<small style="color:var(--wine); font-weight:700;">¡Ya llevas ${data.visitCount} visita${data.visitCount !== 1 ? 's' : ''} registrada${data.visitCount !== 1 ? 's' : ''}!</small>`;
@@ -200,7 +202,13 @@ async function doEntry(walletAddress) {
     }
 
     let selected;
-    if (data.isNew || !data.visitCount) {
+    if (data.referralOnly) {
+      selected = {
+        icon: '🤝',
+        title: '¡Invitación Aceptada, ho!',
+        msg: 'Te has unido a las Furancho Sessions de la mano de tu colega. Tu cuenta de socio y pase digital están listos. ¡Para acumular visitas y ganar tapas gratis, recuerda fichar con el QR «Cheguei» en la entrada cuando vengas en persona! 🍷'
+      };
+    } else if (data.isNew || !data.visitCount) {
       // Nuevo de verdad, o primera vez sin evento en agenda (0 visitas): mensaje de estreno
       selected = NEW_WELCOME_MESSAGES[Math.floor(Math.random() * NEW_WELCOME_MESSAGES.length)];
     } else {

@@ -119,8 +119,18 @@ router.post('/entry', mintLimiter, async (req, res) => {
 
     // Anti-picaresca: el QR DEBE llevar la fecha del evento (ev=YYYY-MM-DD) y
     // coincidir con el evento activo. Sin fecha o fecha incorrecta → rechazado.
+    // NOTA: Si no viene parametro ev, se asume que es una llegada/acceso por enlace
+    // de invitacion (onboarding/registro sin fichaje fisico).
+    if (!ev) {
+      return res.json({
+        success: true,
+        referralOnly: true,
+        message: 'Invitación registrada correctamente.'
+      });
+    }
+
     const win = getActiveEventWindow();
-    if (!ev || !/^\d{4}-\d{2}-\d{2}$/.test(ev)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ev)) {
       return res.json({
         success: false, closed: true,
         message: 'Furancho pechado, ho. Este QR non ten data de evento.'
