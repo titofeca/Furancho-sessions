@@ -6243,15 +6243,20 @@
       const res = await fetch(`/api/mint/daily-tapa-status?wallet=${userWalletAddress}`);
       const data = await res.json();
 
+      // La tarjeta SOLO se muestra a quien tiene el NFT y con el beneficio activo. Al resto
+      // (beneficio apagado, fuera de fechas o sin el NFT) ni le aparece.
+      if (!data.visible) { container.style.display = 'none'; container.innerHTML = ''; return; }
+
       // Título/textos y nombre del NFT vienen configurados desde el admin.
       const tTitle = (data.title || 'Privilexio do NFT').toUpperCase();
       const tBenefit = data.benefit || 'Tapa e cunca do día';
       const tNft = data.nftName || 'NFT do Furancho';
+      const tButton = data.button || '🎟️ Mostrar mi vale';
       window._tapaTitle = data.title || 'Privilexio do NFT';
       window._tapaBenefit = tBenefit;
 
       if (!data.eligible && !data.claimed) {
-        // Si no es elegible, mostramos un aviso sutil dejando claro que va ligado al NFT
+        // Tiene el NFT pero aún no puede canjear (p.ej. no ha fichado): aviso sutil.
         container.style.display = 'block';
         container.innerHTML = `
           <div class="glass-card" style="border: 1.5px solid rgba(139,25,24,0.15); background: rgba(28,12,5,0.2); padding: 16px 20px; border-radius: 20px; text-align: left; position: relative;">
@@ -6316,7 +6321,7 @@
               background:linear-gradient(135deg, var(--wine), var(--wine-dark)); color:#fff;
               font-family:'Outfit',sans-serif; font-size:13px; font-weight:700; cursor:pointer;
               box-shadow: 0 4px 12px rgba(139,25,24,0.25); outline:none;">
-              🎟️ Mostrar mi vale
+              ${tButton}
             </button>
           </div>
         `;

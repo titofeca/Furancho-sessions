@@ -560,38 +560,31 @@ router.get('/daily-tapa-status', (req, res) => {
     const nftCat = catalog.find(c => c.id === nftId);
     const nftName = nftCat ? nftCat.name : 'NFT del Furancho';
 
-    // Título y texto del beneficio: configurables, con defaults que dejan claro que va
-    // ligado a poseer el NFT.
+    // Título, texto del beneficio y etiqueta del botón: configurables, con defaults que
+    // dejan claro que va ligado a poseer el NFT.
+    // `visible` controla si el cliente ve siquiera la tarjeta: solo la ve quien tiene el
+    // NFT y con el beneficio activo. El resto (apagado, fuera de ventana o sin el NFT) no
+    // la ve en absoluto.
     const meta = {
       title: getAppSetting('daily_tapa_title', 'Privilexio do Guardián'),
       benefit: getAppSetting('daily_tapa_benefit', 'Tapa e cunca do día'),
+      button: getAppSetting('daily_tapa_button', '🎟️ Mostrar mi vale'),
       nftName
     };
 
-    // 1. ¿Beneficio activo? (interruptor + ventana de fechas)
+    // 1. ¿Beneficio activo? (interruptor + ventana de fechas). Si no, el cliente ni lo ve.
     if (!enabled) {
-      return res.json({ eligible: false, claimed: false, ...meta, reason: `El privilexio do «${nftName}» no está activo ahora mismo.` });
+      return res.json({ visible: false, eligible: false, claimed: false, ...meta, reason: `El privilexio do «${nftName}» no está activo ahora mismo.` });
     }
     if (fromDate && today < fromDate) {
-      return res.json({ eligible: false, claimed: false, ...meta, reason: `Este privilexio arranca el ${fromDate}.` });
+      return res.json({ visible: false, eligible: false, claimed: false, ...meta, reason: `Este privilexio arranca el ${fromDate}.` });
     }
     if (toDate && today > toDate) {
-      return res.json({ eligible: false, claimed: false, ...meta, reason: `Este privilexio terminó el ${toDate}.` });
+      return res.json({ visible: false, eligible: false, claimed: false, ...meta, reason: `Este privilexio terminó el ${toDate}.` });
     }
 
-    // 2. Verificar si tiene sesión iniciada hoy (fichaje obligatorio)
-    const session = db.prepare(`
-      SELECT id, entry_time FROM sessions
-      WHERE LOWER(wallet_address) = LOWER(?)
-        AND date(entry_time, '+2 hours') = ?
-      ORDER BY entry_time DESC LIMIT 1
-    `).get(wallet, today);
-
-    if (!session) {
-      return res.json({ eligible: false, claimed: false, ...meta, reason: 'Ficha tu entrada hoy en el Furancho para activarlo.' });
-    }
-
-    // 3. Buscar si posee el NFT configurado que desbloquea el beneficio
+    // 2. ¿Posee el NFT configurado que desbloquea el beneficio? Si no lo tiene, no ve la
+    //    tarjeta (solo aparece a quien puede canjear algo). Se comprueba ANTES del fichaje.
     const queryAchievements = db.prepare(`
       WITH RankedMints AS (
         SELECT id, wallet_address, achievement_id, token_id, status,
@@ -617,7 +610,20 @@ router.get('/daily-tapa-status', (req, res) => {
     });
 
     if (eligibleNfts.length === 0) {
-      return res.json({ eligible: false, claimed: false, ...meta, reason: `Necesitas el NFT «${nftName}» para disfrutar este privilexio.` });
+      return res.json({ visible: false, eligible: false, claimed: false, ...meta, reason: `Necesitas el NFT «${nftName}» para disfrutar este privilexio.` });
+    }
+
+    // 3. Tiene el NFT y el beneficio está activo: a partir de aquí SÍ ve la tarjeta.
+    //    Verificar fichaje de hoy (obligatorio para canjear).
+    const session = db.prepare(`
+      SELECT id, entry_time FROM sessions
+      WHERE LOWER(wallet_address) = LOWER(?)
+        AND date(entry_time, '+2 hours') = ?
+      ORDER BY entry_time DESC LIMIT 1
+    `).get(wallet, today);
+
+    if (!session) {
+      return res.json({ visible: true, eligible: false, claimed: false, ...meta, reason: 'Ficha tu entrada hoy en el Furancho para activarlo.' });
     }
 
     // 4. Comprobar si esta wallet ya ha canjeado hoy
@@ -632,6 +638,7 @@ router.get('/daily-tapa-status', (req, res) => {
       if (cat) nftUsedName = cat.name;
 
       return res.json({
+        visible: true,
         eligible: true,
         claimed: true,
         ...meta,
@@ -661,6 +668,7 @@ router.get('/daily-tapa-status', (req, res) => {
 
     if (availableNfts.length === 0) {
       return res.json({
+        visible: true,
         eligible: false,
         claimed: false,
         ...meta,
@@ -673,6 +681,7 @@ router.get('/daily-tapa-status', (req, res) => {
     const qrData = `tapa_claim:${wallet}:achievement:${activeNft.id}:${activeNft.serial}:${today}`;
 
     res.json({
+      visible: true,
       eligible: true,
       claimed: false,
       ...meta,

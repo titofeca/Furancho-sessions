@@ -2710,6 +2710,9 @@
         <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Consumición que incluye</label>
         <input id="tapa-cfg-benefit" type="text" maxlength="60" placeholder="Tapa e cunca do día" style="width:100%; background:#fff; color:var(--text); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:11px 13px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box; margin-bottom:14px;" />
 
+        <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Texto del botón (app cliente)</label>
+        <input id="tapa-cfg-button" type="text" maxlength="40" placeholder="🎟️ Mostrar mi vale" style="width:100%; background:#fff; color:var(--text); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:11px 13px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box; margin-bottom:14px;" />
+
         <button onclick="saveDailyTapaConfig()" style="width:100%; background:var(--wine); color:#fff; border:none; border-radius:50px; padding:12px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">Guardar privilexio</button>
       </div>
 
@@ -7567,6 +7570,7 @@
       document.getElementById('tapa-cfg-to').value = d.to || '';
       document.getElementById('tapa-cfg-title').value = d.title || '';
       document.getElementById('tapa-cfg-benefit').value = d.benefit || '';
+      document.getElementById('tapa-cfg-button').value = d.button || '';
       const pill = document.getElementById('tapa-cfg-pill');
       if (pill) { pill.textContent = d.enabled ? '● Activo' : '○ Apagado'; pill.style.color = d.enabled ? '#16a34a' : 'var(--text-muted)'; }
     } catch (_) {}
@@ -7579,7 +7583,8 @@
       from: document.getElementById('tapa-cfg-from').value,
       to: document.getElementById('tapa-cfg-to').value,
       title: document.getElementById('tapa-cfg-title').value,
-      benefit: document.getElementById('tapa-cfg-benefit').value
+      benefit: document.getElementById('tapa-cfg-benefit').value,
+      button: document.getElementById('tapa-cfg-button').value
     };
     try {
       const r = await fetch('/api/admin/daily-tapa-config', {
