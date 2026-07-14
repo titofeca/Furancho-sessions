@@ -6242,29 +6242,36 @@
     try {
       const res = await fetch(`/api/mint/daily-tapa-status?wallet=${userWalletAddress}`);
       const data = await res.json();
-      
+
+      // Título/textos y nombre del NFT vienen configurados desde el admin.
+      const tTitle = (data.title || 'Privilexio do NFT').toUpperCase();
+      const tBenefit = data.benefit || 'Tapa e cunca do día';
+      const tNft = data.nftName || 'NFT do Furancho';
+      window._tapaTitle = data.title || 'Privilexio do NFT';
+      window._tapaBenefit = tBenefit;
+
       if (!data.eligible && !data.claimed) {
-        // Si no es elegible, mostramos un aviso sutil o no mostramos la tarjeta
+        // Si no es elegible, mostramos un aviso sutil dejando claro que va ligado al NFT
         container.style.display = 'block';
         container.innerHTML = `
           <div class="glass-card" style="border: 1.5px solid rgba(139,25,24,0.15); background: rgba(28,12,5,0.2); padding: 16px 20px; border-radius: 20px; text-align: left; position: relative;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
               <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-size:18px;">🍽️</span>
-                <span style="font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted);">Tapa y Cunca do Día</span>
+                <span style="font-size:18px;">🔑</span>
+                <span style="font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted);">${tTitle}</span>
               </div>
               <span style="font-size:9px; font-weight:800; text-transform:uppercase; padding:3px 8px; border-radius:100px; background:rgba(0,0,0,0.15); color:var(--text-muted);">No Disponible</span>
             </div>
             <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0;">
-              ${data.reason || 'Requiere tener un NFT de Nivel 3 o superior para activar el canje diario de tapa.'}
+              ${data.reason || `Este privilexio va ligado al NFT «${tNft}».`}
             </p>
           </div>
         `;
         return;
       }
-      
+
       container.style.display = 'block';
-      
+
       if (data.claimed) {
         const claimedTime = new Date(data.claimedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
         container.innerHTML = `
@@ -6272,13 +6279,13 @@
             <div style="position:absolute; top:0; left:0; width:100%; height:4px; background: #16a34a;"></div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
               <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-size:20px;">🍽️</span>
-                <span style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; color:#16a34a;">TAPA Y CUNCA DO DÍA</span>
+                <span style="font-size:20px;">🔑</span>
+                <span style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; color:#16a34a;">${tTitle}</span>
               </div>
               <span style="font-size:10px; font-weight:800; text-transform:uppercase; padding:3px 10px; border-radius:100px; background:rgba(22,163,74,0.15); color:#16a34a;">✓ Canjeado</span>
             </div>
             <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; margin:0;">
-              ¡Buen provecho! Tapa y copa de vino entregadas hoy a las <strong>${claimedTime}</strong>. Usaste tu pase: <strong>${data.nftUsed.name}</strong>.
+              ¡Buen provecho! ${tBenefit} entregada hoy a las <strong>${claimedTime}</strong>. Desbloqueado con tu NFT: <strong>${data.nftUsed.name}</strong>.
             </p>
           </div>
         `;
@@ -6286,19 +6293,22 @@
         // Disponible
         window._tapaQrData = data.qrData;
         window._tapaNftName = data.activeNft.name + (data.activeNft.serial > 0 ? ` #${data.activeNft.serial}` : '');
-        
+
         container.innerHTML = `
           <div class="glass-card" style="border: 1.5px solid rgba(139,25,24,0.3); background: linear-gradient(135deg, rgba(139,25,24,0.06) 0%, rgba(196,151,58,0.04) 100%); padding: 18px 20px; border-radius: 20px; text-align: left; position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(139,25,24,0.08);">
             <div style="position:absolute; top:0; left:0; width:100%; height:4px; background: linear-gradient(90deg, var(--wine), var(--gold));"></div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
               <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-size:20px;">🍽️</span>
-                <span style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; color:var(--gold);">TAPA Y CUNCA DO DÍA</span>
+                <span style="font-size:20px;">🔑</span>
+                <span style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; color:var(--gold);">${tTitle}</span>
               </div>
               <span style="font-size:10px; font-weight:800; text-transform:uppercase; padding:3px 10px; border-radius:100px; background:rgba(139,25,24,0.1); color:var(--wine); border:1px solid rgba(139,25,24,0.2);">Disponible</span>
             </div>
-            <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; margin:0 0 14px;">
-              Tienes disponible tu tapa y cunca gratis de hoy. Presenta tu vale digital en la barra del furancho.
+            <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; margin:0 0 6px;">
+              Hoy te toca <strong>${tBenefit}</strong> gratis. Enseña tu vale en la barra del furancho.
+            </p>
+            <p style="font-size:11px; color:var(--gold); line-height:1.5; margin:0 0 14px; font-weight:600;">
+              🔑 Un privilexio do teu NFT «${data.activeNft.name}». Mentres o teñas, cada día.
             </p>
             <button onclick="openTapaModal()" style="
               width:100%; display:inline-flex; align-items:center; justify-content:center; gap:8px;
@@ -6306,7 +6316,7 @@
               background:linear-gradient(135deg, var(--wine), var(--wine-dark)); color:#fff;
               font-family:'Outfit',sans-serif; font-size:13px; font-weight:700; cursor:pointer;
               box-shadow: 0 4px 12px rgba(139,25,24,0.25); outline:none;">
-              🎟️ Mostrar Vale de Tapa
+              🎟️ Mostrar mi vale
             </button>
           </div>
         `;
@@ -6330,7 +6340,13 @@
     const serial = parts[4];
     
     qrImg.src = `/api/qr/tapa/${wallet}/${nftType}/${nftId}/${serial}?t=${Date.now()}`;
-    nftDesc.textContent = `Pase Activo: ${window._tapaNftName}`;
+    nftDesc.textContent = `NFT: ${window._tapaNftName}`;
+
+    // Título/beneficio configurados desde el admin
+    const titleEl = document.getElementById('tapa-modal-title');
+    const badgeEl = document.getElementById('tapa-modal-badge');
+    if (titleEl && window._tapaBenefit) titleEl.textContent = window._tapaBenefit;
+    if (badgeEl && window._tapaTitle) badgeEl.textContent = '🔑 ' + window._tapaTitle.toUpperCase();
     
     modal.style.display = 'flex';
     modal.offsetHeight;
@@ -8845,10 +8861,10 @@
       <button onclick="closeTapaModal()" style="position:absolute; top:14px; right:14px; width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,0.1); color:#F2EDE3; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; outline:none;">✕</button>
       
       <div style="background:rgba(196,151,58,0.15); padding:6px 14px; border-radius:100px; border:1px solid rgba(196,151,58,0.3); margin-bottom:4px;">
-        <span style="font-size:11px; font-weight:800; color:var(--gold); text-transform:uppercase; letter-spacing:1.5px;">🎟️ VALE DE TAPA Y CUNCA</span>
+        <span id="tapa-modal-badge" style="font-size:11px; font-weight:800; color:var(--gold); text-transform:uppercase; letter-spacing:1.5px;">🔑 PRIVILEXIO DO NFT</span>
       </div>
-      
-      <h2 style="font-family:'Playfair Display',serif; font-size:22px; color:var(--gold); font-weight:900; margin:0;">Cunca e Tapa Gratis</h2>
+
+      <h2 id="tapa-modal-title" style="font-family:'Playfair Display',serif; font-size:22px; color:var(--gold); font-weight:900; margin:0;">Tapa e cunca do día</h2>
       <p style="font-size:12.5px; color:rgba(255,255,255,0.7); margin:0 0 10px; line-height:1.45;">Enseña este QR en la barra. El camarero lo escaneará para entregarte la consumición de hoy.</p>
       
       <!-- Contenedor QR -->

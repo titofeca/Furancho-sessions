@@ -2676,6 +2676,43 @@
         <button onclick="saveTerrazaAdmin()" style="margin-top:12px; width:100%; background:var(--wine); color:#fff; border:none; border-radius:50px; padding:12px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">Guardar horario</button>
       </div>
 
+      <!-- Privilexio ligado a un NFT: tapa/cunca do día -->
+      <div class="card" style="margin-top:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <h2 style="font-family:'Playfair Display',serif; font-size:18px; font-weight:700; color:var(--text); margin:0;">🔑 Privilexio do NFT (tapa do día)</h2>
+          <span id="tapa-cfg-pill" style="font-size:11px; color:var(--text-muted); font-weight:600;"></span>
+        </div>
+        <p style="font-size:11px; color:var(--text-muted); margin:0 0 14px;">Quien tenga el NFT elegido y fiche entrada ese día puede canjear una consumición gratis (una por wallet y por NFT al día; anti-doble-canje incluido). Tú decides si está activo, con qué NFT, entre qué fechas y cómo se llama en la app del cliente.</p>
+
+        <label style="display:flex; align-items:center; justify-content:space-between; background:#fff; border:1.5px solid rgba(42,21,9,0.1); border-radius:12px; padding:12px 14px; margin-bottom:14px; cursor:pointer;">
+          <span style="font-size:13px; font-weight:600; color:var(--text);">Beneficio activo</span>
+          <input id="tapa-cfg-enabled" type="checkbox" style="width:22px; height:22px; cursor:pointer; accent-color:#8B1918;" />
+        </label>
+
+        <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">NFT que lo desbloquea</label>
+        <select id="tapa-cfg-nft" style="width:100%; background:#fff; color:var(--text); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:11px 13px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box; margin-bottom:14px;"></select>
+
+        <div style="display:flex; gap:10px; margin-bottom:14px;">
+          <div style="flex:1;">
+            <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Desde (opcional)</label>
+            <input id="tapa-cfg-from" type="date" style="width:100%; background:#fff; color:var(--text); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:10px 12px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+          </div>
+          <div style="flex:1;">
+            <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Hasta (opcional)</label>
+            <input id="tapa-cfg-to" type="date" style="width:100%; background:#fff; color:var(--text); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:10px 12px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+          </div>
+        </div>
+        <p style="font-size:10.5px; color:var(--text-muted); margin:-6px 0 14px; line-height:1.4;">Deja las fechas vacías para que no caduque. Fuera de la ventana, el cliente lo ve como "no disponible".</p>
+
+        <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Título en la app del cliente</label>
+        <input id="tapa-cfg-title" type="text" maxlength="40" placeholder="Privilexio do Guardián" style="width:100%; background:#fff; color:var(--text); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:11px 13px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box; margin-bottom:12px;" />
+
+        <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Consumición que incluye</label>
+        <input id="tapa-cfg-benefit" type="text" maxlength="60" placeholder="Tapa e cunca do día" style="width:100%; background:#fff; color:var(--text); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:11px 13px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box; margin-bottom:14px;" />
+
+        <button onclick="saveDailyTapaConfig()" style="width:100%; background:var(--wine); color:#fff; border:none; border-radius:50px; padding:12px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">Guardar privilexio</button>
+      </div>
+
     </div>
 
     <!-- ==================== NFTs ==================== -->
@@ -7510,7 +7547,51 @@
 
   // ==================== EVENTOS & VIP ====================
   async function loadEventsPage() {
-    await Promise.all([loadAgenda(), loadAnalytics(), loadEventsData(), loadCountdowns(), loadVibeAdmin(), loadTerrazaAdmin()]);
+    await Promise.all([loadAgenda(), loadAnalytics(), loadEventsData(), loadCountdowns(), loadVibeAdmin(), loadTerrazaAdmin(), loadDailyTapaConfig()]);
+  }
+
+  // ==================== PRIVILEXIO DO NFT (TAPA DO DÍA) ====================
+  async function loadDailyTapaConfig() {
+    try {
+      const r = await fetch('/api/admin/daily-tapa-config', { headers: authHeaders() });
+      if (!r.ok) return;
+      const d = await r.json();
+      const sel = document.getElementById('tapa-cfg-nft');
+      if (sel) {
+        sel.innerHTML = (d.achievements || []).map(a =>
+          `<option value="${a.id}"${a.id === d.nft ? ' selected' : ''}>${a.name} (token ${a.tokenId})</option>`
+        ).join('');
+      }
+      document.getElementById('tapa-cfg-enabled').checked = !!d.enabled;
+      document.getElementById('tapa-cfg-from').value = d.from || '';
+      document.getElementById('tapa-cfg-to').value = d.to || '';
+      document.getElementById('tapa-cfg-title').value = d.title || '';
+      document.getElementById('tapa-cfg-benefit').value = d.benefit || '';
+      const pill = document.getElementById('tapa-cfg-pill');
+      if (pill) { pill.textContent = d.enabled ? '● Activo' : '○ Apagado'; pill.style.color = d.enabled ? '#16a34a' : 'var(--text-muted)'; }
+    } catch (_) {}
+  }
+
+  async function saveDailyTapaConfig() {
+    const body = {
+      enabled: document.getElementById('tapa-cfg-enabled').checked,
+      nft: document.getElementById('tapa-cfg-nft').value,
+      from: document.getElementById('tapa-cfg-from').value,
+      to: document.getElementById('tapa-cfg-to').value,
+      title: document.getElementById('tapa-cfg-title').value,
+      benefit: document.getElementById('tapa-cfg-benefit').value
+    };
+    try {
+      const r = await fetch('/api/admin/daily-tapa-config', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await r.json();
+      if (!r.ok) return showToast(data.error || 'Error al guardar');
+      showToast('✅ Privilexio guardado');
+      loadDailyTapaConfig();
+    } catch (e) { showToast('Error: ' + e.message); }
   }
 
   // ==================== AGENDA ====================

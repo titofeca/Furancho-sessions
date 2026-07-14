@@ -1594,6 +1594,46 @@ router.post('/settings/:key', requireAuth, (req, res) => {
   }
 });
 
+// GET /api/admin/daily-tapa-config — configuración del beneficio "tapa do día" ligado a un NFT
+router.get('/daily-tapa-config', requireAuth, (req, res) => {
+  try {
+    const achievements = require('../services/achievements');
+    res.json({
+      enabled: getAppSetting('daily_tapa_enabled', '0') === '1',
+      nft: getAppSetting('daily_tapa_nft', 'guardian_furancho'),
+      from: getAppSetting('daily_tapa_from', ''),
+      to: getAppSetting('daily_tapa_to', ''),
+      title: getAppSetting('daily_tapa_title', 'Privilexio do Guardián'),
+      benefit: getAppSetting('daily_tapa_benefit', 'Tapa e cunca do día'),
+      // Solo NFT de logro (token >= 50), no los niveles 1-4, para el desplegable.
+      achievements: achievements.list().map(a => ({ id: a.id, name: a.name, tokenId: a.tokenId }))
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/daily-tapa-config — guarda toda la configuración de golpe
+router.post('/daily-tapa-config', requireAuth, (req, res) => {
+  try {
+    const { enabled, nft, from, to, title, benefit } = req.body || {};
+    if (from && !/^\d{4}-\d{2}-\d{2}$/.test(from)) return res.status(400).json({ error: 'Fecha "desde" no válida' });
+    if (to && !/^\d{4}-\d{2}-\d{2}$/.test(to)) return res.status(400).json({ error: 'Fecha "hasta" no válida' });
+    if (from && to && to < from) return res.status(400).json({ error: 'La fecha "hasta" no puede ser anterior a "desde"' });
+    if (enabled && !String(nft || '').trim()) return res.status(400).json({ error: 'Elige el NFT que desbloquea el beneficio' });
+
+    setAppSetting('daily_tapa_enabled', enabled ? '1' : '0');
+    setAppSetting('daily_tapa_nft', String(nft || 'guardian_furancho').trim());
+    setAppSetting('daily_tapa_from', from || '');
+    setAppSetting('daily_tapa_to', to || '');
+    setAppSetting('daily_tapa_title', String(title || '').trim() || 'Privilexio do Guardián');
+    setAppSetting('daily_tapa_benefit', String(benefit || '').trim() || 'Tapa e cunca do día');
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/admin/transfers
 router.get('/transfers', requireAuth, (req, res) => {
   try {

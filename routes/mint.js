@@ -544,36 +544,54 @@ router.get('/daily-tapa-status', (req, res) => {
   try {
     const { db } = require('../db/database');
     const achievements = require('../services/achievements');
-    
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
-    const isJuly = today.split('-')[1] === '07';
+    const { getAppSetting } = require('../db/transfers');
 
-    // 1. Verificar que estamos en julio
-    if (!isJuly) {
-      return res.json({
-        eligible: false,
-        claimed: false,
-        reason: 'El beneficio de la Chave do Furancho solo está activo durante el mes de julio.'
-      });
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+
+    // Configuración editable desde el panel admin (app_settings). El beneficio ya NO está
+    // atado a julio a fuego: el admin decide si está activo, qué NFT lo desbloquea, la
+    // ventana de fechas y cómo se llama de cara al cliente.
+    const enabled = getAppSetting('daily_tapa_enabled', '0') === '1';
+    const nftId = getAppSetting('daily_tapa_nft', 'guardian_furancho');
+    const fromDate = getAppSetting('daily_tapa_from', '');   // 'YYYY-MM-DD' o '' (sin límite)
+    const toDate = getAppSetting('daily_tapa_to', '');       // 'YYYY-MM-DD' o '' (sin límite)
+
+    const catalog = achievements.list();
+    const nftCat = catalog.find(c => c.id === nftId);
+    const nftName = nftCat ? nftCat.name : 'NFT del Furancho';
+
+    // Título y texto del beneficio: configurables, con defaults que dejan claro que va
+    // ligado a poseer el NFT.
+    const meta = {
+      title: getAppSetting('daily_tapa_title', 'Privilexio do Guardián'),
+      benefit: getAppSetting('daily_tapa_benefit', 'Tapa e cunca do día'),
+      nftName
+    };
+
+    // 1. ¿Beneficio activo? (interruptor + ventana de fechas)
+    if (!enabled) {
+      return res.json({ eligible: false, claimed: false, ...meta, reason: `El privilexio do «${nftName}» no está activo ahora mismo.` });
+    }
+    if (fromDate && today < fromDate) {
+      return res.json({ eligible: false, claimed: false, ...meta, reason: `Este privilexio arranca el ${fromDate}.` });
+    }
+    if (toDate && today > toDate) {
+      return res.json({ eligible: false, claimed: false, ...meta, reason: `Este privilexio terminó el ${toDate}.` });
     }
 
     // 2. Verificar si tiene sesión iniciada hoy (fichaje obligatorio)
     const session = db.prepare(`
-      SELECT id, entry_time FROM sessions 
-      WHERE LOWER(wallet_address) = LOWER(?) 
+      SELECT id, entry_time FROM sessions
+      WHERE LOWER(wallet_address) = LOWER(?)
         AND date(entry_time, '+2 hours') = ?
       ORDER BY entry_time DESC LIMIT 1
     `).get(wallet, today);
 
     if (!session) {
-      return res.json({
-        eligible: false,
-        claimed: false,
-        reason: 'No has fichado tu entrada hoy en el Furancho.'
-      });
+      return res.json({ eligible: false, claimed: false, ...meta, reason: 'Ficha tu entrada hoy en el Furancho para activarlo.' });
     }
 
-    // 3. Buscar si posee el NFT "El Guardián da Chave" (guardian_furancho o IDs con 'guardian'/'chave')
+    // 3. Buscar si posee el NFT configurado que desbloquea el beneficio
     const queryAchievements = db.prepare(`
       WITH RankedMints AS (
         SELECT id, wallet_address, achievement_id, token_id, status,
@@ -584,17 +602,14 @@ router.get('/daily-tapa-status', (req, res) => {
       SELECT * FROM RankedMints WHERE LOWER(wallet_address) = LOWER(?)
     `).all(wallet);
 
-    const catalog = achievements.list();
     const eligibleNfts = [];
 
     queryAchievements.forEach(am => {
-      const achId = am.achievement_id.toLowerCase();
-      if (am.achievement_id === 'guardian_furancho' || achId.includes('guardian') || achId.includes('chave')) {
-        const cat = catalog.find(c => c.id === am.achievement_id);
+      if (am.achievement_id === nftId) {
         eligibleNfts.push({
           type: 'achievement',
           id: am.achievement_id,
-          name: cat ? cat.name : '🔑 Guardián de la Chave',
+          name: nftName,
           tokenId: am.token_id,
           serial: am.mint_serial || 0
         });
@@ -602,11 +617,7 @@ router.get('/daily-tapa-status', (req, res) => {
     });
 
     if (eligibleNfts.length === 0) {
-      return res.json({
-        eligible: false,
-        claimed: false,
-        reason: 'No tienes el NFT del Guardián de la Chave.'
-      });
+      return res.json({ eligible: false, claimed: false, ...meta, reason: `Necesitas el NFT «${nftName}» para disfrutar este privilexio.` });
     }
 
     // 4. Comprobar si esta wallet ya ha canjeado hoy
@@ -616,13 +627,14 @@ router.get('/daily-tapa-status', (req, res) => {
     `).get(wallet, today);
 
     if (walletClaim) {
-      let nftUsedName = '🔑 Guardián de la Chave';
+      let nftUsedName = nftName;
       const cat = catalog.find(c => c.id === walletClaim.nft_id);
       if (cat) nftUsedName = cat.name;
 
       return res.json({
         eligible: true,
         claimed: true,
+        ...meta,
         claimedAt: walletClaim.claimed_at,
         nftUsed: {
           type: walletClaim.nft_type,
@@ -651,7 +663,8 @@ router.get('/daily-tapa-status', (req, res) => {
       return res.json({
         eligible: false,
         claimed: false,
-        reason: 'Tu NFT del Guardián ya ha sido utilizado para canjear hoy en otra billetera.'
+        ...meta,
+        reason: `Tu «${nftName}» ya se usó hoy para un canje en otra billetera.`
       });
     }
 
@@ -662,6 +675,7 @@ router.get('/daily-tapa-status', (req, res) => {
     res.json({
       eligible: true,
       claimed: false,
+      ...meta,
       activeNft,
       availableNfts,
       qrData
