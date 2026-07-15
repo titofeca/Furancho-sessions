@@ -1754,15 +1754,24 @@ function getVipReservation(reservationId) {
 // Genera el "nombre de la mesa": un alias gracioso, anónimo y gallego (furancho + amistad).
 // Único dentro del mismo evento para que el patrón no confunda dos mesas la misma noche.
 const VIP_ALIAS_GRUPOS = [
-  'A Cuadrilla', 'A Tropa', 'A Panda', 'A Peña', 'A Troula', 'A Esmorga',
-  'A Xuntanza', 'A Parrulada', 'Os Amigos', 'Os Riquiños', 'Os Larpeiros',
-  'A Galería', 'O Clube', 'A Pandilla', 'Os Featos'
+  'A Cuadrilla', 'A Tropa', 'A Panda', 'A Troula', 'A Esmorga',
+  'A Xuntanza', 'Os Larpeiros', 'Os Riquiños', 'Os Ghastas Pistas',
+  'Os Trapalleiros', 'O Comando', 'Os Caralludos', 'A Irmandade',
+  'Os Furancheiros', 'A Banda', 'Os Licorcafeteiros', 'O Consello',
+  'A Mafía', 'Os Papaventos', 'Os Cunqueiros', 'Os Sanchos',
+  'O Clan', 'Os Ratiños', 'Os Leriantes', 'Os Vellos Rockeiros',
+  'Os Resacosos', 'Os Festixeiros', 'A Peña do Furancho', 'Os Cabaleiros',
+  'O Bloque', 'Os Carcamáns', 'Os Alborotadores', 'A Xente Boa'
 ];
 const VIP_ALIAS_COMPLEMENTOS = [
   'do Albariño', 'do Ribeiro', 'do Godello', 'do Mencía', 'do Polbo',
-  'dos Percebes', 'dos Mexillóns', 'do Lacón', 'dos Grelos', 'da Queimada',
-  'da Empanada', 'do Furancho', 'da Gaita', 'do Queixo', 'da Ría',
-  'do Faro', 'dos Pementos', 'da Morriña', 'da Centola', 'do Caldiño'
+  'da Queimada', 'da Empanada', 'do Furancho', 'da Retranca', 'do Licor Café',
+  'sen Filtro', 'das Cuncas Baleiras', 'da Verbena', 'do Recreo', 'da Leria',
+  'do Ultramarinos', 'do Finisterre', 'da Costa da Morte', 'do Viño do Barril',
+  'dos Ghaliñeiros', 'da Choiva', 'da Borraxeira', 'do Chiringuito', 'da Tasca',
+  'do Millo', 'do Ghicho', 'da Terceira Idade', 'do Castro', 'do Milladoiro',
+  'da Estrela', 'do Pemento de Herbón', 'da Dorna', 'da Ría de Arousa', 'do Canastro',
+  'do Lume', 'da Foliada', 'da Rianxeira', 'do Sifón', 'do Raxo', 'do Churrasco'
 ];
 
 function generateVipAlias(eventId) {
