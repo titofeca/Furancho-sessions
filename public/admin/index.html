@@ -2980,6 +2980,11 @@
           </div>
           <button onclick="addTapa()" style="width:100%; background:#8B1918; color:#fff; border:none; border-radius:10px; padding:13px; font-size:14px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">+ Añadir tapa</button>
         </div>
+        
+        <!-- Enviar aviso de tapas -->
+        <button id="send-tapas-announcement-btn" onclick="sendTapasAnnouncement()" style="display:none; width:100%; margin-top:14px; background: linear-gradient(135deg, var(--gold), #a97b1f); border:none; border-radius:12px; padding:13px; font-size:14px; font-weight:700; cursor:pointer; color:#fff; font-family:'Outfit',sans-serif; box-shadow: 0 2px 8px rgba(196,151,58,0.25); display: flex; align-items: center; justify-content: center; gap: 6px;">
+          📢 Enviar aviso de tapas a clientes
+        </button>
       </div>
 
       <!-- 💶 Facturación del evento (PRIVADO — solo el admin lo ve, nunca un cliente) -->
@@ -8077,11 +8082,15 @@
     const list = document.getElementById('tapas-list');
     const countLabel = document.getElementById('tapas-count-label');
     const addForm = document.getElementById('tapas-add-form');
+    const announceBtn = document.getElementById('send-tapas-announcement-btn');
     initAllergenPicker();
     try {
       const tapas = await fetch(`/api/events/${eventId}/tapas`, { headers: authHeaders() }).then(r => r.json());
       countLabel.textContent = `${tapas.length}/5`;
       addForm.style.display = tapas.length >= 5 ? 'none' : 'flex';
+      if (announceBtn) {
+        announceBtn.style.display = tapas.length > 0 ? 'block' : 'none';
+      }
       if (!tapas.length) {
         list.innerHTML = `<p style="font-size:12px; color:#7A6A5A; text-align:center; padding:8px 0;">Sin tapas aún. ¡Añade la primera!</p>`;
         return;
@@ -8139,6 +8148,60 @@
       await fetch(`/api/events/tapas/${tapaId}`, { method: 'DELETE', headers: authHeaders() });
       loadTapas(currentEventId);
     } catch(e) { showToast('Error eliminando tapa', true); }
+  }
+
+  async function sendTapasAnnouncement() {
+    if (!currentEventId) return;
+    const evTitle = document.getElementById('event-title')?.value || 'esta semana';
+    
+    // Obtener fecha legible
+    const evDateVal = document.getElementById('event-date')?.value;
+    let dateStr = '';
+    if (evDateVal) {
+      try {
+        const d = new Date(evDateVal + 'T00:00:00');
+        dateStr = ' del ' + d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+      } catch (_) {}
+    }
+
+    const defaultSubject = `🍽️ ¡Ya tenemos las tapas de esta semana!`;
+    const defaultBody = `Hemos publicado la selección de tapas para la sesión${dateStr}. ¡Descubre el menú en tu pase, reserva tu mesa VIP o avísanos si te apetece venir! 🍷`;
+    
+    const subject = prompt("Asunto del mensaje a enviar:", defaultSubject);
+    if (subject === null) return; // cancelado
+    
+    const body = prompt("Cuerpo del mensaje:", defaultBody);
+    if (body === null) return; // cancelado
+    
+    if (!subject.trim() || !body.trim()) {
+      showToast("El asunto y el cuerpo del mensaje son obligatorios.", true);
+      return;
+    }
+    
+    try {
+      const res = await fetch('/api/admin/send-message', {
+        method: 'POST',
+        headers: {
+          ...authHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          subject: subject.trim(),
+          body: body.trim(),
+          levelFilter: 'all',
+          rsvpEventId: currentEventId,
+          actionType: 'tapas'
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Error al enviar el anuncio', true);
+        return;
+      }
+      showToast('📢 ¡Anuncio de tapas enviado a todos los clientes!');
+    } catch(e) {
+      showToast('Error de red al enviar el anuncio', true);
+    }
   }
 
   // Edición inline de tapa — sustituye la fila por un mini-formulario
