@@ -238,6 +238,22 @@ function performCheckin(walletAddress, ipAddress) {
     try { levelUp = awardLevelByVisits({ walletAddress, visitCount, ipAddress }); }
     catch (e) { console.error('Error otorgando nivel en check-in:', e.message); }
   }
+
+  // Si tiene reserva VIP confirmada para el evento de hoy, la marcamos como "completed"
+  try {
+    const { getActiveEventWindow, db } = require('../db/database');
+    const win = getActiveEventWindow();
+    if (win && win.event) {
+      db.prepare(`
+        UPDATE vip_reservations
+        SET status = 'completed'
+        WHERE LOWER(wallet_address) = LOWER(?) AND event_id = ? AND status = 'confirmed'
+      `).run(walletAddress, win.event.id);
+    }
+  } catch (e) {
+    console.error('Error al completar reserva VIP en checkin:', e.message);
+  }
+
   return {
     success: true,
     action: 'entry',

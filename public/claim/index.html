@@ -6672,16 +6672,103 @@
     if (!active.length) { el.style.display = 'none'; return; }
     const v = active[0];
     const confirmed = v.status === 'confirmed';
+    const completed = v.status === 'completed';
     const dateStr = new Date(v.event_date + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'short' });
+
+    let statusText = 'PENDIENTE';
+    if (confirmed) statusText = 'CONFIRMADA';
+    if (completed) statusText = 'COMPLETADA (¡YA FICHADO!)';
+
     el.innerHTML = `
-      <div style="background:${confirmed ? 'linear-gradient(135deg,rgba(196,151,58,0.2),rgba(139,25,24,0.08))' : 'rgba(196,151,58,0.12)'}; border:1.5px solid rgba(196,151,58,0.5); border-radius:14px; padding:12px 14px; text-align:center; position:relative; overflow:hidden;">
-        ${confirmed ? '<div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--gold),var(--wine));"></div>' : ''}
-        <div style="font-size:11px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; color:var(--gold); margin-bottom:4px;">⭐ RESERVA VIP ${confirmed ? 'CONFIRMADA' : 'PENDIENTE'}</div>
-        <div style="font-size:14px; font-weight:700; color:var(--wine);">${dateStr} · ${v.group_size} personas</div>
-        ${v.alias ? `<div style="font-size:13px; font-weight:800; color:var(--gold); margin-top:3px;">🏷️ Mesa: ${v.alias}</div>` : ''}
-        <div style="font-size:11px; color:var(--text-muted); margin-top:6px; line-height:1.4;">Al llegar, enseña este perfil al equipo de hostes para que te lleven a tu mesa.</div>
+      <div onclick="openVipValidationOverlay()" style="
+        background:${confirmed ? 'linear-gradient(135deg,rgba(196,151,58,0.24),rgba(139,25,24,0.12))' : completed ? 'linear-gradient(135deg,rgba(74,222,128,0.12),rgba(196,151,58,0.06))' : 'rgba(196,151,58,0.12)'};
+        border:1.8px solid ${completed ? 'rgba(74,222,128,0.5)' : 'rgba(196,151,58,0.65)'};
+        border-radius:16px; padding:14px 16px; text-align:center; position:relative; overflow:hidden;
+        cursor:pointer; transition: all 0.2s ease-in-out;
+        animation: ${confirmed ? 'vipCardPulse 2.5s infinite ease-in-out' : 'none'};"
+        onmouseover="this.style.transform='translateY(-1px)';"
+        onmouseout="this.style.transform='translateY(0)';"
+        onmousedown="this.style.transform='scale(0.98)';">
+        ${confirmed ? '<div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--gold),var(--wine));"></div>' : ''}
+        ${completed ? '<div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#4ade80,var(--gold));"></div>' : ''}
+        <div style="font-size:11px; font-weight:900; letter-spacing:1.5px; text-transform:uppercase; color:${completed ? '#16a34a' : 'var(--gold)'}; margin-bottom:4px;">⭐ RESERVA VIP ${statusText}</div>
+        <div style="font-size:15px; font-weight:800; color:var(--wine);">${dateStr} · ${v.group_size} personas</div>
+        ${v.alias ? `<div style="font-size:13.5px; font-weight:800; color:var(--gold); margin-top:3px;">🏷️ Mesa: ${v.alias}</div>` : ''}
+        <div style="font-size:11.5px; color:var(--text-muted); margin-top:6px; line-height:1.45;">
+          ${completed ? '🎉 ¡Acceso verificado! Que disfrutes de la sesión, ho.' : '👉 <strong>Toca aquí</strong> para fichar la llegada y acceder.'}
+        </div>
       </div>`;
     el.style.display = 'block';
+  }
+
+  function openVipValidationOverlay() {
+    const modal = document.getElementById('vip-validation-overlay');
+    if (!modal) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const active = (_globalMyVipReservations || []).filter(v => v.status !== 'cancelled' && v.event_date >= today);
+    if (!active.length) return;
+    const v = active[0];
+
+    const dateStr = new Date(v.event_date + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'short' });
+    document.getElementById('vip-overlay-details').innerHTML = `
+      <strong>${dateStr}</strong><br>
+      Grupo: <strong>${v.group_size} personas</strong>
+      ${v.alias ? `<br>Mesa asignada: <strong style="color:var(--gold);">${v.alias}</strong>` : ''}
+    `;
+
+    const qrContainer = document.getElementById('vip-qr-container');
+    const campActive = window._campaignState && window._campaignState.active;
+    if (campActive) {
+      startCampaignQr(qrContainer);
+    } else {
+      stopCampaignQr();
+      qrContainer.innerHTML = `<img src="/api/qr/inspect/${userWalletAddress}" style="width:200px; height:200px; display:block; border-radius:10px;" alt="QR VIP" />`;
+    }
+
+    const sheet = modal.firstElementChild || modal.querySelector('div');
+    modal.style.display = 'flex';
+    modal.offsetHeight;
+    if (sheet) sheet.style.transform = 'translateY(0)';
+  }
+
+  function closeVipValidationOverlay() {
+    stopCampaignQr();
+    const modal = document.getElementById('vip-validation-overlay');
+    const sheet = modal.firstElementChild || modal.querySelector('div');
+    if (sheet) sheet.style.transform = 'translateY(100%)';
+    setTimeout(() => { modal.style.display = 'none'; }, 280);
+  }
+
+  async function staffVerifyOnClientDevice() {
+    const code = prompt('🔑 STAFF: Introduce el código de camarero para fichar la llegada del cliente VIP:');
+    if (!code) return;
+    try {
+      const res = await fetch('/api/staff/checkin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-staff-code': code
+        },
+        body: JSON.stringify({
+          walletAddress: userWalletAddress,
+          campaignTs: Math.floor(Date.now() / 1000)
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert('⚠️ ' + (data.error || 'Código incorrecto o error en check-in.'));
+        return;
+      }
+      alert('🎉 ¡Fichaje VIP Completado! La llegada ha sido validada y sumada para el NFT.');
+      closeVipValidationOverlay();
+      if (typeof initWallet === 'function') {
+        initWallet();
+      } else {
+        location.reload();
+      }
+    } catch (e) {
+      alert('Error de red. Inténtalo de nuevo.');
+    }
   }
 
   async function loadCampaignProgress() {
@@ -8860,6 +8947,52 @@
       </button>
     </div>
   </div>
+
+  <!-- ===================== MODAL VIP VALIDATION OVERLAY ===================== -->
+  <div id="vip-validation-overlay" style="display:none; position:fixed; inset:0; z-index:2000; background:rgba(18,9,4,0.75); backdrop-filter:blur(15px); -webkit-backdrop-filter:blur(15px); align-items:flex-end; justify-content:center;" onclick="if(event.target===this)closeVipValidationOverlay()">
+    <div style="width:100%; max-width:480px; background:linear-gradient(180deg, #1f1107 0%, #120904 100%); border-radius:24px 24px 0 0; padding:0 20px 40px; box-shadow:0 -10px 50px rgba(196,151,58,0.3); text-align:center; box-sizing:border-box; max-height:95vh; overflow-y:auto; -webkit-overflow-scrolling:touch; transform:translateY(100%); transition:transform 0.3s cubic-bezier(.32,.72,0,1); border-top: 2px solid #d4af37;">
+      
+      <!-- Handle -->
+      <div style="padding:14px 0 8px; position:sticky; top:0; background:transparent; z-index:1;">
+        <div style="width:36px; height:4px; background:rgba(212,175,55,0.3); border-radius:100px; margin:0 auto;"></div>
+      </div>
+
+      <span style="font-size:48px; display:block; margin-bottom:10px; filter: drop-shadow(0 0 10px rgba(212,175,55,0.6));">⭐</span>
+      <span style="background:rgba(212,175,55,0.15); color:#d4af37; border: 1.5px solid rgba(212,175,58,0.4); font-size:11px; font-weight:900; padding:4px 14px; border-radius:100px; text-transform:uppercase; letter-spacing:2px; display:inline-block; margin-bottom:12px; animation: vipGlowPulse 2s infinite ease-in-out;">
+        Acceso VIP Preferente
+      </span>
+      <h2 style="font-family:'Playfair Display',serif; font-size:26px; font-weight:900; color:#fff; margin:0 0 8px 0; text-shadow: 0 2px 10px rgba(0,0,0,0.5);">⭐ Reserva Confirmada</h2>
+      <p id="vip-overlay-details" style="font-size:14px; color:#f5e6c8; margin:0 0 24px 0; line-height:1.6;"></p>
+
+      <!-- Contenedor del QR con efecto de brillo dorado -->
+      <div style="background:linear-gradient(135deg, #1c1109 0%, #0d0603 100%); border-radius:24px; padding:24px; display:inline-block; border:2px solid #d4af37; box-shadow:0 0 25px rgba(212,175,55,0.25); margin-bottom:28px; position:relative;">
+        <div style="position:absolute; inset: -4px; border-radius: 28px; border: 2px solid rgba(212,175,55,0.5); filter: blur(4px); pointer-events: none;"></div>
+        <div id="vip-qr-container" style="background:#fff; padding:12px; border-radius:14px;"></div>
+      </div>
+
+      <!-- Botón para fichaje in-situ por camarero -->
+      <button onclick="staffVerifyOnClientDevice()"
+        style="width:100%; padding:16px; background:linear-gradient(135deg,#d4af37 0%,#aa8529 100%); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:900; letter-spacing:1px; cursor:pointer; box-shadow:0 6px 20px rgba(212,175,55,0.4); margin-bottom:14px; transition: all 0.2s;"
+        onmouseover="this.style.transform='translateY(-1px)';"
+        onmousedown="this.style.transform='scale(0.97)';">
+        🔑 Fichar Entrada (Staff)
+      </button>
+
+      <button onclick="closeVipValidationOverlay()"
+        style="width:100%; padding:14px; background:rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.15); color:#f5e6c8; border-radius:50px; font-family:'Outfit',sans-serif; font-size:13px; font-weight:700; cursor:pointer; transition: all 0.2s;"
+        onmouseover="this.style.background='rgba(255,255,255,0.1)';"
+        onmousedown="this.style.transform='scale(0.97)';">
+        Volver
+      </button>
+    </div>
+  </div>
+
+  <style>
+    @keyframes vipGlowPulse {
+      0%, 100% { box-shadow: 0 0 8px rgba(212,175,55,0.4); border-color: rgba(212,175,55,0.4); }
+      50% { box-shadow: 0 0 16px rgba(212,175,55,0.8); border-color: rgba(212,175,55,0.8); }
+    }
+  </style>
 
   <!-- ===================== MODAL CHAVE SEMANAL =====================
        A nivel de body: dentro de una .screen el transform de la animación

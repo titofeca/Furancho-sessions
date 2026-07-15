@@ -297,10 +297,10 @@ function walletMeetsRule(wallet, rule) {
     return (row ? row.c : 0) >= (rule.requiredVisits || 5);
   }
   if (rule.type === 'vip_bookings') {
-    // Desbloqueo por acumular N reservas VIP confirmadas
+    // Desbloqueo por acumular N reservas VIP confirmadas o completadas
     const row = db.prepare(`
       SELECT COUNT(*) AS c FROM vip_reservations
-      WHERE LOWER(wallet_address) = LOWER(?) AND status = 'confirmed'
+      WHERE LOWER(wallet_address) = LOWER(?) AND status IN ('confirmed', 'completed')
     `).get(wallet);
     return (row ? row.c : 0) >= (rule.requiredCount || 2);
   }
