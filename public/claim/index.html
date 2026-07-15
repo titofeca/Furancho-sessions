@@ -1373,6 +1373,83 @@
       .portal-medal-core span { animation: none; }
     }
 
+    /* ========== BOTONES ACCION RAPIDA (4 EN LINEA) ========== */
+    .main-actions-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin: 16px 0 24px;
+      padding: 0 4px;
+    }
+    .action-medallion {
+      position: relative;
+      background: linear-gradient(165deg, rgba(255,255,255,0.78), rgba(242,237,227,0.5));
+      border: 1.5px solid rgba(139,25,24,0.13);
+      border-radius: 20px;
+      padding: 10px 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+      text-align: center;
+      overflow: hidden;
+      box-shadow: 0 6px 16px rgba(42,21,9,0.06), inset 0 1px 0 rgba(255,255,255,0.8);
+      transition: transform .2s cubic-bezier(0.2,1,0.3,1), box-shadow .2s, border-color .2s;
+      -webkit-tap-highlight-color: transparent;
+      outline: none;
+      font-family: 'Outfit', sans-serif;
+    }
+    .action-medallion:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 22px rgba(139,25,24,0.1);
+      border-color: rgba(196,151,58,0.4);
+    }
+    .action-medallion:active {
+      transform: scale(0.95);
+      box-shadow: 0 4px 10px rgba(139,25,24,0.08);
+    }
+    .action-medallion::before {
+      content: ''; position: absolute; top: 0; left: -85%; width: 55%; height: 100%;
+      background: linear-gradient(105deg, transparent, rgba(255,255,255,0.5), transparent);
+      transform: skewX(-20deg); pointer-events: none; transition: left .5s ease;
+    }
+    .action-medallion:hover::before, .action-medallion:active::before { left: 130%; }
+
+    .action-medallion .medallion-ring {
+      position: relative;
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      filter: drop-shadow(0 3px 6px rgba(139,25,24,0.12));
+    }
+    .action-medallion .medallion-ring::before {
+      content: ''; position: absolute; inset: -1.5px; border-radius: 50%;
+      background: conic-gradient(from 0deg, var(--gold), #f3ddab, #b98a2e, var(--wine-light), var(--gold));
+      animation: portalSpin 8s linear infinite;
+    }
+    .action-medallion .medallion-core {
+      position: relative; z-index: 1; width: 100%; height: 100%; border-radius: 50%;
+      background: radial-gradient(circle at 34% 28%, #fffdf6, #f5ecd8 62%, #e9dcbe);
+      border: 2px solid rgba(255,255,255,0.92);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: inset 0 -3px 8px rgba(139,25,24,0.06), inset 0 1px 3px rgba(255,255,255,0.9);
+    }
+    .action-medallion .medallion-core span { font-size: 22px; line-height: 1; transition: transform 0.2s ease; }
+    .action-medallion:hover .medallion-core span { transform: scale(1.1) translateY(-1px); }
+    
+    .medallion-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--wine);
+      letter-spacing: -0.2px;
+      line-height: 1.1;
+    }
+
     /* ========== RAFFLE MEJORADA ========== */
     .raffle-particles {
       position: absolute;
@@ -1917,34 +1994,43 @@
       </div>
       <p class="nft-event">Furancho Sessions · Afterwork Viño, Tapas y Leria ochentera</p>
 
-      <div style="display: flex; gap: 12px; justify-content: center; align-items: center; margin: 16px 0 24px; padding: 0 4px; flex-wrap: wrap;">
-        <button onclick="openIdModal()" style="
-          flex: 1; min-width: 140px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-          padding: 12px 16px; border-radius: 16px; border: 1.5px solid rgba(139,25,24,0.22);
-          background: rgba(139,25,24,0.05); color: var(--wine);
-          font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer;
-          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 12px rgba(139,25,24,0.06);
-          outline: none;"
-          onmouseover="this.style.background='rgba(139,25,24,0.1)'; this.style.transform='translateY(-1px)';"
-          onmouseout="this.style.background='rgba(139,25,24,0.05)'; this.style.transform='translateY(0)';"
-          onmousedown="this.style.transform='scale(0.97)';">
-          🪪 ID Socio (QR)
+      <!-- Fila de 4 medallones principales (ID Socio, Carné VIP, Museo, Ruta Furancheira) -->
+      <div class="main-actions-row">
+        <button onclick="openIdModal()" class="action-medallion" aria-label="ID Socio">
+          <div class="medallion-ring">
+            <div class="medallion-core"><span>🪪</span></div>
+          </div>
+          <div class="medallion-label">ID Socio</div>
         </button>
-        <button onclick="openVirtualCard()" id="btn-carne-vip" style="
-          flex: 1; min-width: 140px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-          padding: 12px 16px; border-radius: 16px; border: 1.5px solid rgba(196,151,58,0.35);
-          background: rgba(196,151,58,0.08); color: var(--gold);
-          font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer;
-          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 12px rgba(196,151,58,0.08);
-          outline: none;"
-          onmouseover="this.style.background='rgba(196,151,58,0.15)'; this.style.transform='translateY(-1px)';"
-          onmouseout="this.style.background='rgba(196,151,58,0.08)'; this.style.transform='translateY(0)';"
-          onmousedown="this.style.transform='scale(0.97)';">
-          👑 Carné VIP
+        <button onclick="openVirtualCard()" id="btn-carne-vip" class="action-medallion" aria-label="Carné VIP">
+          <div class="medallion-ring">
+            <div class="medallion-core"><span>👑</span></div>
+          </div>
+          <div class="medallion-label">Carné VIP</div>
         </button>
+        <button onclick="openPrizesModal()" class="action-medallion" aria-label="O meu Museo do Furancho">
+          <div class="medallion-ring">
+            <div class="raffle-live-dot portal-dot" id="raffle-live-dot" style="top: 2px; right: 2px; width: 8px; height: 8px;"></div>
+            <div class="medallion-core"><span>🏛️</span></div>
+          </div>
+          <div class="medallion-label">Museo</div>
+        </button>
+        <button onclick="openRutaModal()" class="action-medallion" aria-label="Ruta Furancheira">
+          <div class="medallion-ring">
+            <div class="medallion-core"><span>🗺️</span></div>
+          </div>
+          <div class="medallion-label">Ruta</div>
+        </button>
+      </div>
+
+      <!-- Mantener compatibilidad con JS de raffle-status-text -->
+      <span id="raffle-status-text" style="display:none;"></span>
+
+      <!-- Tarjeta Dorada VIP (Meme VIP) - Se muestra debajo si está activa -->
+      <div style="display: flex; justify-content: center; margin: -12px 0 24px;">
         <button onclick="openMemeVipCard()" id="btn-meme-vip" style="
           display: none;
-          flex: 1; min-width: 140px; align-items: center; justify-content: center; gap: 8px;
+          width: 100%; max-width: 320px; align-items: center; justify-content: center; gap: 8px;
           padding: 12px 16px; border-radius: 16px; border: 1.5px solid #d4af37;
           background: linear-gradient(135deg, #d4af37 0%, #aa8529 100%); color: #fff;
           font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 900; cursor: pointer;
@@ -1956,6 +2042,116 @@
           🎭 Tarjeta Dorada VIP
         </button>
       </div>
+
+      <!-- ① TU CAMINO — visitas + journey -->
+      <div class="profile-progress-card" style="padding:22px; margin-bottom:20px;">
+
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:22px; gap:12px;">
+          <div>
+            <p style="font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">Tu kilometraje furancheiro, ho</p>
+            <div style="display:flex; align-items:baseline; gap:6px;">
+              <span id="visit-count-display" style="font-family:'Playfair Display',serif; font-size:48px; font-weight:900; color:var(--wine); line-height:1;">0</span>
+              <span id="visit-total-display" style="font-size:14px; color:var(--text-muted);">visitas</span>
+            </div>
+          </div>
+          <!-- Indicador sesión activa -->
+          <div id="session-active-badge" style="display:none; flex-shrink:0; background:rgba(74,222,128,0.12); border:1px solid rgba(74,222,128,0.3); border-radius:100px; padding:6px 12px; font-size:11px; font-weight:700; color:#16a34a; white-space:nowrap; margin-top:4px;">
+            🟢 Fichado y al loro: estás dentro, neno
+          </div>
+        </div>
+
+        <!-- Botones Fichar (Entrada / Salida) -->
+        <div id="fichar-container" style="margin-bottom: 20px;">
+          <button id="fichar-btn-entry" onclick="startClientScanner()" style="width:100%; padding:14px; background:linear-gradient(135deg,#16a34a,#15803d); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 16px rgba(22,163,74,0.3);">
+            📷 Fichar Entrada (Escanear QR)
+          </button>
+          <button id="fichar-btn-exit" onclick="marcharDoFurancho()" style="width:100%; padding:14px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; display:none; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 16px rgba(139,25,24,0.3);">
+            🚪 Registrar Salida (Marchar)
+          </button>
+        </div>
+
+        <!-- Hint siguiente nivel -->
+        <p id="profile-progress-hint" style="font-size:12px; color:var(--text-muted); margin:0 0 16px; line-height:1.5;"></p>
+
+        <!-- Banner NFT en preparación (pending_approval) -->
+        <div id="pending-approval-banner" style="display:none; background:linear-gradient(135deg,#f59e0b22,#a855f722); border:1px solid #f59e0b66; border-radius:14px; padding:14px 16px; margin-bottom:16px; text-align:center;">
+          <div style="font-size:20px; margin-bottom:6px;">🏅</div>
+          <div style="font-size:14px; font-weight:700; color:#92400e; margin-bottom:4px;">¡Carallo, neno, lo conseguiste!</div>
+          <div style="font-size:12px; color:#78350f; line-height:1.5;">Tu Tarjeta <strong id="pending-approval-level-name"></strong> está siendo preparada. Malo será que tarde mucho, ho.</div>
+        </div>
+
+        <!-- Logro de San Juan (Furancheiro Fiesteiro) — pastilla compacta plegable
+             para no saturar el perfil (el logro ya vive en el Museo do Furancho). -->
+        <div id="san-juan-banner" style="display:none; margin-bottom:16px;">
+          <div onclick="toggleSanJuanBanner()" style="cursor:pointer; user-select:none; display:flex; align-items:center; gap:10px; background:linear-gradient(135deg,rgba(249,115,22,0.12),rgba(139,25,24,0.05)); border:1.5px solid rgba(249,115,22,0.45); border-radius:12px; padding:10px 13px;">
+            <span style="font-size:19px; flex-shrink:0;">🔥</span>
+            <div style="flex:1; min-width:0;">
+              <p style="font-family:'Playfair Display',serif; font-size:14px; font-weight:900; color:var(--wine); margin:0; line-height:1.2;">Furancheiro Fiesteiro 🏆</p>
+              <p style="font-size:11px; color:var(--text-muted); margin:1px 0 0;">Logro desbloqueado · toca para ver</p>
+            </div>
+            <span id="san-juan-chevron" style="font-size:13px; color:var(--text-muted); flex-shrink:0;">▾</span>
+          </div>
+          <div id="san-juan-body" style="display:none; margin-top:8px; background:linear-gradient(135deg,rgba(249,115,22,0.10),rgba(139,25,24,0.04)); border:1.5px solid rgba(249,115,22,0.3); border-radius:12px; padding:14px;">
+            <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; margin:0 0 10px 0;">¡Por venir al Furancho en la semana de San Juan! Este logro ya brilla en tu <strong>Museo do Furancho</strong> y pronto podrás añadirlo como un NFT en tu wallet. 🎟️</p>
+            <div style="background:rgba(249,115,22,0.08); border-radius:10px; padding:8px 12px; font-size:11.5px; color:#c2410c; font-weight:600; line-height:1.45; text-align:left;">
+              💡 <strong>¡Privilegio Gastronómico!</strong> En futuras sesiones de furancho, poseer ciertos NFTs te dará acceso a privilegios y ventajas gastronomómicas especiales. 🍷🥓
+            </div>
+          </div>
+        </div>
+
+        <!-- Journey: línea con 4 nodos -->
+        <div style="position:relative; display:flex; align-items:flex-start; justify-content:space-between;">
+          <div style="position:absolute; top:18px; left:18px; right:18px; height:3px; background:rgba(42,21,9,0.08); border-radius:100px; z-index:0;"></div>
+          <div id="journey-progress-line" style="position:absolute; top:18px; left:18px; height:3px; background:linear-gradient(90deg,var(--wine),var(--gold)); border-radius:100px; z-index:1; width:0%; transition:width 1.2s cubic-bezier(0.22,1,0.36,1);"></div>
+          <div id="jnode-1" style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; flex:1;">
+            <div id="jdot-1" style="width:36px; height:36px; border-radius:50%; background:rgba(42,21,9,0.07); border:2.5px solid rgba(42,21,9,0.12); display:flex; align-items:center; justify-content:center; font-size:16px; transition:all 0.5s; margin-bottom:8px;">🍷</div>
+            <div style="text-align:center;"><div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-1">NV1</div><div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;">Cautivo</div><div style="font-size:10px; color:var(--text-muted); margin-top:1px;">1ª vis.</div></div>
+          </div>
+          <div id="jnode-2" style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; flex:1;">
+            <div id="jdot-2" style="width:36px; height:36px; border-radius:50%; background:rgba(42,21,9,0.07); border:2.5px solid rgba(42,21,9,0.12); display:flex; align-items:center; justify-content:center; font-size:16px; transition:all 0.5s; margin-bottom:8px;">🍶</div>
+            <div style="text-align:center;"><div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-2">NV2</div><div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;">Cunqueiro</div><div style="font-size:10px; color:var(--text-muted); margin-top:1px;">2ª vis.</div></div>
+          </div>
+          <div id="jnode-3" style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; flex:1;">
+            <div id="jdot-3" style="width:36px; height:36px; border-radius:50%; background:rgba(42,21,9,0.07); border:2.5px solid rgba(42,21,9,0.12); display:flex; align-items:center; justify-content:center; font-size:16px; transition:all 0.5s; margin-bottom:8px;">🌿</div>
+            <div style="text-align:center;"><div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-3">NV3</div><div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;">Larpeiro</div><div style="font-size:10px; color:var(--text-muted); margin-top:1px;">4 vis. 🏅</div></div>
+          </div>
+          <div id="jnode-4" style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; flex:1;">
+            <div id="jdot-4" style="width:36px; height:36px; border-radius:50%; background:rgba(42,21,9,0.07); border:2.5px solid rgba(42,21,9,0.12); display:flex; align-items:center; justify-content:center; font-size:16px; transition:all 0.5s; margin-bottom:8px;">👑</div>
+            <div style="text-align:center;"><div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-4">NV4</div><div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;">Presidente</div><div style="font-size:10px; color:var(--text-muted); margin-top:1px;">12 vis. 👑</div></div>
+          </div>
+        </div>
+
+        <div id="journey-next-hint" style="display:none; margin-top:14px; padding:10px 14px; background:rgba(196,151,58,0.06); border:1px solid rgba(196,151,58,0.2); border-radius:12px; text-align:center;">
+          <p style="font-size:12px; color:var(--gold); font-weight:600; margin:0;" id="journey-next-text"></p>
+        </div>
+      </div>
+
+      <!-- ①bis EL RETO DE LOS 5 (campaña de verano) -->
+      <div class="profile-progress-card" id="campaign-card" style="display:none; padding:22px; margin-bottom:20px; background:linear-gradient(160deg, rgba(196,151,58,0.10), rgba(139,25,24,0.06)); border:1.5px solid rgba(196,151,58,0.4);">
+        <div style="text-align:center; margin-bottom:6px;">
+          <span style="font-size:30px;">👑</span>
+          <h3 style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:var(--wine); margin:4px 0 2px;">El Reto de los 5</h3>
+          <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0;">Conviértete en <strong>Leyenda del Furancho</strong>. 5 visitas este verano y te llevas el NFT exclusivo <em>Furancho Legend 2026</em>. Solo cuenta 1 visita al día, ¡ho!</p>
+          <div style="display:inline-flex; align-items:center; gap:6px; margin-top:10px; padding:6px 12px; background:rgba(139,25,24,0.08); border:1px solid rgba(139,25,24,0.2); border-radius:20px; font-size:11px; font-weight:700; color:var(--wine);">
+            📍 Las 5 visitas son <span style="text-decoration:underline; text-underline-offset:2px;">na terraza do Finisterre</span>
+          </div>
+        </div>
+
+        <!-- Sellos -->
+        <div class="camp-dots" id="campaign-dots" style="display:flex; gap:9px; justify-content:center; margin:16px 0 10px;"></div>
+        <p id="campaign-count" style="text-align:center; font-size:14px; font-weight:800; color:var(--wine); margin:0 0 4px;">0/5 visitas</p>
+
+        <!-- Estado del NFT / mensaje -->
+        <p id="campaign-state-msg" style="text-align:center; font-size:12.5px; color:var(--text-muted); line-height:1.5; margin:8px 0 0;"></p>
+
+        <!-- CTA: enseñar QR en vivo -->
+        <button id="campaign-show-qr" onclick="openIdModal()" style="width:100%; margin-top:16px; padding:14px; background:linear-gradient(135deg,var(--gold),#a97b1f); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 4px 14px rgba(196,151,58,0.35);">
+          🪪 Enseñar mi QR al camarero
+        </button>
+        <p style="text-align:center; font-size:11px; color:var(--text-muted); margin:10px 0 0; line-height:1.45;">Enséñalo <strong>en vivo</strong> desde la app cuando el personal pase por tu mesa. Las capturas no valen (caducan solas).</p>
+      </div>
+
+
 
       <!-- Tarjeta de Tapa y Cunca do Día -->
       <div id="profile-tapa-card" style="display:none; margin-bottom: 18px;"></div>
@@ -1979,45 +2175,7 @@
         </div>
       </div>
 
-      <!-- inbox-section oculto (sustituido por panel flotante) -->
-      <div id="inbox-section" style="display:none;"></div>
 
-      <!-- prizes-section: ahora vive dentro de la Zona de Juegos -->
-      <div id="prizes-section" style="display:none;"></div>
-
-      <!-- ① GUARDAR EN MI MÓVIL — primero si no está instalado -->
-
-      <!-- Android -->
-      <div id="pwa-install-banner-profile" style="display: none; margin-bottom: 16px;">
-        <button onclick="installPWA()" style="
-          width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
-          padding: 16px 20px; border-radius: 16px; border: 1.5px solid rgba(139,25,24,0.25);
-          background: linear-gradient(135deg, rgba(139,25,24,0.06), rgba(196,151,58,0.06));
-          color: var(--text); font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer;">
-          <span style="font-size:22px;">📲</span>
-          <div style="text-align:left;">
-            <div>Anclar al móvil (¡Dabuti!)</div>
-            <div style="font-size:12px; font-weight:400; color:var(--text-muted);">Así lo tienes a mano en dos toques, ho</div>
-          </div>
-        </button>
-      </div>
-
-      <!-- iOS -->
-      <div id="pwa-ios-banner-profile" style="display: none; margin-bottom: 16px;">
-        <div style="border-radius:16px; border:1.5px solid rgba(139,25,24,0.2); background:linear-gradient(135deg,rgba(139,25,24,0.05),rgba(196,151,58,0.05)); padding:16px 18px;">
-          <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
-            <span style="font-size:22px;">📲</span>
-            <div style="font-size:15px; font-weight:600; color:var(--text);">Anclar al móvil (¡Dabuti!)</div>
-          </div>
-          <div style="font-size:13px; color:var(--text-muted); line-height:1.7;">
-            1. Pulsa <strong style="color:var(--text);">Compartir</strong> <span>⬆️</span> en la barra del navegador<br>
-            2. Selecciona <strong style="color:var(--text);">"Añadir a la pantalla de inicio"</strong> y listo, ho
-          </div>
-        </div>
-      </div>
-
-      <!-- BOTÓN MARCHO — visible solo con sesión activa -->
-      <div id="marcho-banner" style="display:none;"></div>
 
       <!-- 🏖️ VACACIONES + 🌒 ECLIPSE — tarjetas informativas. Solo UI de cliente:
            NO tocan fichaje ni sorteos. Cambian de modo solas por fecha (constantes). -->
@@ -2116,136 +2274,7 @@
         </div>
       </div>
 
-      <!-- ① TU CAMINO — visitas + journey -->
-      <div class="profile-progress-card" style="padding:22px; margin-bottom:20px;">
 
-        <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:22px; gap:12px;">
-          <div>
-            <p style="font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">Tu kilometraje furancheiro, ho</p>
-            <div style="display:flex; align-items:baseline; gap:6px;">
-              <span id="visit-count-display" style="font-family:'Playfair Display',serif; font-size:48px; font-weight:900; color:var(--wine); line-height:1;">0</span>
-              <span id="visit-total-display" style="font-size:14px; color:var(--text-muted);">visitas</span>
-            </div>
-          </div>
-          <!-- Indicador sesión activa -->
-          <div id="session-active-badge" style="display:none; flex-shrink:0; background:rgba(74,222,128,0.12); border:1px solid rgba(74,222,128,0.3); border-radius:100px; padding:6px 12px; font-size:11px; font-weight:700; color:#16a34a; white-space:nowrap; margin-top:4px;">
-            🟢 Fichado y al loro: estás dentro, neno
-          </div>
-        </div>
-
-        <!-- Botones Fichar (Entrada / Salida) -->
-        <div id="fichar-container" style="margin-bottom: 20px;">
-          <button id="fichar-btn-entry" onclick="startClientScanner()" style="width:100%; padding:14px; background:linear-gradient(135deg,#16a34a,#15803d); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 16px rgba(22,163,74,0.3);">
-            📷 Fichar Entrada (Escanear QR)
-          </button>
-          <button id="fichar-btn-exit" onclick="marcharDoFurancho()" style="width:100%; padding:14px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; display:none; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 16px rgba(139,25,24,0.3);">
-            🚪 Registrar Salida (Marchar)
-          </button>
-        </div>
-
-        <!-- Hint siguiente nivel -->
-        <p id="profile-progress-hint" style="font-size:12px; color:var(--text-muted); margin:0 0 16px; line-height:1.5;"></p>
-
-        <!-- Banner NFT en preparación (pending_approval) -->
-        <div id="pending-approval-banner" style="display:none; background:linear-gradient(135deg,#f59e0b22,#a855f722); border:1px solid #f59e0b66; border-radius:14px; padding:14px 16px; margin-bottom:16px; text-align:center;">
-          <div style="font-size:20px; margin-bottom:6px;">🏅</div>
-          <div style="font-size:14px; font-weight:700; color:#92400e; margin-bottom:4px;">¡Carallo, neno, lo conseguiste!</div>
-          <div style="font-size:12px; color:#78350f; line-height:1.5;">Tu Tarjeta <strong id="pending-approval-level-name"></strong> está siendo preparada. Malo será que tarde mucho, ho.</div>
-        </div>
-
-        <!-- Logro de San Juan (Furancheiro Fiesteiro) — pastilla compacta plegable
-             para no saturar el perfil (el logro ya vive en el Museo do Furancho). -->
-        <div id="san-juan-banner" style="display:none; margin-bottom:16px;">
-          <div onclick="toggleSanJuanBanner()" style="cursor:pointer; user-select:none; display:flex; align-items:center; gap:10px; background:linear-gradient(135deg,rgba(249,115,22,0.12),rgba(139,25,24,0.05)); border:1.5px solid rgba(249,115,22,0.45); border-radius:12px; padding:10px 13px;">
-            <span style="font-size:19px; flex-shrink:0;">🔥</span>
-            <div style="flex:1; min-width:0;">
-              <p style="font-family:'Playfair Display',serif; font-size:14px; font-weight:900; color:var(--wine); margin:0; line-height:1.2;">Furancheiro Fiesteiro 🏆</p>
-              <p style="font-size:11px; color:var(--text-muted); margin:1px 0 0;">Logro desbloqueado · toca para ver</p>
-            </div>
-            <span id="san-juan-chevron" style="font-size:13px; color:var(--text-muted); flex-shrink:0;">▾</span>
-          </div>
-          <div id="san-juan-body" style="display:none; margin-top:8px; background:linear-gradient(135deg,rgba(249,115,22,0.10),rgba(139,25,24,0.04)); border:1.5px solid rgba(249,115,22,0.3); border-radius:12px; padding:14px;">
-            <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; margin:0 0 10px 0;">¡Por venir al Furancho en la semana de San Juan! Este logro ya brilla en tu <strong>Museo do Furancho</strong> y pronto podrás añadirlo como un NFT en tu wallet. 🎟️</p>
-            <div style="background:rgba(249,115,22,0.08); border-radius:10px; padding:8px 12px; font-size:11.5px; color:#c2410c; font-weight:600; line-height:1.45; text-align:left;">
-              💡 <strong>¡Privilegio Gastronómico!</strong> En futuras sesiones de furancho, poseer ciertos NFTs te dará acceso a privilegios y ventajas gastronómicas especiales. 🍷🥓
-            </div>
-          </div>
-        </div>
-
-        <!-- Journey: línea con 4 nodos -->
-        <div style="position:relative; display:flex; align-items:flex-start; justify-content:space-between;">
-          <div style="position:absolute; top:18px; left:18px; right:18px; height:3px; background:rgba(42,21,9,0.08); border-radius:100px; z-index:0;"></div>
-          <div id="journey-progress-line" style="position:absolute; top:18px; left:18px; height:3px; background:linear-gradient(90deg,var(--wine),var(--gold)); border-radius:100px; z-index:1; width:0%; transition:width 1.2s cubic-bezier(0.22,1,0.36,1);"></div>
-          <div id="jnode-1" style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; flex:1;">
-            <div id="jdot-1" style="width:36px; height:36px; border-radius:50%; background:rgba(42,21,9,0.07); border:2.5px solid rgba(42,21,9,0.12); display:flex; align-items:center; justify-content:center; font-size:16px; transition:all 0.5s; margin-bottom:8px;">🍷</div>
-            <div style="text-align:center;"><div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-1">NV1</div><div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;">Cautivo</div><div style="font-size:10px; color:var(--text-muted); margin-top:1px;">1ª vis.</div></div>
-          </div>
-          <div id="jnode-2" style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; flex:1;">
-            <div id="jdot-2" style="width:36px; height:36px; border-radius:50%; background:rgba(42,21,9,0.07); border:2.5px solid rgba(42,21,9,0.12); display:flex; align-items:center; justify-content:center; font-size:16px; transition:all 0.5s; margin-bottom:8px;">🍶</div>
-            <div style="text-align:center;"><div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-2">NV2</div><div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;">Cunqueiro</div><div style="font-size:10px; color:var(--text-muted); margin-top:1px;">2ª vis.</div></div>
-          </div>
-          <div id="jnode-3" style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; flex:1;">
-            <div id="jdot-3" style="width:36px; height:36px; border-radius:50%; background:rgba(42,21,9,0.07); border:2.5px solid rgba(42,21,9,0.12); display:flex; align-items:center; justify-content:center; font-size:16px; transition:all 0.5s; margin-bottom:8px;">🌿</div>
-            <div style="text-align:center;"><div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-3">NV3</div><div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;">Larpeiro</div><div style="font-size:10px; color:var(--text-muted); margin-top:1px;">4 vis. 🏅</div></div>
-          </div>
-          <div id="jnode-4" style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; flex:1;">
-            <div id="jdot-4" style="width:36px; height:36px; border-radius:50%; background:rgba(42,21,9,0.07); border:2.5px solid rgba(42,21,9,0.12); display:flex; align-items:center; justify-content:center; font-size:16px; transition:all 0.5s; margin-bottom:8px;">👑</div>
-            <div style="text-align:center;"><div style="font-size:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:1px;" id="jtag-4">NV4</div><div style="font-size:11px; font-weight:700; color:var(--text); font-family:'Playfair Display',serif;">Presidente</div><div style="font-size:10px; color:var(--text-muted); margin-top:1px;">12 vis. 👑</div></div>
-          </div>
-        </div>
-
-        <div id="journey-next-hint" style="display:none; margin-top:14px; padding:10px 14px; background:rgba(196,151,58,0.06); border:1px solid rgba(196,151,58,0.2); border-radius:12px; text-align:center;">
-          <p style="font-size:12px; color:var(--gold); font-weight:600; margin:0;" id="journey-next-text"></p>
-        </div>
-      </div>
-
-      <!-- ①bis EL RETO DE LOS 5 (campaña de verano) -->
-      <div class="profile-progress-card" id="campaign-card" style="display:none; padding:22px; margin-bottom:20px; background:linear-gradient(160deg, rgba(196,151,58,0.10), rgba(139,25,24,0.06)); border:1.5px solid rgba(196,151,58,0.4);">
-        <div style="text-align:center; margin-bottom:6px;">
-          <span style="font-size:30px;">👑</span>
-          <h3 style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:var(--wine); margin:4px 0 2px;">El Reto de los 5</h3>
-          <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0;">Conviértete en <strong>Leyenda del Furancho</strong>. 5 visitas este verano y te llevas el NFT exclusivo <em>Furancho Legend 2026</em>. Solo cuenta 1 visita al día, ¡ho!</p>
-          <div style="display:inline-flex; align-items:center; gap:6px; margin-top:10px; padding:6px 12px; background:rgba(139,25,24,0.08); border:1px solid rgba(139,25,24,0.2); border-radius:20px; font-size:11px; font-weight:700; color:var(--wine);">
-            📍 Las 5 visitas son <span style="text-decoration:underline; text-underline-offset:2px;">na terraza do Finisterre</span>
-          </div>
-        </div>
-
-        <!-- Sellos -->
-        <div class="camp-dots" id="campaign-dots" style="display:flex; gap:9px; justify-content:center; margin:16px 0 10px;"></div>
-        <p id="campaign-count" style="text-align:center; font-size:14px; font-weight:800; color:var(--wine); margin:0 0 4px;">0/5 visitas</p>
-
-        <!-- Estado del NFT / mensaje -->
-        <p id="campaign-state-msg" style="text-align:center; font-size:12.5px; color:var(--text-muted); line-height:1.5; margin:8px 0 0;"></p>
-
-        <!-- CTA: enseñar QR en vivo -->
-        <button id="campaign-show-qr" onclick="openIdModal()" style="width:100%; margin-top:16px; padding:14px; background:linear-gradient(135deg,var(--gold),#a97b1f); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 4px 14px rgba(196,151,58,0.35);">
-          🪪 Enseñar mi QR al camarero
-        </button>
-        <p style="text-align:center; font-size:11px; color:var(--text-muted); margin:10px 0 0; line-height:1.45;">Enséñalo <strong>en vivo</strong> desde la app cuando el personal pase por tu mesa. Las capturas no valen (caducan solas).</p>
-      </div>
-
-      <!-- ② EL SORTEO SEMANAL ("LA CHAVE SEMANAL") -->
-      <div class="profile-progress-card" id="weekly-claim-card" style="padding:18px; margin-bottom:20px; border:1.5px solid rgba(196,151,58,0.22); background:linear-gradient(135deg,rgba(196,151,58,0.06),rgba(139,25,24,0.03)); display:none;">
-        <div style="display:flex; flex-direction:column; gap:12px;">
-          <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
-            <span style="font-size:18px; flex-shrink:0; line-height:1;">🔑</span>
-            <p style="font-size:10px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin:0;">Chave Semanal (Sorteo)</p>
-          </div>
-          <div>
-            <p id="weekly-prize-text" style="font-size:14px; font-weight:700; color:var(--wine); margin:0 0 4px; text-align:center;">Premio: Botella de Viño de la Casa</p>
-            <p id="weekly-rules-text" style="font-size:13px; color:var(--text-muted); margin:0; line-height:1.5; display:block; white-space:pre-wrap; text-align:center;"></p>
-          </div>
-          <button id="weekly-claim-btn" onclick="claimWeeklyTicket()" style="
-            width:100%; padding:15px; border-radius:50px; font-size:15px; font-weight:800; cursor:pointer;
-            border:1.5px solid var(--wine); background:var(--wine); color:#fff;
-            font-family:'Outfit',sans-serif; transition:all 0.2s; outline:none; -webkit-tap-highlight-color:transparent;"
-            onmouseover="this.style.background='var(--wine-light)'; this.style.borderColor='var(--wine-light)';"
-            onmouseout="this.style.background='var(--wine)'; this.style.borderColor='var(--wine)';"
-            onmousedown="this.style.transform='scale(0.96)';">Trincar Boleto</button>
-          <p id="weekly-claim-tap-hint" class="chave-tap-hint" style="display:none; width:100%; justify-content:center; margin:0;">👆 ¡Toca aquí, es gratis!</p>
-          <button id="weekly-info-btn" type="button" onclick="openChaveModal()" style="display:none; align-self:center; background:rgba(139,25,24,0.06); border:1px solid rgba(139,25,24,0.15); padding:5px 12px; color:var(--wine); font-size:11.5px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; border-radius:100px; -webkit-tap-highlight-color:transparent; transition: all 0.2s;" onmouseover="this.style.background='rgba(139,25,24,0.12)'" onmouseout="this.style.background='rgba(139,25,24,0.06)'">ℹ️ ¿Cómo funciona?</button>
-        </div>
-      </div>
 
       <!-- ② PREMIOS (Unificado e Interactivo) -->
       <div id="raffle-section" style="margin-bottom:20px;">
@@ -2290,26 +2319,7 @@
           <div id="next-raffle-mins" style="background:var(--wine); color:#fff; border-radius:20px; padding:4px 10px; font-size:12px; font-weight:700; white-space:nowrap; flex-shrink:0;"></div>
         </div>
 
-        <!-- Accesos Museo + Ruta: medallones circulares lado a lado -->
-        <div class="portal-grid">
-          <button onclick="openPrizesModal()" class="portal-tile" aria-label="O meu Museo do Furancho">
-            <div class="portal-medal">
-              <div class="raffle-live-dot portal-dot" id="raffle-live-dot"></div>
-              <div class="portal-medal-core"><span>🏛️</span></div>
-            </div>
-            <h3 class="portal-title">O meu Museo<br>do Furancho</h3>
-            <p class="portal-sub" id="raffle-status-text">Logros, visitas y premios ganados, ho.</p>
-            <span class="portal-cta">Visitar</span>
-          </button>
-          <button onclick="openRutaModal()" class="portal-tile" aria-label="Ruta Furancheira">
-            <div class="portal-medal">
-              <div class="portal-medal-core"><span>🗺️</span></div>
-            </div>
-            <h3 class="portal-title">Ruta<br>Furancheira</h3>
-            <p class="portal-sub">Locales colaboradores en la zona.</p>
-            <span class="portal-cta">Explorar</span>
-          </button>
-        </div>
+
       </div>
       </div>
  
@@ -2324,6 +2334,69 @@
           <div id="agenda-list" style="display:flex; flex-direction:column; gap:10px;"></div>
         </div>
       </div>
+
+      <!-- inbox-section oculto (sustituido por panel flotante) -->
+      <div id="inbox-section" style="display:none;"></div>
+
+      <!-- prizes-section: ahora vive dentro de la Zona de Juegos -->
+      <div id="prizes-section" style="display:none;"></div>
+
+      <!-- ② EL SORTEO SEMANAL ("LA CHAVE SEMANAL") -->
+      <div class="profile-progress-card" id="weekly-claim-card" style="padding:18px; margin-bottom:20px; border:1.5px solid rgba(196,151,58,0.22); background:linear-gradient(135deg,rgba(196,151,58,0.06),rgba(139,25,24,0.03)); display:none;">
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
+            <span style="font-size:18px; flex-shrink:0; line-height:1;">🔑</span>
+            <p style="font-size:10px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin:0;">Chave Semanal (Sorteo)</p>
+          </div>
+          <div>
+            <p id="weekly-prize-text" style="font-size:14px; font-weight:700; color:var(--wine); margin:0 0 4px; text-align:center;">Premio: Botella de Viño de la Casa</p>
+            <p id="weekly-rules-text" style="font-size:13px; color:var(--text-muted); margin:0; line-height:1.5; display:block; white-space:pre-wrap; text-align:center;"></p>
+          </div>
+          <button id="weekly-claim-btn" onclick="claimWeeklyTicket()" style="
+            width:100%; padding:15px; border-radius:50px; font-size:15px; font-weight:800; cursor:pointer;
+            border:1.5px solid var(--wine); background:var(--wine); color:#fff;
+            font-family:'Outfit',sans-serif; transition:all 0.2s; outline:none; -webkit-tap-highlight-color:transparent;"
+            onmouseover="this.style.background='var(--wine-light)'; this.style.borderColor='var(--wine-light)';"
+            onmouseout="this.style.background='var(--wine)'; this.style.borderColor='var(--wine)';"
+            onmousedown="this.style.transform='scale(0.96)';">Trincar Boleto</button>
+          <p id="weekly-claim-tap-hint" class="chave-tap-hint" style="display:none; width:100%; justify-content:center; margin:0;">👆 ¡Toca aquí, es gratis!</p>
+          <button id="weekly-info-btn" type="button" onclick="openChaveModal()" style="display:none; align-self:center; background:rgba(139,25,24,0.06); border:1px solid rgba(139,25,24,0.15); padding:5px 12px; color:var(--wine); font-size:11.5px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; border-radius:100px; -webkit-tap-highlight-color:transparent; transition: all 0.2s;" onmouseover="this.style.background='rgba(139,25,24,0.12)'" onmouseout="this.style.background='rgba(139,25,24,0.06)'">ℹ️ ¿Cómo funciona?</button>
+        </div>
+      </div>
+
+      <!-- ① GUARDAR EN MI MÓVIL — primero si no está instalado -->
+
+      <!-- Android -->
+      <div id="pwa-install-banner-profile" style="display: none; margin-bottom: 16px;">
+        <button onclick="installPWA()" style="
+          width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
+          padding: 16px 20px; border-radius: 16px; border: 1.5px solid rgba(139,25,24,0.25);
+          background: linear-gradient(135deg, rgba(139,25,24,0.06), rgba(196,151,58,0.06));
+          color: var(--text); font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer;">
+          <span style="font-size:22px;">📲</span>
+          <div style="text-align:left;">
+            <div>Anclar al móvil (¡Dabuti!)</div>
+            <div style="font-size:12px; font-weight:400; color:var(--text-muted);">Así lo tienes a mano en dos toques, ho</div>
+          </div>
+        </button>
+      </div>
+
+      <!-- iOS -->
+      <div id="pwa-ios-banner-profile" style="display: none; margin-bottom: 16px;">
+        <div style="border-radius:16px; border:1.5px solid rgba(139,25,24,0.2); background:linear-gradient(135deg,rgba(139,25,24,0.05),rgba(196,151,58,0.05)); padding:16px 18px;">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+            <span style="font-size:22px;">📲</span>
+            <div style="font-size:15px; font-weight:600; color:var(--text);">Anclar al móvil (¡Dabuti!)</div>
+          </div>
+          <div style="font-size:13px; color:var(--text-muted); line-height:1.7;">
+            1. Pulsa <strong style="color:var(--text);">Compartir</strong> <span>⬆️</span> en la barra del navegador<br>
+            2. Selecciona <strong style="color:var(--text);">"Añadir a la pantalla de inicio"</strong> y listo, ho
+          </div>
+        </div>
+      </div>
+
+      <!-- BOTÓN MARCHO — visible solo con sesión activa -->
+      <div id="marcho-banner" style="display:none;"></div>
  
       <!-- Confirmación de salida -->
       <div id="profile-exit-confirm" style="display: none; background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.25); border-radius: 16px; padding: 14px 18px; margin-bottom: 16px; text-align: center;">
