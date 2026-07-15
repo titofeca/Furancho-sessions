@@ -6148,10 +6148,13 @@
       const unread = _allMessages.filter(m => !readIds.includes(msgKey(m)));
       const panelOpen = document.getElementById('msg-panel')?.style.display === 'flex';
       if (unread.length > 0 && !panelOpen) {
-        const box = document.getElementById('profile-admin-msg');
-        const body = document.getElementById('profile-admin-msg-body');
-        if (body) body.textContent = unread[0].body;
-        if (box) box.style.display = 'block';
+        const isMuted = localStorage.getItem('furancho_mute_inbox') === 'true';
+        if (!isMuted) {
+          const box = document.getElementById('profile-admin-msg');
+          const body = document.getElementById('profile-admin-msg-body');
+          if (body) body.textContent = unread[0].body;
+          if (box) box.style.display = 'block';
+        }
       }
     } catch (_) {}
   }
@@ -6322,8 +6325,46 @@
     document.getElementById('profile-admin-msg').style.display = 'none';
     updateMsgFab();
     
+    // Actualizar UI del botón silenciar según estado guardado
+    updateInboxMuteUi();
+
     // Resetear a pestaña mensajes
     switchMsgPanelTab('msgs');
+  }
+
+  function updateInboxMuteUi() {
+    const isMuted = localStorage.getItem('furancho_mute_inbox') === 'true';
+    const icon = document.getElementById('inbox-mute-icon');
+    const text = document.getElementById('inbox-mute-text');
+    const btn = document.getElementById('inbox-mute-btn');
+    if (!icon || !text || !btn) return;
+    if (isMuted) {
+      icon.textContent = '🔕';
+      text.textContent = 'Silenciado';
+      btn.style.background = 'rgba(239, 68, 68, 0.2)';
+      btn.style.color = '#f87171';
+    } else {
+      icon.textContent = '🔔';
+      text.textContent = 'Activas';
+      btn.style.background = 'rgba(255, 255, 255, 0.1)';
+      btn.style.color = 'rgba(255,255,255,0.8)';
+    }
+  }
+
+  function toggleInboxMute() {
+    const isMuted = localStorage.getItem('furancho_mute_inbox') === 'true';
+    if (isMuted) {
+      localStorage.setItem('furancho_mute_inbox', 'false');
+    } else {
+      localStorage.setItem('furancho_mute_inbox', 'true');
+      document.getElementById('profile-admin-msg').style.display = 'none';
+    }
+    updateInboxMuteUi();
+    
+    // Si estamos en la pestaña muro, refrescar para mostrar/ocultar el muro silenciado
+    if (_currentMsgTab === 'muro') {
+      loadMuroPosts();
+    }
   }
 
   let _currentMsgTab = 'msgs';
@@ -6379,7 +6420,53 @@
   async function loadMuroPosts() {
     const list = document.getElementById('muro-panel-list');
     if (!list) return;
+
+    // Comprobar si está silenciado el muro/participación
+    const isMuted = localStorage.getItem('furancho_mute_inbox') === 'true';
+    const muroInputWrap = document.getElementById('muro-input-wrap');
+    if (isMuted) {
+      list.innerHTML = `
+        <div style="text-align:center; padding:40px 20px; color:rgba(255,255,255,0.4);">
+          <span style="font-size:32px; display:block; margin-bottom:10px;">🔕</span>
+          <span style="font-size:13px; font-weight:700;">Muro Silenciado</span>
+          <p style="font-size:11.5px; color:rgba(255,255,255,0.3); margin:6px 0 0; line-height:1.45;">Has silenciado el Taboleiro. Activa las notificaciones arriba para poder leer y participar en el muro en vivo, ho.</p>
+        </div>
+      `;
+      if (muroInputWrap) muroInputWrap.style.display = 'none';
+      return;
+    }
+
+    if (muroInputWrap) muroInputWrap.style.display = 'block';
     list.innerHTML = '<p style="font-size:12px; color:rgba(255,255,255,0.6); text-align:center; padding:20px 0;">Cargando muro...</p>';
+    
+    // Validar fichaje dinámicamente
+    let checkedIn = false;
+    try {
+      const elig = await resilientFetch(`/api/raffle/eligible-check?wallet=${userWalletAddress}`).then(r => r.json());
+      checkedIn = !!elig.hasSessionToday;
+    } catch(_) {}
+
+    if (muroInputWrap) {
+      if (checkedIn) {
+        muroInputWrap.innerHTML = `
+          <p style="font-size:11px; font-weight:800; color:#d4af37; text-transform:uppercase; letter-spacing:1px; margin:0 0 6px 0;">✍️ Publicar en el Muro Público</p>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="muro-input" placeholder="Di algo a los demás... (máx 150 car.)" maxlength="150" style="flex:1; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:12px; padding:10px 12px; color:#fff; font-family:'Outfit',sans-serif; font-size:13px; outline:none;" />
+            <button onclick="postToMuro()" style="background:#d4af37; border:none; border-radius:12px; padding:0 16px; color:#120904; font-family:'Outfit',sans-serif; font-size:13px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center;">Publicar</button>
+          </div>
+          <p style="font-size:10px; color:rgba(255,255,255,0.4); margin:6px 0 0 0; line-height:1.3;">💬 Tu mensaje será visible para todos los asistentes hoy.</p>
+        `;
+      } else {
+        muroInputWrap.innerHTML = `
+          <div style="background:rgba(255,255,255,0.04); border:1.5px dashed rgba(255,255,255,0.15); border-radius:12px; padding:12px 14px; text-align:center;">
+            <span style="font-size:16px; display:block; margin-bottom:4px;">🔒</span>
+            <span style="font-size:11.5px; font-weight:700; color:rgba(255,255,255,0.5);">Fichaje requerido</span>
+            <p style="font-size:10.5px; color:rgba(255,255,255,0.35); margin:4px 0 0; line-height:1.4;">Debes escanear el QR de entrada hoy para poder publicar en el muro en vivo.</p>
+          </div>
+        `;
+      }
+    }
+
     try {
       const res = await fetch('/api/inbox/board');
       const posts = await res.json();
@@ -9050,7 +9137,13 @@
           <span style="font-size:20px;">🏛️</span>
           <span style="font-family:'Playfair Display',serif; font-size:18px; font-weight:700; color:#f3f4f6;">O Taboleiro do Furancho</span>
         </div>
-        <button onclick="closeMsgPanel()" style="background:rgba(255,255,255,0.1); border:none; border-radius:50%; width:32px; height:32px; font-size:16px; cursor:pointer; color:rgba(255,255,255,0.75); display:flex; align-items:center; justify-content:center;">✕</button>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <!-- Botón Silenciar -->
+          <button id="inbox-mute-btn" onclick="toggleInboxMute()" style="background:rgba(255,255,255,0.1); border:none; border-radius:8px; padding:6px 10px; font-size:11px; cursor:pointer; color:rgba(255,255,255,0.8); display:flex; align-items:center; gap:4px; font-family:'Outfit',sans-serif;">
+            <span id="inbox-mute-icon">🔔</span> <span id="inbox-mute-text">Activas</span>
+          </button>
+          <button onclick="closeMsgPanel()" style="background:rgba(255,255,255,0.1); border:none; border-radius:50%; width:32px; height:32px; font-size:16px; cursor:pointer; color:rgba(255,255,255,0.75); display:flex; align-items:center; justify-content:center;">✕</button>
+        </div>
       </div>
 
       <!-- Selector de Pestañas -->
@@ -9075,10 +9168,10 @@
 
       <!-- SECCIÓN 2: MURO EN VIVO -->
       <div id="muro-panel-list-wrap" style="display:none; flex-direction:column; overflow-y:auto; flex:1;">
-        <div id="muro-panel-list" style="padding:14px 20px 14px; display:flex; flex-direction:column; gap:12px; overflow-y:auto; flex:1;"></div>
+        <div id="muro-panel-list" style="padding:14px 20px 14px; display:flex; flex-direction:column; gap:12px; overflow-y:auto; flex:1;"></div >
         
         <!-- Publicar en el muro -->
-        <div style="padding:16px 20px; border-top:1.5px dashed rgba(255,255,255,0.15); background:rgba(0,0,0,0.2); flex-shrink:0;">
+        <div id="muro-input-wrap" style="padding:16px 20px; border-top:1.5px dashed rgba(255,255,255,0.15); background:rgba(0,0,0,0.2); flex-shrink:0;">
           <p style="font-size:11px; font-weight:800; color:#d4af37; text-transform:uppercase; letter-spacing:1px; margin:0 0 6px 0;">✍️ Publicar en el Muro Público</p>
           <div style="display:flex; gap:8px;">
             <input type="text" id="muro-input" placeholder="Di algo a los demás... (máx 150 car.)" maxlength="150" style="flex:1; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:12px; padding:10px 12px; color:#fff; font-family:'Outfit',sans-serif; font-size:13px; outline:none;" />
