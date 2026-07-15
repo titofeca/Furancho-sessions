@@ -6241,6 +6241,36 @@
                 <button ${actionCall} style="${buttonStyle}">
                   ${buttonText}
                 </button>
+            </div>
+          `;
+        } else if (m.action_type === 'tapas') {
+          // Si el mensaje tiene la acción de "Tapas de la semana"
+          const attending = _globalMyRsvps.includes(eventId);
+          rsvpWidget = `
+            <div style="margin: 12px 0; padding: 14px; background: linear-gradient(135deg, rgba(212,175,55,0.08) 0%, rgba(139,25,24,0.04) 100%); border: 1.5px solid rgba(212,175,55,0.22); border-radius: 12px; text-align: left;">
+              <p style="font-size: 12.5px; font-weight: 800; color: #fff; margin: 0 0 6px 0; font-family: 'Playfair Display', serif; display: flex; align-items: center; gap: 4px;">
+                📋 O noso Tapeo da Semana
+              </p>
+              
+              <!-- Contenedor dinámico de tapas -->
+              <div id="tapas-list-msg-${m.id}" data-event-id="${eventId}" class="tapas-msg-placeholder" style="margin: 8px 0; display: flex; flex-direction: column; gap: 8px; font-size: 11.5px;">
+                <p style="color:rgba(255,255,255,0.4); margin:0;">Cargando tapas...</p>
+              </div>
+              
+              <!-- Acciones: Reservar VIP o indicar que les apetece -->
+              <div style="display: flex; gap: 8px; margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.12); padding-top: 10px; flex-wrap: wrap;">
+                <!-- Reservar VIP -->
+                <button onclick="event.stopPropagation(); openVipModal(${eventId}, '${nextEvent.title} · ${formattedDate}')" style="flex: 1.2; padding: 9px 12px; border-radius: 50px; font-size: 11px; font-weight: 800; background: linear-gradient(135deg, var(--gold), #a97b1f); border: none; color: #fff; font-family: 'Outfit', sans-serif; cursor: pointer; box-shadow: 0 2px 6px rgba(196,151,58,0.25); display: flex; align-items: center; justify-content: center; gap: 3px; min-width: 110px;">
+                  ⭐ Reservar VIP
+                </button>
+                <!-- Me apetece -->
+                <button id="rsvp-btn-msg-${m.id}" onclick="event.stopPropagation(); toggleRsvpFromMsgTapas(${eventId}, this)" style="flex: 1; padding: 9px 12px; border-radius: 50px; font-size: 11px; font-weight: 800; cursor: pointer;
+                  border: 1.5px solid ${attending ? 'var(--wine)' : 'rgba(255,255,255,0.15)'};
+                  background: ${attending ? 'var(--wine)' : 'transparent'};
+                  color: ${attending ? '#fff' : 'rgba(255,255,255,0.7)'};
+                  font-family: 'Outfit', sans-serif; text-align: center; min-width: 100px;">
+                  ${attending ? '✅ Me apetece' : '👍 Me apetece'}
+                </button>
               </div>
             </div>
           `;
@@ -6317,6 +6347,41 @@
 
     list.innerHTML = activeHtml + archivedHtml;
     
+    // Cargar las tapas dinámicamente en los placeholders de los anuncios de tapas
+    document.querySelectorAll('.tapas-msg-placeholder').forEach(async el => {
+      const eventId = el.dataset.eventId;
+      try {
+        const res = await fetch(`/api/events/${eventId}/tapas`);
+        const tapas = await res.json();
+        if (!Array.isArray(tapas) || tapas.length === 0) {
+          el.innerHTML = '<p style="color:rgba(255,255,255,0.4); margin:0; font-style:italic;">No hay tapas registradas para esta semana todavía.</p>';
+          return;
+        }
+        el.innerHTML = tapas.map(t => {
+          const allergenMap = {
+            gluten: '🌾',
+            lacteos: '🥛',
+            huevo: '🥚',
+            frutos_secos: '🥜',
+            pescado: '🐟',
+            marisco: '🦐'
+          };
+          const allergenIcons = (t.allergens || '').split(',').map(a => allergenMap[a.trim()]).filter(Boolean).join('');
+          return `
+            <div style="background:rgba(255,255,255,0.06); border-radius:8px; padding:8px 10px; border:1px solid rgba(255,255,255,0.1);">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:6px;">
+                <strong style="color:#fff; font-size:12px;">${t.name}</strong>
+                ${allergenIcons ? `<span style="font-size:11px;" title="Alérgenos: ${t.allergens}">${allergenIcons}</span>` : ''}
+              </div>
+              ${t.description ? `<p style="color:rgba(255,255,255,0.5); font-size:11px; margin:2px 0 0 0; line-height:1.4; font-style:italic;">${t.description}</p>` : ''}
+            </div>
+          `;
+        }).join('');
+      } catch (e) {
+        el.innerHTML = '<p style="color:red; margin:0;">Error al cargar tapas.</p>';
+      }
+    });
+
     // Marcar todos como leídos localmente silenciosamente
     markAllRead();
     
@@ -6330,6 +6395,42 @@
 
     // Resetear a pestaña mensajes
     switchMsgPanelTab('msgs');
+  }
+
+  async function toggleRsvpFromMsgTapas(eventId, btn) {
+    const attending = btn.textContent.includes('✅');
+    const newAttending = !attending;
+    try {
+      const wallet = localStorage.getItem('furancho_wallet_address');
+      if (!wallet) return;
+      const res = await fetch('/api/events/rsvp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, walletAddress: wallet, attending: newAttending, allergens: [] })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert('⚠️ ' + (data.error || 'Error al guardar asistencia.'));
+        return;
+      }
+      
+      if (newAttending) {
+        if (!_globalMyRsvps.includes(eventId)) _globalMyRsvps.push(eventId);
+        btn.style.border = '1.5px solid var(--wine)';
+        btn.style.background = 'var(--wine)';
+        btn.style.color = '#fff';
+        btn.innerHTML = '✅ Me apetece';
+      } else {
+        _globalMyRsvps = _globalMyRsvps.filter(id => id !== eventId);
+        btn.style.border = '1.5px solid rgba(255,255,255,0.15)';
+        btn.style.background = 'transparent';
+        btn.style.color = 'rgba(255,255,255,0.7)';
+        btn.innerHTML = '👍 Me apetece';
+      }
+      if (typeof renderPrizes === 'function') renderPrizes();
+    } catch (e) {
+      alert('Error de conexión.');
+    }
   }
 
   function updateInboxMuteUi() {

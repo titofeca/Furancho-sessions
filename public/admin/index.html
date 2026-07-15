@@ -1777,6 +1777,7 @@
             <option value="">— Sin botón (anuncio normal) —</option>
             <option value="rsvp">📅 Asistencia RSVP (Confirmar asistencia + alérgenos)</option>
             <option value="vip">⭐ Reserva Mesa VIP (Magnum + Tapas + Postre)</option>
+            <option value="tapas">📋 Tapas de la semana (Menú + VIP + "Me apetece")</option>
           </select>
         </div>
         <div class="form-group" id="msg-action-event-container" style="display:none;">
@@ -4520,6 +4521,9 @@
     } else if (type === 'vip') {
       container.style.display = 'block';
       hint.innerHTML = 'Si eliges una sesión, el cliente verá en el mensaje el botón dorado destacado <strong>"⭐ Reservar Mesa VIP"</strong> para abrir directamente la reserva VIP.';
+    } else if (type === 'tapas') {
+      container.style.display = 'block';
+      hint.innerHTML = 'Si eliges una sesión, el anuncio mostrará automáticamente las tapas de esa semana (configuradas en Eventos) e incluirá botones para reservar VIP y marcar "Me apetece".';
     } else {
       container.style.display = 'none';
       hint.innerHTML = '';
