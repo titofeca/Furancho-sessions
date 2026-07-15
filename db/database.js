@@ -349,6 +349,21 @@ db.exec(`
     UNIQUE(message_id, wallet_address)
   );
 
+  CREATE TABLE IF NOT EXISTS client_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_address TEXT NOT NULL,
+    body TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS board_posts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_address TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    body TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS push_subscriptions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     wallet_address TEXT,
@@ -1804,6 +1819,39 @@ function updateVipStatus(reservationId, status) {
   return null;
 }
 
+function sendVipInboxNotification(walletAddress, eventId, status, alias) {
+  try {
+    const event = db.prepare(`SELECT title FROM events WHERE id=?`).get(eventId);
+    const eventTitle = event ? event.title : 'Sesión Furancho';
+    
+    let subject = '';
+    let body = '';
+    
+    if (status === 'pending') {
+      subject = '⭐ Reserva VIP Solicitada';
+      body = `Tu solicitud de mesa VIP para el evento "${eventTitle}" ha sido recibida y está pendiente de confirmación. Te avisaremos en cuanto el patrón la valide, ho. ⏳`;
+    } else if (status === 'confirmed') {
+      subject = '⭐ Reserva VIP Confirmada';
+      body = `¡Buenas noticias, neno! Tu mesa VIP${alias ? ` a nombre de "${alias}"` : ''} para "${eventTitle}" ha sido confirmada. Al llegar, enseña tu perfil al staff para que te lleven a tu zona. 🥂`;
+    } else if (status === 'cancelled') {
+      subject = '❌ Reserva VIP Cancelada';
+      body = `Lo sentimos, pero tu mesa VIP para "${eventTitle}" ha sido cancelada. Escríbenos si tienes cualquier duda.`;
+    } else if (status === 'completed') {
+      subject = '🎉 ¡Acceso VIP Validado!';
+      body = `¡Bienvenido al furancho! Tu llegada ha sido registrada y tu mesa VIP "${alias || ''}" está lista. Esta visita ya suma para tu kilometraje y tus logros NFT. ¡Pásalo en grande, neno! 🍷`;
+    }
+    
+    if (subject && body) {
+      db.prepare(`
+        INSERT INTO messages (subject, body, level_filter, recipient_count, rsvp_event_id, action_type)
+        VALUES (?, ?, ?, 1, ?, 'vip')
+      `).run(subject, body, walletAddress.toLowerCase(), eventId);
+    }
+  } catch (e) {
+    console.error('Error inserting private VIP message:', e.message);
+  }
+}
+
 function getSessionAnalytics() {
   const avgByLevel = db.prepare(`
     SELECT m.level, m.level_name,
@@ -2680,6 +2728,7 @@ module.exports = {
   getVipCapacity,
   setVipMax,
   updateVipStatus,
+  sendVipInboxNotification,
   savePushSubscription,
   getAllPushSubscriptions,
   deletePushSubscription,

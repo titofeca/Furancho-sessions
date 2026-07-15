@@ -183,6 +183,44 @@ router.get('/inbox', (req, res) => {
   }
 });
 
+// GET /api/admin/inbox/received — admin obtiene todos los DMs recibidos de clientes
+router.get('/inbox/received', requireAuth, (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const dms = db.prepare(`
+      SELECT id, wallet_address, body, created_at
+      FROM client_messages
+      ORDER BY id DESC LIMIT 100
+    `).all();
+    res.json(dms);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/inbox/reply — admin responde a un DM privado de cliente
+router.post('/inbox/reply', requireAuth, (req, res) => {
+  const { walletAddress, body } = req.body || {};
+  if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
+    return res.status(400).json({ error: 'Dirección de wallet no válida' });
+  }
+  if (!body || typeof body !== 'string' || !body.trim()) {
+    return res.status(400).json({ error: 'La respuesta no puede estar vacía' });
+  }
+
+  try {
+    const { db } = require('../db/database');
+    db.prepare(`
+      INSERT INTO messages (subject, body, level_filter, recipient_count, action_type)
+      VALUES (?, ?, ?, 1, 'reply')
+    `).run('💬 Respuesta del Patrón', body.trim(), walletAddress.toLowerCase());
+    
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /api/admin/react — cliente reacciona a un mensaje (público)
 router.post('/react', (req, res) => {
   const { messageId, emoji, walletAddress } = req.body;

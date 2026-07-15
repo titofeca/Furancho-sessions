@@ -145,6 +145,13 @@ router.post('/vip', async (req, res) => {
       groupSize: parseInt(groupSize),
       notes
     });
+    // Enviar mensaje privado en el tablón (inbox) del cliente
+    try {
+      const { sendVipInboxNotification } = require('../db/database');
+      sendVipInboxNotification(walletAddress, parseInt(eventId), 'pending', null);
+    } catch (e) {
+      console.error('Error enviando mensaje inbox VIP (pending):', e.message);
+    }
     // Notificación email a admins (sin bloquear la respuesta)
     sendVipRequestEmail({
       phone: phoneClean,
@@ -189,6 +196,16 @@ router.patch('/vip/:id', requireAuth, (req, res) => {
     const reservation = getVipReservation(parseInt(req.params.id));
     // Al confirmar se genera (o recupera) el alias gracioso que hace de nombre de la mesa
     const alias = updateVipStatus(parseInt(req.params.id), status);
+    
+    // Enviar mensaje privado en el tablón (inbox) del cliente
+    if (reservation) {
+      try {
+        const { sendVipInboxNotification } = require('../db/database');
+        sendVipInboxNotification(reservation.wallet_address, reservation.event_id, status, alias);
+      } catch (e) {
+        console.error('Error enviando mensaje inbox VIP (update):', e.message);
+      }
+    }
     res.json({
       success: true,
       phone: reservation?.phone,

@@ -6297,6 +6297,121 @@
     requestAnimationFrame(() => { panel.querySelector('.msg-panel-sheet').style.transform = 'translateY(0)'; });
     document.getElementById('profile-admin-msg').style.display = 'none';
     updateMsgFab();
+    
+    // Resetear a pestaña mensajes
+    switchMsgPanelTab('msgs');
+  }
+
+  let _currentMsgTab = 'msgs';
+
+  function switchMsgPanelTab(tab) {
+    _currentMsgTab = tab;
+    const btnMsgs = document.getElementById('tab-btn-msgs');
+    const btnMuro = document.getElementById('tab-btn-muro');
+    const wrapMsgs = document.getElementById('msg-panel-list-wrap');
+    const wrapMuro = document.getElementById('muro-panel-list-wrap');
+    if (!btnMsgs || !btnMuro || !wrapMsgs || !wrapMuro) return;
+
+    if (tab === 'msgs') {
+      btnMsgs.style.background = '#d4af37';
+      btnMsgs.style.color = '#120904';
+      btnMuro.style.background = 'transparent';
+      btnMuro.style.color = '#f3f4f6';
+      wrapMsgs.style.display = 'flex';
+      wrapMuro.style.display = 'none';
+    } else {
+      btnMuro.style.background = '#d4af37';
+      btnMuro.style.color = '#120904';
+      btnMsgs.style.background = 'transparent';
+      btnMsgs.style.color = '#f3f4f6';
+      wrapMsgs.style.display = 'none';
+      wrapMuro.style.display = 'flex';
+      loadMuroPosts();
+    }
+  }
+
+  async function sendDmToAdmin() {
+    const txt = document.getElementById('dm-input');
+    if (!txt || !txt.value.trim()) return;
+    const body = txt.value.trim();
+    try {
+      const res = await fetch('/api/inbox/send-dm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: userWalletAddress, body })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert('⚠️ ' + (data.error || 'Error al enviar DM.'));
+        return;
+      }
+      alert('📩 Mensaje enviado al patrón con éxito.');
+      txt.value = '';
+    } catch (e) {
+      alert('Error de conexión.');
+    }
+  }
+
+  async function loadMuroPosts() {
+    const list = document.getElementById('muro-panel-list');
+    if (!list) return;
+    list.innerHTML = '<p style="font-size:12px; color:rgba(255,255,255,0.6); text-align:center; padding:20px 0;">Cargando muro...</p>';
+    try {
+      const res = await fetch('/api/inbox/board');
+      const posts = await res.json();
+      if (!Array.isArray(posts) || posts.length === 0) {
+        list.innerHTML = '<p style="font-size:12px; color:rgba(255,255,255,0.5); text-align:center; padding:24px 0;">Muro vacío. ¡Sé el primero en saludar, ho!</p>';
+        return;
+      }
+      list.innerHTML = posts.map(p => {
+        const timeStr = new Date(p.created_at + 'Z').toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        const isMe = p.wallet_address.toLowerCase() === userWalletAddress.toLowerCase();
+        return `
+          <div style="background:${isMe ? 'rgba(212,175,55,0.12)' : 'rgba(255,255,255,0.05)'}; border-left:3px solid ${isMe ? '#d4af37' : 'rgba(255,255,255,0.3)'}; border-radius:8px; padding:10px 12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <span style="font-size:11.5px; font-weight:800; color:${isMe ? '#d4af37' : '#e5e7eb'};">${p.display_name}</span>
+              <span style="font-size:10px; color:rgba(255,255,255,0.4);">${timeStr}</span>
+            </div>
+            <p style="font-size:13px; color:#f3f4f6; margin:0; line-height:1.4; word-break:break-word;">${escapeHtml(p.body)}</p>
+          </div>
+        `;
+      }).join('');
+    } catch (e) {
+      list.innerHTML = '<p style="font-size:12px; color:red; text-align:center; padding:20px 0;">Error al cargar publicaciones.</p>';
+    }
+  }
+
+  async function postToMuro() {
+    const input = document.getElementById('muro-input');
+    if (!input || !input.value.trim()) return;
+    const body = input.value.trim();
+    try {
+      const res = await fetch('/api/inbox/board/post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: userWalletAddress, body })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert('⚠️ ' + (data.error || 'Error al publicar.'));
+        return;
+      }
+      input.value = '';
+      loadMuroPosts();
+    } catch (e) {
+      alert('Error de conexión.');
+    }
+  }
+
+  function escapeHtml(text) {
+    const map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
   }
 
   function getMyReaction(msgId) {
@@ -8902,18 +9017,53 @@
 
   <!-- Panel deslizante mensajes -->
   <div id="msg-panel" style="display:none; position:fixed; inset:0; z-index:1500; background:rgba(24,12,5,0.65); backdrop-filter:blur(6px); align-items:flex-end; justify-content:center;" onclick="if(event.target===this)closeMsgPanel()">
-    <div class="msg-panel-sheet" style="width:100%; max-width:480px; background:linear-gradient(135deg, #2A1708 0%, #150A03 100%), radial-gradient(circle, rgba(161,98,7,0.15) 0%, transparent 80%); border-top: 5px solid #5c351b; border-radius:24px 24px 0 0; padding:0 0 32px 0; max-height:80vh; display:flex; flex-direction:column; transform:translateY(100%); transition:transform 0.28s cubic-bezier(.32,.72,0,1); box-shadow:0 -8px 40px rgba(0,0,0,0.5);">
+    <div class="msg-panel-sheet" style="width:100%; max-width:480px; background:linear-gradient(135deg, #2A1708 0%, #150A03 100%), radial-gradient(circle, rgba(161,98,7,0.15) 0%, transparent 80%); border-top: 5px solid #d4af37; border-radius:24px 24px 0 0; padding:0 0 32px 0; max-height:88vh; display:flex; flex-direction:column; transform:translateY(100%); transition:transform 0.28s cubic-bezier(.32,.72,0,1); box-shadow:0 -8px 40px rgba(0,0,0,0.5);">
       <div style="padding:14px 20px 0; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
         <div style="width:36px; height:4px; background:rgba(255,255,255,0.25); border-radius:100px; margin:0 auto;"></div>
       </div>
-      <div style="padding:12px 20px 16px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; border-bottom:1.5px dashed rgba(255,255,255,0.15);">
+      <div style="padding:12px 20px 10px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; border-bottom:1.5px dashed rgba(255,255,255,0.15);">
         <div style="display:flex; align-items:center; gap:8px;">
           <span style="font-size:20px;">🏛️</span>
           <span style="font-family:'Playfair Display',serif; font-size:18px; font-weight:700; color:#f3f4f6;">O Taboleiro do Furancho</span>
         </div>
         <button onclick="closeMsgPanel()" style="background:rgba(255,255,255,0.1); border:none; border-radius:50%; width:32px; height:32px; font-size:16px; cursor:pointer; color:rgba(255,255,255,0.75); display:flex; align-items:center; justify-content:center;">✕</button>
       </div>
-      <div id="msg-panel-list" style="padding:22px 20px; overflow-y:auto; display:flex; flex-direction:column; gap:18px;"></div>
+
+      <!-- Selector de Pestañas -->
+      <div style="display:flex; background:rgba(255,255,255,0.08); border-radius:12px; margin: 10px 20px 8px; padding:3px; flex-shrink:0;">
+        <button id="tab-btn-msgs" onclick="switchMsgPanelTab('msgs')" style="flex:1; padding:8px; border:none; border-radius:10px; background:#d4af37; color:#120904; font-family:'Outfit',sans-serif; font-size:12px; font-weight:800; cursor:pointer; transition:all 0.2s;">📢 Mensajes / DMs</button>
+        <button id="tab-btn-muro" onclick="switchMsgPanelTab('muro')" style="flex:1; padding:8px; border:none; border-radius:10px; background:transparent; color:#f3f4f6; font-family:'Outfit',sans-serif; font-size:12px; font-weight:800; cursor:pointer; transition:all 0.2s;">💬 Muro en Vivo</button>
+      </div>
+
+      <!-- SECCIÓN 1: MENSAJES Y DMs -->
+      <div id="msg-panel-list-wrap" style="display:flex; flex-direction:column; overflow-y:auto; flex:1;">
+        <div id="msg-panel-list" style="padding:14px 20px 14px; display:flex; flex-direction:column; gap:18px; overflow-y:auto;"></div>
+        
+        <!-- DM con el patrón -->
+        <div style="padding:16px 20px; border-top:1.5px dashed rgba(255,255,255,0.15); background:rgba(0,0,0,0.2); flex-shrink:0;">
+          <p style="font-size:11px; font-weight:800; color:#d4af37; text-transform:uppercase; letter-spacing:1px; margin:0 0 6px 0;">💬 Escríbele al patrón (Mensaje Directo)</p>
+          <div style="display:flex; gap:8px;">
+            <textarea id="dm-input" placeholder="Pregunta, sugiere o comenta algo en privado..." rows="1" style="flex:1; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:12px; padding:10px 12px; color:#fff; font-family:'Outfit',sans-serif; font-size:13px; resize:none; outline:none;"></textarea>
+            <button onclick="sendDmToAdmin()" style="background:#d4af37; border:none; border-radius:12px; padding:0 16px; color:#120904; font-family:'Outfit',sans-serif; font-size:13px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center;">Enviar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECCIÓN 2: MURO EN VIVO -->
+      <div id="muro-panel-list-wrap" style="display:none; flex-direction:column; overflow-y:auto; flex:1;">
+        <div id="muro-panel-list" style="padding:14px 20px 14px; display:flex; flex-direction:column; gap:12px; overflow-y:auto; flex:1;"></div>
+        
+        <!-- Publicar en el muro -->
+        <div style="padding:16px 20px; border-top:1.5px dashed rgba(255,255,255,0.15); background:rgba(0,0,0,0.2); flex-shrink:0;">
+          <p style="font-size:11px; font-weight:800; color:#d4af37; text-transform:uppercase; letter-spacing:1px; margin:0 0 6px 0;">✍️ Publicar en el Muro Público</p>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="muro-input" placeholder="Di algo a los demás... (máx 150 car.)" maxlength="150" style="flex:1; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:12px; padding:10px 12px; color:#fff; font-family:'Outfit',sans-serif; font-size:13px; outline:none;" />
+            <button onclick="postToMuro()" style="background:#d4af37; border:none; border-radius:12px; padding:0 16px; color:#120904; font-family:'Outfit',sans-serif; font-size:13px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center;">Publicar</button>
+          </div>
+          <p style="font-size:10px; color:rgba(255,255,255,0.4); margin:6px 0 0 0; line-height:1.3;">⚠️ Debes haber fichado entrada hoy para poder participar.</p>
+        </div>
+      </div>
+
     </div>
   </div>
 

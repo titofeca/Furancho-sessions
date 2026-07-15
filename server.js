@@ -32,6 +32,7 @@ app.use('/api/pdf', require('./routes/pdf'));
 app.use('/api/achievements', require('./routes/achievements'));
 app.use('/api/staff', require('./routes/staff'));
 app.use('/api/campaign', require('./routes/campaign'));
+app.use('/api/inbox', require('./routes/inbox'));
 
 // Rutas HTML explícitas — sin caché para siempre recibir versión actualizada
 const NO_CACHE = { 'Cache-Control': 'no-cache, no-store, must-revalidate', Pragma: 'no-cache', Expires: '0' };

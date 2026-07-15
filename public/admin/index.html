@@ -1734,12 +1734,19 @@
     <!-- ==================== MESSAGES ==================== -->
     <div class="page" id="page-messages">
       <div class="page-header">
-        <h1 class="page-title">Publicar Anuncio</h1>
-        <p class="page-subtitle">Envía un mensaje en pantalla a los holders en sus móviles</p>
+        <h1 class="page-title">Mensajes e Interacción</h1>
+        <p class="page-subtitle">Gestiona anuncios masivos y responde chats de clientes</p>
       </div>
 
-      <div class="message-form">
-        <div class="form-group">
+      <!-- Selector de Sub-pestañas -->
+      <div style="display:flex; background:rgba(42,21,9,0.05); border-radius:12px; margin-bottom: 20px; padding:3px; max-width: 480px; border:1px solid var(--border);">
+        <button id="admin-tab-btn-broadcast" onclick="switchAdminMsgTab('broadcast')" style="flex:1; padding:10px; border:none; border-radius:10px; background:#d4af37; color:#120904; font-family:'Outfit',sans-serif; font-size:13px; font-weight:800; cursor:pointer; transition:all 0.2s;">📢 Publicar Anuncio</button>
+        <button id="admin-tab-btn-dms" onclick="switchAdminMsgTab('dms')" style="flex:1; padding:10px; border:none; border-radius:10px; background:transparent; color:var(--text); font-family:'Outfit',sans-serif; font-size:13px; font-weight:800; cursor:pointer; transition:all 0.2s;">📩 Mensajes de Clientes (DMs)</button>
+      </div>
+
+      <div id="admin-broadcast-wrap" style="display:block;">
+        <div class="message-form">
+          <div class="form-group">
           <label class="form-label">Destinatarios</label>
           <select class="input-field" id="msg-level" onchange="toggleMsgWalletInput()">
             <option value="all">Todos los holders</option>
@@ -1813,6 +1820,18 @@
           <span class="card-title">Mensajes programados pendientes</span>
         </div>
         <div id="scheduled-msg-list"></div>
+      </div>
+      </div>
+
+      <!-- SECCIÓN 2: DMs (Mensajes de Clientes) -->
+      <div id="admin-dms-wrap" style="display:none;">
+        <div class="glass-card">
+          <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <span class="card-title">Mensajes Privados Recibidos</span>
+            <button onclick="loadAdminDms()" class="btn-secondary" style="font-size:12px; padding:6px 12px; height:auto; margin:0;">🔄 Actualizar</button>
+          </div>
+          <div id="admin-dms-list" style="display:flex; flex-direction:column; gap:16px; margin-top:14px;"></div>
+        </div>
       </div>
     </div>
 
@@ -4386,6 +4405,107 @@
         }).join('');
       if (current) sel.value = current;
     } catch (e) { /* sin red */ }
+  }
+
+  let _adminCurrentMsgTab = 'broadcast';
+
+  function switchAdminMsgTab(tab) {
+    _adminCurrentMsgTab = tab;
+    const btnBroadcast = document.getElementById('admin-tab-btn-broadcast');
+    const btnDms = document.getElementById('admin-tab-btn-dms');
+    const wrapBroadcast = document.getElementById('admin-broadcast-wrap');
+    const wrapDms = document.getElementById('admin-dms-wrap');
+    if (!btnBroadcast || !btnDms || !wrapBroadcast || !wrapDms) return;
+
+    if (tab === 'broadcast') {
+      btnBroadcast.style.background = '#d4af37';
+      btnBroadcast.style.color = '#120904';
+      btnDms.style.background = 'transparent';
+      btnDms.style.color = 'var(--text)';
+      wrapBroadcast.style.display = 'block';
+      wrapDms.style.display = 'none';
+    } else {
+      btnDms.style.background = '#d4af37';
+      btnDms.style.color = '#120904';
+      btnBroadcast.style.background = 'transparent';
+      btnBroadcast.style.color = 'var(--text)';
+      wrapBroadcast.style.display = 'none';
+      wrapDms.style.display = 'block';
+      loadAdminDms();
+    }
+  }
+
+  async function loadAdminDms() {
+    const list = document.getElementById('admin-dms-list');
+    if (!list) return;
+    list.innerHTML = '<p style="font-size:13px; color:var(--text-muted); text-align:center; padding:20px 0;">Cargando mensajes directos...</p>';
+    try {
+      const res = await resilientFetch('/api/admin/inbox/received');
+      if (!res.ok) {
+        list.innerHTML = '<p style="font-size:13px; color:red; text-align:center; padding:20px 0;">Error al obtener mensajes. Comprueba tu sesión.</p>';
+        return;
+      }
+      const dms = await res.json();
+      if (!Array.isArray(dms) || dms.length === 0) {
+        list.innerHTML = '<p style="font-size:13px; color:var(--text-muted); text-align:center; padding:24px 0;">No se han recibido mensajes directos de clientes aún.</p>';
+        return;
+      }
+      list.innerHTML = dms.map((dm, idx) => {
+        const timeStr = new Date(dm.created_at + 'Z').toLocaleString('es-ES');
+        return `
+          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:12px; display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px;">
+              <span style="font-family:monospace; font-size:12.5px; font-weight:700; color:var(--gold);">${dm.wallet_address}</span>
+              <span style="font-size:11px; color:var(--text-muted);">${timeStr}</span>
+            </div>
+            <div style="font-size:13.5px; color:var(--text); line-height:1.45; white-space:pre-wrap; word-break:break-word;">${escapeHtml(dm.body)}</div>
+            
+            <!-- Formulario de respuesta rápida -->
+            <div style="margin-top:10px; display:flex; flex-direction:column; gap:6px;">
+              <input type="text" id="admin-reply-input-${idx}" placeholder="Escribe tu respuesta privada..." style="background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:8px; padding:8px 12px; color:#fff; font-size:13px; outline:none; font-family:'Outfit',sans-serif;" />
+              <div style="display:flex; justify-content:flex-end;">
+                <button onclick="replyToClientDm('${dm.wallet_address}', 'admin-reply-input-${idx}')" class="btn-primary" style="font-size:12px; padding:6px 14px; height:auto; border-radius:6px; cursor:pointer; width:auto; border:none; background:#d4af37; color:#120904; font-weight:800;">Responder</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (e) {
+      list.innerHTML = '<p style="font-size:13px; color:red; text-align:center; padding:20px 0;">Error de red al cargar DMs.</p>';
+    }
+  }
+
+  async function replyToClientDm(wallet, inputId) {
+    const input = document.getElementById(inputId);
+    if (!input || !input.value.trim()) return;
+    const body = input.value.trim();
+    try {
+      const res = await fetch('/api/admin/inbox/reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: wallet, body })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert('⚠️ ' + (data.error || 'Error al enviar respuesta.'));
+        return;
+      }
+      alert('✅ Respuesta enviada correctamente al tablón privado del cliente.');
+      input.value = '';
+    } catch (e) {
+      alert('Error de conexión.');
+    }
+  }
+
+  function escapeHtml(text) {
+    const map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
   }
 
   function toggleMsgActionFields() {
