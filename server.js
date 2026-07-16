@@ -381,6 +381,53 @@ function scheduleWeeklyLifecyclePushes() {
 }
 scheduleWeeklyLifecyclePushes();
 
+// ─── PUSH DE APERTURA DE EVENTO ──────────────────────────────────────────────
+// Cuando llega la hora de apertura de cara al cliente (19:30) de un día con evento,
+// avisa AUTOMÁTICAMENTE a TODOS los clientes con el horario, en el tono de la app.
+// No hace falta que hayan fichado: sendPushToAll va a todos los suscritos.
+// Una sola vez por evento — el flag se persiste en app_settings, así que aguanta
+// reinicios (Railway/redeploys) sin duplicar el aviso.
+//
+// El horario mostrado es el que ve el cliente en el resto de la app (19:30–22:30),
+// deliberadamente distinto de la ventana interna 19:00–23:59 de fichajes/sorteos.
+// Si cambias el horario que ve el cliente en public/claim, cámbialo también aquí.
+const EVENT_CLIENT_OPEN = '19:30';
+const EVENT_CLIENT_CLOSE = '22:30';
+function scheduleEventOpeningPushes() {
+  setInterval(async () => {
+    try {
+      const { db, getSetting, setSetting } = require('./db/database');
+      const madrid = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+      const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const todayStr = fmt(madrid);
+
+      const event = db.prepare(`SELECT id, title FROM events WHERE event_date = ? AND active = 1 LIMIT 1`).get(todayStr);
+      if (!event) return;
+
+      const [oh, om] = EVENT_CLIENT_OPEN.split(':').map(Number);
+      const openMin = oh * 60 + om;
+      const nowMin = madrid.getHours() * 60 + madrid.getMinutes();
+      // Ventana de disparo: desde la apertura hasta 30 min después (tolera un reinicio breve).
+      if (nowMin < openMin || nowMin > openMin + 30) return;
+
+      const flagKey = `event_open_push_${event.id}`;
+      if (getSetting(flagKey)) return;   // ya avisado para este evento
+      setSetting(flagKey, todayStr);     // marcar ANTES de enviar (evita duplicado si tarda)
+
+      const { sendPushToAll } = require('./services/push');
+      await sendPushToAll(
+        '🍷 ¡Abre el Furancho, ho!',
+        `Hoy hay sesión: de ${EVENT_CLIENT_OPEN} a ${EVENT_CLIENT_CLOSE} h. Vente cuando quieras, que el viño no se bebe solo. 🍷`,
+        { url: '/claim' }
+      );
+      console.log(`[EventOpenPush] 🍷 Aviso de apertura enviado — evento ${event.id} (${todayStr})`);
+    } catch (e) {
+      console.error('[EventOpenPush] Error:', e.message);
+    }
+  }, 60 * 1000);
+}
+scheduleEventOpeningPushes();
+
 // ─── AUTO-PÉRDIDA DE LA CHAVE (sin confirmar antes de las 23:59) ──────────────
 // Cada minuto: si el ganador no confirmó dentro del plazo, el premio queda como
 // 'forfeited' — visible en los listados del admin y en el historial del cliente.
