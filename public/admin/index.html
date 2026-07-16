@@ -8497,6 +8497,7 @@
                   <div style="display:flex; gap:4px; justify-content:flex-end;">
                     <button onclick="updateVip(${r.id},'confirmed')" title="Confirmar" style="padding:5px 10px; border-radius:7px; border:none; background:#4ade8022; color:#4ade80; font-size:12px; cursor:pointer; font-weight:700;">✓</button>
                     <button onclick="updateVip(${r.id},'cancelled')" title="Cancelar" style="padding:5px 10px; border-radius:7px; border:none; background:#f8717122; color:#f87171; font-size:12px; cursor:pointer; font-weight:700;">✗</button>
+                    ${r.status !== 'cancelled' ? `<button onclick="openAdminBlob('/api/pdf/reserva/${r.id}')" title="Imprimir tarjeta para la mesa" style="padding:5px 10px; border-radius:7px; border:none; background:rgba(139,25,24,0.1); color:var(--wine); font-size:12px; cursor:pointer; font-weight:700;">🖨️</button>` : ''}
                   </div>
                 </td>
               </tr>`;

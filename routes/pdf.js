@@ -399,6 +399,116 @@ router.get('/premio/:id', async (req, res) => {
   } catch(e) { res.status(500).send('Error generando PDF: ' + e.message); }
 });
 
+// ─── GET /api/pdf/reserva/:id — Tarjeta de reserva VIP para IMPRIMIR y poner en
+// la mesa. SOLO admin (requireAuth): no es para el cliente. ────────────────────
+router.get('/reserva/:id', requireAuth, async (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const r = db.prepare(`
+      SELECT r.id, r.wallet_address, r.group_size, r.status, r.notes, r.alias,
+             e.event_date, e.title AS event_title
+      FROM vip_reservations r
+      JOIN events e ON r.event_id = e.id
+      WHERE r.id = ?
+    `).get(parseInt(req.params.id));
+
+    if (!r) return res.status(404).send('Reserva no encontrada');
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="Furancho_Reserva_${r.id}.pdf"`);
+
+    const doc = new PDFDocument({ size: 'A4', margin: 0, info: { Title: `Reserva VIP — ${r.event_title}`, Author: 'Furancho Sessions' } });
+    doc.pipe(res);
+    buildReservaPdf(doc, r);
+    doc.end();
+  } catch (e) { res.status(500).send('Error generando PDF: ' + e.message); }
+});
+
+// Dibuja el justificante de reserva VIP. Fila de datos (día · personas · hora ·
+// mesa) sobre fondo crema con banda vino y logo, y una frasiña graciosa coruña.
+function buildReservaPdf(doc, r) {
+  const W = doc.page.width;
+  const H = doc.page.height;
+
+  const confirmed = r.status === 'confirmed';
+  const dateStr = new Date(r.event_date + 'T12:00:00')
+    .toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+  const dateCap = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+  const hora = (String(r.notes || '').match(/(\d{1,2}:\d{2})/) || [])[1] || '';
+
+  // Frases coruñas (estables por reserva para que no cambien entre descargas):
+  // castellano con toques de la zona, sin pasarse.
+  const frases = [
+    'Tu mesa queda guardada, ho. Ni se te ocurra faltar, carallo.',
+    'El viño no se bebe solo — te esperamos con sed, neno.',
+    'Reserva hecha. Ahora solo faltas tú, con hambre y ganas de leria.',
+    'Sitio del bueno, del que vuela. Menos mal que picaste a tiempo, ho.'
+  ];
+  const frase = frases[r.id % frases.length];
+
+  // ── Fondo crema + banda superior vino con filo dorado ──────────────────────
+  doc.rect(0, 0, W, H).fill(CREAM);
+  doc.rect(0, 0, W, 120).fill(WINE);
+  doc.rect(0, 120, W, 4).fill(GOLD);
+
+  // ── Logo (fit preserva proporción) ─────────────────────────────────────────
+  try { doc.image(LOGO_PATH, (W - 76) / 2, 22, { fit: [76, 76], align: 'center', valign: 'center' }); } catch (_) {}
+  doc.fillColor(MUTED).fontSize(9).font('Helvetica')
+     .text('FURANCHO SESSIONS', 0, 130, { align: 'center', characterSpacing: 3 });
+
+  // ── Título ─────────────────────────────────────────────────────────────────
+  doc.fillColor(WINE).fontSize(24).font('Helvetica-Bold')
+     .text('RESERVA VIP', 0, 152, { align: 'center', characterSpacing: 2, width: W });
+
+  // ── Estado (confirmada / pendiente) ────────────────────────────────────────
+  const estado = confirmed ? 'CONFIRMADA' : 'PENDIENTE DE CONFIRMACION';
+  doc.fillColor(confirmed ? GOLD : MUTED).fontSize(10).font('Helvetica-Bold')
+     .text(estado, 0, 186, { align: 'center', characterSpacing: 2, width: W });
+
+  // ── Nombre de la reserva (título del evento) ───────────────────────────────
+  let y = 214;
+  const nombre = pdfSafe(r.event_title) || 'Furancho Sessions';
+  doc.fillColor(DARK).fontSize(26).font('Helvetica-Bold')
+     .text(nombre, 40, y, { align: 'center', width: W - 80, lineGap: 3 });
+  y += doc.heightOfString(nombre, { width: W - 80, fontSize: 26 }) + 26;
+
+  // ── Tarjeta de datos: Día · Personas · Hora · Mesa ─────────────────────────
+  const cardX = 60, cardW = W - 120;
+  const rows = [
+    ['DÍA', dateCap],
+    ['PERSONAS', String(r.group_size)],
+  ];
+  if (hora) rows.push(['HORA', hora]);
+  if (confirmed && r.alias) rows.push(['MESA', pdfSafe(r.alias)]);
+
+  const rowH = 46;
+  const cardH = rows.length * rowH + 20;
+  doc.roundedRect(cardX, y, cardW, cardH, 16).fill('#FFFFFF');
+  doc.roundedRect(cardX, y, cardW, cardH, 16).lineWidth(1.5).stroke(GOLD);
+
+  let ry = y + 20;
+  rows.forEach((row, i) => {
+    doc.fillColor(MUTED).fontSize(10).font('Helvetica-Bold')
+       .text(row[0], cardX + 24, ry + 6, { characterSpacing: 2 });
+    doc.fillColor(WINE).fontSize(16).font('Helvetica-Bold')
+       .text(row[1], cardX + 24, ry + 2, { width: cardW - 48, align: 'right' });
+    if (i < rows.length - 1) {
+      doc.moveTo(cardX + 24, ry + rowH - 6).lineTo(cardX + cardW - 24, ry + rowH - 6)
+         .lineWidth(0.6).stroke('#E7DFD2');
+    }
+    ry += rowH;
+  });
+  y += cardH + 28;
+
+  // ── Frasiña graciosa ───────────────────────────────────────────────────────
+  doc.fillColor(WINE).fontSize(13).font('Helvetica-Oblique')
+     .text('"' + pdfSafe(frase) + '"', 60, y, { align: 'center', width: W - 120, lineGap: 3 });
+
+  // ── Filo inferior ──────────────────────────────────────────────────────────
+  doc.rect(0, H - 24, W, 6).fill(WINE);
+  doc.rect(0, H - 24, W, 2).fill(GOLD);
+}
+
 // Dibuja el bono de premio en el documento PDF. Reutilizable para el bono real
 // del ganador y para la VISTA PREVIA del admin (código oculto, sin ganador).
 // opts.preview: true → cabecera "vista previa", código "••••" y aviso.
