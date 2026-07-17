@@ -9635,8 +9635,65 @@
       </div>`;
     }).join('');
 
+    // 🎟️ Privilexio do Guardián (tapa do día): al escanear el ID Socio de un guardián,
+    // el admin lo ve y puede consumirlo aquí (misma fuente única que /staff y el vale).
+    let dailyTapaHtml = '';
+    const tapa = d.dailyTapa;
+    if (tapa && tapa.visible) {
+      if (tapa.claimed) {
+        const at = tapa.claimedAt ? new Date(tapa.claimedAt.replace(' ','T') + 'Z').toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Madrid'}) : '';
+        dailyTapaHtml = `
+        <div style="padding:14px 16px; background:rgba(42,21,9,0.05); border:1.5px solid rgba(42,21,9,0.15); border-radius:16px; margin-bottom:12px;">
+          <p style="margin:0; font-size:12px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted);">🎟️ ${tapa.title || 'Privilexio'}</p>
+          <p style="margin:6px 0 0; font-size:14px; font-weight:700; color:var(--text);">⛔ Ya consumido hoy${at ? ' · ' + at : ''} — no darle otra vez.</p>
+        </div>`;
+      } else if (tapa.eligible && tapa.activeNft) {
+        window._adminTapaQueue = window._adminTapaQueue || {};
+        window._adminTapaQueue[d.walletAddress] = tapa.activeNft;
+        dailyTapaHtml = `
+        <div style="padding:16px; background:linear-gradient(135deg, rgba(196,151,58,0.22), rgba(139,25,24,0.10)); border:2px solid var(--gold); border-radius:16px; margin-bottom:12px; box-shadow:0 4px 16px rgba(196,151,58,0.25);">
+          <p style="margin:0; font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--wine);">🎟️ ${tapa.title || 'Privilexio do Guardián'}</p>
+          <p style="margin:4px 0 2px; font-size:16px; font-weight:900; color:var(--wine); font-family:'Playfair Display',serif;">${tapa.benefit || 'Tapa e cunca do día'}</p>
+          <p style="margin:0 0 10px; font-size:11px; color:var(--text-muted);">Privilexio do NFT «${tapa.nftName || ''}» · 1 al día</p>
+          <button type="button" onclick="adminClaimDailyTapa(this, '${d.walletAddress}')"
+                  style="width:100%; padding:14px; background:linear-gradient(135deg, var(--gold), #a97b1f); color:#fff; border:none; border-radius:12px; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 3px 12px rgba(196,151,58,0.4); font-family:'Outfit',sans-serif;">
+            🍽️ Entregar y consumir (1/día)
+          </button>
+          <p style="margin:8px 0 0; font-size:10.5px; color:var(--text-muted);">Púlsalo SOLO al entregarle la tapa y la cunca. Queda consumido para hoy.</p>
+        </div>`;
+      } else {
+        // Tiene el NFT pero aún no puede canjear (p.ej. sin fichar hoy, o su NFT ya se usó)
+        dailyTapaHtml = `
+        <div style="padding:14px 16px; background:rgba(196,151,58,0.08); border:1.5px solid rgba(196,151,58,0.35); border-radius:16px; margin-bottom:12px;">
+          <p style="margin:0; font-size:12px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--gold);">🎟️ ${tapa.title || 'Privilexio'}</p>
+          <p style="margin:6px 0 0; font-size:13px; color:var(--text-muted);">${tapa.reason || 'No disponible ahora mismo.'}</p>
+        </div>`;
+      }
+    }
+
+    // 🎁 Bonos de sorteo del cliente: aceptados por canjear (el canje se cierra desde
+    // SU app con el botón verde) y premios ganados aún sin aceptar.
+    const prizesHtml = (d.prizes || []).map(p => {
+      if (p.status === 'accepted') {
+        return `
+        <div style="padding:12px 14px; background:rgba(22,163,74,0.08); border:1.5px solid rgba(22,163,74,0.35); border-radius:14px; margin-bottom:12px;">
+          <p style="margin:0; font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:#16a34a;">🎁 Bono por canjear${p.establishment ? ' · ' + p.establishment : ''}</p>
+          <p style="margin:4px 0 0; font-size:15px; font-weight:800; color:var(--text);">${p.prize}${p.code ? ` <span style="font-family:monospace; font-size:13px; color:var(--wine); letter-spacing:2px;">· ${p.code}</span>` : ''}</p>
+          <p style="margin:4px 0 0; font-size:11px; color:var(--text-muted);">El canje se cierra desde SU app: que abra Mis premios y pulsa TÚ el botón verde "Entregar premio".${p.validityEndDate ? ' Caduca el ' + p.validityEndDate + '.' : ''}</p>
+        </div>`;
+      }
+      return `
+      <div style="padding:12px 14px; background:rgba(196,151,58,0.10); border:1.5px solid rgba(196,151,58,0.4); border-radius:14px; margin-bottom:12px;">
+        <p style="margin:0; font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--gold);">⏳ Premio por aceptar</p>
+        <p style="margin:4px 0 0; font-size:15px; font-weight:800; color:var(--text);">${p.prize}</p>
+        <p style="margin:4px 0 0; font-size:11px; color:var(--text-muted);">¡Le tocó! Que abra su app y pulse "¡ES MÍO!" antes de que caduque (10 min).</p>
+      </div>`;
+    }).join('');
+
     resultDiv.innerHTML = `
       ${nftPrizesHtml}
+      ${dailyTapaHtml}
+      ${prizesHtml}
       <div class="card" style="margin-bottom:16px;">
         <!-- Cabecera nivel -->
         <div style="display:flex; align-items:center; gap:14px; margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid rgba(42,21,9,0.1);">
@@ -9751,6 +9808,38 @@
     }
   }
 
+  // ===== Privilexio do Guardián: consumir desde el Escáner =====
+  // Usa el mismo endpoint del vale QR (POST /api/admin/claim-daily-tapa), así que
+  // el anti-doble-canje es idéntico se consuma por donde se consuma.
+  async function adminClaimDailyTapa(btn, wallet) {
+    const nft = (window._adminTapaQueue || {})[wallet];
+    if (!nft) { showToast('No encuentro el privilexio, vuelve a escanear', true); return; }
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.textContent = 'Consumiendo…';
+    try {
+      const r = await fetch('/api/admin/claim-daily-tapa', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: wallet, nftType: nft.type, nftId: nft.id, serial: nft.serial })
+      });
+      const d = await r.json();
+      if (r.ok && d.success) {
+        btn.style.background = 'rgba(22,163,74,0.9)';
+        btn.textContent = '✅ Consumido — tapa e cunca entregadas';
+        showToast('🎟️ Privilexio consumido para hoy');
+      } else {
+        btn.disabled = false;
+        btn.textContent = original;
+        showToast(d.error || 'No se pudo consumir', true);
+      }
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = original;
+      showToast('Error de red al consumir el privilexio', true);
+    }
+  }
+
   // ===== Fichaje asistido por el staff =====
   async function doScanCheckin(wallet) {
     const btn = document.getElementById('scan-fichar-btn');
@@ -9769,6 +9858,10 @@
         else msg = `✅ Entrada fichada — la visita de esta semana ya estaba contada (lleva ${r.visitCount}).`;
         if (out) out.innerHTML = `<span style="color:#16a34a;font-weight:700;font-size:12.5px;">${msg}</span>`;
         if (btn) { btn.textContent = '✅ Entrada fichada'; btn.style.background = 'rgba(22,163,74,0.15)'; btn.style.color = '#15803d'; }
+        // Refrescar la ficha tras fichar: así el privilexio do Guardián (que requiere
+        // fichaje de hoy) pasa de "ficha tu entrada" al botón de consumir, y el badge
+        // "Dentro ahora" se actualiza. El mensaje de arriba se ve 1,5s antes.
+        setTimeout(() => { lastScannedWallet = null; inspectWallet(wallet); }, 1500);
       } else {
         if (out) out.innerHTML = `<span style="color:var(--wine);font-weight:700;font-size:12.5px;">⚠️ ${r.error || 'No se pudo fichar'}</span>`;
         if (btn) { btn.disabled = false; btn.textContent = '🍷 Fichar ENTRADA'; }

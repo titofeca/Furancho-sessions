@@ -1154,6 +1154,41 @@ router.get('/inspect-wallet/:address', requireAuth, (req, res) => {
       `).all(address, today);
     } catch (_) {}
 
+    // Privilexio do Guardián (tapa do día ligada a NFT): misma fuente única que la
+    // tarjeta del cliente y el fichaje de staff. Así, al escanear el ID Socio de un
+    // guardián, el admin VE el privilexio y puede consumirlo desde aquí mismo.
+    let dailyTapa = null;
+    try {
+      const { computeDailyTapaStatus } = require('./mint');
+      const tapa = computeDailyTapaStatus(address);
+      dailyTapa = tapa && tapa.visible ? tapa : null;
+    } catch (_) {}
+
+    // Bonos de sorteo del cliente: aceptados por canjear y pendientes de aceptar.
+    // (Los premios NFT van aparte, en pendingNftPrizes, con su botón de entrega.)
+    let prizes = [];
+    try {
+      const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
+      prizes = db.prepare(`
+        SELECT id, prize, status, verification_code, establishment, validity_end_date
+        FROM raffles
+        WHERE LOWER(winner_wallet) = LOWER(?)
+          AND nft_achievement_id IS NULL
+          AND (
+            status = 'accepted'
+            OR (status = 'pending_acceptance' AND acceptance_deadline > ?)
+          )
+        ORDER BY created_at DESC LIMIT 10
+      `).all(address, nowStr).map(r => ({
+        raffleId: r.id,
+        prize: r.prize,
+        status: r.status,
+        code: r.status === 'accepted' ? r.verification_code : null,
+        establishment: r.establishment || null,
+        validityEndDate: r.validity_end_date || null
+      }));
+    } catch (_) {}
+
     res.json({
       walletAddress: address,
       level,
@@ -1165,7 +1200,9 @@ router.get('/inspect-wallet/:address', requireAuth, (req, res) => {
       claimedLevels: getClaimedLevels(address),
       tapasByDay,
       pendingNftPrizes,
-      vipReservations
+      vipReservations,
+      dailyTapa,
+      prizes
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
