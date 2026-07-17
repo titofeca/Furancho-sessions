@@ -4328,6 +4328,35 @@
       }
     }
 
+    // Aceptar el premio directamente desde la lista "Premios de esta noche".
+    // Red de seguridad para cuando el modal de resultado no llegó a abrirse
+    // (app en segundo plano al sortearse): el ganador puede trincarlo aquí.
+    async function acceptPrizeFromList(raffleId) {
+      if (!raffleId || !userWalletAddress) return;
+      try {
+        const res = await fetch(`/api/raffle/${raffleId}/accept`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ wallet: userWalletAddress })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          showToast('✅ ¡Premio trincado! Tu bono está en "Mis premios", ho 🍷');
+          if (navigator.vibrate) navigator.vibrate([100,50,100,50,500]);
+          hideAcceptBanner();
+          const modal = document.getElementById('raffle-modal');
+          if (modal && modal.style.display === 'flex') { modal.style.display = 'none'; document.body.style.overflow = ''; }
+          if (data && data.targetLevel) startPollingForLevel(data.targetLevel, data.levelName);
+        } else {
+          showToast(data.error || 'No se pudo aceptar el premio');
+        }
+      } catch (e) {
+        showToast('Error de conexión — inténtalo otra vez');
+      }
+      renderPrizes();
+      loadTonightPrizes();
+    }
+
 
     // Carga y muestra los premios programados de esta noche.
     // Los premios reales SOLO se revelan a quien ya fichó entrada con el QR esta noche.
@@ -4416,8 +4445,24 @@
         // El que ganó se ve resaltado; el que no, atenuado pero legible.
         const rowOpacity = won ? '1' : done ? '0.6' : '1';
         let badge = '';
+        let wonActionHtml = '';
         if (won) {
-          badge = `<span style="font-size:10px; color:#fff; font-weight:800; background:var(--wine); padding:3px 9px; border-radius:20px; flex-shrink:0;">🏆 ¡Te tocó!</span>`;
+          // Estado real del premio ganado: en plazo → botón para aceptar AQUÍ mismo
+          // (por si el modal no llegó a abrirse); aceptado → aviso del bono; caducado → honesto.
+          const rSt = s.raffle_status;
+          const deadlineMs = s.acceptance_deadline ? new Date(s.acceptance_deadline.replace(' ', 'T') + 'Z').getTime() : 0;
+          if (rSt === 'pending_acceptance' && deadlineMs > Date.now()) {
+            badge = `<span style="font-size:10px; color:#fff; font-weight:800; background:var(--wine); padding:3px 9px; border-radius:20px; flex-shrink:0;">🏆 ¡Te tocó!</span>`;
+            wonActionHtml = `<button onclick="acceptPrizeFromList(${s.raffle_id})" style="width:100%; margin-top:8px; padding:12px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer; box-shadow:0 4px 14px rgba(139,25,24,0.3);">¡ES MÍO! Trincar premio 🎉</button>`;
+          } else if (rSt === 'accepted') {
+            badge = `<span style="font-size:10px; color:#fff; font-weight:800; background:#16a34a; padding:3px 9px; border-radius:20px; flex-shrink:0;">🏆 Tuyo — bono abajo 👇</span>`;
+          } else if (rSt === 'collected') {
+            badge = `<span style="font-size:10px; color:#fff; font-weight:800; background:#16a34a; padding:3px 9px; border-radius:20px; flex-shrink:0;">✅ Entregado</span>`;
+          } else if (rSt === 'rejected') {
+            badge = `<span style="font-size:10px; color:var(--text-muted); font-weight:700; background:rgba(42,21,9,0.08); padding:3px 9px; border-radius:20px; flex-shrink:0;">⌛ Te tocó, pero caducó</span>`;
+          } else {
+            badge = `<span style="font-size:10px; color:#fff; font-weight:800; background:var(--wine); padding:3px 9px; border-radius:20px; flex-shrink:0;">🏆 ¡Te tocó!</span>`;
+          }
         } else if (lost) {
           badge = `<span style="font-size:10px; color:var(--text-muted); font-weight:700; background:rgba(42,21,9,0.06); padding:3px 9px; border-radius:20px; flex-shrink:0;">No te tocó</span>`;
         } else if (done) {
@@ -4433,14 +4478,17 @@
         const locHtml = s.maps_url
           ? `<a href="${s.maps_url}" target="_blank" rel="noopener" style="display:inline-block; margin-top:3px; font-size:11px; font-weight:700; color:var(--wine); text-decoration:none;">📍 Cómo llegar${s.establishment ? ' · ' + s.establishment : ''}</a>`
           : (s.establishment ? `<span style="display:block; margin-top:3px; font-size:11px; color:var(--text-muted);">🏪 ${s.establishment}</span>` : '');
-        return `<div style="display:flex; align-items:center; gap:10px; padding:10px 12px; background:${won ? 'rgba(139,25,24,0.06)' : c.bg}; border:1px solid ${won ? 'rgba(139,25,24,0.25)' : c.border}; border-radius:12px; opacity:${rowOpacity};">
-          <div style="width:9px; height:9px; border-radius:50%; background:${c.dot}; flex-shrink:0;"></div>
-          <span style="font-size:13px; font-weight:800; color:var(--wine); flex-shrink:0; width:40px;">${s.scheduled_time || '—'}</span>
-          <div style="flex:1; min-width:0;">
-            <span style="font-size:14px; color:${prizeColor}; font-weight:${prizeWeight};">🎁 ${s.prize}</span>
-            ${locHtml}
+        return `<div style="padding:10px 12px; background:${won ? 'rgba(139,25,24,0.06)' : c.bg}; border:1px solid ${won ? 'rgba(139,25,24,0.25)' : c.border}; border-radius:12px; opacity:${rowOpacity};">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:9px; height:9px; border-radius:50%; background:${c.dot}; flex-shrink:0;"></div>
+            <span style="font-size:13px; font-weight:800; color:var(--wine); flex-shrink:0; width:40px;">${s.scheduled_time || '—'}</span>
+            <div style="flex:1; min-width:0;">
+              <span style="font-size:14px; color:${prizeColor}; font-weight:${prizeWeight};">🎁 ${s.prize}</span>
+              ${locHtml}
+            </div>
+            ${badge}
           </div>
-          ${badge}
+          ${wonActionHtml}
         </div>`;
       };
 

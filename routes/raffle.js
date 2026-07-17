@@ -741,7 +741,11 @@ router.get('/eligible', requireAuth, (req, res) => {
 router.get('/active', (req, res) => {
   const { wallet } = req.query;
   if (!activeRaffle || !wallet) return res.json({ active: false });
-  if (!activeRaffle.eligibleWallets.has(wallet)) return res.json({ active: false });
+  // Comparación case-insensitive: la wallet del cliente puede venir con otro casing
+  // que el guardado en sessions (igual que hace el stream SSE al conectar).
+  const _lw = String(wallet).toLowerCase();
+  const _isEligible = [...activeRaffle.eligibleWallets].some(w => String(w).toLowerCase() === _lw);
+  if (!_isEligible) return res.json({ active: false });
   if (activeRaffle.phase === 'result') {
     const elapsed = Math.floor((Date.now() - activeRaffle.resultAt) / 1000);
     const remaining = activeRaffle.acceptWindow - elapsed;
@@ -841,18 +845,29 @@ router.get('/scheduled', (req, res) => {
       const criteria = { minLevel: r.participant_level, requiredAchievement: r.required_achievement };
       const e = wallet ? elig.checkEligibility(wallet, criteria) : { eligible: null, reason: null };
       // Para un premio YA sorteado: ¿le tocó a ESTA wallet? (para marcarlo en la propia lista)
+      // Se adjunta también el ESTADO del sorteo y su deadline: si al ganador no le llegó
+      // el modal (app en segundo plano), la propia lista le ofrece aceptar en plazo,
+      // y si caducó se lo dice con honestidad en vez de un "¡Te tocó!" sin salida.
       let you_won = null;
+      let raffle_status = null;
+      let acceptance_deadline = null;
       if (wallet && r.status === 'launched' && r.raffle_id) {
         try {
-          const w = db.prepare(`SELECT winner_wallet FROM raffles WHERE id = ?`).get(r.raffle_id);
-          if (w && w.winner_wallet) you_won = w.winner_wallet.toLowerCase() === wallet.toLowerCase();
+          const w = db.prepare(`SELECT winner_wallet, status, acceptance_deadline FROM raffles WHERE id = ?`).get(r.raffle_id);
+          if (w && w.winner_wallet) {
+            you_won = w.winner_wallet.toLowerCase() === wallet.toLowerCase();
+            raffle_status = w.status;
+            acceptance_deadline = you_won ? w.acceptance_deadline : null;
+          }
         } catch (_) {}
       }
       const meta = {
         requirement_label: elig.requirementLabel(criteria),
         eligible: wallet ? e.eligible : null,
         eligibility_reason: e.reason,
-        you_won
+        you_won,
+        raffle_status,
+        acceptance_deadline
       };
       const isPending = r.status === 'pending';
       const shouldHide = !isEligible || (r.hide_name && isPending);
