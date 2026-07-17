@@ -11,7 +11,8 @@ const {
   getWeeklyPrizeTemplates, addWeeklyPrizeTemplate, updateWeeklyPrizeTemplate, deleteWeeklyPrizeTemplate,
   getRaffleCountTonight,
   getScheduledRaffles, createScheduledRaffle, updateScheduledRaffle,
-  deleteScheduledRaffle, linkScheduledRaffle, insertMint,
+  deleteScheduledRaffle, linkScheduledRaffle, setScheduledAutoLaunch, markScheduledAutoAttempt,
+  getSetting, setSetting, insertMint,
   claimWeeklyRaffle, getWeeklyRaffleStatus, updateWeeklyPrize, drawWeeklyRaffle, collectWeeklyRaffle, collectWeeklyWinner, forfeitWeeklyRaffle,
   getWeeklyRaffleTargetWeek, forfeitExpiredWeeklyRaffles, isWeeklyWindowOpen,
   insertWeeklyChatMessage, getWeeklyChatMessages, markWeeklyChatRead, getWeeklyChatThreads,
@@ -965,6 +966,17 @@ router.patch('/scheduled/:id', requireAuth, (req, res) => {
   } catch(e) { res.status(400).json({ error: e.message }); }
 });
 
+// PATCH /api/raffle/scheduled/:id/auto — admin, activar/desactivar auto-lanzamiento
+// por sorteo. No cambia el flujo del botón "▶ Lanzar" manual, solo añade la vía
+// automática cuando llegue la hora.
+router.patch('/scheduled/:id/auto', requireAuth, (req, res) => {
+  try {
+    const enabled = !!req.body.enabled;
+    setScheduledAutoLaunch(parseInt(req.params.id), enabled);
+    res.json({ success: true, enabled });
+  } catch(e) { res.status(400).json({ error: e.message }); }
+});
+
 // DELETE /api/raffle/scheduled/:id — admin, eliminar
 router.delete('/scheduled/:id', requireAuth, (req, res) => {
   try {
@@ -1699,4 +1711,72 @@ setInterval(() => {
     console.error('Error en autocheck de expiración y rescate de sorteos:', e);
   }
 }, 5000);
+
+// ── AUTO-LAUNCHER DE SORTEOS PROGRAMADOS ────────────────────────────────────
+// Cada 20s comprueba si algún sorteo `pending` de HOY tiene su hora cumplida y
+// el flag `auto_launch=1` (o el master global `raffle_auto_launch_all=1`). Si sí,
+// llama a `doLaunch()` — exactamente el mismo flujo que "▶ Lanzar" del admin.
+//
+// Guardas (para no romper flujos existentes):
+//  • Solo si NO hay ya un sorteo activo (evitar solapes).
+//  • Solo si la hora del sorteo ya pasó (marco Madrid) y no lleva más de 30 min de retraso.
+//  • Si `doLaunch` lanza excepción (típicamente "no hay elegibles"): no reintenta
+//    hasta 90s después (marca `last_auto_attempt_at`). El sorteo queda `pending`.
+//  • El botón manual "▶ Lanzar" sigue funcionando igual: cuando el admin lanza a mano,
+//    el estado pasa a 'launched' y el auto-launcher lo ignora en la siguiente vuelta.
+setInterval(() => {
+  try {
+    const { db } = require('../db/database');
+    if (activeRaffle) return; // hay sorteo en marcha → esperar
+
+    const masterOn = getSetting('raffle_auto_launch_all', '0') === '1';
+
+    // Fecha "de hoy" en hora Madrid (misma lógica que getActiveEventWindow)
+    const madridNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+    const y = madridNow.getFullYear(), mo = String(madridNow.getMonth() + 1).padStart(2, '0'), d = String(madridNow.getDate()).padStart(2, '0');
+    const todayStr = `${y}-${mo}-${d}`;
+    const nowHm = `${String(madridNow.getHours()).padStart(2, '0')}:${String(madridNow.getMinutes()).padStart(2, '0')}`;
+
+    const candidates = db.prepare(`
+      SELECT * FROM scheduled_raffles
+      WHERE status = 'pending' AND event_date = ? AND scheduled_time <= ?
+      ORDER BY scheduled_time ASC
+    `).all(todayStr, nowHm);
+
+    for (const s of candidates) {
+      if (!masterOn && !s.auto_launch) continue;
+
+      // Retraso máximo: si lleva más de 30 min pasado, no auto-lanzar (evita que
+      // un sorteo olvidado de una noche larga se lance al día siguiente sin querer).
+      const [sh, sm] = s.scheduled_time.split(':').map(Number);
+      const schedMs = new Date(y, madridNow.getMonth(), madridNow.getDate(), sh, sm).getTime();
+      if (madridNow.getTime() - schedMs > 30 * 60 * 1000) continue;
+
+      // Espaciar reintentos si el intento anterior falló (típicamente no había elegibles).
+      if (s.last_auto_attempt_at) {
+        const lastMs = new Date(s.last_auto_attempt_at.replace(' ', 'T') + 'Z').getTime();
+        if (Date.now() - lastMs < 90 * 1000) continue;
+      }
+
+      try {
+        markScheduledAutoAttempt(s.id);
+        doLaunch({
+          prize: s.prize, type: s.type || 'night',
+          targetLevel: s.target_level, participantLevel: s.participant_level,
+          prizeDetails: s.prize_details, prizeImage: s.prize_image, establishment: s.establishment,
+          hideName: !!s.hide_name, scheduledId: s.id,
+          requiredAchievement: s.required_achievement || null,
+          validity: s.validity, people: s.people, hours: s.hours, days: s.days,
+          validityEndDate: s.validity_end_date, nftAchievementId: s.nft_achievement_id || null
+        });
+        console.log(`[Auto-Raffle] 🤖 Lanzado automáticamente sorteo #${s.id} "${s.prize}" (${s.scheduled_time})`);
+        break; // solo uno por ciclo — el resto en la siguiente vuelta cuando termine este
+      } catch (e) {
+        console.log(`[Auto-Raffle] ⏳ Sorteo #${s.id} "${s.prize}" no se pudo lanzar: ${e.message} — reintento en 90s`);
+      }
+    }
+  } catch (e) {
+    console.error('[Auto-Raffle] Error en el ciclo del auto-launcher:', e.message);
+  }
+}, 20000);
 

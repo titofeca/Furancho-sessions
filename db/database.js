@@ -572,6 +572,12 @@ try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN validity_end_date TEXT`)
 try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN nft_achievement_id TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN nft_achievement_id TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN nft_granted_at TEXT`); } catch (_) {}
+// Auto-lanzamiento por-sorteo (flag propio). El auto-launcher lanza cuando llega la
+// hora si este flag O el master switch global (app_settings.raffle_auto_launch_all) está en 1.
+try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN auto_launch INTEGER DEFAULT 0`); } catch (_) {}
+// Última hora (ISO) a la que el auto-launcher intentó lanzar este sorteo. Sirve
+// para espaciar reintentos (p.ej. si aún no hay elegibles no se martillea cada 20s).
+try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN last_auto_attempt_at TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN nft_granted_by TEXT`); } catch (_) {}
 // Logros NFT creados desde el panel (se fusionan con los del código en services/achievements.js).
 // NO toca los logros hardcodeados (token 100, etc.): esto es puramente aditivo.
@@ -2468,6 +2474,18 @@ function linkScheduledRaffle(scheduledId, raffleId) {
   db.prepare(`UPDATE scheduled_raffles SET status = 'launched', raffle_id = ? WHERE id = ?`).run(raffleId, scheduledId);
 }
 
+// Marca este sorteo programado como "auto-lanzable": el auto-launcher lo dispara solo
+// cuando llega su hora. No cambia el flujo del botón manual "▶ Lanzar" — sigue funcionando.
+function setScheduledAutoLaunch(id, enabled) {
+  db.prepare(`UPDATE scheduled_raffles SET auto_launch = ? WHERE id = ?`).run(enabled ? 1 : 0, id);
+}
+
+// Registra que el auto-launcher intentó disparar este sorteo (aunque el intento haya
+// fallado por "sin elegibles" — evita reintentar cada 20s).
+function markScheduledAutoAttempt(id) {
+  db.prepare(`UPDATE scheduled_raffles SET last_auto_attempt_at = datetime('now') WHERE id = ?`).run(id);
+}
+
 const ALLOWED_REACTIONS = ['🍷', '👍', '🔥', '🙌', '😂'];
 
 function addReaction(messageId, emoji, walletAddress) {
@@ -2750,6 +2768,8 @@ module.exports = {
   getRaffleCountTonight,
   getScheduledRaffles,
   createScheduledRaffle,
+  setScheduledAutoLaunch,
+  markScheduledAutoAttempt,
   updateScheduledRaffle,
   deleteScheduledRaffle,
   linkScheduledRaffle,

@@ -2188,6 +2188,17 @@
         <button id="sched-submit-btn" onclick="addScheduled()" style="width:100%; background:var(--wine); color:#fff; border:none; border-radius:12px; padding:11px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; margin-bottom:6px;">+ Programar sorteo</button>
         <button id="sched-cancel-edit-btn" onclick="clearScheduledForm()" style="display:none; width:100%; background:transparent; color:var(--text-muted); border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; padding:9px; font-size:12px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; margin-bottom:14px;">Cancelar edición</button>
 
+        <!-- Master switch: auto-lanzar TODOS los sorteos programados a su hora -->
+        <div style="margin:14px 0 10px; padding:12px 14px; background:linear-gradient(135deg,rgba(74,222,128,0.10),rgba(196,151,58,0.05)); border:1.5px solid rgba(74,222,128,0.35); border-radius:12px;">
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+            <input type="checkbox" id="auto-launch-master" onchange="toggleAutoLaunchMaster(this.checked)" style="width:18px; height:18px; cursor:pointer; accent-color:#16a34a;" />
+            <div style="flex:1;">
+              <div style="font-size:13px; font-weight:800; color:var(--wine);">🤖 Auto-lanzar TODOS los sorteos a su hora</div>
+              <div style="font-size:11px; color:var(--text-muted); margin-top:2px; line-height:1.4;">Con esto activado, cada sorteo programado se lanza solo cuando llega su hora. Puedes seguir usando "▶ Lanzar" manualmente si quieres adelantarlo.</div>
+            </div>
+          </label>
+        </div>
+
         <!-- Lista de sorteos programados -->
         <div id="scheduled-list" style="display:flex; flex-direction:column; gap:8px;">
           <p style="font-size:12px; color:var(--text-muted); text-align:center; padding:8px 0;">Cargando...</p>
@@ -5355,6 +5366,13 @@
   async function loadScheduled() {
     const container = document.getElementById('scheduled-list');
     if (!container) return;
+    loadAutoLaunchMaster();
+    // Estado global del master, para dibujar el chip "Auto" en verde cuando aplique
+    let masterOn = false;
+    try {
+      const r = await fetch('/api/admin/settings/raffle_auto_launch_all', { headers: authHeaders() }).then(r => r.json());
+      masterOn = (r?.value === '1');
+    } catch(_) {}
     try {
       const rows = await fetch('/api/raffle/scheduled/all', { headers: authHeaders() }).then(r => r.json());
       if (!rows.length) {
@@ -5389,11 +5407,25 @@
               </div>
               <p style="font-size:13px; font-weight:600; color:var(--text); margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${prizeDisplay} ${extraInfo}</p>
             </div>
-            <div style="display:flex; gap:6px; flex-shrink:0;">
-              ${isPending ? `<button onclick="launchScheduled(${r.id}, this)"
-                style="${btnStyle} background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none;">
-                ▶ Lanzar
-              </button>` : ''}
+            <div style="display:flex; gap:6px; flex-shrink:0; align-items:center;">
+              ${isPending ? (() => {
+                // Chip 🤖 Auto: verde vivo si el propio flag O el master están ON;
+                // gris si off. Pulsar alterna SOLO el flag propio (no toca el master).
+                const autoActive = !!r.auto_launch || masterOn;
+                const chipBg = autoActive ? '#16a34a' : 'rgba(42,21,9,0.06)';
+                const chipCol = autoActive ? '#fff' : 'var(--text-muted)';
+                const chipTitle = masterOn && !r.auto_launch
+                  ? 'Se lanzará solo (activo por master GLOBAL). Pulsa para forzar OFF individual.'
+                  : (r.auto_launch ? 'Auto-lanzar ON (individual). Pulsa para desactivar.' : 'Auto-lanzar OFF. Pulsa para activar solo este.');
+                return `<button onclick="toggleScheduledAuto(${r.id}, ${!r.auto_launch}, this)" title="${chipTitle}"
+                  style="${btnStyle} background:${chipBg}; color:${chipCol}; border:none;">
+                  🤖 Auto ${r.auto_launch ? 'ON' : (masterOn ? '·' : 'OFF')}
+                </button>
+                <button onclick="launchScheduled(${r.id}, this)"
+                  style="${btnStyle} background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none;">
+                  ▶ Lanzar
+                </button>`;
+              })() : ''}
               <button onclick="deleteScheduled(${r.id}, this)"
                 style="${btnStyle} background:rgba(139,25,24,0.08); color:var(--wine); border:1px solid rgba(139,25,24,0.2);">
                 ✕
@@ -5871,6 +5903,41 @@
       await fetch(`/api/raffle/scheduled/${id}`, { method: 'DELETE', headers: authHeaders() });
       loadScheduled();
     } catch(e) { btn.disabled = false; }
+  }
+
+  // Toggle por-sorteo del auto-lanzamiento. NO afecta el botón manual "▶ Lanzar":
+  // el admin puede seguir adelantándolo cuando quiera.
+  async function toggleScheduledAuto(id, enabled, btn) {
+    if (btn) { btn.disabled = true; }
+    try {
+      const res = await fetch(`/api/raffle/scheduled/${id}/auto`, {
+        method: 'PATCH', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled })
+      });
+      if (!res.ok) { showToast('No se pudo cambiar', true); return; }
+      loadScheduled();
+    } catch(e) { showToast('Error de conexión', true); }
+    finally { if (btn) btn.disabled = false; }
+  }
+
+  // Master switch: guarda 'raffle_auto_launch_all' en app_settings vía endpoint genérico
+  async function toggleAutoLaunchMaster(enabled) {
+    try {
+      await fetch('/api/admin/settings/raffle_auto_launch_all', {
+        method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: enabled ? '1' : '0' })
+      });
+      showToast(enabled ? '🤖 Auto-lanzamiento GLOBAL activado' : 'Auto-lanzamiento global desactivado');
+      loadScheduled(); // repintar chips por-sorteo con el estado nuevo
+    } catch(e) { showToast('No se pudo guardar', true); }
+  }
+
+  async function loadAutoLaunchMaster() {
+    try {
+      const r = await fetch('/api/admin/settings/raffle_auto_launch_all', { headers: authHeaders() }).then(r => r.json());
+      const cb = document.getElementById('auto-launch-master');
+      if (cb) cb.checked = (r?.value === '1');
+    } catch(e) {}
   }
 
   async function launchScheduled(scheduledId, btn) {
