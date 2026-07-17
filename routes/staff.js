@@ -92,10 +92,64 @@ router.post('/checkin', staffLimiter, requireStaff, (req, res) => {
       });
     } catch (_) { result.pendingNftPrizes = []; }
 
+    // ── Privilexio do Guardián (tapa do día ligada a NFT) ───────────────────
+    // Si el cliente fichado tiene el privilexio activo y sin consumir hoy, el
+    // camarero lo ve al fichar y puede consumirlo ahí mismo (botón en /staff).
+    // Fuente única: computeDailyTapaStatus (la misma de la tarjeta del cliente).
+    try {
+      const { computeDailyTapaStatus } = require('./mint');
+      const tapa = computeDailyTapaStatus(walletAddress);
+      result.dailyTapa = tapa && tapa.visible ? tapa : null;
+    } catch (_) { result.dailyTapa = null; }
+
+    // ── Premios del cliente (bonos de sorteo) ───────────────────────────────
+    // El camarero ve al fichar: bonos ACEPTADOS por canjear (el canje sigue
+    // siendo SOLO desde la app del cliente — botón verde) y premios ganados
+    // PENDIENTES de aceptar (que le dé a "¡ES MÍO!" antes de que caduque).
+    try {
+      const { db } = require('../db/database');
+      const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
+      result.prizes = db.prepare(`
+        SELECT id, prize, status, verification_code, establishment, validity_end_date, acceptance_deadline
+        FROM raffles
+        WHERE LOWER(winner_wallet) = LOWER(?)
+          AND nft_achievement_id IS NULL
+          AND (
+            status = 'accepted'
+            OR (status = 'pending_acceptance' AND acceptance_deadline > ?)
+          )
+        ORDER BY created_at DESC LIMIT 10
+      `).all(walletAddress, nowStr).map(r => ({
+        raffleId: r.id,
+        prize: r.prize,
+        status: r.status,
+        code: r.status === 'accepted' ? r.verification_code : null,
+        establishment: r.establishment || null,
+        validityEndDate: r.validity_end_date || null
+      }));
+    } catch (_) { result.prizes = []; }
+
     return res.json(result);
   } catch (e) {
     console.error('Error en /staff/checkin:', e.message);
     res.status(500).json({ error: 'Error procesando entrada' });
+  }
+});
+
+// POST /api/staff/claim-daily-tapa — el camarero consume el privilexio del cliente
+// al entregarle la tapa/cunca. Misma fuente única y anti-doble-canje que el admin:
+// 1 por wallet y 1 por NFT+serie al día. Body: { walletAddress, nftType, nftId, serial }.
+router.post('/claim-daily-tapa', staffLimiter, requireStaff, (req, res) => {
+  const { walletAddress, nftType, nftId, serial } = req.body || {};
+  if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
+    return res.status(400).json({ error: 'Dirección de wallet no válida' });
+  }
+  try {
+    const { registerDailyTapaClaim } = require('../db/database');
+    registerDailyTapaClaim({ walletAddress, nftType, nftId, serial, staffUser: 'staff' });
+    res.json({ success: true, message: 'Privilexio consumido — tapa e cunca entregadas.' });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
   }
 });
 

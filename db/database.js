@@ -2474,6 +2474,69 @@ function linkScheduledRaffle(scheduledId, raffleId) {
   db.prepare(`UPDATE scheduled_raffles SET status = 'launched', raffle_id = ? WHERE id = ?`).run(raffleId, scheduledId);
 }
 
+// FUENTE ÚNICA del registro del canje del privilexio (tapa do día). Valida el
+// anti-doble-canje (1 por wallet y 1 por NFT+serie al día, y créditos Plan Amigo)
+// y registra el canje. La usan el panel admin (Escáner) y el staff (/staff).
+// Lanza Error con mensaje legible si el canje no procede.
+function registerDailyTapaClaim({ walletAddress, nftType, nftId, serial, staffUser }) {
+  if (!walletAddress || !nftType || !nftId) throw new Error('Faltan parámetros');
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+  const finalSerial = parseInt(serial) || 0;
+
+  // 1. La wallet solo canjea una vez al día (sea cual sea el método)
+  const walletClaim = db.prepare(`
+    SELECT id FROM daily_tapa_claims
+    WHERE LOWER(wallet_address) = LOWER(?) AND claim_date = ?
+  `).get(walletAddress, today);
+  if (walletClaim) throw new Error('Esta billetera ya ha canjeado su tapa de hoy.');
+
+  // 2. Este NFT concreto (id + nº de serie) solo se usa una vez al día
+  const nftClaim = db.prepare(`
+    SELECT id FROM daily_tapa_claims
+    WHERE nft_type = ? AND nft_id = ? AND serial = ? AND claim_date = ?
+  `).get(nftType, nftId, finalSerial, today);
+  if (nftClaim) throw new Error('Este NFT ya ha sido usado para un canje hoy.');
+
+  // 3. Bono Plan Amigo: comprobar créditos disponibles (solo amigos nuevos y activos)
+  if (nftType === 'referral') {
+    const activeReferredFriendsRow = db.prepare(`
+      SELECT COUNT(DISTINCT r.referred_wallet) as count
+      FROM referrals r
+      WHERE LOWER(r.referrer_wallet) = LOWER(?)
+        AND (
+          EXISTS (
+            SELECT 1 FROM visits v
+            WHERE LOWER(v.wallet_address) = LOWER(r.referred_wallet)
+              AND v.visited_at >= r.created_at
+          )
+          OR EXISTS (
+            SELECT 1 FROM sessions s
+            WHERE LOWER(s.wallet_address) = LOWER(r.referred_wallet)
+              AND s.counted_as_visit = 1
+              AND s.entry_time >= r.created_at
+          )
+        )
+    `).get(walletAddress);
+    const activeReferredFriends = activeReferredFriendsRow ? activeReferredFriendsRow.count : 0;
+    const referralCredits = Math.floor(activeReferredFriends / 15);
+    const referralClaimsRow = db.prepare(`
+      SELECT COUNT(*) as count FROM daily_tapa_claims
+      WHERE LOWER(wallet_address) = LOWER(?) AND nft_type = 'referral'
+    `).get(walletAddress);
+    const referralClaims = referralClaimsRow ? referralClaimsRow.count : 0;
+    if (referralClaims >= referralCredits) {
+      throw new Error('No tienes bonos de recomendados disponibles para canjear.');
+    }
+  }
+
+  // 4. Registrar el canje
+  db.prepare(`
+    INSERT INTO daily_tapa_claims (wallet_address, nft_type, nft_id, serial, claim_date, staff_user)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(walletAddress, nftType, nftId, finalSerial, today, staffUser || 'admin');
+  return { success: true, claimDate: today };
+}
+
 // Marca este sorteo programado como "auto-lanzable": el auto-launcher lo dispara solo
 // cuando llega su hora. No cambia el flujo del botón manual "▶ Lanzar" — sigue funcionando.
 function setScheduledAutoLaunch(id, enabled) {
@@ -2770,6 +2833,7 @@ module.exports = {
   createScheduledRaffle,
   setScheduledAutoLaunch,
   markScheduledAutoAttempt,
+  registerDailyTapaClaim,
   updateScheduledRaffle,
   deleteScheduledRaffle,
   linkScheduledRaffle,

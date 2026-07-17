@@ -1735,83 +1735,16 @@ router.post('/transfers/:id/reject', requireAuth, (req, res) => {
   }
 });
 // POST /api/admin/claim-daily-tapa
-// Registra el canje físico de la tapa gratis y consumición do día
+// Registra el canje físico de la tapa gratis y consumición do día.
+// Delega en registerDailyTapaClaim (db/database.js), fuente única compartida con /staff.
 router.post('/claim-daily-tapa', requireAuth, (req, res) => {
   const { walletAddress, nftType, nftId, serial } = req.body;
-  if (!walletAddress || !nftType || !nftId) {
-    return res.status(400).json({ error: 'Faltan parámetros' });
-  }
-
   try {
-    const { db } = require('../db/database');
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
-    const finalSerial = parseInt(serial) || 0;
-
-    // 1. Validar que la wallet no haya canjeado hoy
-    const walletClaim = db.prepare(`
-      SELECT id FROM daily_tapa_claims
-      WHERE LOWER(wallet_address) = LOWER(?) AND claim_date = ?
-    `).get(walletAddress, today);
-
-    if (walletClaim) {
-      return res.status(400).json({ error: 'Esta billetera ya ha canjeado su tapa de hoy.' });
-    }
-
-    // 2. Validar que este NFT en particular no haya sido usado hoy
-    const nftClaim = db.prepare(`
-      SELECT id FROM daily_tapa_claims
-      WHERE nft_type = ? AND nft_id = ? AND serial = ? AND claim_date = ?
-    `).get(nftType, nftId, finalSerial, today);
-
-    if (nftClaim) {
-      return res.status(400).json({ error: 'Este NFT ya ha sido usado para un canje hoy.' });
-    }
-
-    // 2.2. Si es de tipo referral, validar que tenga créditos disponibles
-    //      Solo cuentan amigos NUEVOS que visitaron después de ser referidos (anti-trampa).
-    if (nftType === 'referral') {
-      const activeReferredFriendsRow = db.prepare(`
-        SELECT COUNT(DISTINCT r.referred_wallet) as count
-        FROM referrals r
-        WHERE LOWER(r.referrer_wallet) = LOWER(?)
-          AND (
-            EXISTS (
-              SELECT 1 FROM visits v
-              WHERE LOWER(v.wallet_address) = LOWER(r.referred_wallet)
-                AND v.visited_at >= r.created_at
-            )
-            OR EXISTS (
-              SELECT 1 FROM sessions s
-              WHERE LOWER(s.wallet_address) = LOWER(r.referred_wallet)
-                AND s.counted_as_visit = 1
-                AND s.entry_time >= r.created_at
-            )
-          )
-      `).get(walletAddress);
-      const activeReferredFriends = activeReferredFriendsRow ? activeReferredFriendsRow.count : 0;
-      const referralCredits = Math.floor(activeReferredFriends / 15);
-
-      const referralClaimsRow = db.prepare(`
-        SELECT COUNT(*) as count FROM daily_tapa_claims 
-        WHERE LOWER(wallet_address) = LOWER(?) AND nft_type = 'referral'
-      `).get(walletAddress);
-      const referralClaims = referralClaimsRow ? referralClaimsRow.count : 0;
-
-      if (referralClaims >= referralCredits) {
-        return res.status(400).json({ error: 'No tienes bonos de recomendados disponibles para canjear.' });
-      }
-    }
-
-    // 3. Registrar el canje
-    db.prepare(`
-      INSERT INTO daily_tapa_claims (wallet_address, nft_type, nft_id, serial, claim_date, staff_user)
-      VALUES (?, ?, ?, ?, ?, 'admin')
-    `).run(walletAddress, nftType, nftId, finalSerial, today);
-
+    const { registerDailyTapaClaim } = require('../db/database');
+    registerDailyTapaClaim({ walletAddress, nftType, nftId, serial, staffUser: 'admin' });
     res.json({ success: true, message: 'Canje de tapa registrado con éxito.' });
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(400).json({ error: e.message });
   }
 });
 

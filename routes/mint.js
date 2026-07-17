@@ -676,15 +676,11 @@ router.post('/transfer-request', mintLimiter, (req, res) => {
     res.status(500).json({ error: 'Error al solicitar el traspaso' });
   }
 });
-// GET /api/mint/daily-tapa-status
-// Comprueba el estado del canje de tapa/cunca de hoy para una wallet
-router.get('/daily-tapa-status', (req, res) => {
-  const { wallet } = req.query;
-  if (!wallet || !/^0x[a-fA-F0-9]{40}$/i.test(wallet)) {
-    return res.status(400).json({ error: 'Wallet no válida' });
-  }
-
-  try {
+// FUENTE ÚNICA del estado del privilexio (tapa do día ligada a NFT) para una wallet.
+// La usan: GET /api/mint/daily-tapa-status (tarjeta del cliente) y el check-in de
+// staff (/api/staff/checkin), para que el camarero vea y consuma el privilexio al
+// fichar al cliente. Misma lógica, mismos textos, mismo anti-trampa.
+function computeDailyTapaStatus(wallet) {
     const { db } = require('../db/database');
     const achievements = require('../services/achievements');
     const { getAppSetting } = require('../db/transfers');
@@ -717,13 +713,13 @@ router.get('/daily-tapa-status', (req, res) => {
 
     // 1. ¿Beneficio activo? (interruptor + ventana de fechas). Si no, el cliente ni lo ve.
     if (!enabled) {
-      return res.json({ visible: false, eligible: false, claimed: false, ...meta, reason: `El privilexio do «${nftName}» no está activo ahora mismo.` });
+      return ({ visible: false, eligible: false, claimed: false, ...meta, reason: `El privilexio do «${nftName}» no está activo ahora mismo.` });
     }
     if (fromDate && today < fromDate) {
-      return res.json({ visible: false, eligible: false, claimed: false, ...meta, reason: `Este privilexio arranca el ${fromDate}.` });
+      return ({ visible: false, eligible: false, claimed: false, ...meta, reason: `Este privilexio arranca el ${fromDate}.` });
     }
     if (toDate && today > toDate) {
-      return res.json({ visible: false, eligible: false, claimed: false, ...meta, reason: `Este privilexio terminó el ${toDate}.` });
+      return ({ visible: false, eligible: false, claimed: false, ...meta, reason: `Este privilexio terminó el ${toDate}.` });
     }
 
     // 2. ¿Posee el NFT configurado que desbloquea el beneficio? Si no lo tiene, no ve la
@@ -786,7 +782,7 @@ router.get('/daily-tapa-status', (req, res) => {
     const hasNft = eligibleNfts.length > 0;
 
     if (!hasNft && !hasReferralCredits) {
-      return res.json({ visible: false, eligible: false, claimed: false, ...meta, reason: `Necesitas o bien el NFT «${nftName}» o bien invitar a 10 amigos activos para disfrutar este privilexio.` });
+      return ({ visible: false, eligible: false, claimed: false, ...meta, reason: `Necesitas o bien el NFT «${nftName}» o bien invitar a 10 amigos activos para disfrutar este privilexio.` });
     }
 
     // 3. Tiene el NFT o créditos de referido: a partir de aquí SÍ ve la tarjeta.
@@ -799,7 +795,7 @@ router.get('/daily-tapa-status', (req, res) => {
     `).get(wallet, today);
 
     if (!session) {
-      return res.json({ visible: true, eligible: false, claimed: false, ...meta, reason: 'Ficha tu entrada hoy en el Furancho para activarlo.' });
+      return ({ visible: true, eligible: false, claimed: false, ...meta, reason: 'Ficha tu entrada hoy en el Furancho para activarlo.' });
     }
 
     // 4. Comprobar si esta wallet ya ha canjeado hoy (límite de 1 al día sea cual sea el método)
@@ -817,7 +813,7 @@ router.get('/daily-tapa-status', (req, res) => {
         if (cat) nftUsedName = cat.name;
       }
 
-      return res.json({
+      return ({
         visible: true,
         eligible: true,
         claimed: true,
@@ -865,7 +861,7 @@ router.get('/daily-tapa-status', (req, res) => {
     }
 
     if (!activeNft) {
-      return res.json({
+      return ({
         visible: true,
         eligible: false,
         claimed: false,
@@ -874,7 +870,7 @@ router.get('/daily-tapa-status', (req, res) => {
       });
     }
 
-    res.json({
+    return ({
       visible: true,
       eligible: true,
       claimed: false,
@@ -884,6 +880,17 @@ router.get('/daily-tapa-status', (req, res) => {
       qrData
     });
 
+}
+
+// GET /api/mint/daily-tapa-status
+// Comprueba el estado del canje de tapa/cunca de hoy para una wallet (delega en la fuente única)
+router.get('/daily-tapa-status', (req, res) => {
+  const { wallet } = req.query;
+  if (!wallet || !/^0x[a-fA-F0-9]{40}$/i.test(wallet)) {
+    return res.status(400).json({ error: 'Wallet no válida' });
+  }
+  try {
+    res.json(computeDailyTapaStatus(wallet));
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });
@@ -892,3 +899,4 @@ router.get('/daily-tapa-status', (req, res) => {
 
 module.exports = router;
 module.exports.performCheckin = performCheckin;
+module.exports.computeDailyTapaStatus = computeDailyTapaStatus;

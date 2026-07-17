@@ -139,6 +139,10 @@
     </div>
     <!-- Bloque premio NFT pendiente de entregar (Chave Dourada, etc.) -->
     <div id="result-nft-prizes" style="display:none; margin-top:16px; max-width:360px; width:100%;"></div>
+    <!-- Bloque privilexio do Guardián (tapa do día) — consumir al fichar -->
+    <div id="result-daily-tapa" style="display:none; margin-top:16px; max-width:360px; width:100%;"></div>
+    <!-- Bloque premios de sorteo del cliente (bonos por canjear / por aceptar) -->
+    <div id="result-prizes" style="display:none; margin-top:16px; max-width:360px; width:100%;"></div>
     <div class="who" id="result-who"></div>
     <button onclick="resumeScan()">Escanear al siguiente ➜</button>
   </div>
@@ -504,6 +508,109 @@
       }
     }
 
+    // Pinta el privilexio do Guardián (tapa do día) si el cliente lo tiene hoy.
+    // Devuelve true si se muestra algo (para no auto-cerrar el resultado).
+    function renderDailyTapa(tapa, wallet){
+      const wrap = document.getElementById('result-daily-tapa');
+      if (!wrap) return false;
+      if (!tapa || !tapa.visible){ wrap.style.display = 'none'; wrap.innerHTML = ''; return false; }
+
+      if (tapa.claimed){
+        // Ya consumido hoy — se lo decimos al camarero para que no lo dé dos veces.
+        const at = tapa.claimedAt ? new Date(tapa.claimedAt.replace(' ','T') + 'Z').toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Madrid'}) : '';
+        wrap.innerHTML = `
+        <div style="padding:14px 16px; background:rgba(42,21,9,0.05); border:1.5px solid rgba(42,21,9,0.15); border-radius:16px;">
+          <p style="margin:0; font-size:12px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted);">🎟️ ${tapa.title || 'Privilexio'}</p>
+          <p style="margin:6px 0 0; font-size:14px; font-weight:700; color:var(--text);">⛔ Ya consumido hoy${at ? ' · ' + at : ''} — no darle otra vez.</p>
+        </div>`;
+        wrap.style.display = 'block';
+        return true;
+      }
+
+      if (!tapa.eligible || !tapa.activeNft){
+        // Tiene el NFT pero algo falta (p.ej. su NFT ya se usó en otra wallet) — informativo.
+        wrap.innerHTML = `
+        <div style="padding:14px 16px; background:rgba(42,21,9,0.05); border:1.5px solid rgba(42,21,9,0.15); border-radius:16px;">
+          <p style="margin:0; font-size:12px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted);">🎟️ ${tapa.title || 'Privilexio'}</p>
+          <p style="margin:6px 0 0; font-size:13px; color:var(--text-muted);">${tapa.reason || 'No disponible ahora mismo.'}</p>
+        </div>`;
+        wrap.style.display = 'block';
+        return true;
+      }
+
+      // Disponible: botón para consumirlo AL ENTREGAR la tapa/cunca.
+      window._tapaQueue = window._tapaQueue || {};
+      window._tapaQueue[wallet] = tapa.activeNft;
+      wrap.innerHTML = `
+      <div style="padding:16px; background:linear-gradient(135deg, rgba(196,151,58,0.22), rgba(139,25,24,0.10)); border:2px solid var(--gold); border-radius:16px; box-shadow:0 4px 16px rgba(196,151,58,0.25);">
+        <p style="margin:0; font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--wine);">🎟️ ${tapa.title || 'Privilexio do Guardián'}</p>
+        <p style="margin:4px 0 2px; font-size:16px; font-weight:900; color:var(--wine); font-family:'Playfair Display',serif;">${tapa.benefit || 'Tapa e cunca do día'}</p>
+        <p style="margin:0 0 10px; font-size:11px; color:var(--text-muted);">Privilexio do NFT «${tapa.nftName || ''}» · 1 al día</p>
+        <button type="button" onclick="claimDailyTapa(this, '${wallet}')"
+                style="width:100%; padding:14px; background:linear-gradient(135deg, var(--gold), #a97b1f); color:#fff; border:none; border-radius:12px; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 3px 12px rgba(196,151,58,0.4); font-family:'Outfit',sans-serif;">
+          🍽️ Entregar y consumir (1/día)
+        </button>
+        <p style="margin:8px 0 0; font-size:10.5px; color:var(--text-muted);">Púlsalo SOLO al entregarle la tapa y la cunca. Queda consumido para hoy.</p>
+      </div>`;
+      wrap.style.display = 'block';
+      return true;
+    }
+
+    async function claimDailyTapa(btn, wallet){
+      const nft = (window._tapaQueue || {})[wallet];
+      if (!nft){ alert('No encuentro el privilexio, escanea de nuevo.'); return; }
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = 'Consumiendo…';
+      try {
+        const r = await fetch('/api/staff/claim-daily-tapa', {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json', 'x-staff-code': localStorage.getItem(STAFF_KEY) || '' },
+          body: JSON.stringify({ walletAddress: wallet, nftType: nft.type, nftId: nft.id, serial: nft.serial })
+        });
+        const d = await r.json();
+        if (r.ok && d.success){
+          btn.style.background = 'rgba(22,163,74,0.9)';
+          btn.textContent = '✅ Consumido — tapa e cunca entregadas';
+        } else {
+          btn.disabled = false;
+          btn.textContent = original;
+          alert(d.error || 'No se pudo consumir');
+        }
+      } catch(e){
+        btn.disabled = false;
+        btn.textContent = original;
+        alert('Error de red');
+      }
+    }
+
+    // Pinta los premios de sorteo del cliente: bonos aceptados por canjear (el canje
+    // es SOLO desde la app del cliente — botón verde) y premios por aceptar aún.
+    // Devuelve true si se muestra algo.
+    function renderClientPrizes(prizes){
+      const wrap = document.getElementById('result-prizes');
+      if (!wrap) return false;
+      if (!prizes || !prizes.length){ wrap.style.display = 'none'; wrap.innerHTML = ''; return false; }
+      wrap.innerHTML = prizes.map(p => {
+        if (p.status === 'accepted'){
+          return `
+          <div style="padding:12px 14px; background:rgba(22,163,74,0.08); border:1.5px solid rgba(22,163,74,0.35); border-radius:14px; margin-bottom:8px; text-align:left;">
+            <p style="margin:0; font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:#16a34a;">🎁 Bono por canjear${p.establishment ? ' · ' + p.establishment : ''}</p>
+            <p style="margin:4px 0 0; font-size:15px; font-weight:800; color:var(--text);">${p.prize}${p.code ? ` <span style="font-family:monospace; font-size:13px; color:var(--wine); letter-spacing:2px;">· ${p.code}</span>` : ''}</p>
+            <p style="margin:4px 0 0; font-size:11px; color:var(--text-muted);">El canje se cierra desde SU app: que abra Mis premios y pulsa TÚ el botón verde "Entregar premio".${p.validityEndDate ? ' Caduca el ' + p.validityEndDate + '.' : ''}</p>
+          </div>`;
+        }
+        return `
+        <div style="padding:12px 14px; background:rgba(196,151,58,0.10); border:1.5px solid rgba(196,151,58,0.4); border-radius:14px; margin-bottom:8px; text-align:left;">
+          <p style="margin:0; font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--gold);">⏳ Premio por aceptar</p>
+          <p style="margin:4px 0 0; font-size:15px; font-weight:800; color:var(--text);">${p.prize}</p>
+          <p style="margin:4px 0 0; font-size:11px; color:var(--text-muted);">¡Le tocó! Dile que abra su app y pulse "¡ES MÍO!" antes de que caduque (10 min).</p>
+        </div>`;
+      }).join('');
+      wrap.style.display = 'block';
+      return true;
+    }
+
     function showResult(d, wallet){
       const icon = document.getElementById('result-icon');
       const title = document.getElementById('result-title');
@@ -517,7 +624,10 @@
       // Premios NFT ganados pendientes de entregar en persona (Chave Dourada, etc.).
       // Si hay al menos uno, se muestra el banner y NO se cierra el resultado solo:
       // el camarero debe pulsar "Entregar NFT" o "Escanear al siguiente".
-      const hasNftPrize = renderNftPrizes(d.pendingNftPrizes, wallet);
+      // Igual con el privilexio do Guardián y los bonos de sorteo del cliente.
+      const hasNftPrize = renderNftPrizes(d.pendingNftPrizes, wallet)
+        | renderDailyTapa(d.dailyTapa, wallet)
+        | renderClientPrizes(d.prizes);
 
       // ── MODO CAMPAÑA: durante el Reto de los 5, el resultado gira en torno al reto ──
       if (d.campaign && d.campaign.active){
@@ -610,6 +720,11 @@
       clearTimeout(window._resultTimer);
       document.getElementById('result').style.display = 'none';
       document.getElementById('scan-status').textContent = '';
+      // Limpiar los bloques extra para que no arrastren datos del cliente anterior
+      ['result-nft-prizes','result-daily-tapa','result-prizes'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el){ el.style.display = 'none'; el.innerHTML = ''; }
+      });
       processing = false;
     }
 
