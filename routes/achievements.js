@@ -37,6 +37,7 @@ router.get('/status', (req, res) => {
         id: a.id,
         name: a.name,
         description: a.description,
+        story: a.story || null,   // historia larga opcional (detalle del museo)
         image: a.image,   // ya viene normalizada desde el catálogo
         tokenId: a.tokenId,
         edition: a.edition || null,

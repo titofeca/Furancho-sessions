@@ -8715,7 +8715,7 @@
     ov.id = 'nft-detail-overlay';
     ov.style.cssText = 'position:fixed; inset:0; z-index:99999; background:rgba(12,6,3,0.92); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; padding:24px; opacity:0; transition:opacity 0.3s ease;';
     ov.innerHTML = `
-      <div style="background:rgba(28,12,5,0.97); border:1.5px solid rgba(196,151,58,0.35); border-radius:22px; padding:32px 28px; max-width:340px; width:100%; display:flex; flex-direction:column; align-items:center; text-align:center; gap:12px; position:relative; box-shadow:0 20px 60px rgba(0,0,0,0.5); transform:scale(0.94); transition:transform 0.3s cubic-bezier(0.22,1,0.36,1);">
+      <div style="background:rgba(28,12,5,0.97); border:1.5px solid rgba(196,151,58,0.35); border-radius:22px; padding:32px 28px; max-width:340px; width:100%; max-height:calc(100vh - 48px); overflow-y:auto; -webkit-overflow-scrolling:touch; display:flex; flex-direction:column; align-items:center; text-align:center; gap:12px; position:relative; box-shadow:0 20px 60px rgba(0,0,0,0.5); transform:scale(0.94); transition:transform 0.3s cubic-bezier(0.22,1,0.36,1);">
         <button onclick="document.getElementById('nft-detail-overlay').remove(); document.removeEventListener('keydown', window._nftDetailKeyHandler);" style="position:absolute; top:14px; right:14px; width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,0.1); color:#F2EDE3; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
         ${visual}
         <strong style="font-size:18px; color:var(--gold); font-family:'Outfit',sans-serif; line-height:1.3;">${name}</strong>
@@ -8869,18 +8869,26 @@
       hint = 'Segue vindo ao Furancho para desbloquealo.';
     }
     const statusText = unlocked ? '🏆 Conseguido' : '🔒 Aínda por conseguir';
+    // Historia larga (si el logro la tiene): párrafos legibles y a la izquierda para leer
+    // bien en móvil. Si no hay historia, se usa la descripción corta de siempre.
+    const _esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const bodyHtml = a.story
+      ? `<div style="text-align:left; align-self:stretch; display:flex; flex-direction:column; gap:12px; margin-top:2px;">${
+          a.story.split('\n\n').map(p => `<span style="font-size:15px; color:#F2EDE3; opacity:0.92; font-weight:400; line-height:1.7;">${_esc(p)}</span>`).join('')
+        }</div>`
+      : `<span style="font-size:14px; color:#F2EDE3; opacity:0.9; font-weight:400; line-height:1.5;">${_esc(a.description || '')}</span>`;
     const prev = document.getElementById('nft-detail-overlay');
     if (prev) prev.remove();
     const ov = document.createElement('div');
     ov.id = 'nft-detail-overlay';
     ov.style.cssText = 'position:fixed; inset:0; z-index:99999; background:rgba(12,6,3,0.92); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; padding:24px; opacity:0; transition:opacity 0.3s ease;';
     ov.innerHTML = `
-      <div style="background:rgba(28,12,5,0.97); border:1.5px solid rgba(196,151,58,0.35); border-radius:22px; padding:32px 28px; max-width:340px; width:100%; display:flex; flex-direction:column; align-items:center; text-align:center; gap:12px; position:relative; box-shadow:0 20px 60px rgba(0,0,0,0.5); transform:scale(0.94); transition:transform 0.3s cubic-bezier(0.22,1,0.36,1);">
+      <div style="background:rgba(28,12,5,0.97); border:1.5px solid rgba(196,151,58,0.35); border-radius:22px; padding:32px 28px; max-width:340px; width:100%; max-height:calc(100vh - 48px); overflow-y:auto; -webkit-overflow-scrolling:touch; display:flex; flex-direction:column; align-items:center; text-align:center; gap:12px; position:relative; box-shadow:0 20px 60px rgba(0,0,0,0.5); transform:scale(0.94); transition:transform 0.3s cubic-bezier(0.22,1,0.36,1);">
         <button onclick="document.getElementById('nft-detail-overlay').remove(); document.removeEventListener('keydown', window._nftDetailKeyHandler);" style="position:absolute; top:14px; right:14px; width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,0.1); color:#F2EDE3; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
         <img src="${a.image}" alt="${a.name}" onclick="event.stopPropagation(); openImageLightbox(this.src, this.alt)" style="width:150px; height:150px; object-fit:cover; border-radius:18px; cursor:zoom-in; ${lock}" onerror="this.style.display='none'">
         <span style="font-size:11px; color:#F2EDE3; opacity:0.5; font-weight:500;">Toca a imaxe para ampliar</span>
         <strong style="font-size:18px; color:var(--gold); font-family:'Outfit',sans-serif; line-height:1.3;">${a.name}${a.serial ? ` #${a.serial}` : ''}</strong>
-        <span style="font-size:14px; color:#F2EDE3; opacity:0.9; font-weight:400; line-height:1.5;">${a.description || ''}</span>
+        ${bodyHtml}
         <span style="font-size:13px; color:#F2EDE3; opacity:0.85; font-weight:500; line-height:1.5; margin-top:4px;">${hint}</span>
         <span style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; margin-top:8px; color:${unlocked ? '#4ade80' : '#7a6a5a'};">${statusText}</span>
         <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; justify-content:center;">
@@ -9496,17 +9504,10 @@
         </p>
       </div>
 
-      <!-- Meme vs NFT: incentiva coleccionar/cambiar. Texto GRANDE y legible en móvil. -->
-      <div style="background:linear-gradient(135deg, rgba(196,151,58,0.10) 0%, rgba(139,25,24,0.05) 100%); border:1.5px solid rgba(196,151,58,0.4); border-radius:18px; padding:20px 18px; margin-bottom:20px; text-align:left;">
-        <p style="font-family:'Playfair Display',serif; font-size:19px; font-weight:900; color:var(--wine); line-height:1.3; margin:0 0 12px 0;">🖼️ O Meme do Furancho — pura fachenda, neno</p>
-        <p style="font-size:15px; color:var(--text); line-height:1.75; margin:0 0 14px 0;">
-          Seamos sinceros, ho: este meme <strong style="color:var(--wine);">no sirve pa NADA</strong>. Y ahí está toda la gracia. No te abre puertas, no te da tapa ni cunca, no te mete en el bombo… solo te deja el museo guapísimo y al resto muriéndose de envidia. Coleccionismo del bueno: o lo tienes, o no lo tienes.
-        </p>
-        <p style="font-size:15px; color:var(--text); line-height:1.75; margin:0 0 14px 0;">
-          Los que <strong style="color:var(--wine);">sí tienen chicha</strong> son los otros NFT — los que se ganan por venir al Furancho (limitados a ese día: el que no vino esa noche, quedó sin él) y las ediciones que soltamos contadas, ni una más. Esos tienen utilidad, o la tendrán, ya lo verás. Cuantos menos hay, más pintan.
-        </p>
+      <!-- Meme vs NFT: nota corta y general. La historia larga vive en el detalle de cada pieza. -->
+      <div style="background:linear-gradient(135deg, rgba(196,151,58,0.10) 0%, rgba(139,25,24,0.05) 100%); border:1.5px solid rgba(196,151,58,0.4); border-radius:18px; padding:18px 18px; margin-bottom:20px; text-align:left;">
         <p style="font-size:15px; color:var(--text); line-height:1.75; margin:0;">
-          Y lo mejor, carallo: con el tiempo, <strong style="color:var(--wine);">al que junte ciertos NFT le regalamos memes</strong>. Así que ir haciendo colección no es parvada… es jugar bien las cartas. Cámbialos, mércalos, lúcelos. <strong style="color:var(--wine);">Lo que no se mueve, non medra.</strong> 🍷
+          🖼️ El meme es <strong style="color:var(--wine);">pura fachenda</strong>: para lucir, sin utilidad. Los NFT de verdad son contados —de asistencia o edición limitada— y esos <strong style="color:var(--wine);">sí valen</strong>. Toca cada pieza para ver su historia. Colecciona y cambia, neno: lo que no se mueve, non medra. 🍷
         </p>
       </div>
 

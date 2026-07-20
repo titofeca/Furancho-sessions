@@ -62,7 +62,9 @@ const ACHIEVEMENTS = [
   {
     id: 'meme_vip',
     name: 'Meme VIP',
-    description: 'Edición Limitada. Meme oficial VIP para experiencias exclusivas de hotel y mucho más.',
+    description: 'Meme oficial do Furancho. Pura fachenda de coleccionista: sin utilidad, solo para lucir. Edición limitada.',
+    // Historia larga (se muestra en el detalle del museo, no en las tarjetas del grid):
+    story: 'Seamos sinceros, ho: este meme no sirve pa NADA. Y ahí está toda la gracia. No te abre puertas ni te da tapa ni cunca — solo te deja el museo guapísimo y al resto muriéndose de envidia. Coleccionismo del bueno: o lo tienes, o no lo tienes.\n\nLos que SÍ tienen chicha son los otros NFT: los de asistencia (limitados a ese día, el que no vino se quedó sin él) y las ediciones contadas, ni una más. Esos tienen utilidad, o la tendrán, ya lo verás.\n\nY lo mejor, carallo: con el tiempo, al que junte ciertos NFT le regalamos memes. Coleccionar no es parvada, es jugar bien las cartas. Cámbialos, mércalos, lúcelos. Lo que no se mueve, non medra. 🍷',
     image: 'nft_meme_vip.jpg',
     tokenId: 50,
     edition: 'Limitada (Max 50)',
