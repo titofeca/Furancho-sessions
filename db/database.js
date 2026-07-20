@@ -650,6 +650,111 @@ try {
     created_at TEXT DEFAULT (datetime('now'))
   )`);
 } catch (_) {}
+// ─── TIENDA DEL MEME (token 50) ──────────────────────────────────────────────
+// El Meme VIP es el ÚNICO NFT que se compra; el resto se gana. Tablas separadas
+// de achievement_mints para no tocar nada de lo que ya funciona: achievement_mints
+// sigue siendo "esta wallet tiene el meme" (UNIQUE wallet+logro, museo y cola de
+// minteo intactos) y meme_units es el registro de UNIDADES vendidas (una wallet
+// puede tener varias; el precio de cada nueva sube, ver services/memeShop.js).
+//
+// EL LÍMITE DE 300 ES IRREVERSIBLE: vive en el código (services/memeShop.js) y
+// además lo blinda el trigger de aquí abajo, que aborta el INSERT 301 aunque
+// alguien se salte el servicio. Ninguna pantalla del panel lo puede editar.
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS meme_units (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    serial INTEGER NOT NULL UNIQUE,
+    wallet_address TEXT NOT NULL,
+    purchase_id INTEGER,
+    achievement_mint_id INTEGER,
+    source TEXT DEFAULT 'venta',
+    price_cents INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'pending',
+    tx_hash TEXT,
+    cost_matic REAL,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`);
+} catch (_) {}
+// Blindaje del límite a nivel de base de datos. status='failed' no cuenta (ese mint
+// se puede reintentar). Si alguien intenta la unidad 301, SQLite aborta.
+try {
+  db.exec(`DROP TRIGGER IF EXISTS meme_units_max_supply`);
+  db.exec(`CREATE TRIGGER meme_units_max_supply BEFORE INSERT ON meme_units
+    WHEN (SELECT COUNT(*) FROM meme_units WHERE status != 'failed') >= 300
+    BEGIN
+      SELECT RAISE(ABORT, 'MEME_SUPPLY_AGOTADO: solo existen 300 memes y ya no queda ninguno');
+    END`);
+} catch (_) {}
+// Solicitudes de compra del cliente ("Comprar meme" en el museo). El pago es
+// presencial: queda 'requested' hasta que el admin cobra y confirma la venta.
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS meme_purchases (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_address TEXT NOT NULL,
+    status TEXT DEFAULT 'requested',
+    price_cents INTEGER DEFAULT 0,
+    unit_index INTEGER DEFAULT 1,
+    note TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    resolved_at TEXT
+  )`);
+} catch (_) {}
+// Catálogo editable de lo que INCLUYE el meme (admin: "1 camiseta, 3 tapas…").
+// kind: 'consumible' (se gasta en el local) | 'entrega' (artículo físico, puede
+// quedar pendiente de entrega si no hay stock).
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS meme_perks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    emoji TEXT DEFAULT '🎁',
+    label TEXT NOT NULL,
+    qty INTEGER NOT NULL DEFAULT 1,
+    kind TEXT DEFAULT 'consumible',
+    active INTEGER DEFAULT 1,
+    sort_order INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`);
+} catch (_) {}
+// Lo que incluía el meme EN EL MOMENTO DE LA VENTA (foto fija). Cambiar el
+// catálogo de arriba nunca altera lo ya vendido.
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS meme_entitlements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    unit_id INTEGER NOT NULL,
+    wallet_address TEXT NOT NULL,
+    emoji TEXT DEFAULT '🎁',
+    label TEXT NOT NULL,
+    kind TEXT DEFAULT 'consumible',
+    qty_total INTEGER NOT NULL DEFAULT 1,
+    qty_used INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT
+  )`);
+} catch (_) {}
+// Registro de cada entrega/consumo (auditoría y deshacer).
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS meme_entitlement_uses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    entitlement_id INTEGER NOT NULL,
+    qty INTEGER NOT NULL DEFAULT 1,
+    note TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`);
+} catch (_) {}
+// Los memes que ya estaban entregados ANTES de la tienda (achievement_mints) se
+// registran como unidades para que cuenten contra las 300. Idempotente.
+try {
+  const legacy = db.prepare(`SELECT id, wallet_address, status FROM achievement_mints
+                             WHERE achievement_id = 'meme_vip' AND status != 'failed' ORDER BY id ASC`).all();
+  const already = db.prepare(`SELECT COUNT(*) c FROM meme_units WHERE achievement_mint_id = ?`);
+  const maxSerial = () => (db.prepare(`SELECT COALESCE(MAX(serial), 0) s FROM meme_units`).get().s || 0);
+  const ins = db.prepare(`INSERT INTO meme_units (serial, wallet_address, achievement_mint_id, source, price_cents, status)
+                          VALUES (?, ?, ?, 'historico', 0, ?)`);
+  legacy.forEach(m => {
+    if (already.get(m.id).c > 0) return;
+    ins.run(maxSerial() + 1, m.wallet_address, m.id, m.status);
+  });
+} catch (_) {}
+
 // Número de serie del mint dentro de su nivel (1 = primero en alcanzar ese nivel)
 try { db.exec(`ALTER TABLE mints ADD COLUMN mint_serial INTEGER`); } catch (_) {}
 try { db.exec(`ALTER TABLE mints ADD COLUMN mint_cost_matic REAL`); } catch (_) {}
@@ -2294,6 +2399,14 @@ function getPendingNftPrizes(walletAddress) {
 //  - marca la fila con timestamp y quién lo otorgó
 //  - encola achievement_mints en 'pending_approval' para que el admin confirme
 // Devuelve { ok, error?, mintCreated }
+// ¿Se agotó la tirada de este NFT? Solo aplica a los que tienen tirada limitada
+// (el meme: 300 y ni uno más). Cuenta lo ya entregado, sin contar mints fallidos.
+function _supplyAgotado(ach) {
+  if (!ach || !ach.maxSupply) return false;
+  const c = db.prepare(`SELECT COUNT(*) c FROM achievement_mints WHERE achievement_id = ? AND status != 'failed'`).get(ach.id).c || 0;
+  return c >= ach.maxSupply;
+}
+
 function grantNftPrize(raffleId, walletAddress, grantedBy = 'staff') {
   const raffle = db.prepare(`
     SELECT id, winner_wallet, nft_achievement_id, nft_granted_at, status
@@ -2309,6 +2422,7 @@ function grantNftPrize(raffleId, walletAddress, grantedBy = 'staff') {
   const achievements = require('../services/achievements');
   const ach = achievements.getById(raffle.nft_achievement_id);
   if (!ach) return { ok: false, error: 'achievement_not_found' };
+  if (_supplyAgotado(ach)) return { ok: false, error: 'supply_agotado' };
 
   try {
     db.exec('BEGIN TRANSACTION');
@@ -2353,6 +2467,7 @@ function grantWeeklyNftPrize(weekStr, walletAddress, grantedBy = 'staff') {
   const achievements = require('../services/achievements');
   const ach = achievements.getById(raffle.nft_achievement_id);
   if (!ach) return { ok: false, error: 'achievement_not_found' };
+  if (_supplyAgotado(ach)) return { ok: false, error: 'supply_agotado' };
 
   try {
     db.exec('BEGIN TRANSACTION');

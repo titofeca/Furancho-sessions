@@ -246,7 +246,8 @@ const GRANT_ERROR_MESSAGES = {
   not_an_nft_prize: 'Ese sorteo no es de premio NFT',
   already_granted: 'Este NFT ya fue entregado antes',
   wallet_mismatch: 'Esa wallet no es la ganadora del sorteo',
-  achievement_not_found: 'El logro NFT del sorteo no existe'
+  achievement_not_found: 'El logro NFT del sorteo no existe',
+  supply_agotado: 'Ese NFT tiene tirada limitada y ya se agotó — no se puede emitir ni uno más'
 };
 
 // POST /api/staff/grant-nft-prize — el camarero entrega en persona el NFT al ganador.

@@ -8797,9 +8797,132 @@
       }
       grid.innerHTML = html;
       section.style.display = 'block';
+      renderMemeShopCard();
     } catch (e) {
       section.style.display = 'none';
     }
+  }
+
+  // ─── TENDA DO MEME ────────────────────────────────────────────────────────
+  // El meme es el ÚNICO NFT que se compra: 300 unidades y ni una más. Aquí el
+  // cliente ve cuántos quedan, cuánto le cuesta el suyo (sube si ya tiene) y lo
+  // que incluye. El pago es en la barra: este botón solo avisa al local.
+  let _memeShop = null;
+
+  async function renderMemeShopCard() {
+    const el = document.getElementById('meme-shop-card');
+    if (!el || !userWalletAddress) return;
+    let d;
+    try {
+      d = await resilientFetch(`/api/meme/status?wallet=${userWalletAddress}`).then(r => r.json());
+    } catch (_) { el.style.display = 'none'; return; }
+    if (!d || d.error) { el.style.display = 'none'; return; }
+    _memeShop = d;
+    const mine = d.mine || { owned: 0, entitlements: [], units: [] };
+    const eur = (c) => (Number(c || 0) / 100).toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' €';
+    const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    // Lo que le queda por consumir de sus memes (si ya los gastó, solo le queda el meme).
+    const pend = (mine.entitlements || []).filter(e => e.left > 0);
+    let misExtras = '';
+    if (mine.owned > 0) {
+      misExtras = pend.length
+        ? `<div style="margin-top:10px; padding:10px 12px; background:rgba(255,255,255,0.06); border-radius:12px;">
+             <p style="font-size:11px; font-weight:800; color:var(--gold); margin:0 0 6px;">O QUE AÍNDA TES POR GASTAR</p>
+             ${pend.map(e => `<div style="display:flex; justify-content:space-between; font-size:12.5px; color:#F2EDE3; padding:3px 0;">
+                <span>${esc(e.emoji)} ${esc(e.label)}${e.kind === 'entrega' ? ' <span style="font-size:10px; opacity:0.7;">(pendente de entrega)</span>' : ''}</span>
+                <strong style="color:var(--gold);">${e.left}${e.total > 1 ? ' / ' + e.total : ''}</strong>
+              </div>`).join('')}
+             <p style="font-size:10.5px; color:#F2EDE3; opacity:0.6; margin:6px 0 0; line-height:1.4;">Pídelo en la barra: te lo van dando y descontando de aquí.</p>
+           </div>`
+        : `<div style="margin-top:10px; font-size:12px; color:#F2EDE3; opacity:0.75; line-height:1.5;">
+             Xa gastaches todo o que traía. Agora che queda o meme: pura fachenda, para sempre. 🖼️
+           </div>`;
+    }
+
+    // Estado del botón de compra.
+    let cta;
+    if (d.left <= 0) {
+      cta = `<div style="margin-top:12px; text-align:center; font-size:12.5px; font-weight:800; color:var(--gold); background:rgba(196,151,58,0.12); border:1.5px dashed rgba(196,151,58,0.4); border-radius:12px; padding:11px;">
+               ESGOTADO · vendéronse os 300. Non haberá máis.
+             </div>`;
+    } else if (mine.pendingRequest) {
+      cta = `<div style="margin-top:12px; background:rgba(196,151,58,0.15); border:1.5px solid rgba(196,151,58,0.45); border-radius:12px; padding:11px; text-align:center;">
+               <p style="font-size:12.5px; font-weight:800; color:var(--gold); margin:0 0 4px;">⏳ Xa o pediches — ${eur(mine.pendingRequest.priceCents)}</p>
+               <p style="font-size:11px; color:#F2EDE3; opacity:0.75; margin:0 0 8px; line-height:1.4;">Pásate pola barra e págao: alí che entregan o meme e o que trae.</p>
+               <button onclick="cancelMemeRequest(this)" style="background:transparent; border:none; color:#F2EDE3; opacity:0.6; font-size:11px; text-decoration:underline; cursor:pointer; font-family:'Outfit',sans-serif;">Anular a solicitude</button>
+             </div>`;
+    } else if (!d.open) {
+      cta = `<div style="margin-top:12px; text-align:center; font-size:12px; color:#F2EDE3; opacity:0.7;">A venda está pechada agora mesmo. ${esc(d.note)}</div>`;
+    } else {
+      const precio = mine.nextPriceCents != null ? mine.nextPriceCents : d.priceCents;
+      const aviso = mine.owned > 0
+        ? `<p style="font-size:10.5px; color:#F2EDE3; opacity:0.65; margin:6px 0 0; line-height:1.4;">Xa tes ${mine.owned}. Podes ter os que queiras —non cho prohibe ninguén— pero cada un custa o dobre que o anterior.</p>`
+        : '';
+      cta = `<button onclick="requestMemeBuy(this)" style="margin-top:12px; width:100%; background:linear-gradient(135deg, var(--gold), #a47d2c); border:none; color:#2A1509; border-radius:100px; padding:13px; font-size:14px; font-weight:900; cursor:pointer; font-family:'Outfit',sans-serif;">
+               🛒 Mercar o meme · ${eur(precio)}
+             </button>${aviso}`;
+    }
+
+    const incluye = (d.perks || []).length
+      ? `<div style="margin-top:10px;">
+           <p style="font-size:11px; font-weight:800; color:var(--gold); margin:0 0 5px;">O MEME TRAE CONSIGO</p>
+           ${d.perks.map(p => `<div style="font-size:12.5px; color:#F2EDE3; opacity:0.9; padding:2px 0;">${esc(p.emoji)} ${p.qty}× ${esc(p.label)}</div>`).join('')}
+           <p style="font-size:10.5px; color:#F2EDE3; opacity:0.55; margin:6px 0 0; line-height:1.4;">Cando se acabe o que trae, quédache o meme. Iso non se acaba nunca.</p>
+         </div>`
+      : '';
+
+    el.innerHTML = `
+      <div style="background:linear-gradient(160deg, rgba(40,18,8,0.97), rgba(24,10,4,0.97)); border:1.5px solid rgba(196,151,58,0.45); border-radius:18px; padding:16px;">
+        <div style="display:flex; gap:12px; align-items:center;">
+          <img src="/assets/nft_meme_vip.jpg" alt="Meme VIP" onclick="openImageLightbox(this.src, this.alt)" style="width:58px; height:58px; object-fit:cover; border-radius:12px; cursor:zoom-in; border:2px solid rgba(196,151,58,0.5);" onerror="this.style.display='none'">
+          <div style="flex:1; min-width:0;">
+            <p style="font-size:14px; font-weight:900; color:var(--gold); margin:0 0 2px;">🎭 O Meme ${mine.owned > 0 ? `· tes ${mine.owned}` : ''}</p>
+            <p style="font-size:11.5px; color:#F2EDE3; opacity:0.8; margin:0; line-height:1.4;">O único que se merca. <strong>${d.left} de ${d.maxSupply}</strong> sen vender.</p>
+          </div>
+        </div>
+        <div style="margin-top:10px; height:6px; background:rgba(255,255,255,0.1); border-radius:100px; overflow:hidden;">
+          <div style="height:100%; width:${Math.round((d.sold / d.maxSupply) * 100)}%; background:linear-gradient(90deg, var(--gold), #a47d2c); border-radius:100px;"></div>
+        </div>
+        <p style="font-size:10.5px; color:#F2EDE3; opacity:0.55; margin:5px 0 0;">300 e non máis. Nunca. Nin aínda que os queiramos facer. 🔒</p>
+        ${d.note ? `<p style="font-size:11.5px; color:#F2EDE3; opacity:0.8; margin:8px 0 0; line-height:1.4;">${esc(d.note)}</p>` : ''}
+        ${incluye}
+        ${cta}
+        ${misExtras}
+      </div>`;
+    el.style.display = 'block';
+  }
+
+  // "Mercar": no cobra nada aquí. Deja el aviso para pagar en la barra.
+  async function requestMemeBuy(btn) {
+    if (!userWalletAddress) return;
+    btn.disabled = true;
+    btn.innerText = 'Un momentiño…';
+    try {
+      const res = await fetch('/api/meme/request', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: userWalletAddress })
+      });
+      const d = await res.json();
+      if (!res.ok || d.error) throw new Error(d.error || 'Non se puido');
+      showToast('🍷 Apuntado, ho. Pásate pola barra a pagalo e lévalo.');
+      renderMemeShopCard();
+    } catch (e) {
+      btn.disabled = false;
+      showToast('⚠️ ' + e.message);
+      renderMemeShopCard();
+    }
+  }
+
+  async function cancelMemeRequest(btn) {
+    btn.disabled = true;
+    try {
+      await fetch('/api/meme/cancel', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: userWalletAddress })
+      });
+      renderMemeShopCard();
+    } catch (_) { btn.disabled = false; }
   }
 
   // Tarjeta de logro CONSEGUIDO (o ya reclamado): imagen, texto y CTA de reclamar.
@@ -8854,6 +8977,12 @@
                         : 'Se desbloquea asistiendo ao Furancho o día da edición.';
     } else if (a.ruleType === 'campaign_visits') {
       hint = 'Se desbloquea completando o Reto dos 5 (5 visitas de verán).';
+    } else if (a.id === 'meme_vip') {
+      // El meme es el único que se compra: nunca se "desbloquea".
+      const left = _memeShop ? _memeShop.left : null;
+      hint = left === 0
+        ? 'Esgotado: vendéronse os 300 e non haberá máis.'
+        : `O único NFT que se merca, e só hai 300${left != null ? ` (quedan ${left})` : ''}. Tes o botón de mercalo aí arriba, no museo.`;
     } else if (a.ruleType === 'raffle_only') {
       hint = 'Premio especial: entrégache o Furancho en persoa. ¡Atento aos sorteos, ho!';
     } else if (a.ruleType === 'referrals') {
@@ -9530,6 +9659,8 @@
         <!-- Logros NFT (ediciones especiales reclamables) -->
         <div id="museo-nft-section" style="display:none; margin-top:14px; margin-bottom:20px;">
           <p style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.2px; color:var(--gold); margin-bottom:10px;">🎟️ Logros NFT (ediciones especiais)</p>
+          <!-- Tenda do meme: el único NFT que se compra. Se rellena en renderMemeShopCard(). -->
+          <div id="meme-shop-card" style="display:none; margin-bottom:12px;"></div>
           <div id="museo-nft-grid" style="display:flex; flex-direction:column; gap:10px;"></div>
         </div>
 

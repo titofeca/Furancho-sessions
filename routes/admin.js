@@ -1511,7 +1511,16 @@ router.post('/grant-achievement', requireAuth, (req, res) => {
   if (!a) return res.status(404).json({ error: 'Logro no encontrado' });
   try {
     const { db, claimAchievement, getAchievementMint } = require('../db/database');
-    
+
+    // El meme se lleva por la tienda (services/memeShop.js): cuenta contra las 300,
+    // deja registrada la unidad y —si es venta— lo que incluye. Aquí, por defecto,
+    // es un REGALO (sin extras): otorgar desde el panel no cobra nada.
+    if (a.id === 'meme_vip') {
+      const shop = require('../services/memeShop');
+      const out = shop.sellTo(walletAddress, { source: 'regalo', priceCents: 0, withPerks: false });
+      return res.json({ success: true, status: 'pending', achievementId: a.id, name: a.name, serial: out.serial, supply: out.supply });
+    }
+
     // Validar límite máximo (maxSupply)
     if (a.maxSupply) {
       const countQuery = db.prepare(`SELECT COUNT(*) as count FROM achievement_mints WHERE achievement_id = ? AND status != 'failed'`).get(a.id);
@@ -1531,35 +1540,24 @@ router.post('/grant-achievement', requireAuth, (req, res) => {
   }
 });
 
-// POST /api/admin/mint-meme — acuña una copia del "Meme VIP" (Token ID 50). Límite de 50 copias.
+// POST /api/admin/mint-meme — vende/entrega una unidad del "Meme VIP" (token 50).
+// Delega en services/memeShop.js: allí viven el límite irreversible de 300, el
+// precio creciente por unidad y lo que incluye. Se mantiene la ruta de siempre
+// para no romper el botón antiguo del panel.
+// Body: { walletAddress, priceCents?, source?: 'venta'|'regalo', withPerks? }
 router.post('/mint-meme', requireAuth, (req, res) => {
-  const { walletAddress } = req.body;
+  const { walletAddress, priceCents, source, withPerks } = req.body;
   if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) return res.status(400).json({ error: 'Wallet inválida' });
-  
   try {
-    const { db, claimAchievement, getAchievementMint } = require('../db/database');
-    
-    // Contar cuántos Memes se han minteado (cualquier status que no sea failed)
-    const countQuery = db.prepare(`SELECT COUNT(*) as count FROM achievement_mints WHERE achievement_id = 'meme_vip' AND status != 'failed'`).get();
-    const mintedCount = countQuery ? countQuery.count : 0;
-    
-    if (mintedCount >= 50) {
-      return res.status(400).json({ error: 'Se ha alcanzado el límite máximo de 50 copias del Meme VIP.' });
-    }
-
-    const existing = getAchievementMint(walletAddress, 'meme_vip');
-    if (existing) {
-      return res.json({ success: true, alreadyGranted: true, status: existing.status, achievementId: 'meme_vip' });
-    }
-
-    // Registramos en achievement_mints (como id usamos meme_vip, token = 50)
-    // Nos aseguramos que services/achievements.js soporte este ID, o simplemente se mintea
-    claimAchievement(walletAddress, 'meme_vip', 50);
-    require('../services/polygon').notifyAchievementQueue();
-    
-    res.json({ success: true, status: 'pending', achievementId: 'meme_vip', serial: mintedCount + 1 });
+    const shop = require('../services/memeShop');
+    const out = shop.sellTo(walletAddress, {
+      source: source === 'regalo' ? 'regalo' : 'venta',
+      priceCents: (priceCents === undefined || priceCents === null || priceCents === '') ? null : parseInt(priceCents, 10),
+      withPerks: withPerks !== false
+    });
+    res.json({ success: true, status: 'pending', achievementId: 'meme_vip', serial: out.serial, supply: out.supply, perks: out.perks });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.status(400).json({ error: e.message });
   }
 });
 

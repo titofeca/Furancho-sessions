@@ -12,6 +12,12 @@
 const { db } = require('../db/database');
 const APP_URL = process.env.APP_URL || 'https://furancho-sessions-production.up.railway.app';
 
+// El Meme VIP se COMPRA (único NFT que se vende) y su tirada es irreversible.
+// Fuente única del número: services/memeShop.js. Aquí solo se lee, nunca se fija.
+const { MEME } = require('./memeShop');
+const MEME_ID = MEME.ACHIEVEMENT_ID;
+const MEME_MAX_SUPPLY = MEME.MAX_SUPPLY;
+
 // Mismo desfase horario que usa el resto del sistema para fechar visitas (Madrid verano).
 const VISIT_TZ = "'+2 hours'";
 
@@ -67,9 +73,11 @@ const ACHIEVEMENTS = [
     story: 'Seamos sinceros, ho: este meme no sirve pa NADA. Y ahí está toda la gracia. No te abre puertas ni te da tapa ni cunca — solo te deja el museo guapísimo y al resto muriéndose de envidia. Coleccionismo del bueno: o lo tienes, o no lo tienes.\n\nLos que SÍ tienen chicha son los otros NFT: los de asistencia (limitados a ese día, el que no vino se quedó sin él) y las ediciones contadas, ni una más. Esos tienen utilidad, o la tendrán, ya lo verás.\n\nY lo mejor, carallo: con el tiempo, al que junte ciertos NFT le regalamos memes. Coleccionar no es parvada, es jugar bien las cartas. Cámbialos, mércalos, lúcelos. Lo que no se mueve, non medra. 🍷',
     image: 'nft_meme_vip.jpg',
     tokenId: 50,
-    edition: 'Limitada (Max 50)',
-    rule: { type: 'raffle_only' }, // No autodesbloqueable, solo admin/staff lo otorga
-    maxSupply: 50
+    // El límite REAL vive en services/memeShop.js (MEME.MAX_SUPPLY = 300) y se
+    // fuerza aquí abajo en list(): estos dos campos son solo el valor por defecto.
+    edition: 'Limitada · 300 e non máis',
+    rule: { type: 'raffle_only' }, // No autodesbloqueable: se COMPRA (o lo otorga el admin)
+    maxSupply: 300
   },
   {
     id: 'embajador_furancho',
@@ -159,7 +167,25 @@ function list() {
   const codeIds = new Set(ACHIEVEMENTS.map(a => a.id));
   const onlyCustom = dbList.filter(a => !codeIds.has(a.id)).map(a => ({ ...a, custom: true }));
 
-  return codeList.concat(onlyCustom);
+  return codeList.concat(onlyCustom).map(_forceMemeRules);
+}
+
+// ─── EL MEME ES INTOCABLE ────────────────────────────────────────────────────
+// Pase lo que pase en la base de datos (ediciones desde el panel, filas viejas en
+// custom_achievements…), el Meme VIP sale SIEMPRE con: 300 unidades como máximo,
+// su edición diciendo la verdad, y regla 'raffle_only' —o sea, nadie lo puede
+// autorreclamar gratis desde el museo: se compra o lo entrega el admin.
+// Es la única forma de que la escasez sea una decisión y no una preferencia.
+function _forceMemeRules(a) {
+  if (!a || a.id !== MEME_ID) return a;
+  return {
+    ...a,
+    tokenId: 50,
+    maxSupply: MEME_MAX_SUPPLY,
+    edition: `Limitada · ${MEME_MAX_SUPPLY} e non máis`,
+    rule: { type: 'raffle_only' },
+    purchasable: true
+  };
 }
 
 function getById(id) {
@@ -233,6 +259,11 @@ function updateCustom(id, { name, description, image, edition, ruleType, ruleDat
       .run(codeAch.id, codeAch.name, codeAch.description, codeAch.image, codeAch.tokenId, codeAch.edition || null, rule_type, rule_date);
     existing = db.prepare(`SELECT * FROM custom_achievements WHERE id = ?`).get(id);
   }
+
+  // El meme admite retoques de texto/imagen, pero su regla y su edición las fija
+  // el código (_forceMemeRules): ni desde aquí ni desde el panel se puede volver
+  // autorreclamable ni anunciar una tirada distinta de las 300.
+  if (id === MEME_ID) { ruleType = undefined; ruleDate = undefined; edition = undefined; }
 
   const fields = [], vals = [];
   if (name !== undefined) {

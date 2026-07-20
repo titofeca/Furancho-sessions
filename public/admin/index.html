@@ -1673,21 +1673,93 @@
           <a id="nft-polygonscan-link" href="#" target="_blank" style="display:inline-block; font-size:12px; color:var(--wine); font-weight:600; text-decoration:none;">🔍 Ver en PolygonScan →</a>
         </div>
 
-        <!-- MEME VIP CONTROLS -->
+        <!-- ─── TIENDA DEL MEME (token 50) ───────────────────────────────── -->
+        <!-- El meme es el ÚNICO NFT que se vende. Las 300 unidades NO se editan
+             desde aquí a propósito: el número vive en services/memeShop.js y lo
+             blinda un trigger de la base de datos. -->
         <div class="glass-card" style="margin-bottom:16px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <div class="card-title">🎭 Emisión Meme VIP (Max 50)</div>
-            <div id="meme-vip-counter" style="font-size:12px; font-weight:700; color:var(--wine); background:rgba(139,25,24,0.1); padding:4px 8px; border-radius:8px;">0 / 50</div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <div class="card-title">🎭 Tienda do Meme</div>
+            <div id="meme-vip-counter" style="font-size:12px; font-weight:700; color:var(--wine); background:rgba(139,25,24,0.1); padding:4px 8px; border-radius:8px;">— / 300</div>
           </div>
-          <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px; line-height:1.4;">Introduce el ID de socio (wallet) del cliente que ha comprado el Meme VIP. Se acuñará instantáneamente y se le otorgará un número de serie único.</p>
-          
-          <input type="text" id="meme-vip-wallet" placeholder="0x..." style="width:100%; padding:12px; border-radius:12px; border:1px solid rgba(42,21,9,0.15); margin-bottom:10px; font-family:monospace; font-size:12px; box-sizing:border-box;" />
-          
-          <div style="display:flex; gap:8px;">
+          <div style="display:flex; gap:8px; margin-bottom:12px;">
+            <div style="flex:1; background:rgba(42,21,9,0.04); border-radius:12px; padding:10px; text-align:center;">
+              <div id="meme-left" style="font-size:20px; font-weight:900; color:var(--wine);">—</div>
+              <div style="font-size:10px; color:var(--text-muted);">sin vender</div>
+            </div>
+            <div style="flex:1; background:rgba(42,21,9,0.04); border-radius:12px; padding:10px; text-align:center;">
+              <div id="meme-revenue" style="font-size:20px; font-weight:900; color:var(--wine);">—</div>
+              <div style="font-size:10px; color:var(--text-muted);">recaudado</div>
+            </div>
+            <div style="flex:1; background:rgba(42,21,9,0.04); border-radius:12px; padding:10px; text-align:center;">
+              <div id="meme-pending-count" style="font-size:20px; font-weight:900; color:var(--wine);">—</div>
+              <div style="font-size:10px; color:var(--text-muted);">por entregar</div>
+            </div>
+          </div>
+          <div style="font-size:11px; color:var(--text-muted); background:rgba(212,175,55,0.10); border:1px solid rgba(212,175,55,0.35); border-radius:10px; padding:9px 11px; line-height:1.5; margin-bottom:14px;">
+            🔒 <strong>300 memes y ni uno más.</strong> Es una decisión cerrada: no hay ningún sitio —tampoco aquí— donde cambiar ese número. La escasez es lo que le da valor.
+          </div>
+
+          <!-- Precio -->
+          <div style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">💶 Precio</div>
+          <div style="display:flex; gap:8px; margin-bottom:8px;">
+            <div style="flex:1;">
+              <label style="font-size:10px; color:var(--text-muted);">Precio base (€)</label>
+              <input type="number" step="0.5" min="0" id="meme-price" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); box-sizing:border-box;" />
+            </div>
+            <div style="flex:1;">
+              <label style="font-size:10px; color:var(--text-muted);">×  por cada meme que ya tenga</label>
+              <input type="number" step="0.5" min="1" max="10" id="meme-mult" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); box-sizing:border-box;" />
+            </div>
+          </div>
+          <div id="meme-price-preview" style="font-size:11px; color:var(--text-muted); margin-bottom:8px;"></div>
+          <input type="text" id="meme-note" placeholder="Nota para el cliente (opcional): 'pregunta en la barra'…" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); margin-bottom:8px; font-size:12px; box-sizing:border-box;" />
+          <label style="display:flex; align-items:center; gap:8px; font-size:12px; margin-bottom:10px; cursor:pointer;">
+            <input type="checkbox" id="meme-open" /> <span>Venta abierta (el cliente ve el botón de comprar)</span>
+          </label>
+          <button onclick="saveMemeConfig()" style="width:100%; padding:11px; background:var(--wine); color:#fff; border:none; border-radius:12px; font-weight:700; cursor:pointer; margin-bottom:16px;">Guardar precio y venta</button>
+
+          <!-- Qué incluye -->
+          <div style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:4px;">🎁 Qué incluye el meme</div>
+          <p style="font-size:11px; color:var(--text-muted); margin-bottom:8px; line-height:1.4;">Lo que añadas aquí se le da al cliente al comprar. Cambiarlo <strong>no afecta a los memes ya vendidos</strong> (cada venta guarda su foto fija).</p>
+          <div id="meme-perks-list" style="margin-bottom:8px;"></div>
+          <div style="display:flex; gap:6px; margin-bottom:6px;">
+            <input type="text" id="perk-emoji" placeholder="👕" maxlength="4" style="width:52px; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); text-align:center; box-sizing:border-box;" />
+            <input type="text" id="perk-label" placeholder="Camiseta do Furancho" style="flex:3; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); font-size:12px; box-sizing:border-box;" />
+            <input type="number" id="perk-qty" value="1" min="1" style="width:60px; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); text-align:center; box-sizing:border-box;" />
+          </div>
+          <div style="display:flex; gap:6px; margin-bottom:16px;">
+            <select id="perk-kind" style="flex:1; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); font-size:12px; box-sizing:border-box;">
+              <option value="consumible">Se consume en el local (tapas, viño…)</option>
+              <option value="entrega">Artículo físico (camiseta…) — puede quedar pendiente</option>
+            </select>
+            <button onclick="addMemePerk()" style="padding:10px 16px; background:var(--wine); color:#fff; border:none; border-radius:10px; font-weight:700; cursor:pointer;">+ Añadir</button>
+          </div>
+
+          <!-- Solicitudes del cliente -->
+          <div style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">🙋 Quieren comprarlo <span id="meme-req-badge" style="background:var(--wine); color:#fff; border-radius:8px; padding:1px 7px; font-size:11px; display:none;">0</span></div>
+          <div id="meme-requests" style="margin-bottom:16px;"></div>
+
+          <!-- Venta directa -->
+          <div style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">🤝 Vender ahora (ya cobrado)</div>
+          <input type="text" id="meme-vip-wallet" placeholder="0x… (ID de socio del cliente)" style="width:100%; padding:12px; border-radius:12px; border:1px solid rgba(42,21,9,0.15); margin-bottom:8px; font-family:monospace; font-size:12px; box-sizing:border-box;" />
+          <div id="meme-wallet-hint" style="font-size:11px; color:var(--text-muted); margin-bottom:8px;"></div>
+          <div style="display:flex; gap:8px; margin-bottom:8px;">
             <button onclick="startMemeVipScan()" style="flex:1; padding:12px; background:rgba(42,21,9,0.06); border:1px solid rgba(42,21,9,0.12); border-radius:12px; cursor:pointer; font-size:18px;">📷</button>
-            <button onclick="submitMintMemeVip()" style="flex:4; padding:12px; background:linear-gradient(135deg,var(--gold),#a47d2c); color:#fff; border:none; border-radius:12px; font-weight:700; cursor:pointer;">Mintear Meme VIP</button>
+            <button onclick="submitMintMemeVip()" style="flex:4; padding:12px; background:linear-gradient(135deg,var(--gold),#a47d2c); color:#fff; border:none; border-radius:12px; font-weight:700; cursor:pointer;">Vender meme</button>
           </div>
+          <button onclick="submitMintMemeVip(true)" style="width:100%; padding:10px; background:transparent; border:1px dashed rgba(42,21,9,0.25); border-radius:12px; font-size:12px; cursor:pointer; color:var(--text-muted);">🎁 Regalar meme (sin cobrar, sin extras)</button>
           <div id="meme-vip-scanner-container" style="display:none; margin-top:10px; border-radius:12px; overflow:hidden; border:2px solid var(--gold);"></div>
+        </div>
+
+        <!-- PENDIENTES DE ENTREGA -->
+        <div class="glass-card" style="margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <div class="card-title">📦 Pendiente de dar</div>
+            <button onclick="loadMemeShop()" style="background:transparent; border:none; cursor:pointer; font-size:16px;">🔄</button>
+          </div>
+          <p style="font-size:11px; color:var(--text-muted); margin-bottom:12px; line-height:1.4;">Lo que incluye cada meme vendido y aún no se ha dado. Pulsa ✓ cada vez que entregues una unidad; si te equivocas, ↺ lo deshace. Cuando se agota todo, al cliente le queda el meme y ya está.</p>
+          <div id="meme-pending-list"></div>
         </div>
 
 
@@ -10196,51 +10268,233 @@
     });
   }
   
-  async function submitMintMemeVip() {
-    const wallet = document.getElementById('meme-vip-wallet').value.trim();
-    if (!/^0x[a-fA-F0-9]{40}$/i.test(wallet)) {
-      return alert("Wallet inválida.");
-    }
-    if (!confirm(`¿Seguro que quieres mintear un Meme VIP (limitado a 50) para ${wallet.slice(0,6)}...?`)) return;
-    
+  // ─── TIENDA DEL MEME ────────────────────────────────────────────────────
+  // Las 300 unidades no se tocan desde aquí: el panel solo lee el número.
+  const memeHeaders = () => ({ 'Content-Type': 'application/json', 'x-admin-token': localStorage.getItem('adminToken') });
+  const eur = (c) => (Number(c || 0) / 100).toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' €';
+  let _memeShop = null;
+
+  async function memeApi(path, opts = {}) {
+    const res = await fetch('/api/meme' + path, { headers: memeHeaders(), ...opts });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.error) throw new Error(data.error || 'Error del servidor');
+    return data;
+  }
+
+  async function loadMemeShop() {
+    // Sin sesión no se pide nada: si no, el temporizador llenaría la consola de
+    // 401 mientras el panel está en la pantalla de contraseña.
+    if (!localStorage.getItem('adminToken')) return;
+    if (!document.getElementById('meme-vip-counter')) return;
     try {
-      const res = await fetch('/api/admin/mint-meme', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-admin-token': localStorage.getItem('adminToken')
-        },
-        body: JSON.stringify({ walletAddress: wallet })
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert("¡Meme VIP minteado y encolado on-chain!");
-        document.getElementById('meme-vip-wallet').value = '';
-        updateMemeVipCounter();
-      } else {
-        alert("Error: " + data.error);
-      }
+      const d = await memeApi('/admin/overview');
+      _memeShop = d;
+      const s = d.supply;
+      document.getElementById('meme-vip-counter').innerText = `${s.sold} / ${s.max}`;
+      document.getElementById('meme-left').innerText = s.left;
+      document.getElementById('meme-revenue').innerText = eur(d.revenueCents);
+      document.getElementById('meme-pending-count').innerText = d.pendingPerks;
+
+      // Precio (solo se rellenan los campos si el admin no está escribiendo)
+      const price = document.getElementById('meme-price');
+      const mult = document.getElementById('meme-mult');
+      if (document.activeElement !== price) price.value = (d.config.priceCents / 100).toFixed(2);
+      if (document.activeElement !== mult) mult.value = d.config.multiplier;
+      const note = document.getElementById('meme-note');
+      if (document.activeElement !== note) note.value = d.config.note || '';
+      document.getElementById('meme-open').checked = !!d.config.open;
+      renderMemePricePreview();
+
+      renderMemePerks(d.perks);
+      renderMemeRequests(d.requests);
+      renderMemePending(d.pending);
     } catch (e) {
-      alert("Error de conexión");
+      console.error('[Meme] ' + e.message);
     }
   }
 
-  async function updateMemeVipCounter() {
-    try {
-      const res = await fetch('/api/admin/achievement-stats', {
-        headers: { 'x-admin-token': localStorage.getItem('adminToken') }
-      });
-      const data = await res.json();
-      const memeVip = data.find(a => a.id === 'meme_vip');
-      if (memeVip) {
-        document.getElementById('meme-vip-counter').innerText = `${memeVip.minted + memeVip.pending} / 50`;
-      }
-    } catch (e) {}
+  // Muestra a cuánto le sale al cliente su 1º, 2º y 3º meme con el precio actual.
+  function renderMemePricePreview() {
+    const base = Math.round(parseFloat(document.getElementById('meme-price').value || 0) * 100);
+    const m = parseFloat(document.getElementById('meme-mult').value || 1) || 1;
+    const el = document.getElementById('meme-price-preview');
+    if (m <= 1) { el.innerHTML = `Todos los memes al mismo precio: <strong>${eur(base)}</strong>.`; return; }
+    el.innerHTML = `Su 1º: <strong>${eur(base)}</strong> · el 2º: <strong>${eur(base * m)}</strong> · el 3º: <strong>${eur(base * m * m)}</strong>. `
+      + `Nadie puede tener prohibido comprar varios, pero acaparar sale caro.`;
   }
-  
-  // Actualizar el contador cuando cargue la página
-  setInterval(updateMemeVipCounter, 60000); // 1 minuto
-  setTimeout(updateMemeVipCounter, 2000); // inicial
+  ['meme-price', 'meme-mult'].forEach(id => {
+    document.addEventListener('input', (e) => { if (e.target && e.target.id === id) renderMemePricePreview(); });
+  });
+
+  async function saveMemeConfig() {
+    try {
+      await memeApi('/admin/config', {
+        method: 'PUT',
+        body: JSON.stringify({
+          priceCents: Math.round(parseFloat(document.getElementById('meme-price').value || 0) * 100),
+          multiplier: parseFloat(document.getElementById('meme-mult').value || 1),
+          open: document.getElementById('meme-open').checked,
+          note: document.getElementById('meme-note').value.trim()
+        })
+      });
+      loadMemeShop();
+      alert('Guardado ✅');
+    } catch (e) { alert('Error: ' + e.message); }
+  }
+
+  function renderMemePerks(perks) {
+    const el = document.getElementById('meme-perks-list');
+    if (!perks || !perks.length) {
+      el.innerHTML = `<div style="font-size:12px; color:var(--text-muted); padding:10px; background:rgba(42,21,9,0.04); border-radius:10px;">De momento el meme no incluye nada: solo el NFT. Añade abajo lo que quieras que lleve.</div>`;
+      return;
+    }
+    el.innerHTML = perks.map(p => `
+      <div style="display:flex; align-items:center; gap:8px; padding:8px 10px; background:rgba(42,21,9,0.04); border-radius:10px; margin-bottom:6px; ${p.active ? '' : 'opacity:0.45;'}">
+        <span style="font-size:18px;">${p.emoji || '🎁'}</span>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:13px; font-weight:700;">${p.qty}× ${escapeHtml(p.label)}</div>
+          <div style="font-size:10px; color:var(--text-muted);">${p.kind === 'entrega' ? 'Artículo físico · puede quedar pendiente de entrega' : 'Se consume en el local'}</div>
+        </div>
+        <button onclick="toggleMemePerk(${p.id}, ${p.active ? 0 : 1})" title="${p.active ? 'Dejar de incluirlo' : 'Volver a incluirlo'}" style="background:transparent; border:none; cursor:pointer; font-size:15px;">${p.active ? '👁️' : '🚫'}</button>
+        <button onclick="deleteMemePerk(${p.id})" style="background:transparent; border:none; cursor:pointer; font-size:15px;">🗑️</button>
+      </div>`).join('');
+  }
+
+  async function addMemePerk() {
+    const label = document.getElementById('perk-label').value.trim();
+    if (!label) return alert('Escribe qué incluye (p. ej. "Camiseta do Furancho").');
+    try {
+      await memeApi('/admin/perks', {
+        method: 'POST',
+        body: JSON.stringify({
+          emoji: document.getElementById('perk-emoji').value.trim() || '🎁',
+          label,
+          qty: parseInt(document.getElementById('perk-qty').value || '1', 10),
+          kind: document.getElementById('perk-kind').value
+        })
+      });
+      document.getElementById('perk-label').value = '';
+      document.getElementById('perk-emoji').value = '';
+      document.getElementById('perk-qty').value = 1;
+      loadMemeShop();
+    } catch (e) { alert('Error: ' + e.message); }
+  }
+
+  async function toggleMemePerk(id, active) {
+    try { await memeApi('/admin/perks/' + id, { method: 'PATCH', body: JSON.stringify({ active }) }); loadMemeShop(); }
+    catch (e) { alert('Error: ' + e.message); }
+  }
+
+  async function deleteMemePerk(id) {
+    if (!confirm('¿Quitarlo de lo que incluye el meme? Los memes ya vendidos lo conservan.')) return;
+    try { await memeApi('/admin/perks/' + id, { method: 'DELETE' }); loadMemeShop(); }
+    catch (e) { alert('Error: ' + e.message); }
+  }
+
+  function renderMemeRequests(reqs) {
+    const el = document.getElementById('meme-requests');
+    const badge = document.getElementById('meme-req-badge');
+    if (!reqs || !reqs.length) {
+      badge.style.display = 'none';
+      el.innerHTML = `<div style="font-size:12px; color:var(--text-muted); padding:10px; background:rgba(42,21,9,0.04); border-radius:10px;">Nadie ha pedido comprarlo ahora mismo.</div>`;
+      return;
+    }
+    badge.style.display = 'inline-block';
+    badge.innerText = reqs.length;
+    el.innerHTML = reqs.map(r => `
+      <div style="padding:10px; background:rgba(212,175,55,0.10); border:1px solid rgba(212,175,55,0.35); border-radius:12px; margin-bottom:8px;">
+        <div style="font-family:monospace; font-size:11px; margin-bottom:2px;">${r.wallet_address.slice(0, 10)}…${r.wallet_address.slice(-6)}</div>
+        <div style="font-size:12px; margin-bottom:8px;">Sería su meme nº <strong>${r.unit_index}</strong> · a cobrar <strong>${eur(r.price_cents)}</strong></div>
+        <div style="display:flex; gap:6px;">
+          <button onclick="sellMemeTo('${r.wallet_address}', ${r.id}, ${r.price_cents})" style="flex:3; padding:9px; background:var(--wine); color:#fff; border:none; border-radius:10px; font-weight:700; font-size:12px; cursor:pointer;">✓ Cobrado, dárselo</button>
+          <button onclick="rejectMemeRequest(${r.id})" style="flex:1; padding:9px; background:transparent; border:1px solid rgba(42,21,9,0.2); border-radius:10px; font-size:12px; cursor:pointer;">Descartar</button>
+        </div>
+      </div>`).join('');
+  }
+
+  async function rejectMemeRequest(id) {
+    try { await memeApi('/admin/requests/' + id + '/reject', { method: 'POST' }); loadMemeShop(); }
+    catch (e) { alert('Error: ' + e.message); }
+  }
+
+  // Confirma la venta de una solicitud (el dinero ya está cobrado en la barra).
+  async function sellMemeTo(wallet, purchaseId, priceCents) {
+    if (!confirm(`¿Has cobrado ${eur(priceCents)}? Se le entrega el meme y lo que incluye.`)) return;
+    try {
+      const d = await memeApi('/admin/sell', { method: 'POST', body: JSON.stringify({ walletAddress: wallet, purchaseId, priceCents }) });
+      alert(`Meme nº ${d.serial} vendido ✅\nQuedan ${d.supply.left} de ${d.supply.max}.` +
+        (d.perks.length ? `\n\nLe tienes que dar:\n` + d.perks.map(p => `· ${p.qty_total}× ${p.label}`).join('\n') : ''));
+      loadMemeShop();
+    } catch (e) { alert('Error: ' + e.message); }
+  }
+
+  // Venta directa (sin solicitud previa) o regalo.
+  async function submitMintMemeVip(regalo = false) {
+    const wallet = document.getElementById('meme-vip-wallet').value.trim();
+    if (!/^0x[a-fA-F0-9]{40}$/i.test(wallet)) return alert('ID de socio inválido.');
+    let priceCents = null;
+    if (!regalo) {
+      const info = await memeApi('/admin/wallet/' + wallet).catch(() => null);
+      priceCents = info ? info.price.cents : null;
+      const cuantos = info ? info.price.owned : 0;
+      const msg = cuantos > 0
+        ? `Este cliente ya tiene ${cuantos} meme(s), así que este le sale por ${eur(priceCents)}. ¿Lo has cobrado?`
+        : `¿Has cobrado ${eur(priceCents)}?`;
+      if (!confirm(msg)) return;
+    } else {
+      if (!confirm('¿Regalar un meme (sin cobrar y SIN extras)? Cuenta igual contra las 300.')) return;
+    }
+    try {
+      const d = await memeApi('/admin/sell', {
+        method: 'POST',
+        body: JSON.stringify({ walletAddress: wallet, priceCents: regalo ? 0 : priceCents, source: regalo ? 'regalo' : 'venta', withPerks: !regalo })
+      });
+      alert(`Meme nº ${d.serial} entregado ✅\nQuedan ${d.supply.left} de ${d.supply.max}.` +
+        (d.perks.length ? `\n\nLe tienes que dar:\n` + d.perks.map(p => `· ${p.qty_total}× ${p.label}`).join('\n') : ''));
+      document.getElementById('meme-vip-wallet').value = '';
+      document.getElementById('meme-wallet-hint').innerText = '';
+      loadMemeShop();
+    } catch (e) { alert('Error: ' + e.message); }
+  }
+
+  // Pendientes de dar: tapas por consumir, camisetas sin stock, etc.
+  function renderMemePending(list) {
+    const el = document.getElementById('meme-pending-list');
+    if (!list || !list.length) {
+      el.innerHTML = `<div style="font-size:12px; color:var(--text-muted); padding:10px; background:rgba(42,21,9,0.04); border-radius:10px;">Nada pendiente: a todos los memes vendidos se les ha dado lo suyo. 🍷</div>`;
+      return;
+    }
+    el.innerHTML = list.map(p => {
+      const left = p.qty_total - p.qty_used;
+      const fisico = p.kind === 'entrega';
+      return `
+      <div style="display:flex; align-items:center; gap:8px; padding:10px; background:${fisico ? 'rgba(139,25,24,0.07)' : 'rgba(42,21,9,0.04)'}; border-radius:12px; margin-bottom:6px;">
+        <span style="font-size:18px;">${p.emoji || '🎁'}</span>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:13px; font-weight:700;">${left}× ${escapeHtml(p.label)} ${fisico ? '<span style="font-size:10px; background:var(--wine); color:#fff; border-radius:6px; padding:1px 5px;">ENTREGA</span>' : ''}</div>
+          <div style="font-size:10px; color:var(--text-muted); font-family:monospace;">meme nº${p.serial} · ${p.wallet_address.slice(0, 8)}…${p.wallet_address.slice(-4)}</div>
+        </div>
+        ${p.qty_used > 0 ? `<button onclick="undoMemePerk(${p.id})" title="Deshacer la última entrega" style="background:transparent; border:none; cursor:pointer; font-size:16px;">↺</button>` : ''}
+        <button onclick="useMemePerk(${p.id}, '${escapeHtml(p.label).replace(/'/g, "\\'")}')" style="padding:8px 14px; background:var(--wine); color:#fff; border:none; border-radius:10px; font-weight:700; font-size:12px; cursor:pointer;">✓ Dar</button>
+      </div>`;
+    }).join('');
+  }
+
+  async function useMemePerk(id, label) {
+    if (!confirm(`¿Le entregas 1× ${label} ahora?`)) return;
+    try { await memeApi('/admin/entitlement/' + id + '/use', { method: 'POST', body: JSON.stringify({ qty: 1 }) }); loadMemeShop(); }
+    catch (e) { alert('Error: ' + e.message); }
+  }
+
+  async function undoMemePerk(id) {
+    try { await memeApi('/admin/entitlement/' + id + '/undo', { method: 'POST' }); loadMemeShop(); }
+    catch (e) { alert('Error: ' + e.message); }
+  }
+
+  // Compatibilidad: el resto del panel llama a updateMemeVipCounter().
+  const updateMemeVipCounter = loadMemeShop;
+  setInterval(loadMemeShop, 60000);
+  setTimeout(loadMemeShop, 2000);
   // --- LOGICA DE CANJE DE TAPA DIARIA ---
   let _currentTapaClaimData = null;
 

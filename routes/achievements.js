@@ -66,6 +66,11 @@ router.post('/claim', claimLimiter, (req, res) => {
   const a = achievements.getById(achievementId);
   if (!a) return res.status(404).json({ error: 'Logro no encontrado' });
   try {
+    // El meme NO se reclama: se compra (o lo regala el local). Su puerta es
+    // /api/meme, que es donde se controlan las 300 unidades y el precio.
+    if (a.id === 'meme_vip') {
+      return res.status(403).json({ error: 'El meme no se reclama, ho: se compra. Dale al botón de comprar y págalo en la barra.' });
+    }
     // Verificación SERVIDOR de la regla (no se fía del cliente): hay que haber asistido.
     if (!achievements.walletUnlocked(walletAddress, a)) {
       return res.status(403).json({ error: 'Aún no has desbloqueado este logro, ho. Hay que asistir al evento.' });
