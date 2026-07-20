@@ -27,7 +27,15 @@ router.get('/status', (req, res) => {
   try {
     const cfg = shop.getConfig();
     const s = shop.supply();
+    // La imagen sale del catálogo de logros (fuente única): así, cuando se sube
+    // un arte nuevo desde el panel, cambia en TODAS partes a la vez.
+    let image = '/assets/nft_meme_vip.jpg';
+    try {
+      const a = require('../services/achievements').getById(shop.MEME.ACHIEVEMENT_ID);
+      if (a && a.image) image = a.image;
+    } catch (_) {}
     const out = {
+      image,
       maxSupply: shop.MEME.MAX_SUPPLY,   // 300, siempre. No es configurable.
       sold: s.sold,
       left: s.left,
