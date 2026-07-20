@@ -1703,13 +1703,15 @@
           <!-- Precio -->
           <div style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">💶 Precio</div>
           <div style="display:flex; gap:8px; margin-bottom:8px;">
+            <!-- type="text" + inputmode a propósito: con type="number", escribir "50,5"
+                 con coma (teclado español) devuelve cadena vacía y se guardaría 0 €. -->
             <div style="flex:1;">
               <label style="font-size:10px; color:var(--text-muted);">Precio base (€)</label>
-              <input type="number" step="0.5" min="0" id="meme-price" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); box-sizing:border-box;" />
+              <input type="text" inputmode="decimal" id="meme-price" placeholder="25" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); box-sizing:border-box;" />
             </div>
             <div style="flex:1;">
               <label style="font-size:10px; color:var(--text-muted);">×  por cada meme que ya tenga</label>
-              <input type="number" step="0.5" min="1" max="10" id="meme-mult" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); box-sizing:border-box;" />
+              <input type="text" inputmode="decimal" id="meme-mult" placeholder="2" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); box-sizing:border-box;" />
             </div>
           </div>
           <div id="meme-price-preview" style="font-size:11px; color:var(--text-muted); margin-bottom:8px;"></div>
@@ -7639,7 +7641,10 @@
       if (logoFile) {
         const fd = new FormData();
         fd.append('logo', logoFile);
-        await fetch(`/api/admin/countdowns/${savedId}/logo`, { method: 'POST', headers: { 'x-admin-token': adminToken }, body: fd });
+        // OJO: aquí se usaba una variable 'adminToken' que no existe → petaba con
+        // ReferenceError y el logo no llegaba a subirse. La sesión buena es AUTH_TOKEN.
+        // Sin 'Content-Type': con FormData lo pone el navegador con su boundary.
+        await fetch(`/api/admin/countdowns/${savedId}/logo`, { method: 'POST', headers: { 'x-admin-token': AUTH_TOKEN }, body: fd });
       }
       showToast('✅ Cuenta regresiva guardada');
       closeCountdownModal();
@@ -10270,12 +10275,25 @@
   
   // ─── TIENDA DEL MEME ────────────────────────────────────────────────────
   // Las 300 unidades no se tocan desde aquí: el panel solo lee el número.
-  const memeHeaders = () => ({ 'Content-Type': 'application/json', 'x-admin-token': localStorage.getItem('adminToken') });
   const eur = (c) => (Number(c || 0) / 100).toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' €';
   let _memeShop = null;
+  // En cuanto tocas el precio, el refresco automático deja de pisarte lo escrito
+  // hasta que guardes. Antes te cambiaba el número por el viejo mientras escribías.
+  let _memeCfgTocado = false;
 
+  // Acepta "50", "50,5" y "50.5" (teclado español). Devuelve null si no es un número:
+  // así nunca se guarda 0 € por un despiste de formato.
+  function numeroEs(txt) {
+    const s = String(txt == null ? '' : txt).trim().replace(',', '.');
+    if (!s) return null;
+    const n = Number(s);
+    return isFinite(n) ? n : null;
+  }
+
+  // La sesión del panel es AUTH_TOKEN (authHeaders/apiFetch), la misma que usa todo
+  // lo demás: así caduca a la vez y un 401 devuelve solo a la pantalla de entrar.
   async function memeApi(path, opts = {}) {
-    const res = await fetch('/api/meme' + path, { headers: memeHeaders(), ...opts });
+    const res = await apiFetch('/api/meme' + path, { headers: authHeaders(), ...opts });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.error) throw new Error(data.error || 'Error del servidor');
     return data;
@@ -10284,7 +10302,7 @@
   async function loadMemeShop() {
     // Sin sesión no se pide nada: si no, el temporizador llenaría la consola de
     // 401 mientras el panel está en la pantalla de contraseña.
-    if (!localStorage.getItem('adminToken')) return;
+    if (!AUTH_TOKEN) return;
     if (!document.getElementById('meme-vip-counter')) return;
     try {
       const d = await memeApi('/admin/overview');
@@ -10295,14 +10313,13 @@
       document.getElementById('meme-revenue').innerText = eur(d.revenueCents);
       document.getElementById('meme-pending-count').innerText = d.pendingPerks;
 
-      // Precio (solo se rellenan los campos si el admin no está escribiendo)
-      const price = document.getElementById('meme-price');
-      const mult = document.getElementById('meme-mult');
-      if (document.activeElement !== price) price.value = (d.config.priceCents / 100).toFixed(2);
-      if (document.activeElement !== mult) mult.value = d.config.multiplier;
-      const note = document.getElementById('meme-note');
-      if (document.activeElement !== note) note.value = d.config.note || '';
-      document.getElementById('meme-open').checked = !!d.config.open;
+      // Precio: si has empezado a cambiarlo, NO se toca hasta que guardes.
+      if (!_memeCfgTocado) {
+        document.getElementById('meme-price').value = String(d.config.priceCents / 100).replace('.', ',');
+        document.getElementById('meme-mult').value = String(d.config.multiplier).replace('.', ',');
+        document.getElementById('meme-note').value = d.config.note || '';
+        document.getElementById('meme-open').checked = !!d.config.open;
+      }
       renderMemePricePreview();
 
       renderMemePerks(d.perks);
@@ -10315,30 +10332,47 @@
 
   // Muestra a cuánto le sale al cliente su 1º, 2º y 3º meme con el precio actual.
   function renderMemePricePreview() {
-    const base = Math.round(parseFloat(document.getElementById('meme-price').value || 0) * 100);
-    const m = parseFloat(document.getElementById('meme-mult').value || 1) || 1;
+    const baseNum = numeroEs(document.getElementById('meme-price').value);
     const el = document.getElementById('meme-price-preview');
+    if (baseNum === null) { el.innerHTML = `<span style="color:var(--wine); font-weight:700;">Escribe el precio en euros (p. ej. 25 o 25,50).</span>`; return; }
+    const base = Math.round(baseNum * 100);
+    const m = numeroEs(document.getElementById('meme-mult').value) || 1;
     if (m <= 1) { el.innerHTML = `Todos los memes al mismo precio: <strong>${eur(base)}</strong>.`; return; }
     el.innerHTML = `Su 1º: <strong>${eur(base)}</strong> · el 2º: <strong>${eur(base * m)}</strong> · el 3º: <strong>${eur(base * m * m)}</strong>. `
       + `Nadie puede tener prohibido comprar varios, pero acaparar sale caro.`;
   }
-  ['meme-price', 'meme-mult'].forEach(id => {
-    document.addEventListener('input', (e) => { if (e.target && e.target.id === id) renderMemePricePreview(); });
+  // Al tocar cualquier campo del precio se marca como "en edición" (el refresco
+  // automático deja de pisarlo) y se recalcula la previsualización.
+  document.addEventListener('input', (e) => {
+    if (!e.target || !e.target.id) return;
+    if (['meme-price', 'meme-mult', 'meme-note'].includes(e.target.id)) {
+      _memeCfgTocado = true;
+      renderMemePricePreview();
+    }
+  });
+  document.addEventListener('change', (e) => {
+    if (e.target && e.target.id === 'meme-open') _memeCfgTocado = true;
   });
 
   async function saveMemeConfig() {
+    const precio = numeroEs(document.getElementById('meme-price').value);
+    const mult = numeroEs(document.getElementById('meme-mult').value);
+    // Validar ANTES de enviar: un precio mal escrito no puede acabar en 0 € callando.
+    if (precio === null || precio < 0) return alert('Pon un precio válido en euros (p. ej. 25 o 25,50).');
+    if (mult === null || mult < 1 || mult > 10) return alert('El multiplicador va de 1 (precio plano) a 10. Normalmente 2.');
     try {
       await memeApi('/admin/config', {
         method: 'PUT',
         body: JSON.stringify({
-          priceCents: Math.round(parseFloat(document.getElementById('meme-price').value || 0) * 100),
-          multiplier: parseFloat(document.getElementById('meme-mult').value || 1),
+          priceCents: Math.round(precio * 100),
+          multiplier: mult,
           open: document.getElementById('meme-open').checked,
           note: document.getElementById('meme-note').value.trim()
         })
       });
-      loadMemeShop();
-      alert('Guardado ✅');
+      _memeCfgTocado = false;   // ya está guardado: el refresco puede volver a mandar
+      await loadMemeShop();
+      alert(`Guardado ✅\nEl meme cuesta ${eur(Math.round(precio * 100))}${mult > 1 ? ` y cada siguiente ×${mult}` : ''}.`);
     } catch (e) { alert('Error: ' + e.message); }
   }
 
@@ -10611,12 +10645,11 @@
     `;
 
     try {
-      const res = await fetch('/api/admin/claim-daily-tapa', {
+      // OJO: esto usaba una clave de localStorage que no existe ('adminToken'), así que
+      // la entrega de la tapa desde el panel SIEMPRE daba 401. La sesión buena es AUTH_TOKEN.
+      const res = await apiFetch('/api/admin/claim-daily-tapa', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-admin-token': localStorage.getItem('adminToken')
-        },
+        headers: authHeaders(),
         body: JSON.stringify(_currentTapaClaimData)
       });
       const data = await res.json();
