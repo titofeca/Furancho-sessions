@@ -94,6 +94,19 @@
       <ol id="camp-rank-list"></ol>
     </div>
 
+    <!-- RESERVAS VIP DE HOY (para recibir a los grupos y llevarlos a su mesa) -->
+    <div class="card" id="vip-card" style="display:none; margin-top:18px;">
+      <div onclick="toggleVipList()" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none;">
+        <h2 style="font-size:17px; margin:0;">⭐ Reservas de hoy</h2>
+        <span id="vip-chevron" style="font-size:15px; color:var(--text-muted);">▼</span>
+      </div>
+      <div id="vip-body" style="display:none; margin-top:12px;">
+        <p class="lead" style="margin-bottom:12px; font-size:12.5px;">Las mesas VIP de esta noche. Cuando llegue el grupo, acompáñalos a su mesa. Si una sigue pendiente, puedes confirmarla tú (le llega el aviso al cliente al momento).</p>
+        <div id="vip-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+        <div class="err" id="vip-err"></div>
+      </div>
+    </div>
+
     <!-- HORARIO DE LA TERRAZA (editable por el camarero) -->
     <div class="card" id="terraza-card" style="display:none; margin-top:18px;">
       <div onclick="toggleTerraza()" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none;">
@@ -137,6 +150,8 @@
       <div class="camp-progress" id="result-camp-dots"></div>
       <p id="result-camp-msg" style="font-size:15px; font-weight:700; margin-top:4px;"></p>
     </div>
+    <!-- Bloque mesa VIP de hoy (acompañar al grupo a su mesa / confirmar pendiente) -->
+    <div id="result-vip" style="display:none; margin-top:16px; max-width:360px; width:100%;"></div>
     <!-- Bloque premio NFT pendiente de entregar (Chave Dourada, etc.) -->
     <div id="result-nft-prizes" style="display:none; margin-top:16px; max-width:360px; width:100%;"></div>
     <!-- Bloque privilexio do Guardián (tapa do día) — consumir al fichar -->
@@ -191,6 +206,7 @@
       scanner = null;
       document.getElementById('code-input').value = '';
       document.getElementById('terraza-card').style.display = 'none';
+      document.getElementById('vip-card').style.display = 'none';
       showGate();
     }
 
@@ -355,6 +371,7 @@
       document.getElementById('scanner').style.display = 'block';
       document.getElementById('result').style.display = 'none';
       document.getElementById('terraza-card').style.display = 'block'; // editor de horario (plegado)
+      document.getElementById('vip-card').style.display = 'block';     // reservas de hoy (plegado)
       const status = document.getElementById('scan-status');
       status.textContent = 'Abriendo cámara…';
       try{
@@ -508,6 +525,101 @@
       }
     }
 
+    // ── Reservas VIP de hoy ──
+    const VIP_BADGES = { pending: '⏳ PENDIENTE', confirmed: '✅ CONFIRMADA', completed: '🍷 EN MESA' };
+
+    function toggleVipList(){
+      const body = document.getElementById('vip-body');
+      const open = body.style.display !== 'none';
+      body.style.display = open ? 'none' : 'block';
+      document.getElementById('vip-chevron').textContent = open ? '▼' : '▲';
+      if (!open) loadVipList();
+    }
+
+    async function loadVipList(){
+      const list = document.getElementById('vip-list');
+      const err = document.getElementById('vip-err');
+      err.textContent = '';
+      list.innerHTML = '<p style="font-size:12.5px; color:var(--text-muted); text-align:center;">Cargando…</p>';
+      try{
+        const r = await fetch('/api/staff/reservations', { headers:{ 'x-staff-code': localStorage.getItem(STAFF_KEY) || '' } });
+        const d = await r.json();
+        if (!r.ok){ list.innerHTML = ''; err.textContent = d.error || 'No se pudieron cargar las reservas'; return; }
+        if (!d.event){ list.innerHTML = '<p style="font-size:12.5px; color:var(--text-muted); text-align:center;">Hoy no hay evento en la agenda, así que no hay mesas VIP.</p>'; return; }
+        if (!d.reservations.length){ list.innerHTML = '<p style="font-size:12.5px; color:var(--text-muted); text-align:center;">Sin reservas VIP para esta noche (de momento).</p>'; return; }
+        list.innerHTML = d.reservations.map(v => {
+          const hora = (v.notes || '').replace(/^Hora:\s*/i, '');
+          const mesa = v.alias ? `Mesa «${v.alias}»` : 'Mesa sin nombre aún';
+          const badge = VIP_BADGES[v.status] || v.status;
+          const badgeColor = v.status === 'pending' ? 'var(--gold)' : 'var(--green)';
+          return `
+          <div style="background:rgba(255,255,255,0.6); border:1.5px solid rgba(196,151,58,0.4); border-radius:14px; padding:11px 13px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+              <span style="font-size:13.5px; font-weight:800; color:var(--wine);">⭐ ${mesa}</span>
+              <span style="font-size:10px; font-weight:800; color:${badgeColor}; letter-spacing:.5px;">${badge}</span>
+            </div>
+            <p style="margin:4px 0 0; font-size:12px; color:var(--text-muted);">${v.groupSize} pax${hora ? ' · ' + hora : ''} · <span style="font-family:monospace;">${v.walletMasked}</span></p>
+            ${v.status === 'pending' ? `
+            <button type="button" onclick="staffConfirmVip(this, ${v.id})"
+                    style="width:100%; margin-top:8px; padding:10px; background:var(--green); color:#fff; border:none; border-radius:10px; font-size:12.5px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif;">
+              ✅ Confirmar mesa
+            </button>` : ''}
+          </div>`;
+        }).join('');
+      }catch(e){ list.innerHTML = ''; err.textContent = 'Error de red cargando reservas.'; }
+    }
+
+    async function staffConfirmVip(btn, id, onDone){
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = 'Confirmando…';
+      try{
+        const r = await fetch(`/api/staff/vip/${id}/confirm`, {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json', 'x-staff-code': localStorage.getItem(STAFF_KEY) || '' }
+        });
+        const d = await r.json();
+        if (r.ok && d.success){
+          btn.textContent = d.alias ? `✅ Confirmada — Mesa «${d.alias}»` : '✅ Confirmada';
+          if (typeof onDone === 'function') onDone(d);
+        } else {
+          btn.disabled = false;
+          btn.textContent = original;
+          alert(d.error || 'No se pudo confirmar');
+        }
+      }catch(e){
+        btn.disabled = false;
+        btn.textContent = original;
+        alert('Error de red');
+      }
+    }
+
+    // Pinta la mesa VIP de HOY del cliente escaneado, para acompañarlo a su sitio.
+    // Devuelve true si se muestra algo (para no auto-cerrar el resultado).
+    function renderVipToday(vip){
+      const wrap = document.getElementById('result-vip');
+      if (!wrap) return false;
+      if (!vip){ wrap.style.display = 'none'; wrap.innerHTML = ''; return false; }
+      const hora = (vip.notes || '').replace(/^Hora:\s*/i, '');
+      const mesa = vip.alias ? `Mesa «${vip.alias}»` : 'Mesa por asignar';
+      const pending = vip.status === 'pending';
+      wrap.innerHTML = `
+      <div style="padding:16px; background:linear-gradient(135deg, rgba(196,151,58,0.20), rgba(139,25,24,0.08)); border:2px solid var(--gold); border-radius:16px; text-align:left; box-shadow:0 4px 16px rgba(196,151,58,0.25);">
+        <p style="margin:0; font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--wine);">⭐ RESERVA VIP DE HOY · ${VIP_BADGES[vip.status] || vip.status}</p>
+        <p style="margin:4px 0 2px; font-size:17px; font-weight:900; color:var(--wine); font-family:'Playfair Display',serif;">${mesa}</p>
+        <p style="margin:0; font-size:12px; color:var(--text-muted);">${vip.groupSize} pax${hora ? ' · ' + hora : ''}</p>
+        ${pending
+          ? `<button type="button" onclick="staffConfirmVip(this, ${vip.id})"
+                     style="width:100%; margin-top:10px; padding:12px; background:var(--green); color:#fff; border:none; border-radius:12px; font-size:13.5px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif;">
+               ✅ Confirmar mesa ahora
+             </button>
+             <p style="margin:8px 0 0; font-size:10.5px; color:var(--text-muted);">Al confirmar se le asigna nombre de mesa y le llega el aviso a su app.</p>`
+          : `<p style="margin:8px 0 0; font-size:12px; font-weight:700; color:var(--green);">🍷 Acompáñalos a su mesa.</p>`}
+      </div>`;
+      wrap.style.display = 'block';
+      return true;
+    }
+
     // Pinta el privilexio do Guardián (tapa do día) si el cliente lo tiene hoy.
     // Devuelve true si se muestra algo (para no auto-cerrar el resultado).
     function renderDailyTapa(tapa, wallet){
@@ -518,10 +630,11 @@
       if (tapa.claimed){
         // Ya consumido hoy — se lo decimos al camarero para que no lo dé dos veces.
         const at = tapa.claimedAt ? new Date(tapa.claimedAt.replace(' ','T') + 'Z').toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Madrid'}) : '';
+        const n = tapa.claimedToday || 1;
         wrap.innerHTML = `
         <div style="padding:14px 16px; background:rgba(42,21,9,0.05); border:1.5px solid rgba(42,21,9,0.15); border-radius:16px;">
           <p style="margin:0; font-size:12px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted);">🎟️ ${tapa.title || 'Privilexio'}</p>
-          <p style="margin:6px 0 0; font-size:14px; font-weight:700; color:var(--text);">⛔ Ya consumido hoy${at ? ' · ' + at : ''} — no darle otra vez.</p>
+          <p style="margin:6px 0 0; font-size:14px; font-weight:700; color:var(--text);">${n > 1 ? `⛔ Ya consumió sus ${n} de hoy (uno por NFT)` : '⛔ Ya consumido hoy'}${at ? ' · ' + at : ''} — no darle otra vez.</p>
         </div>`;
         wrap.style.display = 'block';
         return true;
@@ -538,26 +651,36 @@
         return true;
       }
 
-      // Disponible: botón para consumirlo AL ENTREGAR la tapa/cunca.
+      // Disponible: UN botón por cada NFT canjeable (el privilexio se acumula:
+      // Guardián + Chave d'Ouro = 2 tapas y 2 cuncas). Cada botón gasta el suyo.
+      const nfts = (tapa.availableNfts && tapa.availableNfts.length) ? tapa.availableNfts : [tapa.activeNft];
+      const done = tapa.claimedToday || 0;
       window._tapaQueue = window._tapaQueue || {};
-      window._tapaQueue[wallet] = tapa.activeNft;
+      const buttons = nfts.map((nft, idx) => {
+        const key = wallet + ':' + idx;
+        window._tapaQueue[key] = nft;
+        const label = nft.type === 'referral' ? 'Bono Plan Amigo 🍇' : `«${nft.name}»${nft.serial > 0 ? ' #' + nft.serial : ''}`;
+        return `
+        <button type="button" onclick="claimDailyTapa(this, '${wallet}', '${key}')"
+                style="width:100%; padding:14px; margin-top:${idx ? '8px' : '0'}; background:linear-gradient(135deg, var(--gold), #a97b1f); color:#fff; border:none; border-radius:12px; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 3px 12px rgba(196,151,58,0.4); font-family:'Outfit',sans-serif;">
+          🍽️ Entregar y consumir — ${label}
+        </button>`;
+      }).join('');
       wrap.innerHTML = `
       <div style="padding:16px; background:linear-gradient(135deg, rgba(196,151,58,0.22), rgba(139,25,24,0.10)); border:2px solid var(--gold); border-radius:16px; box-shadow:0 4px 16px rgba(196,151,58,0.25);">
         <p style="margin:0; font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--wine);">🎟️ ${tapa.title || 'Privilexio do Guardián'}</p>
         <p style="margin:4px 0 2px; font-size:16px; font-weight:900; color:var(--wine); font-family:'Playfair Display',serif;">${tapa.benefit || 'Tapa e cunca do día'}</p>
-        <p style="margin:0 0 10px; font-size:11px; color:var(--text-muted);">Privilexio do NFT «${tapa.nftName || ''}» · 1 al día</p>
-        <button type="button" onclick="claimDailyTapa(this, '${wallet}')"
-                style="width:100%; padding:14px; background:linear-gradient(135deg, var(--gold), #a97b1f); color:#fff; border:none; border-radius:12px; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 3px 12px rgba(196,151,58,0.4); font-family:'Outfit',sans-serif;">
-          🍽️ Entregar y consumir (1/día)
-        </button>
-        <p style="margin:8px 0 0; font-size:10.5px; color:var(--text-muted);">Púlsalo SOLO al entregarle la tapa y la cunca. Queda consumido para hoy.</p>
+        <p style="margin:0 0 10px; font-size:11px; color:var(--text-muted);">${nfts.length > 1 ? `Le quedan <b>${nfts.length}</b> canjes hoy (1 por NFT)` : 'Privilexio do NFT «' + ((tapa.activeNft && tapa.activeNft.name) || tapa.nftName || '') + '» · 1 al día'}${done ? ` · ya consumió ${done} hoy` : ''}</p>
+        ${buttons}
+        <p style="margin:8px 0 0; font-size:10.5px; color:var(--text-muted);">Púlsalo SOLO al entregarle la tapa y la cunca. Cada botón queda consumido para hoy.</p>
       </div>`;
       wrap.style.display = 'block';
       return true;
     }
 
-    async function claimDailyTapa(btn, wallet){
-      const nft = (window._tapaQueue || {})[wallet];
+    async function claimDailyTapa(btn, wallet, key){
+      // Compat: si llega sin key (versión antigua), usa la primera de la cola del wallet
+      const nft = (window._tapaQueue || {})[key || (wallet + ':0')];
       if (!nft){ alert('No encuentro el privilexio, escanea de nuevo.'); return; }
       btn.disabled = true;
       const original = btn.textContent;
@@ -627,7 +750,8 @@
       // Igual con el privilexio do Guardián y los bonos de sorteo del cliente.
       const hasNftPrize = renderNftPrizes(d.pendingNftPrizes, wallet)
         | renderDailyTapa(d.dailyTapa, wallet)
-        | renderClientPrizes(d.prizes);
+        | renderClientPrizes(d.prizes)
+        | renderVipToday(d.vipToday);
 
       // ── MODO CAMPAÑA: durante el Reto de los 5, el resultado gira en torno al reto ──
       if (d.campaign && d.campaign.active){
@@ -721,7 +845,7 @@
       document.getElementById('result').style.display = 'none';
       document.getElementById('scan-status').textContent = '';
       // Limpiar los bloques extra para que no arrastren datos del cliente anterior
-      ['result-nft-prizes','result-daily-tapa','result-prizes'].forEach(id => {
+      ['result-nft-prizes','result-daily-tapa','result-prizes','result-vip'].forEach(id => {
         const el = document.getElementById(id);
         if (el){ el.style.display = 'none'; el.innerHTML = ''; }
       });

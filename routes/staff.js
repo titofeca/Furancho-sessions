@@ -129,10 +129,97 @@ router.post('/checkin', staffLimiter, requireStaff, (req, res) => {
       }));
     } catch (_) { result.prizes = []; }
 
+    // ── Reserva VIP de HOY ──────────────────────────────────────────────────
+    // Si el cliente fichado tiene mesa reservada para el evento de hoy, el
+    // camarero la ve al escanear (nombre de mesa, pax, estado) para poder
+    // acompañarlo a su sitio — y confirmarla si sigue pendiente.
+    try {
+      const { db } = require('../db/database');
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+      const vip = db.prepare(`
+        SELECT vr.id, vr.status, vr.group_size, vr.alias, vr.notes, e.title, e.event_date
+        FROM vip_reservations vr JOIN events e ON e.id = vr.event_id
+        WHERE LOWER(vr.wallet_address) = LOWER(?) AND e.event_date = ? AND vr.status != 'cancelled'
+        LIMIT 1
+      `).get(walletAddress, today);
+      result.vipToday = vip ? {
+        id: vip.id,
+        status: vip.status,
+        groupSize: vip.group_size,
+        alias: vip.alias || null,
+        notes: vip.notes || null,
+        eventTitle: vip.title
+      } : null;
+    } catch (_) { result.vipToday = null; }
+
     return res.json(result);
   } catch (e) {
     console.error('Error en /staff/checkin:', e.message);
     res.status(500).json({ error: 'Error procesando entrada' });
+  }
+});
+
+// ── RESERVAS VIP DE LA NOCHE ────────────────────────────────────────────────
+// Los camareros ven las mesas reservadas del evento de HOY (nombre de mesa, pax,
+// hora y estado) para recibir a los grupos y acompañarlos a su sitio. Sin teléfono:
+// ese dato queda solo en el panel admin.
+
+// GET /api/staff/reservations — reservas del evento de hoy
+router.get('/reservations', requireStaff, (req, res) => {
+  try {
+    const { db, getVipReservations } = require('../db/database');
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+    const event = db.prepare(`SELECT id, title, event_date FROM events WHERE event_date = ? AND active = 1`).get(today);
+    if (!event) return res.json({ event: null, reservations: [] });
+    const reservations = getVipReservations(event.id)
+      .filter(r => r.status !== 'cancelled')
+      .map(r => ({
+        id: r.id,
+        walletMasked: r.wallet_masked,
+        groupSize: r.group_size,
+        status: r.status,
+        alias: r.alias || null,
+        notes: r.notes || null
+      }));
+    res.json({ event: { id: event.id, title: event.title, date: event.event_date }, reservations });
+  } catch (e) {
+    console.error('Error en /staff/reservations:', e.message);
+    res.status(500).json({ error: 'Error cargando reservas' });
+  }
+});
+
+// POST /api/staff/vip/:id/confirm — el camarero confirma una reserva PENDIENTE.
+// Solo pending → confirmed (cancelar sigue siendo cosa del admin). Reusa la misma
+// fuente única que el admin: alias de mesa + mensaje en el tablón + push al cliente.
+router.post('/vip/:id/confirm', staffLimiter, requireStaff, (req, res) => {
+  try {
+    const { getVipReservation, updateVipStatus, sendVipInboxNotification } = require('../db/database');
+    const id = parseInt(req.params.id);
+    if (!id) return res.status(400).json({ error: 'Reserva no válida' });
+    const reservation = getVipReservation(id);
+    if (!reservation) return res.status(404).json({ error: 'Reserva no encontrada' });
+    if (reservation.status === 'confirmed') {
+      return res.json({ success: true, alias: reservation.alias || null, already: true });
+    }
+    if (reservation.status !== 'pending') {
+      return res.status(400).json({ error: 'Solo se pueden confirmar reservas pendientes' });
+    }
+    const alias = updateVipStatus(id, 'confirmed');
+    try { sendVipInboxNotification(reservation.wallet_address, reservation.event_id, 'confirmed', alias); } catch (_) {}
+    try {
+      const { broadcast } = require('./raffle');
+      broadcast('vip_status', { eventId: reservation.event_id, status: 'confirmed', eventTitle: reservation.event_title, alias }, reservation.wallet_address);
+    } catch (_) {}
+    try {
+      const { sendPushToWallet } = require('../services/push');
+      const aliasTxt = alias ? ` a nombre de "${alias}"` : '';
+      sendPushToWallet(reservation.wallet_address, '⭐ ¡Reserva VIP Confirmada!',
+        `Tu mesa VIP${aliasTxt} para "${reservation.event_title}" está confirmada. ¡Nos vemos allí, neno! 🥂`, { url: '/claim' });
+    } catch (_) {}
+    res.json({ success: true, alias: alias || null });
+  } catch (e) {
+    console.error('Error en /staff/vip/confirm:', e.message);
+    res.status(500).json({ error: 'Error confirmando la reserva' });
   }
 });
 
