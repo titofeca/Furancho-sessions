@@ -158,6 +158,8 @@
     <div id="result-daily-tapa" style="display:none; margin-top:16px; max-width:360px; width:100%;"></div>
     <!-- Bloque premios de sorteo del cliente (bonos por canjear / por aceptar) -->
     <div id="result-prizes" style="display:none; margin-top:16px; max-width:360px; width:100%;"></div>
+    <!-- Bloque de lo que trae el meme y aún se le debe (tapas, viño, camiseta) -->
+    <div id="result-meme-perks" style="display:none; margin-top:16px; max-width:360px; width:100%;"></div>
     <div class="who" id="result-who"></div>
     <button onclick="resumeScan()">Escanear al siguiente ➜</button>
   </div>
@@ -734,6 +736,58 @@
       return true;
     }
 
+    // Lo que trae el meme y aún se le debe: tapas y viño se consumen aquí mismo;
+    // los artículos físicos (camiseta) quedan pendientes hasta que haya stock.
+    // Devuelve true si se muestra algo.
+    function renderMemePerks(perks, wallet){
+      const wrap = document.getElementById('result-meme-perks');
+      if (!wrap) return false;
+      if (!perks || !perks.length){ wrap.style.display = 'none'; wrap.innerHTML = ''; return false; }
+      const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      wrap.innerHTML = `
+      <div style="padding:16px; background:linear-gradient(135deg, rgba(196,151,58,0.18), rgba(139,25,24,0.08)); border:2px solid var(--gold); border-radius:16px; text-align:left;">
+        <p style="margin:0 0 2px; font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--wine);">🎭 Trae o seu meme</p>
+        <p style="margin:0 0 10px; font-size:11px; color:var(--text-muted);">Dálle o que pida e pulsa. Só o que entregues.</p>
+        ${perks.map(p => `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <div style="flex:1; min-width:0;">
+              <p style="margin:0; font-size:14px; font-weight:800; color:var(--text);">${esc(p.emoji)} ${p.left}× ${esc(p.label)}</p>
+              <p style="margin:0; font-size:10.5px; color:var(--text-muted);">${p.kind === 'entrega' ? 'Artigo físico · se non hai stock, déixao pendente' : 'Consúmese aquí'}${p.total > p.left ? ` · xa levou ${p.total - p.left} de ${p.total}` : ''}</p>
+            </div>
+            <button type="button" onclick="giveMemePerk(this, ${p.id})"
+              style="padding:11px 16px; background:linear-gradient(135deg, var(--gold), #a97b1f); color:#fff; border:none; border-radius:12px; font-size:13px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif; white-space:nowrap;">✓ Dar</button>
+          </div>`).join('')}
+      </div>`;
+      wrap.style.display = 'block';
+      return true;
+    }
+
+    async function giveMemePerk(btn, entitlementId){
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = 'Dando…';
+      try {
+        const r = await fetch('/api/staff/meme-perk', {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json', 'x-staff-code': localStorage.getItem(STAFF_KEY) || '' },
+          body: JSON.stringify({ entitlementId })
+        });
+        const d = await r.json().catch(()=>({}));
+        if (r.ok && d.success){
+          btn.style.background = 'rgba(22,163,74,0.9)';
+          btn.textContent = d.left > 0 ? `✅ Dado (quedan ${d.left})` : '✅ Dado';
+        } else {
+          btn.disabled = false;
+          btn.textContent = original;
+          alert('⚠️ ' + (d.error || 'No se pudo entregar'));
+        }
+      } catch(e){
+        btn.disabled = false;
+        btn.textContent = original;
+        alert('⚠️ Error de red.');
+      }
+    }
+
     function showResult(d, wallet){
       const icon = document.getElementById('result-icon');
       const title = document.getElementById('result-title');
@@ -751,7 +805,8 @@
       const hasNftPrize = renderNftPrizes(d.pendingNftPrizes, wallet)
         | renderDailyTapa(d.dailyTapa, wallet)
         | renderClientPrizes(d.prizes)
-        | renderVipToday(d.vipToday);
+        | renderVipToday(d.vipToday)
+        | renderMemePerks(d.memePerks, wallet);
 
       // ── MODO CAMPAÑA: durante el Reto de los 5, el resultado gira en torno al reto ──
       if (d.campaign && d.campaign.active){
@@ -845,7 +900,7 @@
       document.getElementById('result').style.display = 'none';
       document.getElementById('scan-status').textContent = '';
       // Limpiar los bloques extra para que no arrastren datos del cliente anterior
-      ['result-nft-prizes','result-daily-tapa','result-prizes','result-vip'].forEach(id => {
+      ['result-nft-prizes','result-daily-tapa','result-prizes','result-vip','result-meme-perks'].forEach(id => {
         const el = document.getElementById(id);
         if (el){ el.style.display = 'none'; el.innerHTML = ''; }
       });

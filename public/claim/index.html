@@ -8936,6 +8936,10 @@
         </div>`;
     } else if (a.claimStatus === 'pending' || a.claimStatus === 'pending_approval') {
       cta = `<span style="font-size:12px; font-weight:800; color:var(--gold);">⏳ Generando tu NFT…</span>`;
+    } else if (a.id === 'meme_vip') {
+      // El meme no se reclama (se compra), así que aquí no va botón: si su mint
+      // falló, lo reintenta el local — el cliente no tiene nada que pulsar.
+      cta = `<span style="font-size:12px; font-weight:800; color:var(--gold);">⏳ Xa vén — se tarda, dinos na barra</span>`;
     } else {
       const label = a.claimStatus === 'failed' ? '🔁 Reintentar NFT' : '🎟️ Convertir en NFT';
       cta = `<button onclick="claimAchievementNft('${a.id}', this)" style="background:var(--wine); color:#fff; border:none; border-radius:100px; padding:8px 16px; font-size:12px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif;">${label}</button>`;
@@ -8956,8 +8960,8 @@
     return `<div onclick="showNftDetail('${a.id}')" style="display:flex; gap:12px; align-items:center; background:rgba(42,21,9,0.03); border:1.5px dashed rgba(42,21,9,0.15); border-radius:14px; padding:10px 12px; cursor:pointer;">
       <img src="${a.image}" alt="${a.name}" onclick="event.stopPropagation(); openImageLightbox(this.src, this.alt)" style="width:54px; height:54px; object-fit:cover; border-radius:10px; flex-shrink:0; opacity:0.4; filter:grayscale(100%); cursor:zoom-in;" onerror="this.style.display='none'">
       <div style="flex:1; min-width:0;">
-        <p style="font-size:13px; font-weight:800; color:var(--text-muted); margin:0 0 2px;">🔒 ${a.name}</p>
-        <p style="font-size:11px; color:var(--text-muted); opacity:0.85; margin:0;">Aínda por conseguir · toca para ver</p>
+        <p style="font-size:13px; font-weight:800; color:var(--text-muted); margin:0 0 2px;">${a.id === 'meme_vip' ? '🛒' : '🔒'} ${a.name}</p>
+        <p style="font-size:11px; color:var(--text-muted); opacity:0.85; margin:0;">${a.id === 'meme_vip' ? 'Este si que se merca · toca para ver' : 'Aínda por conseguir · toca para ver'}</p>
       </div>
     </div>`;
   }

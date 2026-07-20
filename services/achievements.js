@@ -376,8 +376,10 @@ function metadataForToken(tokenId) {
     image: `${APP_URL}${a.image}`,   // a.image ya viene normalizada ("/assets/..." o "/prize-images/...")
     external_url: APP_URL,
     attributes: [
-      { trait_type: 'Tipo', value: 'Logro' },
+      { trait_type: 'Tipo', value: a.id === MEME_ID ? 'Meme' : 'Logro' },
       { trait_type: 'Edición', value: a.edition || 'Furancho Sessions' },
+      // Tirada máxima: dato duro para quien mire el NFT desde fuera (OpenSea…).
+      ...(a.maxSupply ? [{ trait_type: 'Tirada máxima', value: a.maxSupply }] : []),
       { trait_type: 'Blockchain', value: 'Polygon' }
     ]
   };

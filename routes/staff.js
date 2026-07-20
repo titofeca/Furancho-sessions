@@ -152,6 +152,20 @@ router.post('/checkin', staffLimiter, requireStaff, (req, res) => {
       } : null;
     } catch (_) { result.vipToday = null; }
 
+    // ── Lo que le debe el meme ──────────────────────────────────────────────
+    // Si compró el meme y aún le quedan tapas, viño o la camiseta por recibir,
+    // el camarero lo ve al fichar y se lo entrega ahí mismo. Fuente única:
+    // services/memeShop.js (las mismas cuentas que ve el cliente y el panel).
+    try {
+      const shop = require('../services/memeShop');
+      result.memePerks = shop.entitlementsOfWallet(walletAddress)
+        .filter(e => e.qty_used < e.qty_total)
+        .map(e => ({
+          id: e.id, emoji: e.emoji, label: e.label, kind: e.kind,
+          left: e.qty_total - e.qty_used, total: e.qty_total, serial: e.serial
+        }));
+    } catch (_) { result.memePerks = []; }
+
     return res.json(result);
   } catch (e) {
     console.error('Error en /staff/checkin:', e.message);
@@ -237,6 +251,22 @@ router.post('/claim-daily-tapa', staffLimiter, requireStaff, (req, res) => {
     res.json({ success: true, message: 'Privilexio consumido — tapa e cunca entregadas.' });
   } catch (e) {
     res.status(400).json({ error: e.message });
+  }
+});
+
+// POST /api/staff/meme-perk — el camarero entrega una unidad de lo que trae el
+// meme (una tapa, la xarra, la camiseta cuando hay stock). Body: { entitlementId }.
+// La misma función que usa el panel: no hay dos contabilidades.
+router.post('/meme-perk', staffLimiter, requireStaff, (req, res) => {
+  const { entitlementId } = req.body || {};
+  const id = parseInt(entitlementId, 10);
+  if (!id) return res.status(400).json({ error: 'Falta qué entregar' });
+  try {
+    const shop = require('../services/memeShop');
+    const e = shop.usePerk(id, 1, 'staff');
+    res.json({ success: true, left: e.qty_total - e.qty_used, label: e.label });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 });
 

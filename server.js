@@ -120,17 +120,10 @@ const NFT_METADATA = {
       { trait_type: 'Blockchain', value: 'Polygon' }
     ]
   },
-  50: {
-    name: 'Meme VIP',
-    description: 'Edición Limitada. Meme oficial VIP para experiencias exclusivas de hotel y mucho más.',
-    image: `${APP_URL}/assets/nft_meme_vip.jpg`,
-    external_url: APP_URL,
-    attributes: [
-      { trait_type: 'Tipo', value: 'Meme VIP' },
-      { trait_type: 'Edición', value: 'Limitada (Max 50)' },
-      { trait_type: 'Blockchain', value: 'Polygon' }
-    ]
-  }
+  // El token 50 (Meme VIP) NO se define aquí a propósito: su metadata sale del
+  // catálogo de logros (services/achievements.js), que es donde vive la verdad
+  // sobre su tirada de 300. Tenerla duplicada aquí ya nos hizo publicar "Max 50"
+  // a los marketplaces después de cerrar las 300.
 };
 
 // Acepta tanto ID decimal (1,2,3,4) como hex (con/sin 0x, con/sin .json) que usan los marketplaces

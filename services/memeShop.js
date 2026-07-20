@@ -169,6 +169,17 @@ function sellTo(wallet, { purchaseId = null, source = 'venta', priceCents = null
   const s = supply();
   if (s.left <= 0) throw new Error(`Se han vendido los ${MEME.MAX_SUPPLY} memes. No hay más, y no los habrá.`);
 
+  // Venta contra una solicitud: tiene que seguir viva. Así dos toques seguidos
+  // (o dos móviles a la vez) no venden dos memes por el mismo cobro.
+  if (purchaseId) {
+    const p = db.prepare(`SELECT * FROM meme_purchases WHERE id = ?`).get(purchaseId);
+    if (!p) throw new Error('Esa solicitud ya no existe');
+    if (p.status !== 'requested') throw new Error('Esa solicitud ya se cobró o se descartó, ho. Refresca la lista.');
+    if (String(p.wallet_address).toLowerCase() !== String(wallet).toLowerCase()) {
+      throw new Error('La solicitud es de otro cliente');
+    }
+  }
+
   const price = priceCents != null ? Math.max(0, Math.round(priceCents)) : priceForWallet(wallet).cents;
   const perks = withPerks ? listPerks(true) : [];
   let needsAchQueue = false;
@@ -185,6 +196,15 @@ function sellTo(wallet, { purchaseId = null, source = 'venta', priceCents = null
       claimAchievement(wallet, MEME.ACHIEVEMENT_ID, MEME.TOKEN_ID, 'pending');
       const row = getAchievementMint(wallet, MEME.ACHIEVEMENT_ID);
       achMintId = row ? row.id : null;
+      needsAchQueue = true;
+    } else if (existing.status === 'failed') {
+      // Su meme anterior no llegó a mintearse (RPC caído, p.ej.): esta venta
+      // reaprovecha esa fila y la reintenta, en vez de dejarla muerta en el museo.
+      db.prepare(`UPDATE achievement_mints SET status = 'pending', tx_hash = NULL WHERE id = ?`).run(existing.id);
+      // La unidad fallida anterior se desengancha: si no, al reintentar el mint
+      // heredaría el 'success' y contaría dos veces contra las 300.
+      db.prepare(`UPDATE meme_units SET achievement_mint_id = NULL WHERE achievement_mint_id = ? AND status = 'failed'`).run(existing.id);
+      achMintId = existing.id;
       needsAchQueue = true;
     } else {
       // Ya tiene meme: esta copia extra se mintea por la cola propia del meme.
@@ -227,6 +247,24 @@ function sellTo(wallet, { purchaseId = null, source = 'venta', priceCents = null
     success: true, serial: out.serial, unitId: out.unitId, priceCents: price,
     perks: entitlementsOfUnit(out.unitId), supply: supply()
   };
+}
+
+// Cuando un cliente TRASPASA su meme a un amigo, la unidad viaja con el NFT: si
+// no, el que lo regaló seguiría contando como dueño (y pagando el precio subido)
+// y el que lo recibe seguiría comprando al precio de su primero.
+// Lo que YA le debíamos (tapas, camiseta) NO viaja: eso lo pagó él y se lo
+// tomará él. Si tiene varios, se va el más nuevo y conserva el número más bajo.
+function moveUnitOnTransfer(fromWallet, toWallet) {
+  try {
+    const unit = db.prepare(`SELECT * FROM meme_units WHERE LOWER(wallet_address) = LOWER(?) AND status != 'failed'
+                             ORDER BY serial DESC LIMIT 1`).get(fromWallet);
+    if (!unit) return { moved: false };
+    db.prepare(`UPDATE meme_units SET wallet_address = ? WHERE id = ?`).run(toWallet, unit.id);
+    return { moved: true, serial: unit.serial };
+  } catch (e) {
+    console.error('[MemeShop] No se pudo mover la unidad traspasada:', e.message);
+    return { moved: false, error: e.message };
+  }
 }
 
 // ─── LO QUE INCLUYE, YA VENDIDO ──────────────────────────────────────────────
@@ -370,6 +408,7 @@ module.exports = {
   listPerks, createPerk, updatePerk, deletePerk,
   requestPurchase, cancelRequest, listRequests, pendingRequestOf,
   sellTo,
+  moveUnitOnTransfer,
   entitlementsOfWallet, entitlementsOfUnit, usePerk, undoLastUse, pendingDeliveries,
   adminOverview, listUnits, notifyMemeQueue, syncUnitsFromAchievementMints
 };

@@ -1512,10 +1512,16 @@ router.post('/grant-achievement', requireAuth, (req, res) => {
   try {
     const { db, claimAchievement, getAchievementMint } = require('../db/database');
 
-    // El meme se lleva por la tienda (services/memeShop.js): cuenta contra las 300,
-    // deja registrada la unidad y —si es venta— lo que incluye. Aquí, por defecto,
-    // es un REGALO (sin extras): otorgar desde el panel no cobra nada.
+    // El meme se lleva por la tienda (services/memeShop.js): cuenta contra las 300
+    // y deja registrada la unidad. Aquí es un REGALO (sin extras, no se cobra).
+    // Sigue siendo idempotente como antes: si ya tiene meme no se le cuela otro
+    // por un doble toque — para venderle un segundo está la tienda, que avisa
+    // del precio. Un meme regalado de más no se puede deshacer: son 300 y punto.
     if (a.id === 'meme_vip') {
+      const existingMeme = getAchievementMint(walletAddress, a.id);
+      if (existingMeme) {
+        return res.json({ success: true, alreadyGranted: true, status: existingMeme.status, achievementId: a.id });
+      }
       const shop = require('../services/memeShop');
       const out = shop.sellTo(walletAddress, { source: 'regalo', priceCents: 0, withPerks: false });
       return res.json({ success: true, status: 'pending', achievementId: a.id, name: a.name, serial: out.serial, supply: out.supply });
@@ -1752,12 +1758,26 @@ router.post('/transfers/:id/approve', requireAuth, async (req, res) => {
       try {
         const { db } = require('../db/database');
         const row = db.prepare(`
-          SELECT id FROM achievement_mints
+          SELECT id, achievement_id FROM achievement_mints
           WHERE LOWER(wallet_address) = LOWER(?) AND token_id = ? AND status = 'success'
           ORDER BY id ASC LIMIT 1
         `).get(from_wallet, token_id);
         if (row) {
-          db.prepare(`UPDATE achievement_mints SET wallet_address = ? WHERE id = ?`).run(to_wallet, row.id);
+          // Si el destinatario YA tenía ese logro, no se puede mover la fila
+          // (hay un UNIQUE por wallet+logro): en ese caso se borra la del origen,
+          // que es lo que refleja la realidad on-chain (ya no lo tiene él).
+          const yaLoTiene = db.prepare(`SELECT id FROM achievement_mints
+            WHERE LOWER(wallet_address) = LOWER(?) AND achievement_id = ? AND status != 'failed'`)
+            .get(to_wallet, row.achievement_id);
+          if (yaLoTiene) {
+            db.prepare(`DELETE FROM achievement_mints WHERE id = ?`).run(row.id);
+          } else {
+            db.prepare(`UPDATE achievement_mints SET wallet_address = ? WHERE id = ?`).run(to_wallet, row.id);
+          }
+        }
+        // El meme lleva además su unidad vendida (precio y recuento de las 300).
+        if (Number(token_id) === 50) {
+          require('../services/memeShop').moveUnitOnTransfer(from_wallet, to_wallet);
         }
       } catch (moveErr) {
         console.error('[Transfers] Traspaso on-chain OK pero fallo moviendo el logro en BD:', moveErr.message);
