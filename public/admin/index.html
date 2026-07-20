@@ -2751,8 +2751,9 @@
           <input id="tapa-cfg-enabled" type="checkbox" style="width:22px; height:22px; cursor:pointer; accent-color:#8B1918;" />
         </label>
 
-        <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">NFT que lo desbloquea</label>
-        <select id="tapa-cfg-nft" style="width:100%; background:#fff; color:var(--text); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:11px 13px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box; margin-bottom:14px;"></select>
+        <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">NFT(s) que lo desbloquean — puedes marcar varios</label>
+        <select id="tapa-cfg-nft" multiple size="4" style="width:100%; background:#fff; color:var(--text); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:11px 13px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box; margin-bottom:4px;"></select>
+        <p style="font-size:10.5px; color:var(--text-muted); margin:0 0 14px; line-height:1.4;">El privilexio se <b>acumula</b>: quien tenga varios de estos NFTs canjea una tapa+cunca por CADA uno al día (cada NFT, 1 vez al día). En el móvil, toca para marcar/desmarcar; en ordenador, Ctrl/⌘ + clic.</p>
 
         <div style="display:flex; gap:10px; margin-bottom:14px;">
           <div style="flex:1;">
@@ -7799,8 +7800,9 @@
       const d = await r.json();
       const sel = document.getElementById('tapa-cfg-nft');
       if (sel) {
+        const selectedIds = new Set(d.nfts && d.nfts.length ? d.nfts : [d.nft].filter(Boolean));
         sel.innerHTML = (d.achievements || []).map(a =>
-          `<option value="${a.id}"${a.id === d.nft ? ' selected' : ''}>${a.name} (token ${a.tokenId})</option>`
+          `<option value="${a.id}"${selectedIds.has(a.id) ? ' selected' : ''}>${a.name} (token ${a.tokenId})</option>`
         ).join('');
       }
       document.getElementById('tapa-cfg-enabled').checked = !!d.enabled;
@@ -7817,7 +7819,7 @@
   async function saveDailyTapaConfig() {
     const body = {
       enabled: document.getElementById('tapa-cfg-enabled').checked,
-      nft: document.getElementById('tapa-cfg-nft').value,
+      nfts: [...document.getElementById('tapa-cfg-nft').selectedOptions].map(o => o.value),
       from: document.getElementById('tapa-cfg-from').value,
       to: document.getElementById('tapa-cfg-to').value,
       title: document.getElementById('tapa-cfg-title').value,
@@ -9642,24 +9644,35 @@
     if (tapa && tapa.visible) {
       if (tapa.claimed) {
         const at = tapa.claimedAt ? new Date(tapa.claimedAt.replace(' ','T') + 'Z').toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Madrid'}) : '';
+        const nDone = tapa.claimedToday || 1;
         dailyTapaHtml = `
         <div style="padding:14px 16px; background:rgba(42,21,9,0.05); border:1.5px solid rgba(42,21,9,0.15); border-radius:16px; margin-bottom:12px;">
           <p style="margin:0; font-size:12px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted);">🎟️ ${tapa.title || 'Privilexio'}</p>
-          <p style="margin:6px 0 0; font-size:14px; font-weight:700; color:var(--text);">⛔ Ya consumido hoy${at ? ' · ' + at : ''} — no darle otra vez.</p>
+          <p style="margin:6px 0 0; font-size:14px; font-weight:700; color:var(--text);">${nDone > 1 ? `⛔ Ya consumió sus ${nDone} de hoy (uno por NFT)` : '⛔ Ya consumido hoy'}${at ? ' · ' + at : ''} — no darle otra vez.</p>
         </div>`;
       } else if (tapa.eligible && tapa.activeNft) {
+        // El privilexio se ACUMULA: un botón por cada NFT canjeable hoy
+        // (Guardián + Chave d'Ouro = 2 tapas y 2 cuncas ese día).
+        const tapaNfts = (tapa.availableNfts && tapa.availableNfts.length) ? tapa.availableNfts : [tapa.activeNft];
+        const tapaDone = tapa.claimedToday || 0;
         window._adminTapaQueue = window._adminTapaQueue || {};
-        window._adminTapaQueue[d.walletAddress] = tapa.activeNft;
+        const tapaButtons = tapaNfts.map((nft, idx) => {
+          const key = d.walletAddress + ':' + idx;
+          window._adminTapaQueue[key] = nft;
+          const label = nft.type === 'referral' ? 'Bono Plan Amigo 🍇' : `«${nft.name}»${nft.serial > 0 ? ' #' + nft.serial : ''}`;
+          return `
+          <button type="button" onclick="adminClaimDailyTapa(this, '${d.walletAddress}', '${key}')"
+                  style="width:100%; padding:14px; margin-top:${idx ? '8px' : '0'}; background:linear-gradient(135deg, var(--gold), #a97b1f); color:#fff; border:none; border-radius:12px; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 3px 12px rgba(196,151,58,0.4); font-family:'Outfit',sans-serif;">
+            🍽️ Entregar y consumir — ${label}
+          </button>`;
+        }).join('');
         dailyTapaHtml = `
         <div style="padding:16px; background:linear-gradient(135deg, rgba(196,151,58,0.22), rgba(139,25,24,0.10)); border:2px solid var(--gold); border-radius:16px; margin-bottom:12px; box-shadow:0 4px 16px rgba(196,151,58,0.25);">
           <p style="margin:0; font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--wine);">🎟️ ${tapa.title || 'Privilexio do Guardián'}</p>
           <p style="margin:4px 0 2px; font-size:16px; font-weight:900; color:var(--wine); font-family:'Playfair Display',serif;">${tapa.benefit || 'Tapa e cunca do día'}</p>
-          <p style="margin:0 0 10px; font-size:11px; color:var(--text-muted);">Privilexio do NFT «${tapa.nftName || ''}» · 1 al día</p>
-          <button type="button" onclick="adminClaimDailyTapa(this, '${d.walletAddress}')"
-                  style="width:100%; padding:14px; background:linear-gradient(135deg, var(--gold), #a97b1f); color:#fff; border:none; border-radius:12px; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 3px 12px rgba(196,151,58,0.4); font-family:'Outfit',sans-serif;">
-            🍽️ Entregar y consumir (1/día)
-          </button>
-          <p style="margin:8px 0 0; font-size:10.5px; color:var(--text-muted);">Púlsalo SOLO al entregarle la tapa y la cunca. Queda consumido para hoy.</p>
+          <p style="margin:0 0 10px; font-size:11px; color:var(--text-muted);">${tapaNfts.length > 1 ? `Le quedan <b>${tapaNfts.length}</b> canjes hoy (1 por NFT)` : 'Privilexio do NFT «' + ((tapa.activeNft && tapa.activeNft.name) || tapa.nftName || '') + '» · 1 al día'}${tapaDone ? ` · ya consumió ${tapaDone} hoy` : ''}</p>
+          ${tapaButtons}
+          <p style="margin:8px 0 0; font-size:10.5px; color:var(--text-muted);">Púlsalo SOLO al entregarle la tapa y la cunca. Cada botón queda consumido para hoy.</p>
         </div>`;
       } else {
         // Tiene el NFT pero aún no puede canjear (p.ej. sin fichar hoy, o su NFT ya se usó)
@@ -9811,8 +9824,9 @@
   // ===== Privilexio do Guardián: consumir desde el Escáner =====
   // Usa el mismo endpoint del vale QR (POST /api/admin/claim-daily-tapa), así que
   // el anti-doble-canje es idéntico se consuma por donde se consuma.
-  async function adminClaimDailyTapa(btn, wallet) {
-    const nft = (window._adminTapaQueue || {})[wallet];
+  async function adminClaimDailyTapa(btn, wallet, key) {
+    // Compat: sin key (versión antigua) usa el primero de la cola del wallet
+    const nft = (window._adminTapaQueue || {})[key || (wallet + ':0')] || (window._adminTapaQueue || {})[wallet];
     if (!nft) { showToast('No encuentro el privilexio, vuelve a escanear', true); return; }
     btn.disabled = true;
     const original = btn.textContent;
@@ -10297,6 +10311,17 @@
           <div style="background:rgba(220,38,38,0.1); border:1.5px solid #dc2626; border-radius:12px; padding:12px 16px; color:#b91c1c; font-size:13px; font-weight:700; text-align:center;">
             ⚠️ CANJE RECHAZADO: ${data.reason || 'No elegible hoy'}
           </div>
+          <button onclick="closeTapaClaimModal()" class="btn-primary" style="width:100%; margin-top:8px; background:#b91c1c; border-color:#b91c1c;">Cerrar</button>
+        `;
+      } else if (data.availableNfts && !data.availableNfts.some(n => n.type === nftType && String(n.id) === String(nftId) && String(n.serial) === String(parseInt(serial) || 0))) {
+        // El cliente aún tiene canjes hoy, pero NO con este NFT concreto (ya usado o no es suyo)
+        bodyEl.innerHTML = `
+          <div style="background:rgba(220,38,38,0.1); border:1.5px solid #dc2626; border-radius:12px; padding:12px 16px; color:#b91c1c; font-size:13px; font-weight:700; text-align:center;">
+            ⚠️ ESTE NFT YA NO VALE HOY
+          </div>
+          <p style="font-size:12.5px; color:var(--text); line-height:1.5; margin:8px 0;">
+            El NFT del QR (<strong>${nftName} ${parseInt(serial) > 0 ? '#' + serial : ''}</strong>) ya se usó hoy o no da derecho al privilexio. Pídele que abra su app y enseñe el vale actualizado: aún le queda${data.availableNfts.length !== 1 ? 'n' : ''} <strong>${data.availableNfts.length}</strong> canje${data.availableNfts.length !== 1 ? 's' : ''} con otro NFT.
+          </p>
           <button onclick="closeTapaClaimModal()" class="btn-primary" style="width:100%; margin-top:8px; background:#b91c1c; border-color:#b91c1c;">Cerrar</button>
         `;
       } else {

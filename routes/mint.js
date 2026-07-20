@@ -691,13 +691,17 @@ function computeDailyTapaStatus(wallet) {
     // atado a julio a fuego: el admin decide si está activo, qué NFT lo desbloquea, la
     // ventana de fechas y cómo se llama de cara al cliente.
     const enabled = getAppSetting('daily_tapa_enabled', '0') === '1';
-    const nftId = getAppSetting('daily_tapa_nft', 'guardian_furancho');
+    // Uno o VARIOS NFTs dan el privilexio (lista separada por comas). El beneficio se
+    // ACUMULA: cada NFT de la lista que posea el cliente = 1 tapa+cunca al día.
+    // (Guardián + Chave d'Ouro = 2 tapas y 2 cuncas ese día.)
+    const nftIds = String(getAppSetting('daily_tapa_nft', 'guardian_furancho'))
+      .split(',').map(s => s.trim()).filter(Boolean);
     const fromDate = getAppSetting('daily_tapa_from', '');   // 'YYYY-MM-DD' o '' (sin límite)
     const toDate = getAppSetting('daily_tapa_to', '');       // 'YYYY-MM-DD' o '' (sin límite)
 
     const catalog = achievements.list();
-    const nftCat = catalog.find(c => c.id === nftId);
-    const nftName = nftCat ? nftCat.name : 'NFT del Furancho';
+    const nftNames = nftIds.map(id => { const c = catalog.find(x => x.id === id); return c ? c.name : id; });
+    const nftName = nftNames.join('» + «') || 'NFT del Furancho';
 
     // Título, texto del beneficio y etiqueta del botón: configurables, con defaults que
     // dejan claro que va ligado a poseer el NFT.
@@ -737,11 +741,12 @@ function computeDailyTapaStatus(wallet) {
     const eligibleNfts = [];
 
     queryAchievements.forEach(am => {
-      if (am.achievement_id === nftId) {
+      if (nftIds.includes(am.achievement_id)) {
+        const cat = catalog.find(x => x.id === am.achievement_id);
         eligibleNfts.push({
           type: 'achievement',
           id: am.achievement_id,
-          name: nftName,
+          name: cat ? cat.name : am.achievement_id,
           tokenId: am.token_id,
           serial: am.mint_serial || 0
         });
@@ -798,38 +803,15 @@ function computeDailyTapaStatus(wallet) {
       return ({ visible: true, eligible: false, claimed: false, ...meta, reason: 'Ficha tu entrada hoy en el Furancho para activarlo.' });
     }
 
-    // 4. Comprobar si esta wallet ya ha canjeado hoy (límite de 1 al día sea cual sea el método)
-    const walletClaim = db.prepare(`
-      SELECT * FROM daily_tapa_claims 
+    // 4. Canjes de HOY de esta wallet. El privilexio se ACUMULA: cada NFT de la
+    //    lista que posea = 1 canje al día (más el bono Plan Amigo, máx. 1 al día).
+    const walletClaimsToday = db.prepare(`
+      SELECT * FROM daily_tapa_claims
       WHERE LOWER(wallet_address) = LOWER(?) AND claim_date = ?
-    `).get(wallet, today);
+      ORDER BY claimed_at ASC
+    `).all(wallet, today);
 
-    if (walletClaim) {
-      let nftUsedName = nftName;
-      if (walletClaim.nft_type === 'referral') {
-        nftUsedName = 'Bono Plan Amigo 🍇';
-      } else {
-        const cat = catalog.find(c => c.id === walletClaim.nft_id);
-        if (cat) nftUsedName = cat.name;
-      }
-
-      return ({
-        visible: true,
-        eligible: true,
-        claimed: true,
-        ...meta,
-        claimedAt: walletClaim.claimed_at,
-        nftUsed: {
-          type: walletClaim.nft_type,
-          id: walletClaim.nft_id,
-          name: nftUsedName,
-          serial: walletClaim.serial
-        },
-        reason: 'Ya has canjeado tu tapa y cunca de hoy.'
-      });
-    }
-
-    // 5. Verificar NFT y/o créditos de referidos disponibles
+    // 5. NFTs aún canjeables hoy (cada NFT concreto id+serie solo se usa 1 vez al día)
     const availableNfts = [];
     for (const nft of eligibleNfts) {
       const nftClaim = db.prepare(`
@@ -842,22 +824,55 @@ function computeDailyTapaStatus(wallet) {
       }
     }
 
-    let activeNft = null;
-    let qrData = null;
-
-    if (availableNfts.length > 0) {
-      activeNft = availableNfts[0];
-      qrData = `tapa_claim:${wallet}:achievement:${activeNft.id}:${activeNft.serial}:${today}`;
-    } else if (hasReferralCredits) {
-      activeNft = {
+    // Bono Plan Amigo: acumulable con los NFTs, pero máximo 1 bono amigo al día.
+    const referralUsedToday = walletClaimsToday.some(c => c.nft_type === 'referral');
+    if (hasReferralCredits && !referralUsedToday) {
+      availableNfts.push({
         type: 'referral',
         id: 'referral',
         name: 'Bono Plan Amigo 🍇',
         tokenId: 0,
         serial: 0
-      };
-      availableNfts.push(activeNft);
-      qrData = `tapa_claim:${wallet}:referral:referral:0:${today}`;
+      });
+    }
+
+    const activeNft = availableNfts.length > 0 ? availableNfts[0] : null;
+    const qrData = activeNft
+      ? `tapa_claim:${wallet}:${activeNft.type}:${activeNft.id}:${activeNft.serial}:${today}`
+      : null;
+    const claimedTodayCount = walletClaimsToday.length;
+    const remainingToday = availableNfts.length;
+
+    // Todos los canjes de hoy gastados → consumido (indicando cuántos fueron)
+    if (!activeNft && claimedTodayCount > 0) {
+      const last = walletClaimsToday[walletClaimsToday.length - 1];
+      let nftUsedName = nftName;
+      if (last.nft_type === 'referral') {
+        nftUsedName = 'Bono Plan Amigo 🍇';
+      } else {
+        const cat = catalog.find(c => c.id === last.nft_id);
+        if (cat) nftUsedName = cat.name;
+      }
+
+      return ({
+        visible: true,
+        eligible: true,
+        claimed: true,
+        ...meta,
+        claimedAt: last.claimed_at,
+        claimedToday: claimedTodayCount,
+        remainingToday: 0,
+        totalToday: claimedTodayCount,
+        nftUsed: {
+          type: last.nft_type,
+          id: last.nft_id,
+          name: nftUsedName,
+          serial: last.serial
+        },
+        reason: claimedTodayCount > 1
+          ? `Ya has canjeado tus ${claimedTodayCount} tapas y cuncas de hoy (una por NFT).`
+          : 'Ya has canjeado tu tapa y cunca de hoy.'
+      });
     }
 
     if (!activeNft) {
@@ -866,6 +881,9 @@ function computeDailyTapaStatus(wallet) {
         eligible: false,
         claimed: false,
         ...meta,
+        claimedToday: 0,
+        remainingToday: 0,
+        totalToday: 0,
         reason: hasNft ? `Tu «${nftName}» ya se usó hoy para un canje en otra billetera.` : 'No te quedan bonos de recomendados disponibles hoy.'
       });
     }
@@ -877,7 +895,10 @@ function computeDailyTapaStatus(wallet) {
       ...meta,
       activeNft,
       availableNfts,
-      qrData
+      qrData,
+      claimedToday: claimedTodayCount,
+      remainingToday,
+      totalToday: claimedTodayCount + remainingToday
     });
 
 }

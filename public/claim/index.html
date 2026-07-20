@@ -6776,7 +6776,9 @@
               <span style="font-size:10px; font-weight:800; text-transform:uppercase; padding:3px 10px; border-radius:100px; background:rgba(22,163,74,0.15); color:#16a34a;">✓ Canjeado</span>
             </div>
             <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; margin:0;">
-              ¡Buen provecho! ${tBenefit} entregada hoy a las <strong>${claimedTime}</strong>. Desbloqueado con tu NFT: <strong>${data.nftUsed.name}</strong>.
+              ¡Buen provecho! ${(data.claimedToday || 1) > 1
+                ? `Tus <strong>${data.claimedToday}</strong> canjes de hoy (uno por NFT) ya están entregados — el último a las <strong>${claimedTime}</strong>.`
+                : `${tBenefit} entregada hoy a las <strong>${claimedTime}</strong>. Desbloqueado con tu NFT: <strong>${data.nftUsed.name}</strong>.`}
             </p>
           </div>
         `;
@@ -6798,6 +6800,10 @@
             <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; margin:0 0 6px;">
               Hoy te toca <strong>${tBenefit}</strong> gratis. Enseña tu vale en la barra del furancho.
             </p>
+            ${(data.totalToday || 1) > 1 ? `
+            <p style="font-size:11.5px; color:var(--wine); font-weight:700; line-height:1.5; margin:0 0 6px;">
+              🍽️ Hoy tienes <strong>${data.remainingToday}</strong> canje${data.remainingToday !== 1 ? 's' : ''} disponible${data.remainingToday !== 1 ? 's' : ''} (uno por NFT)${(data.claimedToday || 0) > 0 ? ` · ya disfrutaste ${data.claimedToday}` : ''}. Tras cada canje, el vale pasa solo al siguiente NFT.
+            </p>` : ''}
             <p style="font-size:11px; color:var(--gold); line-height:1.5; margin:0 0 14px; font-weight:600;">
               ${data.activeNft.type === 'referral' ? '🎁 ¡Activado por traer a 15 amigos al Furancho, ho!' : `🔑 Un privilegio de tu NFT «${data.activeNft.name}». Mientras lo tengas, cada día.`}
             </p>

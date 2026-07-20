@@ -2483,22 +2483,66 @@ function registerDailyTapaClaim({ walletAddress, nftType, nftId, serial, staffUs
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
   const finalSerial = parseInt(serial) || 0;
 
-  // 1. La wallet solo canjea una vez al día (sea cual sea el método)
-  const walletClaim = db.prepare(`
-    SELECT id FROM daily_tapa_claims
-    WHERE LOWER(wallet_address) = LOWER(?) AND claim_date = ?
-  `).get(walletAddress, today);
-  if (walletClaim) throw new Error('Esta billetera ya ha canjeado su tapa de hoy.');
+  // El privilexio se ACUMULA por NFT: una wallet con varios NFTs de la lista puede
+  // canjear uno por cada NFT al día. Anti-trampas: el beneficio debe estar activo,
+  // el NFT debe ser de la lista configurada, debe ser SUYO, y cada NFT concreto
+  // (id + nº de serie) solo se usa una vez al día — aquí y en todo el sistema.
+  const cfgGet = (k, f) => {
+    try { const r = db.prepare(`SELECT value FROM app_settings WHERE key = ?`).get(k); return r ? r.value : f; }
+    catch (_) { return f; }
+  };
 
-  // 2. Este NFT concreto (id + nº de serie) solo se usa una vez al día
+  // 1. Beneficio activo (sin él no hay canje por ninguna vía)
+  if (cfgGet('daily_tapa_enabled', '0') !== '1') {
+    throw new Error('El privilexio de la tapa no está activo ahora mismo.');
+  }
+
+  if (nftType === 'achievement') {
+    // 2a. Solo los NFTs que el admin ligó al privilexio dan derecho a tapa
+    const allowedIds = String(cfgGet('daily_tapa_nft', 'guardian_furancho'))
+      .split(',').map(s => s.trim()).filter(Boolean);
+    if (!allowedIds.includes(String(nftId))) {
+      throw new Error('Ese NFT no da derecho a este privilexio.');
+    }
+    // 2b. El NFT (id + nº de serie) tiene que pertenecer a ESTA billetera
+    //     (mismo cálculo de nº de serie que el estado del privilexio)
+    const owned = db.prepare(`
+      WITH RankedMints AS (
+        SELECT wallet_address, achievement_id,
+               ROW_NUMBER() OVER (PARTITION BY achievement_id ORDER BY id ASC) as mint_serial
+        FROM achievement_mints
+        WHERE status = 'success'
+      )
+      SELECT 1 as ok FROM RankedMints
+      WHERE LOWER(wallet_address) = LOWER(?) AND achievement_id = ? AND mint_serial = ?
+    `).get(walletAddress, String(nftId), finalSerial);
+    if (!owned) throw new Error('Ese NFT no pertenece a esta billetera.');
+  } else if (nftType !== 'referral') {
+    // Formatos antiguos ('level', 'chave'...): conservan la regla clásica de
+    // 1 canje por wallet y día, que era la que los limitaba.
+    const walletClaim = db.prepare(`
+      SELECT id FROM daily_tapa_claims
+      WHERE LOWER(wallet_address) = LOWER(?) AND claim_date = ?
+    `).get(walletAddress, today);
+    if (walletClaim) throw new Error('Esta billetera ya ha canjeado su tapa de hoy.');
+  }
+
+  // 3. Este NFT concreto (id + nº de serie) solo se usa una vez al día
   const nftClaim = db.prepare(`
     SELECT id FROM daily_tapa_claims
     WHERE nft_type = ? AND nft_id = ? AND serial = ? AND claim_date = ?
   `).get(nftType, nftId, finalSerial, today);
   if (nftClaim) throw new Error('Este NFT ya ha sido usado para un canje hoy.');
 
-  // 3. Bono Plan Amigo: comprobar créditos disponibles (solo amigos nuevos y activos)
+  // 4. Bono Plan Amigo: máximo 1 bono amigo al día (acumulable con los NFTs)
+  //    y comprobar créditos disponibles (solo amigos nuevos y activos)
   if (nftType === 'referral') {
+    const refToday = db.prepare(`
+      SELECT id FROM daily_tapa_claims
+      WHERE LOWER(wallet_address) = LOWER(?) AND nft_type = 'referral' AND claim_date = ?
+    `).get(walletAddress, today);
+    if (refToday) throw new Error('Ya canjeó su bono Plan Amigo de hoy.');
+
     const activeReferredFriendsRow = db.prepare(`
       SELECT COUNT(DISTINCT r.referred_wallet) as count
       FROM referrals r
@@ -2529,7 +2573,7 @@ function registerDailyTapaClaim({ walletAddress, nftType, nftId, serial, staffUs
     }
   }
 
-  // 4. Registrar el canje
+  // 5. Registrar el canje
   db.prepare(`
     INSERT INTO daily_tapa_claims (wallet_address, nft_type, nft_id, serial, claim_date, staff_user)
     VALUES (?, ?, ?, ?, ?, ?)

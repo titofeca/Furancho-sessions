@@ -1673,9 +1673,12 @@ router.post('/settings/:key', requireAuth, (req, res) => {
 router.get('/daily-tapa-config', requireAuth, (req, res) => {
   try {
     const achievements = require('../services/achievements');
+    const nftRaw = getAppSetting('daily_tapa_nft', 'guardian_furancho');
     res.json({
       enabled: getAppSetting('daily_tapa_enabled', '0') === '1',
-      nft: getAppSetting('daily_tapa_nft', 'guardian_furancho'),
+      nft: nftRaw,
+      // Lista (puede haber VARIOS NFTs; el privilexio se acumula: 1 tapa por NFT al día)
+      nfts: String(nftRaw).split(',').map(s => s.trim()).filter(Boolean),
       from: getAppSetting('daily_tapa_from', ''),
       to: getAppSetting('daily_tapa_to', ''),
       title: getAppSetting('daily_tapa_title', 'Privilexio do Guardián'),
@@ -1692,14 +1695,23 @@ router.get('/daily-tapa-config', requireAuth, (req, res) => {
 // POST /api/admin/daily-tapa-config — guarda toda la configuración de golpe
 router.post('/daily-tapa-config', requireAuth, (req, res) => {
   try {
-    const { enabled, nft, from, to, title, benefit, button } = req.body || {};
+    const { enabled, nft, nfts, from, to, title, benefit, button } = req.body || {};
     if (from && !/^\d{4}-\d{2}-\d{2}$/.test(from)) return res.status(400).json({ error: 'Fecha "desde" no válida' });
     if (to && !/^\d{4}-\d{2}-\d{2}$/.test(to)) return res.status(400).json({ error: 'Fecha "hasta" no válida' });
     if (from && to && to < from) return res.status(400).json({ error: 'La fecha "hasta" no puede ser anterior a "desde"' });
-    if (enabled && !String(nft || '').trim()) return res.status(400).json({ error: 'Elige el NFT que desbloquea el beneficio' });
+
+    // Acepta uno o varios NFTs (array `nfts` o string con comas en `nft`); todos deben
+    // existir en el catálogo de logros. El privilexio se acumula: 1 tapa por NFT al día.
+    const rawList = Array.isArray(nfts) ? nfts : String(nft || '').split(',');
+    const nftList = rawList.map(s => String(s).trim()).filter(Boolean);
+    if (enabled && !nftList.length) return res.status(400).json({ error: 'Elige el NFT (o NFTs) que desbloquean el beneficio' });
+    const achievements = require('../services/achievements');
+    const known = new Set(achievements.list().map(a => a.id));
+    const bad = nftList.filter(id => !known.has(id));
+    if (bad.length) return res.status(400).json({ error: `NFT desconocido: ${bad.join(', ')}` });
 
     setAppSetting('daily_tapa_enabled', enabled ? '1' : '0');
-    setAppSetting('daily_tapa_nft', String(nft || 'guardian_furancho').trim());
+    setAppSetting('daily_tapa_nft', nftList.length ? nftList.join(',') : 'guardian_furancho');
     setAppSetting('daily_tapa_from', from || '');
     setAppSetting('daily_tapa_to', to || '');
     setAppSetting('daily_tapa_title', String(title || '').trim() || 'Privilexio do Guardián');
