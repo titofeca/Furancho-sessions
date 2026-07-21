@@ -9144,7 +9144,7 @@
     }
     
     document.getElementById('transfer-fee-warning').innerHTML = `
-      Para completar el traspaso de <strong>${nftName || 'tu pase'}</strong>, el nuevo propietario debe abonar el peaje de consumo mínimo de <strong>${fee}€</strong> en barra.
+      Para completar el traspaso de <strong>${nftName || 'tu pase'}</strong>, el nuevo propietario debe abonar en barra el peaje de traspaso: <strong>${fee}€</strong>.
     `;
 
     document.getElementById('transfer-modal').style.display = 'flex';
@@ -9866,7 +9866,7 @@
         <p style="font-size:13px; margin-bottom:8px; font-weight:700; color:var(--text);">Destinatario encontrado:</p>
         <p id="transfer-target-wallet" style="font-family:monospace; font-size:11px; background:rgba(0,0,0,0.05); padding:8px; border-radius:8px; word-break:break-all; margin-bottom:12px;"></p>
         <p id="transfer-fee-warning" style="font-size:12px; color:var(--wine); line-height:1.4; margin-bottom:16px; font-weight:600;">
-          Para completar el traspaso, el nuevo propietario debe presentarse en barra y abonar el consumo mínimo (Peaje del Patrón).
+          Para completar el traspaso, el nuevo propietario debe presentarse en barra y abonar el peaje de traspaso (el Peaje del Patrón).
         </p>
         <button onclick="submitTransferRequest()" id="btn-submit-transfer" style="width:100%; padding:14px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; box-shadow:0 4px 10px rgba(139,25,24,0.3);">
           Confirmar Traspaso
