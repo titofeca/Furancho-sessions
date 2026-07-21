@@ -10565,8 +10565,8 @@
 
   async function handleTapaClaimScan(decodedText) {
     const parts = decodedText.split(':');
-    if (parts.length < 6) {
-      alert("⚠️ Formato de QR de Tapa inválido");
+    if (parts.length < 7 || !parts[6]) {
+      alert("⚠️ Formato de QR de Tapa inválido o no firmado");
       return;
     }
 
@@ -10575,8 +10575,9 @@
     const nftId = parts[3];
     const serial = parts[4];
     const date = parts[5];
+    const sig = parts[6];
 
-    _currentTapaClaimData = { walletAddress: wallet, nftType, nftId, serial: parseInt(serial) || 0 };
+    _currentTapaClaimData = { walletAddress: wallet, nftType, nftId, serial: parseInt(serial) || 0, sig };
 
     const bodyEl = document.getElementById('tapa-claim-modal-body');
     bodyEl.innerHTML = `

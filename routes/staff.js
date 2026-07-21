@@ -227,17 +227,29 @@ router.post('/vip/:id/confirm', staffLimiter, requireStaff, (req, res) => {
   }
 });
 
+// Helper para obtener el nombre del camarero desde la cabecera
+function getStaffName(req) {
+  const raw = req.headers['x-staff-name'];
+  if (!raw) return 'staff';
+  try {
+    return decodeURIComponent(raw).trim() || 'staff';
+  } catch (_) {
+    return 'staff';
+  }
+}
+
 // POST /api/staff/claim-daily-tapa — el camarero consume el privilexio del cliente
 // al entregarle la tapa/cunca. Misma fuente única y anti-doble-canje que el admin:
-// 1 por wallet y 1 por NFT+serie al día. Body: { walletAddress, nftType, nftId, serial }.
+// 1 por wallet y 1 por NFT+serie al día. Body: { walletAddress, nftType, nftId, serial, sig }.
 router.post('/claim-daily-tapa', staffLimiter, requireStaff, (req, res) => {
-  const { walletAddress, nftType, nftId, serial } = req.body || {};
+  const { walletAddress, nftType, nftId, serial, sig } = req.body || {};
   if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
     return res.status(400).json({ error: 'Dirección de wallet no válida' });
   }
   try {
     const { registerDailyTapaClaim } = require('../db/database');
-    registerDailyTapaClaim({ walletAddress, nftType, nftId, serial, staffUser: 'staff' });
+    const staffName = getStaffName(req);
+    registerDailyTapaClaim({ walletAddress, nftType, nftId, serial, sig, staffUser: staffName });
     res.json({ success: true, message: 'Privilexio consumido — tapa e cunca entregadas.' });
   } catch (e) {
     res.status(400).json({ error: e.message });
@@ -253,7 +265,8 @@ router.post('/meme-perk', staffLimiter, requireStaff, (req, res) => {
   if (!id) return res.status(400).json({ error: 'Falta qué entregar' });
   try {
     const shop = require('../services/memeShop');
-    const e = shop.usePerk(id, 1, 'staff');
+    const staffName = getStaffName(req);
+    const e = shop.usePerk(id, 1, `Entregado por: ${staffName}`);
     res.json({ success: true, left: e.qty_total - e.qty_used, label: e.label });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -281,6 +294,7 @@ router.post('/grant-nft-prize', staffLimiter, requireStaff, (req, res) => {
   }
   try {
     const { grantNftPrize, grantWeeklyNftPrize } = require('../db/database');
+    const staffName = getStaffName(req);
     let result;
     if (source === 'honor') {
       const { claimAchievement, getAchievementMint } = require('../db/database');
@@ -297,11 +311,11 @@ router.post('/grant-nft-prize', staffLimiter, requireStaff, (req, res) => {
       result = { ok: true, achievement: honor };
     } else if (source === 'weekly') {
       if (!week) return res.status(400).json({ error: 'Falta la semana del sorteo' });
-      result = grantWeeklyNftPrize(week, walletAddress, 'staff');
+      result = grantWeeklyNftPrize(week, walletAddress, staffName);
     } else {
       const rid = parseInt(raffleId);
       if (!rid) return res.status(400).json({ error: 'ID de sorteo no válido' });
-      result = grantNftPrize(rid, walletAddress, 'staff');
+      result = grantNftPrize(rid, walletAddress, staffName);
     }
     if (!result.ok) {
       return res.status(400).json({ error: GRANT_ERROR_MESSAGES[result.error] || result.error });
@@ -323,7 +337,8 @@ router.post('/grant-nft-prize/:raffleId', staffLimiter, requireStaff, (req, res)
   if (!raffleId) return res.status(400).json({ error: 'ID de sorteo no válido' });
   try {
     const { grantNftPrize } = require('../db/database');
-    const result = grantNftPrize(raffleId, walletAddress, 'staff');
+    const staffName = getStaffName(req);
+    const result = grantNftPrize(raffleId, walletAddress, staffName);
     if (!result.ok) {
       return res.status(400).json({ error: GRANT_ERROR_MESSAGES[result.error] || result.error });
     }

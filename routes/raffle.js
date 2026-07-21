@@ -194,6 +194,18 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
   // Elegibles = TODOS los que ficharon entrada hoy y no han salido (sin requisito de app abierta)
   let eligibleWallets = getEligibleRaffleParticipants();
 
+  // Opcional: Requerir conexión SSE activa (pantalla encendida/app abierta) para entrar en el bombo
+  try {
+    const { db } = require('../db/database');
+    const sseRequired = db.prepare(`SELECT value FROM app_settings WHERE key = 'raffle_require_active_sse'`).get()?.value === '1';
+    if (sseRequired) {
+      const connectedSet = new Set(clients.filter(c => c.walletAddress).map(c => c.walletAddress.toLowerCase()));
+      eligibleWallets = eligibleWallets.filter(w => connectedSet.has(w.toLowerCase()));
+    }
+  } catch (e) {
+    console.error('[Raffle] Error filtering by active SSE:', e);
+  }
+
   // Sorteo VIP: solo participan "O Presidente" (Nivel 4)
   if (type === 'vip') {
     const { db } = require('../db/database');
@@ -739,8 +751,15 @@ router.get('/eligible', requireAuth, (req, res) => {
   const eligibleSet = new Set(sessions);
   const withApp = clients.filter(c => c.walletAddress && eligibleSet.has(c.walletAddress)).length;
   const tonight = getRaffleCountTonight();
+  
+  let sseRequired = false;
+  try {
+    const { db } = require('../db/database');
+    sseRequired = db.prepare(`SELECT value FROM app_settings WHERE key = 'raffle_require_active_sse'`).get()?.value === '1';
+  } catch (e) {}
+
   // count = todos los que ficharon (participan aunque no tengan app abierta)
-  res.json({ count: sessions.length, withApp, checkedIn: sessions.length, tonight });
+  res.json({ count: sessions.length, withApp, checkedIn: sessions.length, tonight, sseRequired });
 });
 
 // GET /api/raffle/active?wallet=0x... — estado del sorteo en curso (para clientes que cargan la app tarde)

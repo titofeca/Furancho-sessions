@@ -190,15 +190,16 @@ router.get('/campaign/:address', async (req, res) => {
 });
 
 // GET /api/qr/tapa/:wallet/:nftType/:nftId/:serial — genera QR para canje de tapa
-// Codifica: "tapa_claim:<wallet>:<nftType>:<nftId>:<serial>:<date>"
+// Codifica: "tapa_claim:<wallet>:<nftType>:<nftId>:<serial>:<date>:<sig>"
 router.get('/tapa/:wallet/:nftType/:nftId/:serial', async (req, res) => {
   const { wallet, nftType, nftId, serial } = req.params;
+  const { sig } = req.query;
   if (!/^0x[a-fA-F0-9]{40}$/i.test(wallet)) {
     return res.status(400).send('Dirección no válida');
   }
 
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
-  const payload = `tapa_claim:${wallet}:${nftType}:${nftId}:${serial}:${today}`;
+  const payload = `tapa_claim:${wallet}:${nftType}:${nftId}:${serial}:${today}${sig ? ':' + sig : ''}`;
   const options = { ...QR_OPTIONS, color: { dark: '#8B1918', light: '#FFFFFF' } }; // color vino
 
   try {

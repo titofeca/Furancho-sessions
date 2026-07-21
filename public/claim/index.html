@@ -5551,16 +5551,46 @@
       if (typeof loadTonightPrizes === 'function') loadTonightPrizes();
     }
 
+    function updateSseStatus(connected) {
+      const banner = document.getElementById('raffle-connection-status');
+      if (!banner) return;
+      banner.style.display = 'block';
+      if (connected) {
+        banner.style.background = 'rgba(34,197,94,0.12)';
+        banner.style.border = '1.5px solid rgba(34,197,94,0.35)';
+        banner.style.color = '#16a34a';
+        banner.innerHTML = '🟢 Conectado al bombo de sorteos en vivo';
+      } else {
+        banner.style.background = 'rgba(239,68,68,0.1)';
+        banner.style.border = '1.5px solid rgba(239,68,68,0.3)';
+        banner.style.color = '#dc2626';
+        banner.innerHTML = '🔴 Desconectado. Mantén la app abierta para sorteos';
+      }
+    }
+
     function connectRaffle() {
       const wallet = localStorage.getItem('furancho_wallet_address') || '';
       const evtSource = new EventSource(`/api/raffle/stream${wallet ? '?wallet=' + wallet : ''}`);
+
+      evtSource.onopen = () => {
+        const dot = document.getElementById('raffle-live-dot');
+        if (dot && !dot.classList.contains('live')) {
+          dot.style.background = '#22c55e';
+          dot.style.boxShadow = '0 0 6px rgba(34,197,94,0.6)';
+        }
+        updateSseStatus(true);
+      };
 
       evtSource.addEventListener('raffle_start', (e) => {
         const data = JSON.parse(e.data);
 
         const dot = document.getElementById('raffle-live-dot');
         const statusText = document.getElementById('raffle-status-text');
-        if (dot) dot.classList.add('live');
+        if (dot) {
+          dot.style.background = '';
+          dot.style.boxShadow = '';
+          dot.classList.add('live');
+        }
         if (statusText) statusText.textContent = '⚡ Sorteo en marcha: ' + data.prize;
 
         // Animar texto de búsqueda
@@ -5608,7 +5638,11 @@
         const statusText = document.getElementById('raffle-status-text');
         const dot = document.getElementById('raffle-live-dot');
         if (statusText) statusText.textContent = 'El bombo ya quiere sonar...';
-        if (dot) dot.classList.remove('live');
+        if (dot) {
+          dot.classList.remove('live');
+          dot.style.background = '#22c55e';
+          dot.style.boxShadow = '0 0 6px rgba(34,197,94,0.6)';
+        }
         renderPrizes();
         loadNextRaffleCountdown(); // refrescar countdown tras sorteo terminado
       });
@@ -5621,7 +5655,11 @@
         const statusText = document.getElementById('raffle-status-text');
         const dot = document.getElementById('raffle-live-dot');
         if (statusText) statusText.textContent = 'El bombo ya quiere sonar...';
-        if (dot) dot.classList.remove('live');
+        if (dot) {
+          dot.classList.remove('live');
+          dot.style.background = '#22c55e';
+          dot.style.boxShadow = '0 0 6px rgba(34,197,94,0.6)';
+        }
         renderPrizes();
       });
 
@@ -5781,6 +5819,13 @@
       });
 
       evtSource.onerror = () => {
+        const dot = document.getElementById('raffle-live-dot');
+        if (dot) {
+          dot.classList.remove('live');
+          dot.style.background = '#ef4444';
+          dot.style.boxShadow = '0 0 6px rgba(239,68,68,0.6)';
+        }
+        updateSseStatus(false);
         evtSource.close();
         setTimeout(connectRaffle, 5000);
       };
@@ -6829,7 +6874,7 @@
     }
   }
 
-  function openTapaModal() {
+  async function openTapaModal() {
     const modal = document.getElementById('daily-tapa-modal');
     const qrImg = document.getElementById('tapa-qr-img');
     const nftDesc = document.getElementById('tapa-qr-nft-desc');
@@ -6841,8 +6886,21 @@
     const nftType = parts[2];
     const nftId = parts[3];
     const serial = parts[4];
+    const today = parts[5];
     
-    qrImg.src = `/api/qr/tapa/${wallet}/${nftType}/${nftId}/${serial}?t=${Date.now()}`;
+    let sig = '';
+    const privKey = localStorage.getItem('furancho_wallet_private_key');
+    if (privKey && typeof ethers !== 'undefined') {
+      try {
+        const ethWallet = new ethers.Wallet(privKey);
+        const msg = `tapa_claim:${wallet}:${nftType}:${nftId}:${serial}:${today}`;
+        sig = await ethWallet.signMessage(msg);
+      } catch (e) {
+        console.error('Error signing daily tapa payload:', e);
+      }
+    }
+    
+    qrImg.src = `/api/qr/tapa/${wallet}/${nftType}/${nftId}/${serial}?sig=${encodeURIComponent(sig)}&t=${Date.now()}`;
     nftDesc.textContent = `NFT: ${window._tapaNftName}`;
 
     // Título/beneficio configurados desde el admin
@@ -9635,6 +9693,9 @@
       <span style="font-size:44px; display:block; margin-bottom:10px;">🏛️</span>
       <span style="background:rgba(196,151,58,0.12); color:var(--gold); font-size:11px; font-weight:700; padding:4px 12px; border-radius:100px; text-transform:uppercase; letter-spacing:1.5px; display:inline-block; margin-bottom:10px;">Museo do Furancho</span>
       <h2 style="font-family:'Playfair Display',serif; font-size:24px; font-weight:900; color:var(--wine); margin:0 0 16px 0;">O meu Museo de Logros</h2>
+
+      <!-- Estado de conexión a sorteos en vivo -->
+      <div id="raffle-connection-status" style="display:none; padding:10px 14px; border-radius:14px; margin-bottom:16px; font-size:12.5px; font-weight:700; text-align:center; font-family:'Outfit',sans-serif; transition: all 0.3s ease;"></div>
 
       <!-- Reglas del Sorteo (Aviso) -->
       <div style="background:rgba(139,25,24,0.03); border:1.5px dashed rgba(139,25,24,0.18); border-radius:16px; padding:16px; margin-bottom:20px; text-align:left;">

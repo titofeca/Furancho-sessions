@@ -63,8 +63,9 @@
     <!-- GATE: código de acceso -->
     <div id="gate" class="card" style="display:none;">
       <h2>🔑 Acceso camareros</h2>
-      <p class="lead">Mete el código que te dio el jefe esta noche. Solo te lo pide una vez en este móvil, ho.</p>
-      <input id="code-input" type="text" inputmode="text" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Código" onkeydown="if(event.key==='Enter')doLogin()" />
+      <p class="lead">Mete el código del local y tu nombre para registrar quién entrega cada tapa o premio, ho.</p>
+      <input id="code-input" type="text" inputmode="text" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Código" style="margin-bottom: 8px;" />
+      <input id="staff-name-input" type="text" placeholder="Tu nombre (ej: Carlos, Tito)" style="margin-top: 10px;" onkeydown="if(event.key==='Enter')doLogin()" />
       <button class="primary" id="code-btn" onclick="doLogin()">Entrar</button>
       <div class="err" id="gate-err"></div>
     </div>
@@ -168,9 +169,18 @@
     const STAFF_KEY = 'furancho_staff_code';
     let scanner = null, processing = false, lastWallet = null, lastAt = 0;
 
+    function staffHeaders(extra = {}) {
+      return {
+        'x-staff-code': localStorage.getItem(STAFF_KEY) || '',
+        'x-staff-name': encodeURIComponent(localStorage.getItem('furancho_staff_name') || 'staff'),
+        ...extra
+      };
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       const code = localStorage.getItem(STAFF_KEY);
-      if (code) startScanner();
+      const name = localStorage.getItem('furancho_staff_name');
+      if (code && name) startScanner();
       else showGate();
     });
 
@@ -186,27 +196,43 @@
     function showGate(){
       document.getElementById('gate').style.display = 'block';
       document.getElementById('scanner').style.display = 'none';
-      setTimeout(() => document.getElementById('code-input').focus(), 200);
+      const savedCode = localStorage.getItem(STAFF_KEY) || '';
+      document.getElementById('code-input').value = savedCode;
+      const savedName = localStorage.getItem('furancho_staff_name') || '';
+      document.getElementById('staff-name-input').value = savedName;
+      if (savedCode) {
+        setTimeout(() => document.getElementById('staff-name-input').focus(), 200);
+      } else {
+        setTimeout(() => document.getElementById('code-input').focus(), 200);
+      }
     }
 
     async function doLogin(){
       const code = document.getElementById('code-input').value.trim();
+      const name = document.getElementById('staff-name-input').value.trim();
       const err = document.getElementById('gate-err');
       const btn = document.getElementById('code-btn');
       if (!code){ err.textContent = 'Escribe el código, neno.'; return; }
+      if (!name){ err.textContent = 'Escribe tu nombre, neno.'; return; }
       btn.disabled = true; btn.textContent = 'Comprobando…'; err.textContent = '';
       try{
         const r = await fetch('/api/staff/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ code }) });
-        if (r.ok){ localStorage.setItem(STAFF_KEY, code); startScanner(); }
+        if (r.ok){
+          localStorage.setItem(STAFF_KEY, code);
+          localStorage.setItem('furancho_staff_name', name);
+          startScanner();
+        }
         else { const d = await r.json().catch(()=>({})); err.textContent = d.error || 'Código incorrecto.'; btn.disabled = false; btn.textContent = 'Entrar'; }
       }catch(e){ err.textContent = 'Error de red. Inténtalo otra vez.'; btn.disabled = false; btn.textContent = 'Entrar'; }
     }
 
     function logout(){
       localStorage.removeItem(STAFF_KEY);
+      localStorage.removeItem('furancho_staff_name');
       try { if (scanner) scanner.stop().catch(()=>{}); } catch(e){}
       scanner = null;
       document.getElementById('code-input').value = '';
+      document.getElementById('staff-name-input').value = '';
       document.getElementById('terraza-card').style.display = 'none';
       document.getElementById('vip-card').style.display = 'none';
       showGate();
@@ -325,7 +351,7 @@
     }
     async function loadTerraza(){
       try{
-        const r = await fetch('/api/staff/terraza-hours', { headers:{ 'x-staff-code': localStorage.getItem(STAFF_KEY) || '' } });
+        const r = await fetch('/api/staff/terraza-hours', { headers: staffHeaders() });
         if (!r.ok) return;
         const cfg = await r.json();
         tzRenderChips();
@@ -358,7 +384,7 @@
       try{
         const r = await fetch('/api/staff/terraza-hours', {
           method:'POST',
-          headers:{ 'Content-Type':'application/json', 'x-staff-code': localStorage.getItem(STAFF_KEY) || '' },
+          headers: staffHeaders({ 'Content-Type':'application/json' }),
           body: JSON.stringify({ days, overrides, note: document.getElementById('terraza-note').value })
         });
         const d = await r.json().catch(()=>({}));
@@ -434,8 +460,8 @@
       const raw = String(decoded || '').trim();
       if (raw.startsWith('tapa_claim:')){
         const p = raw.split(':');
-        if (p.length >= 6 && /^0x[a-fA-F0-9]{40}$/.test(p[1])){
-          return { kind:'tapa', wallet: p[1], nftType: p[2], nftId: p[3], serial: parseInt(p[4]) || 0 };
+        if (p.length >= 7 && /^0x[a-fA-F0-9]{40}$/.test(p[1]) && p[6]){
+          return { kind:'tapa', wallet: p[1], nftType: p[2], nftId: p[3], serial: parseInt(p[4]) || 0, sig: p[6] };
         }
         return null;
       }
@@ -480,6 +506,13 @@
           msg.textContent = 'Dale la tapa y la cunca, y pulsa el botón para gastarlo.';
         }
         renderDailyTapa(tapa, parsed.wallet);
+        if (parsed.sig && window._tapaQueue) {
+          for (const key in window._tapaQueue) {
+            if (key.startsWith(parsed.wallet + ':')) {
+              window._tapaQueue[key].sig = parsed.sig;
+            }
+          }
+        }
         document.getElementById('result').style.display = 'flex';
         status.textContent = '';
         clearTimeout(window._resultTimer);   // sin auto-cierre: hay que pulsar el botón
@@ -501,7 +534,7 @@
       try{
         const r = await fetch('/api/staff/checkin', {
           method:'POST',
-          headers:{ 'Content-Type':'application/json', 'x-staff-code': localStorage.getItem(STAFF_KEY) || '' },
+          headers: staffHeaders({ 'Content-Type':'application/json' }),
           body: JSON.stringify({ walletAddress: wallet, campaignTs: campaignTs || undefined })
         });
         if (r.status === 401){ // código cambiado/incorrecto → volver al gate
@@ -567,7 +600,7 @@
       try {
         const r = await fetch('/api/staff/grant-nft-prize', {
           method:'POST',
-          headers:{ 'Content-Type':'application/json', 'x-staff-code': localStorage.getItem(STAFF_KEY) || '' },
+          headers: staffHeaders({ 'Content-Type':'application/json' }),
           body: JSON.stringify({ walletAddress: wallet, source: p.source || 'raffle', raffleId: p.raffleId || null, week: p.week || null })
         });
         const d = await r.json();
@@ -603,7 +636,7 @@
       err.textContent = '';
       list.innerHTML = '<p style="font-size:12.5px; color:var(--text-muted); text-align:center;">Cargando…</p>';
       try{
-        const r = await fetch('/api/staff/reservations', { headers:{ 'x-staff-code': localStorage.getItem(STAFF_KEY) || '' } });
+        const r = await fetch('/api/staff/reservations', { headers: staffHeaders() });
         const d = await r.json();
         if (!r.ok){ list.innerHTML = ''; err.textContent = d.error || 'No se pudieron cargar las reservas'; return; }
         if (!d.event){ list.innerHTML = '<p style="font-size:12.5px; color:var(--text-muted); text-align:center;">Hoy no hay evento en la agenda, así que no hay mesas VIP.</p>'; return; }
@@ -637,7 +670,7 @@
       try{
         const r = await fetch(`/api/staff/vip/${id}/confirm`, {
           method:'POST',
-          headers:{ 'Content-Type':'application/json', 'x-staff-code': localStorage.getItem(STAFF_KEY) || '' }
+          headers: staffHeaders({ 'Content-Type':'application/json' })
         });
         const d = await r.json();
         if (r.ok && d.success){
@@ -749,8 +782,8 @@
       try {
         const r = await fetch('/api/staff/claim-daily-tapa', {
           method:'POST',
-          headers:{ 'Content-Type':'application/json', 'x-staff-code': localStorage.getItem(STAFF_KEY) || '' },
-          body: JSON.stringify({ walletAddress: wallet, nftType: nft.type, nftId: nft.id, serial: nft.serial })
+          headers: staffHeaders({ 'Content-Type':'application/json' }),
+          body: JSON.stringify({ walletAddress: wallet, nftType: nft.type, nftId: nft.id, serial: nft.serial, sig: nft.sig || undefined })
         });
         const d = await r.json();
         if (r.ok && d.success){
@@ -828,7 +861,7 @@
       try {
         const r = await fetch('/api/staff/meme-perk', {
           method:'POST',
-          headers:{ 'Content-Type':'application/json', 'x-staff-code': localStorage.getItem(STAFF_KEY) || '' },
+          headers: staffHeaders({ 'Content-Type':'application/json' }),
           body: JSON.stringify({ entitlementId })
         });
         const d = await r.json().catch(()=>({}));
@@ -929,7 +962,7 @@
     async function loadCampaign(){
       try{
         const r = await fetch('/api/staff/campaign/leaderboard', {
-          headers:{ 'x-staff-code': localStorage.getItem(STAFF_KEY) || '' }
+          headers: staffHeaders()
         });
         if (!r.ok) return;
         const d = await r.json();

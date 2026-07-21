@@ -2593,8 +2593,24 @@ function linkScheduledRaffle(scheduledId, raffleId) {
 // anti-doble-canje (1 por wallet y 1 por NFT+serie al día, y créditos Plan Amigo)
 // y registra el canje. La usan el panel admin (Escáner) y el staff (/staff).
 // Lanza Error con mensaje legible si el canje no procede.
-function registerDailyTapaClaim({ walletAddress, nftType, nftId, serial, staffUser }) {
+function registerDailyTapaClaim({ walletAddress, nftType, nftId, serial, sig, staffUser }) {
   if (!walletAddress || !nftType || !nftId) throw new Error('Faltan parámetros');
+
+  // Si viene firma (QR de la barra), la validamos criptográficamente.
+  if (sig) {
+    try {
+      const { verifyMessage } = require('ethers');
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+      const msg = `tapa_claim:${walletAddress}:${nftType}:${nftId}:${serial}:${today}`;
+      const recovered = verifyMessage(msg, sig);
+      if (recovered.toLowerCase() !== walletAddress.toLowerCase()) {
+        throw new Error('La firma del vale no coincide con la billetera del cliente.');
+      }
+    } catch (e) {
+      throw new Error('Firma de vale no válida: ' + e.message);
+    }
+  }
+
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
   const finalSerial = parseInt(serial) || 0;
 

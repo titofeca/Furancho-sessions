@@ -1805,10 +1805,10 @@ router.post('/transfers/:id/reject', requireAuth, (req, res) => {
 // Registra el canje físico de la tapa gratis y consumición do día.
 // Delega en registerDailyTapaClaim (db/database.js), fuente única compartida con /staff.
 router.post('/claim-daily-tapa', requireAuth, (req, res) => {
-  const { walletAddress, nftType, nftId, serial } = req.body;
+  const { walletAddress, nftType, nftId, serial, sig } = req.body;
   try {
     const { registerDailyTapaClaim } = require('../db/database');
-    registerDailyTapaClaim({ walletAddress, nftType, nftId, serial, staffUser: 'admin' });
+    registerDailyTapaClaim({ walletAddress, nftType, nftId, serial, sig, staffUser: 'admin' });
     res.json({ success: true, message: 'Canje de tapa registrado con éxito.' });
   } catch (e) {
     res.status(400).json({ error: e.message });
