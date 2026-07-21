@@ -1996,8 +1996,8 @@
 
   <!-- ==================== PANTALLA 5: PERFIL CLIENTE ==================== -->
   <div class="screen" id="screen-profile">
-    <div class="header">
-      <div class="header-logo-row">
+    <div class="header" style="padding-bottom:12px; height:auto;">
+      <div class="header-logo-row" style="margin-bottom:0;">
         <img src="/assets/logo.png" alt="Furancho Sessions Logo" style="height: 36px; border-radius: 6px;" />
         <button onclick="handleManualRefresh(this)" style="
           position: absolute; right: 24px; top: 50%; transform: translateY(-50%);
@@ -2012,23 +2012,14 @@
           <span style="font-size: 16px; color: var(--wine); display: inline-block; font-weight: bold; line-height: 1; transition: transform 0.6s ease;">↻</span>
         </button>
       </div>
-      <div class="nft-image-container">
-        <img id="profile-nft-image" class="nft-image" src="https://ipfs.io/ipfs/bafkreigd4y7hinbsllo57rgshlf2wszzutxh7nrwpzof6vemdvcmqorfim" alt="NFT" />
-      </div>
     </div>
 
-    <div class="content" style="margin-top: 8px;">
-      <div class="level-badge">
-        <span class="dot"></span>
-        <span id="profile-level-label">Nivel 1</span>
-      </div>
-      <h1 class="nft-title" id="profile-nft-name">CAUTIVO</h1>
-      <div id="profile-vip-badge" style="display:none; margin: 8px auto 4px; max-width:320px;"></div>
+    <div class="content" style="margin-top: 24px;">
+      <div id="profile-vip-badge" style="display:none; margin: 0 auto 16px; max-width:320px;"></div>
       <!-- Número de serie del mint -->
-      <div id="profile-mint-serial" style="display:none; margin: 4px 0 2px;">
+      <div id="profile-mint-serial" style="display:none; margin: 0 0 16px; text-align:center;">
         <span id="profile-mint-serial-text" style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:2px; color:var(--gold); background:rgba(196,151,58,0.1); border:1px solid rgba(196,151,58,0.25); border-radius:100px; padding:3px 12px;"></span>
       </div>
-      <p class="nft-event">Furancho Sessions · Afterwork Viño, Tapas y Leria ochentera</p>
 
       <!-- Fila de 4 medallones principales (ID Socio, Carné VIP, Museo, Ruta Furancheira) -->
       <div class="main-actions-row">
@@ -3633,12 +3624,7 @@
       const levelName = LEVEL_NAMES[lvl] || 'CAUTIVO';
       const nextMilestone = getNextMilestone(visitCount);
 
-      // Imagen y textos
-      document.getElementById('profile-nft-image').src = LEVEL_IMAGES[lvl];
-      document.getElementById('profile-nft-name').textContent = levelName;
-      document.getElementById('profile-level-label').textContent = 'Nivel ' + lvl;
-      document.getElementById('profile-card-level-tag').textContent = 'NIVEL ' + lvl;
-      document.getElementById('profile-card-name').textContent = levelName;
+      // (Imágenes y textos del nivel movidos al Museo, aquí solo mantenemos lógica base)
 
       // Contador de visitas
       document.getElementById('visit-count-display').textContent = visitCount;
