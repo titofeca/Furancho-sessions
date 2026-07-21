@@ -4614,6 +4614,7 @@
       window._achMap = {}; // Make global for openMemeVipCard
       if (_achStatus && _achStatus.achievements) {
         _achStatus.achievements.forEach(a => { window._achMap[a.id] = a; });
+        
         const memeVip = window._achMap['meme_vip'];
         const btnMeme = document.getElementById('btn-meme-vip');
         if (btnMeme) {
@@ -4622,6 +4623,13 @@
           } else {
              btnMeme.style.display = 'none';
           }
+        }
+
+        // Si el logro de San Juan ya fue reclamado, lo quitamos del perfil principal
+        const sanJuanClaimed = window._achMap['furancheiro_fiesteiro'] && window._achMap['furancheiro_fiesteiro'].claimStatus;
+        if (sanJuanClaimed) {
+          const sanJuanBanner = document.getElementById('san-juan-banner');
+          if (sanJuanBanner) sanJuanBanner.style.display = 'none';
         }
       }
       renderMuseoBadges(userVisits, userClaimedLevels, history, window._achMap);
