@@ -239,8 +239,12 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
       } catch(e) {
         weeklyWinners = [weeklyWinner];
       }
+      // Comparación sin distinguir mayúsculas: las wallets se guardan unas veces con
+      // checksum y otras en minúsculas, y con includes() estricto el boleto doble del
+      // ganador de la Chave se perdía en silencio.
+      const eligibleLower = new Set(eligibleWallets.map(w => String(w).toLowerCase()));
       weeklyWinners.forEach(w => {
-        if (w && eligibleWallets.includes(w)) {
+        if (w && eligibleLower.has(String(w).toLowerCase())) {
           eligibleWallets.push(w);
           console.log(`[Raffle] Doble oportunidad para Chave Semanal: ${w.slice(0,6)}...`);
         }

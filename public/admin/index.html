@@ -1781,7 +1781,7 @@
       <div id="subpage-referrals" class="subpage-panel">
         <div class="glass-card" style="margin-bottom:20px;">
           <div class="card-title" style="margin-bottom:6px;">🔗 Programa de Prescriptores (Amigos)</div>
-          <p style="font-size:11.5px; color:var(--text-muted); margin:0 0 14px; line-height:1.5;">Listado de clientes que recomiendan el Furancho y su red de amigos. Por cada 10 amigos activos (que han fichado al menos una visita), el cliente gana un bono de tapa y cunca gratis.</p>
+          <p style="font-size:11.5px; color:var(--text-muted); margin:0 0 14px; line-height:1.5;">Listado de clientes que recomiendan el Furancho y su red de amigos. Por cada 15 amigos activos (que han fichado al menos una visita), el cliente gana un bono de tapa y cunca gratis.</p>
 
           <div style="overflow-x: auto;">
             <table>
@@ -9539,6 +9539,9 @@
   let html5QrScanner = null;
   let scannerLoaded = false;
   let lastScannedWallet = null;
+  // Timestamp del QR "en vivo" del Reto de los 5, si el cliente enseñó ese y no el ID
+  // Socio. Viaja al fichaje para que la visita de campaña cuente igual que en /staff.
+  let lastScannedCampaignTs = null;
 
   function loadHtml5QrcodeLib(cb) {
     if (window.Html5Qrcode) { cb(); return; }
@@ -9569,10 +9572,13 @@
                handleTapaClaimScan(text);
                return;
              }
-             // Extrae la wallet del QR: admite el ?inspect= del admin, el ?restore= del
+             // Extrae la wallet del QR: admite el QR en vivo del Reto de los 5
+             // ("CAMPAIGN:0x…:<ts>"), el ?inspect= del admin, el ?restore= del
              // "ID Socio (QR)" del cliente, o una dirección 0x suelta. Coge la primera
              // dirección 0x que aparezca, sea cual sea el formato de la URL.
              let wallet = text;
+             const camp = text.match(/^CAMPAIGN:(0x[a-fA-F0-9]{40}):(\d+)$/);
+             lastScannedCampaignTs = camp ? camp[2] : null;
              const match = wallet.match(/(0x[a-fA-F0-9]{40})/);
              if (match) wallet = match[1];
              if (!/^0x[a-fA-F0-9]{40}$/.test(wallet)) {
@@ -9939,7 +9945,7 @@
     try {
       const r = await fetch('/api/mint/admin-checkin', {
         method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress: wallet })
+        body: JSON.stringify({ walletAddress: wallet, campaignTs: lastScannedCampaignTs || undefined })
       }).then(r => r.json());
       if (r.success) {
         let msg;
@@ -9947,6 +9953,22 @@
         else if (r.counted) msg = `✅ Entrada fichada — visita #${r.visitCount}.`;
         else if (r.hasEventNow === false) msg = '✅ Entrada fichada — hoy no hay sesión en agenda, la visita no suma.';
         else msg = `✅ Entrada fichada — la visita de esta semana ya estaba contada (lleva ${r.visitCount}).`;
+        // Reto de los 5: el sello solo cuenta con el QR en vivo del cliente. Si el
+        // admin escaneó el ID Socio de siempre, se dice claramente que NO ha sumado.
+        if (r.campaign && r.campaign.active) {
+          const c = r.campaign;
+          if (c.error === 'qr_not_live') {
+            msg += ' ⚠️ Reto de los 5: NO suma — ese es el ID Socio. Pídele el QR del reto en su app.';
+          } else if (c.error === 'qr_expired') {
+            msg += ' ⚠️ Reto de los 5: NO suma — QR caducado. Que lo refresque en su app.';
+          } else if (c.counted && c.completed) {
+            msg += ` 👑 ¡Reto de los 5 completado (${c.totalVisits}/${c.required})! Su NFT queda pendiente de aprobar.`;
+          } else if (c.counted) {
+            msg += ` ⭐ Reto de los 5: ${c.totalVisits}/${c.required}.`;
+          } else {
+            msg += ` 🕒 Reto de los 5: ya tenía el sello de hoy (${c.totalVisits}/${c.required}).`;
+          }
+        }
         if (out) out.innerHTML = `<span style="color:#16a34a;font-weight:700;font-size:12.5px;">${msg}</span>`;
         if (btn) { btn.textContent = '✅ Entrada fichada'; btn.style.background = 'rgba(22,163,74,0.15)'; btn.style.color = '#15803d'; }
         // Refrescar la ficha tras fichar: así el privilexio do Guardián (que requiere
@@ -10719,7 +10741,10 @@
         tr.style.cursor = 'pointer';
         tr.onclick = () => toggleReferralFriendsDetail(index);
         
-        const remaining = Math.max(0, Math.floor(row.active_referred / 10) - row.total_claimed);
+        // 1 bono por cada 15 amigos activos — el MISMO divisor que aplica el servidor
+        // al canjear (routes/mint.js y db/database.js). Con 10 aquí, el panel prometía
+        // bonos que luego el canje rechazaba.
+        const remaining = Math.max(0, Math.floor(row.active_referred / 15) - row.total_claimed);
 
         tr.innerHTML = `
           <td style="font-family:monospace; font-size:12px; font-weight:600;">${row.referrer_wallet.substring(0,8)}...${row.referrer_wallet.substring(36)}</td>

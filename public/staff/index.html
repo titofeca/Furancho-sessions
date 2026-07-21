@@ -394,7 +394,7 @@
           if (processing) return;
           if (wallet === lastWallet && (now - lastAt) < 6000) return; // anti-doble del mismo cliente
           processing = true; lastWallet = wallet; lastAt = now;
-          doCheckin(wallet, campaignTs);
+          handleParsedQr(parsed);
         };
         // Elegir cámara trasera para evitar errores en Android
         let started = false;
@@ -424,16 +424,75 @@
       loadCampaign();   // banner + ranking del Reto de los 5 (si está activo)
     }
 
-    // Decodifica el QR del cliente. Acepta el formato de campaña (QR en vivo con
-    // timestamp: "CAMPAIGN:0x..:1753200000") y el clásico ID Socio (cualquier URL con
-    // la wallet). Devuelve { wallet, campaignTs } o null si no es un QR válido.
+    // Decodifica el QR del cliente. Acepta tres cosas:
+    //  · el VALE de la tapa do día ("tapa_claim:0x..:achievement:guardian:1:2026-07-21"),
+    //    que se enseña EN BARRA y no es un fichaje: va derecho al canje;
+    //  · el de campaña (QR en vivo: "CAMPAIGN:0x..:1753200000");
+    //  · el clásico ID Socio (cualquier URL que lleve la wallet).
+    // Devuelve { kind, wallet, ... } o null si no es un QR válido.
     function parseClientQr(decoded){
-      const raw = String(decoded || '');
+      const raw = String(decoded || '').trim();
+      if (raw.startsWith('tapa_claim:')){
+        const p = raw.split(':');
+        if (p.length >= 6 && /^0x[a-fA-F0-9]{40}$/.test(p[1])){
+          return { kind:'tapa', wallet: p[1], nftType: p[2], nftId: p[3], serial: parseInt(p[4]) || 0 };
+        }
+        return null;
+      }
       const cm = raw.match(/^CAMPAIGN:(0x[a-fA-F0-9]{40}):(\d+)$/);
-      if (cm) return { wallet: cm[1], campaignTs: cm[2] };
+      if (cm) return { kind:'checkin', wallet: cm[1], campaignTs: cm[2] };
       const m = raw.match(/(0x[a-fA-F0-9]{40})/);
-      if (m) return { wallet: m[1], campaignTs: null };
+      if (m) return { kind:'checkin', wallet: m[1], campaignTs: null };
       return null;
+    }
+
+    // El cliente enseña su vale en la barra: NO se le vuelve a fichar (ya entró), solo
+    // se comprueba el privilexio y se entrega. Reusa la misma tarjeta y el mismo
+    // endpoint de canje que al fichar, así que el anti-doble-canje es idéntico.
+    async function showTapaVale(parsed){
+      const status = document.getElementById('scan-status');
+      const icon = document.getElementById('result-icon');
+      const title = document.getElementById('result-title');
+      const msg = document.getElementById('result-msg');
+      const who = document.getElementById('result-who');
+      status.textContent = 'Comprobando el vale…';
+      try{
+        const r = await fetch('/api/mint/daily-tapa-status?wallet=' + encodeURIComponent(parsed.wallet));
+        const tapa = await r.json();
+        if (!r.ok) throw new Error(tapa.error || 'error');
+
+        document.getElementById('result-campaign').style.display = 'none';
+        const nextEl = document.getElementById('result-next');
+        if (nextEl) nextEl.style.display = 'none';
+        who.textContent = `${parsed.wallet.slice(0,6)}…${parsed.wallet.slice(-4)}`;
+
+        if (tapa.claimed){
+          icon.style.background = 'rgba(139,25,24,0.15)'; icon.textContent = '⛔';
+          title.textContent = 'Vale ya usado';
+          msg.textContent = 'Este vale ya se canjeó hoy. No le des otra tapa, ho.';
+        } else if (!tapa.visible || !tapa.eligible){
+          icon.style.background = 'rgba(139,25,24,0.15)'; icon.textContent = '⚠️';
+          title.textContent = 'Vale no válido';
+          msg.textContent = tapa.reason || 'Este vale no se puede canjear ahora mismo.';
+        } else {
+          icon.style.background = 'rgba(196,151,58,0.18)'; icon.textContent = '🎟️';
+          title.textContent = 'Vale correcto';
+          msg.textContent = 'Dale la tapa y la cunca, y pulsa el botón para gastarlo.';
+        }
+        renderDailyTapa(tapa, parsed.wallet);
+        document.getElementById('result').style.display = 'flex';
+        status.textContent = '';
+        clearTimeout(window._resultTimer);   // sin auto-cierre: hay que pulsar el botón
+      }catch(e){
+        status.textContent = '⚠️ No pude comprobar el vale. Inténtalo otra vez.';
+        processing = false;
+      }
+    }
+
+    // Enruta un QR ya decodificado: vale de tapa → canje; lo demás → fichaje.
+    function handleParsedQr(parsed){
+      if (parsed.kind === 'tapa') return showTapaVale(parsed);
+      return doCheckin(parsed.wallet, parsed.campaignTs);
     }
 
     async function doCheckin(wallet, campaignTs){
@@ -926,7 +985,7 @@
         // Nota: durante la campaña, un QR fotografiado de una captura vieja llega con
         // timestamp caducado y el servidor lo rechaza solo. La foto de un QR en vivo pasa.
         processing = true; lastWallet = parsed.wallet; lastAt = Date.now();
-        await doCheckin(parsed.wallet, parsed.campaignTs);
+        await handleParsedQr(parsed);
       } catch(err){
         status.textContent = '⚠️ No vi ningún QR en la foto. Acércate y que salga nítido.';
         startScanner();

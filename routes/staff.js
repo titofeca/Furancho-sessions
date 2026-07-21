@@ -55,20 +55,10 @@ router.post('/checkin', staffLimiter, requireStaff, (req, res) => {
     const result = performCheckin(walletAddress, req.ip);
 
     // ── Campaña "Reto de los 5" ──────────────────────────────────────────────
+    // Regla (anti-captura incluida) en services/campaign.js: la misma que aplica el
+    // Escáner del panel, para que fichar por camarero o por admin cuente igual.
     const campaign = require('../services/campaign');
-    if (campaign.isCampaignActive()) {
-      // Anti-captura: durante la campaña el QR debe llevar timestamp fresco. Sin él
-      // (QR estático o captura), no se cuenta la visita de campaña.
-      if (campaignTs === undefined || campaignTs === null || campaignTs === '') {
-        result.campaign = { active: true, counted: false, error: 'qr_not_live' };
-      } else if (!campaign.isQrFresh(campaignTs)) {
-        result.campaign = { active: true, counted: false, error: 'qr_expired' };
-      } else {
-        result.campaign = campaign.recordVisit(walletAddress);
-      }
-    } else {
-      result.campaign = null;
-    }
+    result.campaign = campaign.recordVisitFromScan(walletAddress, campaignTs);
 
     // ── Premios NFT pendientes de entrega presencial ────────────────────────
     // Si el cliente ganó un sorteo cuyo premio es un NFT (p.ej. Chave Dourada)

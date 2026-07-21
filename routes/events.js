@@ -113,7 +113,7 @@ router.get('/vip/my-reservations', (req, res) => {
              e.event_date, e.title as event_title
       FROM vip_reservations r
       JOIN events e ON r.event_id = e.id
-      WHERE r.wallet_address = ?
+      WHERE LOWER(r.wallet_address) = LOWER(?)
       ORDER BY e.event_date ASC
     `).all(wallet);
     res.json(rows);

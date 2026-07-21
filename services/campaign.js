@@ -92,6 +92,22 @@ function recordVisit(walletAddress, d = new Date()) {
   };
 }
 
+// Resultado de campaña para UN fichaje, venga del camarero (/staff) o del panel
+// (Escáner del admin). FUENTE ÚNICA de la regla: si la campaña está en marcha, el QR
+// tiene que ser el de "en vivo" (con timestamp fresco); una captura o el ID Socio
+// clásico no suman visita. Así los dos caminos cuentan igual y nadie hace trampa
+// por fichar desde un sitio u otro. Devuelve null si no hay campaña.
+function recordVisitFromScan(walletAddress, campaignTs, d = new Date()) {
+  if (!isCampaignActive(d)) return null;
+  if (campaignTs === undefined || campaignTs === null || campaignTs === '') {
+    return { active: true, counted: false, error: 'qr_not_live' };
+  }
+  if (!isQrFresh(campaignTs, d)) {
+    return { active: true, counted: false, error: 'qr_expired' };
+  }
+  return recordVisit(walletAddress, d);
+}
+
 // Progreso del cliente (para su app). No escribe nada.
 function getProgress(walletAddress) {
   const visits = getCampaignVisitCount(walletAddress);
@@ -137,6 +153,7 @@ module.exports = {
   isCampaignActive,
   isQrFresh,
   recordVisit,
+  recordVisitFromScan,
   getProgress,
   getLeaderboard,
   getStats

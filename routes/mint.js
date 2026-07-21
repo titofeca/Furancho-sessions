@@ -164,6 +164,9 @@ router.post('/entry', mintLimiter, async (req, res) => {
       }
     }
 
+    // Mesa VIP de hoy: misma consecuencia que si le ficha el camarero o el admin.
+    completeVipReservationOnCheckin(walletAddress);
+
     let pendingNftPrizes = [];
     try {
       const { getPendingNftPrizes } = require('../db/database');
@@ -229,6 +232,32 @@ router.post('/exit', mintLimiter, (req, res) => {
 // Lógica compartida de fichaje de ENTRADA — la usan /entry (cliente), /admin-checkin
 // (admin) y /api/staff/checkin (camarero). UNA sola fuente para no divergir: abre sesión
 // (openSession decide si cuenta como visita) y otorga el nivel por nº de visitas si contó.
+// Si el cliente que acaba de fichar tenía mesa VIP confirmada para el evento de hoy,
+// la damos por sentada ("completed"). Se llama desde LOS TRES caminos de fichaje
+// (cliente, camarero y admin): antes solo lo hacían camarero y admin, así que quien
+// fichaba solo con su app se quedaba eternamente en "confirmada" y el camarero no
+// veía "EN MESA" al escanearle.
+function completeVipReservationOnCheckin(walletAddress) {
+  try {
+    const { getActiveEventWindow, db, sendVipInboxNotification } = require('../db/database');
+    const win = getActiveEventWindow();
+    if (!win || !win.event) return;
+    const row = db.prepare(`
+      SELECT alias FROM vip_reservations
+      WHERE LOWER(wallet_address) = LOWER(?) AND event_id = ? AND status = 'confirmed'
+    `).get(walletAddress, win.event.id);
+    if (!row) return;
+    db.prepare(`
+      UPDATE vip_reservations
+      SET status = 'completed'
+      WHERE LOWER(wallet_address) = LOWER(?) AND event_id = ? AND status = 'confirmed'
+    `).run(walletAddress, win.event.id);
+    sendVipInboxNotification(walletAddress, win.event.id, 'completed', row.alias);
+  } catch (e) {
+    console.error('Error al completar reserva VIP en checkin:', e.message);
+  }
+}
+
 function performCheckin(walletAddress, ipAddress) {
   const { getVisitCount, openSession } = require('../db/database');
   const result = openSession(walletAddress, false);
@@ -239,29 +268,7 @@ function performCheckin(walletAddress, ipAddress) {
     catch (e) { console.error('Error otorgando nivel en check-in:', e.message); }
   }
 
-  // Si tiene reserva VIP confirmada para el evento de hoy, la marcamos como "completed"
-  try {
-    const { getActiveEventWindow, db, sendVipInboxNotification } = require('../db/database');
-    const win = getActiveEventWindow();
-    if (win && win.event) {
-      const row = db.prepare(`
-        SELECT alias FROM vip_reservations
-        WHERE LOWER(wallet_address) = LOWER(?) AND event_id = ? AND status = 'confirmed'
-      `).get(walletAddress, win.event.id);
-      
-      if (row) {
-        db.prepare(`
-          UPDATE vip_reservations
-          SET status = 'completed'
-          WHERE LOWER(wallet_address) = LOWER(?) AND event_id = ? AND status = 'confirmed'
-        `).run(walletAddress, win.event.id);
-        
-        sendVipInboxNotification(walletAddress, win.event.id, 'completed', row.alias);
-      }
-    }
-  } catch (e) {
-    console.error('Error al completar reserva VIP en checkin:', e.message);
-  }
+  completeVipReservationOnCheckin(walletAddress);
 
   return {
     success: true,
@@ -278,12 +285,19 @@ function performCheckin(walletAddress, ipAddress) {
 // "ID Socio (QR)". Misma lógica exacta que /entry, pero autenticado y SIN el límite del
 // endpoint público. Para clientes sin cámara o poco habituados: no usan su móvil.
 router.post('/admin-checkin', requireAuth, (req, res) => {
-  const { walletAddress } = req.body;
+  const { walletAddress, campaignTs } = req.body;
   if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
     return res.status(400).json({ error: 'Dirección de wallet no válida' });
   }
   try {
-    return res.json(performCheckin(walletAddress, req.ip));
+    const result = performCheckin(walletAddress, req.ip);
+    // "Reto de los 5": el panel cuenta la visita igual que el móvil del camarero,
+    // con la MISMA exigencia de QR en vivo (services/campaign.js). Si el admin
+    // escanea el ID Socio de siempre en vez del QR del reto, no suma — y el panel
+    // se lo dice, para que nadie crea que ha sumado un sello que no existe.
+    const campaign = require('../services/campaign');
+    result.campaign = campaign.recordVisitFromScan(walletAddress, campaignTs);
+    return res.json(result);
   } catch (error) {
     console.error('Error en /admin-checkin:', error.message);
     res.status(500).json({ error: 'Error procesando entrada' });
@@ -680,6 +694,17 @@ router.post('/transfer-request', mintLimiter, (req, res) => {
 // La usan: GET /api/mint/daily-tapa-status (tarjeta del cliente) y el check-in de
 // staff (/api/staff/checkin), para que el camarero vea y consuma el privilexio al
 // fichar al cliente. Misma lógica, mismos textos, mismo anti-trampa.
+// Fecha (YYYY-MM-DD) en hora de Madrid de un timestamp de SQLite guardado en UTC.
+// Misma conversión que usa openSession, para que "hoy" signifique lo mismo en todo
+// el sistema tanto en horario de verano como de invierno.
+function madridDateOf(sqlTimestamp) {
+  if (!sqlTimestamp) return null;
+  try {
+    return new Date(String(sqlTimestamp).replace(' ', 'T') + 'Z')
+      .toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+  } catch (_) { return null; }
+}
+
 function computeDailyTapaStatus(wallet) {
     const { db } = require('../db/database');
     const achievements = require('../services/achievements');
@@ -787,19 +812,23 @@ function computeDailyTapaStatus(wallet) {
     const hasNft = eligibleNfts.length > 0;
 
     if (!hasNft && !hasReferralCredits) {
-      return ({ visible: false, eligible: false, claimed: false, ...meta, reason: `Necesitas o bien el NFT «${nftName}» o bien invitar a 10 amigos activos para disfrutar este privilexio.` });
+      return ({ visible: false, eligible: false, claimed: false, ...meta, reason: `Necesitas o bien el NFT «${nftName}» o bien invitar a 15 amigos activos para disfrutar este privilexio.` });
     }
 
     // 3. Tiene el NFT o créditos de referido: a partir de aquí SÍ ve la tarjeta.
     //    Verificar fichaje de hoy (obligatorio para canjear).
+    //    entry_time se guarda en UTC. El desfase con Madrid es +2h en verano pero +1h
+    //    en invierno, así que sumarle 2 fijas hacía que a partir de las 23:00 de un
+    //    día de invierno el fichaje contase como "de mañana" y la tarjeta volviese a
+    //    pedir "ficha tu entrada". Comparamos la fecha ya convertida a Madrid.
     const session = db.prepare(`
       SELECT id, entry_time FROM sessions
       WHERE LOWER(wallet_address) = LOWER(?)
-        AND date(entry_time, '+2 hours') = ?
       ORDER BY entry_time DESC LIMIT 1
-    `).get(wallet, today);
+    `).get(wallet);
+    const sessionIsToday = session && madridDateOf(session.entry_time) === today;
 
-    if (!session) {
+    if (!sessionIsToday) {
       return ({ visible: true, eligible: false, claimed: false, ...meta, reason: 'Ficha tu entrada hoy en el Furancho para activarlo.' });
     }
 
