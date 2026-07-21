@@ -3668,10 +3668,11 @@
       }
 
       // Banner especial de San Juan (Furancheiro Fiesteiro)
+      const isSanJuanClaimed = window._achMap && window._achMap['furancheiro_fiesteiro'] && window._achMap['furancheiro_fiesteiro'].claimStatus;
       const hasVisitedSanJuan = userVisits && userVisits.some(v => v.day === '2026-06-25');
       const sanJuanBanner = document.getElementById('san-juan-banner');
       if (sanJuanBanner) {
-        sanJuanBanner.style.display = hasVisitedSanJuan ? 'block' : 'none';
+        sanJuanBanner.style.display = (hasVisitedSanJuan && !isSanJuanClaimed) ? 'block' : 'none';
       }
 
       // Journey de niveles — actualizar nodos según progreso
