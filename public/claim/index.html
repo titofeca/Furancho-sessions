@@ -2082,28 +2082,29 @@
       <!-- ① TU CAMINO — visitas + journey -->
       <div class="profile-progress-card" style="padding:22px; margin-bottom:20px;">
 
-        <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:22px; gap:12px;">
-          <div>
-            <p style="font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">Tu kilometraje furancheiro, ho</p>
-            <div style="display:flex; align-items:baseline; gap:6px;">
-              <span id="visit-count-display" style="font-family:'Playfair Display',serif; font-size:48px; font-weight:900; color:var(--wine); line-height:1;">0</span>
-              <span id="visit-total-display" style="font-size:14px; color:var(--text-muted);">visitas</span>
-            </div>
-          </div>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+          <p style="font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); margin:0;">Tu kilometraje furancheiro, ho</p>
           <!-- Indicador sesión activa -->
-          <div id="session-active-badge" style="display:none; flex-shrink:0; background:rgba(74,222,128,0.12); border:1px solid rgba(74,222,128,0.3); border-radius:100px; padding:6px 12px; font-size:11px; font-weight:700; color:#16a34a; white-space:nowrap; margin-top:4px;">
-            🟢 Fichado y al loro: estás dentro, neno
+          <div id="session-active-badge" style="display:none; background:rgba(74,222,128,0.12); border:1px solid rgba(74,222,128,0.3); border-radius:100px; padding:4px 10px; font-size:10px; font-weight:700; color:#16a34a; white-space:nowrap;">
+            🟢 Estás dentro, neno
           </div>
         </div>
 
-        <!-- Botones Fichar (Entrada / Salida) -->
-        <div id="fichar-container" style="margin-bottom: 20px;">
-          <button id="fichar-btn-entry" onclick="startClientScanner()" style="width:100%; padding:14px; background:linear-gradient(135deg,#16a34a,#15803d); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 16px rgba(22,163,74,0.3);">
-            📷 Fichar Entrada (Escanear QR)
-          </button>
-          <button id="fichar-btn-exit" onclick="marcharDoFurancho()" style="width:100%; padding:14px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; display:none; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 16px rgba(139,25,24,0.3);">
-            🚪 Registrar Salida (Marchar)
-          </button>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; gap:16px;">
+          <div style="display:flex; align-items:baseline; gap:6px; flex-shrink:0;">
+            <span id="visit-count-display" style="font-family:'Playfair Display',serif; font-size:42px; font-weight:900; color:var(--wine); line-height:1;">0</span>
+            <span id="visit-total-display" style="font-size:14px; color:var(--text-muted);">visitas</span>
+          </div>
+
+          <!-- Botones Fichar (Entrada / Salida) -->
+          <div id="fichar-container" style="flex-grow:1; max-width:220px;">
+            <button id="fichar-btn-entry" onclick="startClientScanner()" style="width:100%; padding:12px; background:linear-gradient(135deg,#16a34a,#15803d); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 16px rgba(22,163,74,0.3); transition:all 0.3s ease;">
+              📷 Fichar Entrada
+            </button>
+            <button id="fichar-btn-exit" onclick="marcharDoFurancho()" style="width:100%; padding:12px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer; display:none; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 16px rgba(139,25,24,0.3); transition:all 0.3s ease;">
+              🚪 Registrar Salida
+            </button>
+          </div>
         </div>
 
         <!-- Hint siguiente nivel -->
@@ -3213,7 +3214,7 @@
           body: JSON.stringify({ walletAddress: userWalletAddress })
         });
         const data = await res.json();
-        userHasActiveSession = false;
+        setActiveSession(false);
         updateFicharButtons();
         if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
           subscribePush();
@@ -3247,6 +3248,13 @@
     // Comprobar historial de reclamos
     let userVisitCount = 0;
     let userHasActiveSession = false;
+    let _evtSource = null;
+    let raffleRequireSse = false;
+
+    function setActiveSession(val) {
+      userHasActiveSession = !!val;
+      if (typeof refreshRaffleDot === 'function') refreshRaffleDot();
+    }
 
     async function checkUserHistoryAndAdjustLevel() {
       const urlParams = new URLSearchParams(window.location.search);
@@ -3272,8 +3280,11 @@
             serialEl.style.display = 'block';
           }
         }
+        if (data.hasOwnProperty('raffleRequireSse')) {
+          raffleRequireSse = !!data.raffleRequireSse;
+        }
         // Mostrar/ocultar botón Marcho según sesión activa
-        userHasActiveSession = !!data.hasActiveSession;
+        setActiveSession(data.hasActiveSession);
         updateFicharButtons();
 
         // Cliente recurrente — siempre va al perfil directamente
@@ -3761,7 +3772,7 @@
         });
         const data = await res.json();
         if (data.action === 'exit') {
-          userHasActiveSession = false;
+          setActiveSession(false);
           document.getElementById('marcho-footer').style.display = 'none';
           document.getElementById('session-active-badge').style.display = 'none';
           showProfileBanner(getRandomExitMessage(), 'green');
@@ -5567,33 +5578,83 @@
       const banner = document.getElementById('raffle-connection-status');
       if (!banner) return;
       banner.style.display = 'block';
+
       if (connected) {
-        banner.style.background = 'rgba(34,197,94,0.12)';
-        banner.style.border = '1.5px solid rgba(34,197,94,0.35)';
-        banner.style.color = '#16a34a';
-        banner.innerHTML = '🟢 Conectado al bombo de sorteos en vivo';
+        if (userHasActiveSession) {
+          banner.style.background = 'rgba(34,197,94,0.12)';
+          banner.style.border = '1.5px solid rgba(34,197,94,0.35)';
+          banner.style.color = '#16a34a';
+          banner.innerHTML = '🟢 Conectado al bombo de sorteos en vivo';
+        } else {
+          banner.style.background = 'rgba(249,115,22,0.12)';
+          banner.style.border = '1.5px solid rgba(249,115,22,0.35)';
+          banner.style.color = '#ea580c';
+          banner.innerHTML = '⚠️ Conectado (debes fichar entrada para entrar en el sorteo)';
+        }
       } else {
-        banner.style.background = 'rgba(239,68,68,0.1)';
-        banner.style.border = '1.5px solid rgba(239,68,68,0.3)';
-        banner.style.color = '#dc2626';
-        banner.innerHTML = '🔴 Desconectado. Mantén la app abierta para sorteos';
+        // Desconectado
+        if (userHasActiveSession) {
+          if (raffleRequireSse) {
+            banner.style.background = 'rgba(239,68,68,0.1)';
+            banner.style.border = '1.5px solid rgba(239,68,68,0.3)';
+            banner.style.color = '#dc2626';
+            banner.innerHTML = '🔴 Desconectado. Mantén la app abierta para sorteos';
+          } else {
+            // No se requiere SSE activa para ganar, y está fichado: ¡está a salvo!
+            banner.style.background = 'rgba(34,197,94,0.12)';
+            banner.style.border = '1.5px solid rgba(34,197,94,0.35)';
+            banner.style.color = '#16a34a';
+            banner.innerHTML = '✅ Fichado hoy (entras en el sorteo aunque cierres la app)';
+          }
+        } else {
+          banner.style.background = 'rgba(239,68,68,0.1)';
+          banner.style.border = '1.5px solid rgba(239,68,68,0.3)';
+          banner.style.color = '#dc2626';
+          banner.innerHTML = '🔴 Debes fichar entrada hoy para entrar en el sorteo';
+        }
+      }
+    }
+
+    function refreshRaffleDot() {
+      const dot = document.getElementById('raffle-live-dot');
+      if (!dot) return;
+      if (dot.classList.contains('live')) return; // Sorteo en vivo en marcha, no tocar estilo
+
+      const sseConnected = _evtSource && _evtSource.readyState === EventSource.OPEN;
+      if (!sseConnected) {
+        if (userHasActiveSession && !raffleRequireSse) {
+          // Fichado y no obligatorio tener app abierta: verde tranquilo (sin sombra pulsante)
+          dot.style.background = '#22c55e';
+          dot.style.boxShadow = 'none';
+          updateSseStatus(false);
+        } else {
+          // Desconectado normal (rojo)
+          dot.style.background = '#ef4444';
+          dot.style.boxShadow = '0 0 6px rgba(239,68,68,0.6)';
+          updateSseStatus(false);
+        }
+      } else {
+        // SSE Conectada
+        if (userHasActiveSession) {
+          dot.style.background = '#22c55e';
+          dot.style.boxShadow = '0 0 6px rgba(34,197,94,0.6)';
+        } else {
+          dot.style.background = '#f97316';
+          dot.style.boxShadow = '0 0 6px rgba(249,115,22,0.6)';
+        }
+        updateSseStatus(true);
       }
     }
 
     function connectRaffle() {
       const wallet = localStorage.getItem('furancho_wallet_address') || '';
-      const evtSource = new EventSource(`/api/raffle/stream${wallet ? '?wallet=' + wallet : ''}`);
+      _evtSource = new EventSource(`/api/raffle/stream${wallet ? '?wallet=' + wallet : ''}`);
 
-      evtSource.onopen = () => {
-        const dot = document.getElementById('raffle-live-dot');
-        if (dot && !dot.classList.contains('live')) {
-          dot.style.background = '#22c55e';
-          dot.style.boxShadow = '0 0 6px rgba(34,197,94,0.6)';
-        }
-        updateSseStatus(true);
+      _evtSource.onopen = () => {
+        refreshRaffleDot();
       };
 
-      evtSource.addEventListener('raffle_start', (e) => {
+      _evtSource.addEventListener('raffle_start', (e) => {
         const data = JSON.parse(e.data);
 
         const dot = document.getElementById('raffle-live-dot');
@@ -8530,7 +8591,7 @@
     if (modal) modal.style.display = 'none';
 
     if (isExit) {
-      userHasActiveSession = false;
+      setActiveSession(false);
       updateFicharButtons();
       if (typeof Notification !== 'undefined' && Notification.permission === 'granted') subscribePush();
       const exitTexts = [
@@ -8541,7 +8602,7 @@
       ];
       showToast('🚪 ' + exitTexts[Math.floor(Math.random() * exitTexts.length)]);
     } else {
-      userHasActiveSession = true;
+      setActiveSession(true);
       updateFicharButtons();
       if (typeof Notification !== 'undefined' && Notification.permission === 'granted') subscribePush();
       if (data.isNew) {
@@ -8561,6 +8622,9 @@
         userClaimedLevels = refreshed.levels || userClaimedLevels;
         userVisits = refreshed.visits || userVisits;
         userReferralData = refreshed.referral || userReferralData; // Plan Amigo
+        if (refreshed.hasOwnProperty('raffleRequireSse')) {
+          raffleRequireSse = !!refreshed.raffleRequireSse;
+        }
         showProfileScreen(userVisitCount, userClaimedLevels);
       }
     }, 500);

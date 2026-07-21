@@ -605,7 +605,12 @@ router.get('/history', (req, res) => {
       console.error('Error calculando referidos en /history:', e.message);
     }
 
-    res.json({ levels, visitCount, hasActiveSession: !!activeSession, pendingApproval: pendingApproval || null, serialsByLevel, visits, referral });
+    let sseRequired = false;
+    try {
+      sseRequired = db.prepare(`SELECT value FROM app_settings WHERE key = 'raffle_require_active_sse'`).get()?.value === '1';
+    } catch (_) {}
+
+    res.json({ levels, visitCount, hasActiveSession: !!activeSession, pendingApproval: pendingApproval || null, serialsByLevel, visits, referral, raffleRequireSse: sseRequired });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
