@@ -2218,50 +2218,54 @@
         .cd-lbl{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);margin-top:3px}
       </style>
 
-      <!-- Medidor de ambiente en vivo (FOMO) — solo aparece con evento en marcha -->
-      <div id="vibe-card" style="display:none; margin-bottom:20px; border-radius:20px; border:1.5px solid rgba(139,25,24,.35); background:linear-gradient(160deg, rgba(139,25,24,.10), rgba(196,151,58,.10));">
-        <div style="padding:18px 20px; text-align:center;">
-          <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(139,25,24,.10); border-radius:100px; padding:4px 12px; margin-bottom:10px;">
-            <span class="vibe-live-dot"></span>
-            <span style="font-size:10px; font-weight:800; letter-spacing:1.5px; color:var(--wine);">EN DIRECTO NO FURANCHO</span>
-          </div>
-          <div id="vibe-emoji" style="font-size:40px; line-height:1; animation:vibeBounce 2.2s ease-in-out infinite;">🍷</div>
-          <h3 id="vibe-title" style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:var(--wine); margin:8px 0 4px;"></h3>
-          <p id="vibe-text" style="font-size:12.5px; color:var(--text-muted); line-height:1.55; margin:0 0 12px;"></p>
-          <div id="vibe-meter" style="display:flex; gap:5px; justify-content:center;"></div>
-        </div>
-      </div>
-
-      <!-- Cuentas regresivas dinámicas (admin las crea/edita/borra) -->
-      <div id="dynamic-countdowns"></div>
-
-      <div id="vacation-card" style="display:none; margin-bottom:20px; border-radius:20px; border:1.5px solid rgba(196,151,58,.45); background:linear-gradient(160deg, rgba(196,151,58,.12), rgba(139,25,24,.06));">
-        <div style="padding:20px;">
-          <!-- Estado A: cuenta atrás al PRÓXIMO Furancho de la agenda; rueda al
-               siguiente el día después de cada uno y marca cuando queda el último -->
-          <div id="vacation-countdown-state">
-            <div style="text-align:center; margin-bottom:14px;">
-              <span id="vac-cd-emoji" style="font-size:26px;">🍷</span>
-              <h3 id="vac-cd-title" style="font-family:'Playfair Display',serif; font-size:19px; font-weight:900; color:var(--wine); margin:4px 0 2px;">Próximo Furancho</h3>
-              <p id="vac-cd-sub" style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0;">La próxima sesión antes de las vacaciones. 🍷</p>
+      <!-- EL PULSO FURANCHEIRO (Termómetro en vivo + Cuenta Atrás integrada) -->
+      <div id="vibe-pulse-card" style="display:none; margin-bottom:20px; border-radius:20px; border:1.5px solid rgba(196,151,58,.45); background:linear-gradient(160deg, rgba(196,151,58,.12), rgba(139,25,24,.06)); transition:all 0.5s ease;">
+        <div style="padding:20px; text-align:center;">
+          
+          <!-- ESTADO A: DURMIENTE (Cuenta Atrás y Reservas) -->
+          <div id="vibe-state-sleep" style="display:none;">
+            <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(196,151,58,.15); border-radius:100px; padding:4px 12px; margin-bottom:12px;">
+              <span style="font-size:10px; font-weight:800; letter-spacing:1.5px; color:var(--gold);">⏳ PRÓXIMA APERTURA</span>
             </div>
+            <h3 id="vac-cd-title" style="font-family:'Playfair Display',serif; font-size:19px; font-weight:900; color:var(--wine); margin:0 0 2px;">Próximo Furancho</h3>
+            <p id="vac-cd-sub" style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0 0 14px;">Cargando fecha...</p>
+            
             <div id="vac-cd-list" style="display:flex; flex-direction:column; gap:10px;"></div>
             <div id="vac-cd-actions" style="margin-top:14px; display:none; flex-direction:column; gap:8px;"></div>
           </div>
-          <!-- Estado B: modo vacaciones (a partir del 31 de julio) -->
+
+          <!-- ESTADO B: EN VIVO (FOMO) -->
+          <div id="vibe-state-live" style="display:none;">
+            <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(139,25,24,.10); border-radius:100px; padding:4px 12px; margin-bottom:10px;">
+              <span class="vibe-live-dot"></span>
+              <span style="font-size:10px; font-weight:800; letter-spacing:1.5px; color:var(--wine);">EN DIRECTO NO FURANCHO</span>
+            </div>
+            <div id="vibe-emoji" style="font-size:40px; line-height:1; animation:vibeBounce 2.2s ease-in-out infinite;">🍷</div>
+            <h3 id="vibe-title" style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:var(--wine); margin:8px 0 4px;"></h3>
+            <p id="vibe-text" style="font-size:12.5px; color:var(--text-muted); line-height:1.55; margin:0 0 12px;"></p>
+          </div>
+
+          <!-- ESTADO C: MODO VACACIONES (A partir de agosto) -->
           <div id="vacation-mode-state" style="display:none; text-align:center;">
             <span style="font-size:30px;">🏖️</span>
             <h3 style="font-family:'Playfair Display',serif; font-size:19px; font-weight:900; color:var(--wine); margin:6px 0 4px;">¡Gracias por estas 9 sesiones, ho!</h3>
             <p style="font-size:12.5px; color:var(--text-muted); line-height:1.55; margin:0;">Gracias por venir y darnos la oportunidad de compartir noches de viño, tapas y boa xente. Fueron 9 sesiones que no olvidaremos. <strong>En septiembre volvemos con ideas nuevas</strong> y muchas ganas. ¡Cuidaos este verano! 🍷</p>
           </div>
 
-          <!-- Común (ambos estados): venir a la terraza da estatus -->
-          <div style="margin-top:16px; padding:12px 14px; background:rgba(255,255,255,.45); border:1px dashed rgba(196,151,58,.5); border-radius:12px;">
-            <p style="font-size:12px; color:var(--wine); font-weight:800; margin:0 0 4px;">🍹 Venir a la terraza da estatus</p>
-            <p style="font-size:11.5px; color:var(--text-muted); line-height:1.5; margin:0;">Cada visita de este verano <strong>suma puntos</strong>. A la vuelta en septiembre habrá <strong>sorpresas para los que más vengáis</strong> — así que ya sabes, ho. 😎</p>
+          <!-- EL TERMÓMETRO (Común para todos) -->
+          <div id="vibe-meter" style="display:flex; gap:5px; justify-content:center; margin-top:16px;">
+            <div style="width:34px; height:7px; border-radius:100px; background:rgba(42,21,9,.05);"></div>
+            <div style="width:34px; height:7px; border-radius:100px; background:rgba(42,21,9,.05);"></div>
+            <div style="width:34px; height:7px; border-radius:100px; background:rgba(42,21,9,.05);"></div>
+            <div style="width:34px; height:7px; border-radius:100px; background:rgba(42,21,9,.05);"></div>
+            <div style="width:34px; height:7px; border-radius:100px; background:rgba(42,21,9,.05);"></div>
           </div>
+
         </div>
       </div>
+
+      <!-- Cuentas regresivas dinámicas (admin las crea/edita/borra) -->
+      <div id="dynamic-countdowns"></div>
 
       <!-- Horario semanal de la terraza (lo editan admin/staff; solo sale si hay días configurados) -->
       <div id="terraza-card" style="display:none; margin-bottom:20px; border-radius:20px; border:1.5px solid rgba(196,151,58,.45); background:linear-gradient(160deg, rgba(196,151,58,.10), rgba(255,255,255,.35));">
@@ -7395,26 +7399,26 @@
     const backAt = new Date(VACATION.backInSeptember).getTime();
     const ecl = new Date(VACATION.eclipse).getTime();
 
-    // Tarjeta vacaciones: cuenta atrás al PRÓXIMO Furancho → rueda al siguiente el
-    // día después de cada uno → al quedar el último lo marca → modo vacaciones → oculta.
-    const vc = document.getElementById('vacation-card');
+    // El Pulso Furancheiro: si no hay Vibe activo, mostramos la cuenta atrás.
+    const vc = document.getElementById('vibe-pulse-card');
     if (vc) {
       if (now > backAt) {
         vc.style.display = 'none';
       } else {
-        // Eventos que aún cuentan: el que está en marcha hoy sigue siendo "el actual"
-        // hasta su madrugada (rollMs); pasado eso, releva al siguiente. Si la agenda YA
-        // cargó (aunque sea vacía) mandan sus datos; solo si aún no cargó (null) se usa
-        // el fallback fijo del 30 jul, para no mostrar cuenta atrás cuando ya no quedan.
         const upcoming = (_furanchoList !== null)
           ? _furanchoList.filter(f => f.rollMs > now)
           : (now < (last + 11 * 3600 * 1000) ? [{ ms: last, rollMs: last + 11 * 3600 * 1000, dateLabel: 'jueves, 30 de julio' }] : []);
-        const cdState = document.getElementById('vacation-countdown-state');
+        const cdState = document.getElementById('vibe-state-sleep');
         const modeState = document.getElementById('vacation-mode-state');
         vc.style.display = 'block';
         if (upcoming.length) {
-          if (cdState) cdState.style.display = 'block';
-          if (modeState) modeState.style.display = 'none';
+          if (!window._isVibeActive) {
+            if (cdState) cdState.style.display = 'block';
+            if (modeState) modeState.style.display = 'none';
+            // Aplicar estilo durmiente al contenedor padre
+            vc.style.background = 'linear-gradient(160deg, rgba(196,151,58,.12), rgba(139,25,24,.06))';
+            vc.style.borderColor = 'rgba(196,151,58,.45)';
+          }
           const next = upcoming[0];
           const rest = upcoming.length - 1;          // sesiones que quedan DESPUÉS de esta
           const isLast = (upcoming.length === 1);    // ya no hay más → es el último
@@ -7509,8 +7513,12 @@
           }
         } else {
           // No quedan Furanchos en la agenda → gracias + volvemos en septiembre
-          if (cdState) cdState.style.display = 'none';
-          if (modeState) modeState.style.display = 'block';
+          if (!window._isVibeActive) {
+            if (cdState) cdState.style.display = 'none';
+            if (modeState) modeState.style.display = 'block';
+            vc.style.background = 'linear-gradient(160deg, rgba(196,151,58,.12), rgba(139,25,24,.06))';
+            vc.style.borderColor = 'rgba(196,151,58,.45)';
+          }
         }
       }
     }
@@ -7643,14 +7651,39 @@
       const r = await resilientFetch('/api/events/vibe');
       if (!r.ok) return;
       const v = await r.json();
-      const card = document.getElementById('vibe-card');
-      if (!card) return;
-      if (!v.active) { card.style.display = 'none'; return; }
+      window._isVibeActive = v.active;
+
+      const card = document.getElementById('vibe-pulse-card');
+      const sleepState = document.getElementById('vibe-state-sleep');
+      const liveState = document.getElementById('vibe-state-live');
+      const modeState = document.getElementById('vacation-mode-state');
+      const meter = document.getElementById('vibe-meter');
+      if (!card || !liveState || !sleepState) return;
+
+      if (!v.active) {
+        liveState.style.display = 'none';
+        // Reiniciamos el termómetro a estado vacío
+        if (meter) {
+          let segs = '';
+          for (let i = 1; i <= 5; i++) {
+            segs += `<div style="width:34px; height:7px; border-radius:100px; background:rgba(42,21,9,.05);"></div>`;
+          }
+          meter.innerHTML = segs;
+        }
+        return; 
+      }
+
+      // ESTADO EN VIVO
       card.style.display = 'block';
+      card.style.background = 'linear-gradient(160deg, rgba(139,25,24,.10), rgba(196,151,58,.10))';
+      card.style.borderColor = 'rgba(139,25,24,.35)';
+      liveState.style.display = 'block';
+      sleepState.style.display = 'none';
+      if (modeState) modeState.style.display = 'none';
+
       document.getElementById('vibe-emoji').textContent = v.emoji || '🍷';
       document.getElementById('vibe-title').textContent = v.title || '';
       document.getElementById('vibe-text').textContent = v.text || '';
-      const meter = document.getElementById('vibe-meter');
       if (meter && v.levels) {
         let segs = '';
         for (let i = 1; i <= v.levels; i++) {
