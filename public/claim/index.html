@@ -7402,9 +7402,10 @@
     // El Pulso Furancheiro: si no hay Vibe activo, mostramos la cuenta atrás.
     const vc = document.getElementById('vibe-pulse-card');
     if (vc) {
-      if (now > backAt) {
+      if (now > backAt && !window._isVibeActive) {
         vc.style.display = 'none';
       } else {
+        vc.style.display = 'block';
         const upcoming = (_furanchoList !== null)
           ? _furanchoList.filter(f => f.rollMs > now)
           : (now < (last + 11 * 3600 * 1000) ? [{ ms: last, rollMs: last + 11 * 3600 * 1000, dateLabel: 'jueves, 30 de julio' }] : []);
