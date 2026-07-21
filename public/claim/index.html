@@ -3622,6 +3622,13 @@
       const levelName = LEVEL_NAMES[lvl] || 'CAUTIVO';
       const nextMilestone = getNextMilestone(visitCount);
 
+      // *** FIX: actualizar los spans ocultos que lee openVirtualCard() ***
+      // Sin esto, el Carné VIP siempre mostraba NIVEL 1 / CAUTIVO
+      const profileLevelTag = document.getElementById('profile-card-level-tag');
+      const profileCardName = document.getElementById('profile-card-name');
+      if (profileLevelTag) profileLevelTag.textContent = 'NIVEL ' + lvl;
+      if (profileCardName) profileCardName.textContent = levelName;
+
       // (Imágenes y textos del nivel movidos al Museo, aquí solo mantenemos lógica base)
 
       // Contador de visitas
