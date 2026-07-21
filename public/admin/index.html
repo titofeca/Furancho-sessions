@@ -1730,12 +1730,12 @@
             <input type="text" id="perk-label" placeholder="Camiseta do Furancho" style="flex:3; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); font-size:12px; box-sizing:border-box;" />
             <input type="number" id="perk-qty" value="1" min="1" style="width:60px; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); text-align:center; box-sizing:border-box;" />
           </div>
-          <div style="display:flex; gap:6px; margin-bottom:16px;">
-            <select id="perk-kind" style="flex:1; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); font-size:12px; box-sizing:border-box;">
+          <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px;">
+            <select id="perk-kind" style="flex:1 1 180px; min-width:0; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); font-size:12px; box-sizing:border-box;">
               <option value="consumible">Se consume en el local (tapas, viño…)</option>
               <option value="entrega">Artículo físico (camiseta…) — puede quedar pendiente</option>
             </select>
-            <button onclick="addMemePerk()" style="padding:10px 16px; background:var(--wine); color:#fff; border:none; border-radius:10px; font-weight:700; cursor:pointer;">+ Añadir</button>
+            <button onclick="addMemePerk()" style="flex:0 0 auto; padding:10px 16px; background:var(--wine); color:#fff; border:none; border-radius:10px; font-weight:700; cursor:pointer; white-space:nowrap;">+ Añadir</button>
           </div>
 
           <!-- Solicitudes del cliente -->
