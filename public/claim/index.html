@@ -2155,29 +2155,50 @@
       </div>
 
       <!-- ①bis EL RETO DE LOS 5 (campaña de verano) -->
-      <div class="profile-progress-card" id="campaign-card" style="display:none; padding:22px; margin-bottom:20px; background:linear-gradient(135deg, rgba(255, 255, 255, 0.75) 0%, rgba(245, 236, 216, 0.55) 100%); border:1.5px solid rgba(196, 151, 58, 0.35); box-shadow: 0 10px 30px -10px rgba(42, 21, 9, 0.08);">
+      <div class="profile-progress-card" id="campaign-card" style="display:none; padding:22px; margin-bottom:20px; background:linear-gradient(135deg,rgba(255,255,255,.75) 0%,rgba(245,236,216,.55) 100%); border:1.5px solid rgba(196,151,58,.35); box-shadow:0 10px 30px -10px rgba(42,21,9,.08);">
+
         <div style="text-align:center; margin-bottom:6px;">
           <span style="font-size:30px;">👑</span>
           <h3 style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:var(--wine); margin:4px 0 2px;">El Reto de los 5</h3>
-          <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0;">Conviértete en <strong>Leyenda del Furancho</strong>. 5 visitas este verano y te llevas el NFT exclusivo <em>Furancho Legend 2026</em>. Solo cuenta 1 visita al día, ¡ho!</p>
-          <div style="display:inline-flex; align-items:center; gap:6px; margin-top:10px; padding:6px 12px; background:rgba(139,25,24,0.08); border:1px solid rgba(139,25,24,0.2); border-radius:20px; font-size:11px; font-weight:700; color:var(--wine);">
-            📍 Las 5 visitas son <span style="text-decoration:underline; text-underline-offset:2px;">na terraza do Finisterre</span>
+          <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0 0 8px;">Ven a la terraza este verano y construye tu rango. <strong>5 visitas = NFT Furancho Legend 2026.</strong> Cuantas más vengas, más privilegios a la vuelta en septiembre.</p>
+
+          <!-- Aviso: día de Furancho no cuenta -->
+          <div id="campaign-furancho-day-warn" style="display:none; margin:0 0 8px; padding:6px 12px; background:rgba(139,25,24,.08); border:1px solid rgba(139,25,24,.2); border-radius:12px; font-size:11.5px; color:var(--wine); font-weight:600;">
+            🍷 <strong>Hoy es Furancho</strong> — el día de sesión no suma al Reto de Verano. ¡Disfruta la noche y vuelve mañana!
+          </div>
+
+          <div style="display:inline-flex; align-items:center; gap:6px; padding:5px 12px; background:rgba(139,25,24,.08); border:1px solid rgba(139,25,24,.2); border-radius:20px; font-size:11px; font-weight:700; color:var(--wine);">
+            📍 Terraza do Finisterre · <span style="text-decoration:underline; text-underline-offset:2px;">días sin Furancho</span>
           </div>
         </div>
 
-        <!-- Sellos -->
-        <div class="camp-dots" id="campaign-dots" style="display:flex; gap:9px; justify-content:center; margin:16px 0 10px;"></div>
+        <!-- Sellos / total -->
+        <div class="camp-dots" id="campaign-dots" style="display:flex; gap:9px; justify-content:center; margin:16px 0 6px;"></div>
         <p id="campaign-count" style="text-align:center; font-size:14px; font-weight:800; color:var(--wine); margin:0 0 4px;">0/5 visitas</p>
 
-        <!-- Estado del NFT / mensaje -->
-        <p id="campaign-state-msg" style="text-align:center; font-size:12.5px; color:var(--text-muted); line-height:1.5; margin:8px 0 0;"></p>
+        <!-- Badge de rango actual -->
+        <div id="campaign-privilege-badge" style="display:none; text-align:center; margin:8px 0 0;">
+          <span id="campaign-privilege-text" style="display:inline-flex; align-items:center; gap:5px; padding:4px 12px; border-radius:100px; background:linear-gradient(135deg,rgba(196,151,58,.18),rgba(139,25,24,.08)); border:1px solid rgba(196,151,58,.35); font-size:11.5px; font-weight:800; color:var(--wine);"></span>
+        </div>
+
+        <!-- Estado NFT -->
+        <p id="campaign-state-msg" style="text-align:center; font-size:12.5px; color:var(--text-muted); line-height:1.5; margin:10px 0 0;"></p>
 
         <!-- CTA: enseñar QR en vivo -->
-        <button id="campaign-show-qr" onclick="openIdModal()" style="width:100%; margin-top:16px; padding:14px; background:linear-gradient(135deg,var(--gold),#a97b1f); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 4px 14px rgba(196,151,58,0.35);">
+        <button id="campaign-show-qr" onclick="openIdModal()" style="width:100%; margin-top:14px; padding:14px; background:linear-gradient(135deg,var(--gold),#a97b1f); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 4px 14px rgba(196,151,58,.35);">
           🪪 Enseñar mi QR al camarero
         </button>
-        <p style="text-align:center; font-size:11px; color:var(--text-muted); margin:10px 0 0; line-height:1.45;">Enséñalo <strong>en vivo</strong> desde la app cuando el personal pase por tu mesa. Las capturas no valen (caducan solas).</p>
+        <p style="text-align:center; font-size:11px; color:var(--text-muted); margin:8px 0 0; line-height:1.45;">Enséñalo <strong>en vivo</strong> desde la app. Las capturas caducan solas.</p>
+
+        <!-- Tabla de privilegios desplegable -->
+        <details style="margin-top:16px;">
+          <summary style="font-size:12px; font-weight:700; color:var(--gold); cursor:pointer; list-style:none; display:flex; align-items:center; gap:5px; justify-content:center;">
+            🏆 Ver rangos y privilegios de septiembre ▾
+          </summary>
+          <div id="campaign-tiers-list" style="margin-top:10px; display:flex; flex-direction:column; gap:6px;"></div>
+        </details>
       </div>
+
 
 
 
@@ -7886,33 +7907,74 @@
       if (!card) return;
       if (!p.active && (!p.visits || p.visits === 0)) { card.style.display = 'none'; return; }
       card.style.display = 'block';
-      // Sellos
+
+      // ── Aviso día de Furancho ─────────────────────────────────────────────
+      const warnEl = document.getElementById('campaign-furancho-day-warn');
+      if (warnEl) warnEl.style.display = p.isFuranchoDay ? 'block' : 'none';
+
+      // ── Sellos ────────────────────────────────────────────────────────────
       const dots = document.getElementById('campaign-dots');
       if (dots) {
-        dots.innerHTML = '';
-        for (let i = 1; i <= p.required; i++) {
-          const d = document.createElement('div');
-          const on = i <= p.visits;
-          d.style.cssText = `width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;border:2px solid ${on?'var(--gold)':'rgba(42,21,9,0.15)'};background:${on?'linear-gradient(135deg,var(--gold),#a97b1f)':'#fff'};color:${on?'#fff':'var(--text-muted)'};`;
-          d.textContent = on ? '★' : i;
-          dots.appendChild(d);
+        if (p.visits > p.required) {
+          // Modo "sigue sumando": mostrar estrellas hasta 10 (sin límite visible)
+          dots.innerHTML = '';
+          const showCount = Math.min(p.visits, 10);
+          for (let i = 1; i <= showCount; i++) {
+            const d = document.createElement('div');
+            d.style.cssText = `width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;border:2px solid var(--gold);background:linear-gradient(135deg,var(--gold),#a97b1f);color:#fff;`;
+            d.textContent = '★';
+            dots.appendChild(d);
+          }
+        } else {
+          dots.innerHTML = '';
+          for (let i = 1; i <= p.required; i++) {
+            const d = document.createElement('div');
+            const on = i <= p.visits;
+            d.style.cssText = `width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;border:2px solid ${on?'var(--gold)':'rgba(42,21,9,0.15)'};background:${on?'linear-gradient(135deg,var(--gold),#a97b1f)':'#fff'};color:${on?'#fff':'var(--text-muted)'};`;
+            d.textContent = on ? '★' : i;
+            dots.appendChild(d);
+          }
         }
       }
+
+      // ── Contador ──────────────────────────────────────────────────────────
       const cnt = document.getElementById('campaign-count');
-      // Una vez pasado el reto (>5), el contador SIGUE sumando: es lo que decide
-      // "los que más vengan". Se muestra el total de verano en vez de "7/5".
       if (cnt) {
         if (p.visits > p.required) cnt.innerHTML = `<strong>${p.visits}</strong> visitas de verano 🌟`;
         else cnt.textContent = `${p.visits}/${p.required} visitas`;
       }
+
+      // ── Badge de rango actual ─────────────────────────────────────────────
+      const badge = document.getElementById('campaign-privilege-badge');
+      const badgeTxt = document.getElementById('campaign-privilege-text');
+      if (badge && badgeTxt && p.privilege) {
+        badgeTxt.textContent = `${p.privilege.emoji} ${p.privilege.label}`;
+        badge.style.display = 'block';
+      } else if (badge) badge.style.display = 'none';
+
+      // ── Tabla de rangos (desplegable) ─────────────────────────────────────
+      const tiersList = document.getElementById('campaign-tiers-list');
+      if (tiersList && p.privilegeTiers) {
+        tiersList.innerHTML = '';
+        for (const tier of p.privilegeTiers) {
+          const isActive = p.visits >= tier.minVisits;
+          const isCurrent = p.privilege && p.privilege.label === tier.label;
+          const row = document.createElement('div');
+          row.style.cssText = `padding:10px 12px;border-radius:12px;border:1.5px solid ${isCurrent?'rgba(196,151,58,.5)':'rgba(42,21,9,.1)'};background:${isCurrent?'rgba(196,151,58,.1)':isActive?'rgba(42,21,9,.03)':'#fff'};opacity:${isActive?1:.55};`;
+          row.innerHTML = `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="font-size:18px;">${tier.emoji}</span><strong style="font-size:12px;color:var(--wine);">${tier.label}</strong><span style="margin-left:auto;font-size:10px;font-weight:700;color:var(--text-muted);">${tier.minVisits}+ visitas</span></div><ul style="margin:0;padding-left:16px;font-size:11px;color:var(--text-muted);line-height:1.6;">${tier.perks.map(p=>`<li>${p}</li>`).join('')}</ul>`;
+          tiersList.appendChild(row);
+        }
+      }
+
+      // ── Mensaje de estado NFT ─────────────────────────────────────────────
       const msg = document.getElementById('campaign-state-msg');
       const btn = document.getElementById('campaign-show-qr');
       if (msg) {
         if (p.claimStatus === 'success') {
-          msg.innerHTML = '✅ <strong>¡Ya eres Leyenda!</strong> Tu NFT Furancho Legend 2026 está en tu wallet. Míralo en el museo.';
+          msg.innerHTML = '✅ <strong>¡Ya eres Leyenda!</strong> Tu NFT Furancho Legend 2026 está en tu wallet.';
           if (btn) btn.style.display = 'none';
         } else if (p.claimStatus === 'pending' || p.claimStatus === 'pending_approval') {
-          msg.innerHTML = '🏅 <strong>¡Reto completado!</strong> Tu NFT está pendiente de confirmación. En breve lo tendrás en la wallet.';
+          msg.innerHTML = '🏅 <strong>¡Reto completado!</strong> Tu NFT está en preparación. En breve en tu wallet.';
           if (btn) btn.style.display = 'none';
         } else if (p.completed) {
           msg.innerHTML = '🏅 <strong>¡Reto completado!</strong> Reclama tu NFT en el museo.';
@@ -7920,18 +7982,23 @@
         } else if (p.active) {
           const falta = p.required - p.visits;
           msg.textContent = `Te falta${falta !== 1 ? 'n' : ''} ${falta} visita${falta !== 1 ? 's' : ''} para ser Leyenda.`;
-          if (btn) btn.style.display = 'block';
+          if (btn) btn.style.display = p.isFuranchoDay ? 'none' : 'block';
         } else {
           msg.textContent = 'La campaña de verano ya terminó. ¡Gracias por tu constancia, ho!';
           if (btn) btn.style.display = 'none';
         }
-        // Recordatorio persistente: cuantas más visitas, más sorpresas a la vuelta.
+        // Motivación extra si ya superó el reto
         if (p.active && p.visits >= p.required) {
-          msg.innerHTML += '<br><span style="font-size:11px; color:var(--gold); font-weight:700;">🍹 Sigue viniendo: los que más vengáis tendréis sorpresas a la vuelta.</span>';
+          const nextTier = p.privilegeTiers ? p.privilegeTiers.find(t => t.minVisits > p.visits) : null;
+          const extra = nextTier
+            ? `<br><span style="font-size:11px;color:var(--gold);font-weight:700;">🍹 ¡${nextTier.minVisits - p.visits} visita${nextTier.minVisits - p.visits !== 1?'s':''} más y subes a ${nextTier.emoji} ${nextTier.label}!</span>`
+            : `<br><span style="font-size:11px;color:var(--gold);font-weight:700;">👑 Eres el máximo rango. ¡Hasta septiembre!</span>`;
+          msg.innerHTML += extra;
         }
       }
     } catch (e) { /* silencioso: la campaña es opcional */ }
   }
+
 
   // ── VACACIONES DE VERANO + ECLIPSE ─────────────────────────────────────────
   // Tarjetas visuales que cambian de modo SOLAS por fecha (nada de servidor, no

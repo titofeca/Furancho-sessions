@@ -1183,12 +1183,33 @@
           <div id="campaign-pending-list"><p style="font-size:12px; color:var(--text-muted);">—</p></div>
         </div>
 
+        <!-- Editar Privilegios de Septiembre (+5 y +10 visitas) -->
+        <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
+          <div class="card-title" style="font-size:14px; margin-bottom:6px;">🎁 Privilegios al regresar en Septiembre (+5 y +10 visitas)</div>
+          <p style="font-size:11px; color:var(--text-muted); margin-bottom:12px; line-height:1.4;">Edita los beneficios que recibirán los clientes en septiembre (escribe 1 beneficio por línea):</p>
+          
+          <!-- +5 visitas -->
+          <div style="margin-bottom:10px;">
+            <label style="display:block; font-size:12px; font-weight:700; color:var(--wine); margin-bottom:4px;">🏅 Rango 5+ visitas (Veterano da Terraza):</label>
+            <textarea id="camp-perks-5" rows="3" class="input-field" style="width:100%; font-size:12px; resize:vertical; font-family:'Outfit',sans-serif; padding:8px 10px;" placeholder="Ej: NFT Furancho Legend 2026&#10;Descuento en la primera consumición"></textarea>
+          </div>
+
+          <!-- +10 visitas -->
+          <div style="margin-bottom:12px;">
+            <label style="display:block; font-size:12px; font-weight:700; color:var(--gold); margin-bottom:4px;">👑 Rango 10+ visitas (Presidente da Terraza):</label>
+            <textarea id="camp-perks-10" rows="3" class="input-field" style="width:100%; font-size:12px; resize:vertical; font-family:'Outfit',sans-serif; padding:8px 10px;" placeholder="Ej: Mesa VIP garantizada en el 1er Furancho&#10;Botella de albariño de bienvenida&#10;Mención especial en el tablón"></textarea>
+          </div>
+
+          <button onclick="saveCampaignPrivileges()" style="background:var(--wine); color:#fff; border:none; border-radius:10px; padding:9px 18px; font-size:12px; font-weight:700; cursor:pointer;">💾 Guardar Privilegios de Septiembre</button>
+        </div>
+
         <!-- Ranking -->
         <div>
           <div class="card-title" style="font-size:14px; margin-bottom:8px;">📊 Ranking de visitas</div>
           <div id="campaign-rank-list"><p style="font-size:12px; color:var(--text-muted);">—</p></div>
         </div>
       </div>
+
 
       <!-- Crear logro NFT desde la app -->
       <!-- Crear logro NFT desde la app (Plegable) -->
@@ -4304,6 +4325,15 @@
         }
       }
 
+      // Cargar privilegios +5 y +10 en los textareas
+      try {
+        const privs = await fetch('/api/admin/campaign/privileges', { headers: authHeaders() }).then(r => r.json());
+        const t5 = document.getElementById('camp-perks-5');
+        const t10 = document.getElementById('camp-perks-10');
+        if (t5 && privs.perks5) t5.value = privs.perks5.join('\n');
+        if (t10 && privs.perks10) t10.value = privs.perks10.join('\n');
+      } catch (_) {}
+
       // Ranking
       const rank = document.getElementById('campaign-rank-list');
       if (rank) {
@@ -4322,6 +4352,29 @@
       }
     } catch (e) { /* silencioso */ }
   }
+
+  async function saveCampaignPrivileges() {
+    const t5 = document.getElementById('camp-perks-5');
+    const t10 = document.getElementById('camp-perks-10');
+    const perks5 = t5 ? t5.value.split('\n').map(s => s.trim()).filter(Boolean) : [];
+    const perks10 = t10 ? t10.value.split('\n').map(s => s.trim()).filter(Boolean) : [];
+    try {
+      const res = await fetch('/api/admin/campaign/privileges', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ perks5, perks10 })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('✅ Privilegios de septiembre guardados');
+      } else {
+        showToast(data.error || 'Error guardando privilegios', true);
+      }
+    } catch (e) {
+      showToast('Error de red al guardar privilegios', true);
+    }
+  }
+
 
   async function approveCampaign(id) {
     if (!confirm('¿Aprobar el NFT Furancho Legend de este cliente? Se minteará en Polygon.')) return;

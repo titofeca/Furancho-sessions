@@ -163,6 +163,41 @@ router.post('/checkin', staffLimiter, requireStaff, (req, res) => {
   }
 });
 
+// POST /api/staff/campaign-checkin — el camarero registra UNA VISITA DE CAMPAÑA manualmente,
+// sin necesitar que el cliente enseñe el QR en vivo. Autenticado con código de staff.
+// Respeta: 1 visita/día, no cuenta días de Furancho, no interfiere con niveles.
+router.post('/campaign-checkin', staffLimiter, requireStaff, (req, res) => {
+  const { walletAddress } = req.body || {};
+  if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
+    return res.status(400).json({ error: 'Dirección de wallet no válida' });
+  }
+  try {
+    const campaign = require('../services/campaign');
+    if (!campaign.isCampaignActive()) {
+      return res.json({ active: false, counted: false, message: 'La campaña no está activa.' });
+    }
+    const result = campaign.recordVisitByStaff(walletAddress);
+
+    if (result.error === 'furancho_day') {
+      return res.json({
+        ...result,
+        message: '⚠️ Hoy hay Furancho. Los días de sesión no suman visita al Reto de Verano. Correcto.'
+      });
+    }
+
+    return res.json({
+      ...result,
+      message: result.counted
+        ? `✅ Visita de campaña anotada. Total: ${result.totalVisits}/${result.required}.`
+        : `ℹ️ Este cliente ya tenía visita de campaña hoy. Total: ${result.totalVisits}/${result.required}.`
+    });
+  } catch (e) {
+    console.error('Error en /staff/campaign-checkin:', e.message);
+    res.status(500).json({ error: 'Error registrando visita de campaña' });
+  }
+});
+
+
 // ── RESERVAS VIP DE LA NOCHE ────────────────────────────────────────────────
 // Los camareros ven las mesas reservadas del evento de HOY (nombre de mesa, pax,
 // hora y estado) para recibir a los grupos y acompañarlos a su sitio. Sin teléfono:

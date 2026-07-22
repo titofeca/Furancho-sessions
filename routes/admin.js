@@ -1450,6 +1450,39 @@ router.post('/campaign/image', requireAuth, (req, res) => {
   }
 });
 
+// GET /api/admin/campaign/privileges — lee los privilegios de vuelta de septiembre para +5 y +10.
+router.get('/campaign/privileges', requireAuth, (req, res) => {
+  try {
+    const campaign = require('../services/campaign');
+    const tiers = campaign.getPrivilegeTiers();
+    const tier5 = tiers.find(t => t.minVisits === 5);
+    const tier10 = tiers.find(t => t.minVisits === 10);
+    res.json({
+      perks5: tier5 ? tier5.perks : [],
+      perks10: tier10 ? tier10.perks : []
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/campaign/privileges — guarda los privilegios editados desde el panel admin (+5 y +10).
+router.post('/campaign/privileges', requireAuth, (req, res) => {
+  const { perks5, perks10 } = req.body || {};
+  try {
+    const campaign = require('../services/campaign');
+    const updatedTiers = campaign.savePrivileges(perks5, perks10);
+    res.json({
+      success: true,
+      message: 'Privilegios de septiembre actualizados.',
+      privilegeTiers: updatedTiers
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+
 // POST /api/admin/mints/delete — borra un pase concreto (wallet + nivel), sea cual sea
 // su estado. Para corregir niveles asignados por error o limpiar wallets de prueba
 // (reject/clearStaleMint solo tocan pendientes, no un mint ya en 'success'). Solo admin.
