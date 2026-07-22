@@ -2759,10 +2759,18 @@
             </div>
           </div>
 
-          <p class="ecl-section-title">🌤 Clima esperado · 12 agosto en Galicia</p>
-          <div class="ecl-info-box">
-            Agosto es el mes más seco y soleado en Galicia, pero la costa atlántica puede tener niebla matinal que se disipa hacia el mediodía. A las 20:00 h (hora del eclipse) las probabilidades de cielo despejado en A Coruña rondan el <strong>65-70%</strong> históricamente. En el interior (Ourense, Lugo) sube al <strong>80%</strong>. <strong>Consejo:</strong> consulta la predicción de AEMET 48h antes y ten un "plan B" de localización preparado.
+          <p class="ecl-section-title">🌤 Previsión del tiempo · 12 agosto · Por localización</p>
+          <div id="ecl-weather-wrap">
+            <!-- Cargando... -->
+            <div id="ecl-weather-loading" class="ecl-info-box" style="text-align:center;color:rgba(245,230,200,.5);">
+              <span style="font-size:18px;">🌡️</span><br>
+              <span style="font-size:12px;">Cargando previsión meteorológica…</span>
+            </div>
+            <!-- Resultado dinámico -->
+            <div id="ecl-weather-content" style="display:none;"></div>
           </div>
+
+
 
           <p class="ecl-section-title">🌠 La misma noche: lluvia de Perseidas</p>
           <div class="ecl-perseid-bar">
@@ -2786,17 +2794,90 @@
       </div>
 
       <script>
+        let _eclWeatherLoaded = false;
+
         function openEclipseModal() {
           const m = document.getElementById('eclipse-modal');
-          if (m) { m.style.display='flex'; requestAnimationFrame(()=>m.classList.add('open')); }
+          if (!m) return;
+          m.style.display = 'flex';
+          requestAnimationFrame(() => m.classList.add('open'));
+          if (!_eclWeatherLoaded) loadEclipseWeather();
         }
+
         function closeEclipseModal() {
           const m = document.getElementById('eclipse-modal');
-          if (m) { m.classList.remove('open'); setTimeout(()=>{ m.style.display='none'; }, 400); }
+          if (m) { m.classList.remove('open'); setTimeout(() => { m.style.display = 'none'; }, 400); }
         }
-        // Cerrar con tecla ESC
-        document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeEclipseModal(); });
+
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEclipseModal(); });
+
+        async function loadEclipseWeather() {
+          const loading = document.getElementById('ecl-weather-loading');
+          const content = document.getElementById('ecl-weather-content');
+          if (!loading || !content) return;
+
+          try {
+            const res  = await fetch('/api/eclipse/weather');
+            const data = await res.json();
+
+            loading.style.display = 'none';
+            content.style.display = 'block';
+
+            if (!data.available) {
+              // Sin previsión todavía — mostrar datos históricos
+              content.innerHTML = `
+                <div class="ecl-info-box" style="border-color:rgba(148,163,184,.25);background:rgba(148,163,184,.06);">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                    <span style="font-size:16px;">📅</span>
+                    <strong style="color:#94a3b8;font-size:11px;">PREVISIÓN EN ${data.daysUntil - 16} DÍAS</strong>
+                  </div>
+                  <span style="font-size:12px;color:rgba(245,230,200,.7);">
+                    ${data.message}<br><br>
+                    <strong>Datos históricos de agosto en Galicia:</strong> La probabilidad de cielo despejado a las 20:00 h ronda el
+                    <strong style="color:#f5e6c8;">65-70%</strong> en A Coruña y <strong style="color:#f5e6c8;">80%</strong> en el interior.
+                    Actualiza esta guía cada día para ver la previsión real cuando se aproxime la fecha.
+                  </span>
+                </div>`;
+            } else {
+              // Tenemos previsión real
+              const relColor = data.reliabilityColor || '#94a3b8';
+              let html = `
+                <div style="display:flex;align-items:center;gap:6px;margin:0 20px 10px;padding:6px 12px;border-radius:100px;background:rgba(0,0,0,.2);border:1px solid ${relColor}40;width:fit-content;">
+                  <span style="width:7px;height:7px;border-radius:50%;background:${relColor};display:inline-block;"></span>
+                  <span style="font-size:10px;font-weight:700;color:${relColor};">${data.reliabilityLabel}</span>
+                  <span style="font-size:10px;color:rgba(245,230,200,.4);">· Actualizado ${new Date(data.fetchedAt).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</span>
+                </div>`;
+
+              for (const loc of data.locations) {
+                const cInfo = loc.clarityInfo || { text: 'Sin datos', color: '#94a3b8' };
+                const cloudBar = loc.cloudPct !== null
+                  ? `<div style="margin-top:5px;height:3px;border-radius:100px;background:rgba(255,255,255,.1);overflow:hidden;">
+                       <div style="height:100%;width:${loc.cloudPct}%;background:${loc.cloudPct < 40 ? '#4ade80' : loc.cloudPct < 65 ? '#fb923c' : '#f87171'};transition:width .6s ease;"></div>
+                     </div>
+                     <span style="font-size:10px;color:rgba(245,230,200,.5);">Nubosidad ${loc.cloudPct}%${loc.precPct !== null ? ' · Lluvia ' + loc.precPct + '%' : ''}</span>`
+                  : '';
+                html += `
+                  <div style="display:flex;align-items:flex-start;gap:10px;margin:0 20px 8px;padding:10px 14px;border-radius:12px;background:rgba(245,230,200,.03);border:1px solid rgba(245,230,200,.08);">
+                    <span style="font-size:24px;flex-shrink:0;">${loc.emoji}</span>
+                    <div style="flex:1;min-width:0;">
+                      <div style="font-size:12px;font-weight:700;color:#f5e6c8;">${loc.name}</div>
+                      <div style="font-size:12px;color:rgba(245,230,200,.7);">${loc.label}${loc.tMax !== null ? ' · ' + Math.round(loc.tMin) + '–' + Math.round(loc.tMax) + '°C' : ''}</div>
+                      ${cloudBar}
+                      <div style="margin-top:5px;display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:100px;background:${cInfo.color}18;color:${cInfo.color};border:1px solid ${cInfo.color}40;">
+                        ${cInfo.text}
+                      </div>
+                    </div>
+                  </div>`;
+              }
+              content.innerHTML = html;
+            }
+            _eclWeatherLoaded = true;
+          } catch (e) {
+            loading.innerHTML = `<span style="font-size:12px;color:rgba(245,230,200,.5);">⚠️ No se pudo cargar la previsión. Comprueba tu conexión.</span>`;
+          }
+        }
       </script>
+
 
       <!-- Tarjeta Plan Amigo (Movido a la base de recompensas) -->
       <div id="profile-referral-card" style="display:none; margin-bottom: 18px;"></div>

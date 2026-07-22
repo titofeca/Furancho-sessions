@@ -34,6 +34,8 @@ app.use('/api/staff', require('./routes/staff'));
 app.use('/api/campaign', require('./routes/campaign'));
 app.use('/api/inbox', require('./routes/inbox'));
 app.use('/api/meme', require('./routes/meme'));
+app.use('/api/eclipse', require('./routes/eclipse'));
+
 
 // Rutas HTML explícitas — sin caché para siempre recibir versión actualizada
 const NO_CACHE = { 'Cache-Control': 'no-cache, no-store, must-revalidate', Pragma: 'no-cache', Expires: '0' };
