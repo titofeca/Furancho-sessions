@@ -2159,13 +2159,14 @@
         <div style="position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--gold),var(--wine));"></div>
         
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:26px;">🍾</span>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <img src="/assets/corcho_coin_gold.png" alt="$CORCHO Coin" style="width:44px; height:44px; object-fit:contain; filter:drop-shadow(0 4px 10px rgba(196,151,58,0.5)); border-radius:50%;" />
             <div>
               <h3 style="font-family:'Playfair Display',serif; font-size:18px; font-weight:900; color:var(--wine); margin:0;">Banco do Corcho</h3>
               <span style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--gold);">Moneda Social $CORCHO</span>
             </div>
           </div>
+
           <div style="text-align:right;">
             <div style="font-family:'Playfair Display',serif; font-size:24px; font-weight:900; color:var(--wine); line-height:1;" id="corcho-user-balance">0</div>
             <div style="font-size:10px; font-weight:800; color:var(--gold); letter-spacing:1px;">$CORCHO</div>
@@ -10845,8 +10846,45 @@
     </div>
   </div>
 
+  <!-- MODAL: VALE OFICIAL DE CANJE CON SEGURIDAD EN VIVO (ANTI-CAPTURAS) -->
+  <div id="corcho-voucher-modal" style="display:none; position:fixed; inset:0; z-index:2500; background:rgba(0,0,0,0.85); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:18px;">
+    <div style="background:linear-gradient(135deg, #1C0A00 0%, #2A1509 100%); width:100%; max-width:380px; border-radius:24px; padding:24px; border:2px solid var(--gold); box-shadow:0 25px 50px rgba(0,0,0,0.5); text-align:center; position:relative; overflow:hidden;">
+      <!-- Security Pulse Bar Top -->
+      <div style="position:absolute; top:0; left:0; right:0; height:5px; background:linear-gradient(90deg, #16a34a, #eab308, #ef4444, #16a34a); background-size:300% 100%; animation: securityPulseBar 2s linear infinite;"></div>
+
+      <button onclick="closeCorchoVoucherModal()" style="position:absolute; top:16px; right:16px; background:rgba(255,255,255,0.1); border:none; width:32px; height:32px; border-radius:50%; color:#fff; font-size:16px; cursor:pointer;">✕</button>
+      
+      <img src="/assets/corcho_coin_gold.png" alt="CorchoCoin" style="width:60px; height:60px; margin:0 auto 10px; object-fit:contain; filter:drop-shadow(0 4px 14px rgba(196,151,58,0.7));" />
+      <div style="font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:2px; color:var(--gold); margin-bottom:4px;">🔒 VALE DE CONSUMICIÓN EN VIVO</div>
+      <h3 id="voucher-item-name" style="font-family:'Playfair Display',serif; font-size:22px; font-weight:900; color:#fff; margin:0 0 6px;">🍷 1 Cunca do País</h3>
+      <p style="font-size:12px; color:rgba(255,255,255,0.7); margin-bottom:14px;">Enseña esta pantalla al camarero en la barra para recibir tu consumición.</p>
+
+      <!-- Código de Verificación Único -->
+      <div style="background:rgba(255,255,255,0.06); border:1.5px dashed var(--gold); border-radius:16px; padding:14px; margin-bottom:14px;">
+        <div style="font-size:10px; color:rgba(255,255,255,0.5); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">Código de Verificación Único</div>
+        <div id="voucher-code" style="font-family:monospace; font-size:20px; font-weight:900; color:var(--gold); letter-spacing:3px;">FUR-CORCHO-9821</div>
+      </div>
+
+      <!-- Reloj en Vivo Anti-Capturas -->
+      <div style="background:rgba(22,163,74,0.15); border:1px solid rgba(22,163,74,0.4); border-radius:14px; padding:10px; display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:16px;">
+        <span style="display:inline-block; width:10px; height:10px; background:#22c55e; border-radius:50%; animation: blinkPulse 1s infinite;"></span>
+        <span style="font-size:12px; font-weight:700; color:#4ade80;" id="voucher-timer">⏱ Validez en vivo: 15:00</span>
+      </div>
+
+      <button onclick="closeCorchoVoucherModal()" style="width:100%; padding:12px; background:linear-gradient(135deg,var(--gold),#a47d2c); color:#2A1509; border:none; border-radius:14px; font-family:'Outfit',sans-serif; font-size:13px; font-weight:900; cursor:pointer;">
+        Entendido / Listo
+      </button>
+    </div>
+  </div>
+
+  <style>
+    @keyframes securityPulseBar { 0% { background-position:0% 0%; } 100% { background-position:300% 0%; } }
+    @keyframes blinkPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.3; transform: scale(0.8); } }
+  </style>
+
   <!-- MODAL: CATÁLOGO DE CANJES $CORCHO -->
   <div id="corcho-items-modal" style="display:none; position:fixed; inset:0; z-index:2450; background:rgba(0,0,0,0.65); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); align-items:center; justify-content:center; padding:18px;">
+
     <div style="background:var(--cream); width:100%; max-width:420px; max-height:85vh; overflow-y:auto; border-radius:20px; padding:22px; border:1.5px solid var(--gold); box-shadow:0 20px 40px rgba(0,0,0,0.3); position:relative;">
       <button onclick="closeCorchoItemsModal()" style="position:absolute; top:16px; right:16px; background:none; border:none; font-size:20px; color:var(--text-muted); cursor:pointer;">✕</button>
       <h3 style="font-family:'Playfair Display',serif; font-size:20px; color:var(--wine); margin:0 0 4px;">🎁 Catálogo do Furancho</h3>
@@ -10916,12 +10954,45 @@
         }
 
         closeCorchoItemsModal();
-        alert(res.message || `🎉 ¡Canje realizado con éxito! Enseña la confirmación en la barra para recibir tu ${itemName}.`);
+        openCorchoVoucherModal(itemName, res.item ? res.item.emoji : '🎁');
         loadCorchoBalance();
       } catch (e) {
         alert('Error de conexión al procesar el canje');
       }
     }
+
+    let _voucherTimerInterval = null;
+    function openCorchoVoucherModal(itemName, itemEmoji) {
+      const modal = document.getElementById('corcho-voucher-modal');
+      document.getElementById('voucher-item-name').textContent = `${itemEmoji || '🎁'} ${itemName}`;
+      
+      const randomCode = 'FUR-' + Math.random().toString(36).substring(2, 6).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+      document.getElementById('voucher-code').textContent = randomCode;
+      
+      modal.style.display = 'flex';
+
+      let secondsLeft = 15 * 60;
+      if (_voucherTimerInterval) clearInterval(_voucherTimerInterval);
+
+      const updateTimer = () => {
+        const m = Math.floor(secondsLeft / 60);
+        const s = secondsLeft % 60;
+        document.getElementById('voucher-timer').textContent = `⏱ Validez en vivo: ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        if (secondsLeft <= 0) {
+          clearInterval(_voucherTimerInterval);
+          document.getElementById('voucher-timer').textContent = `⚠️ Vale Expirado`;
+        }
+        secondsLeft--;
+      };
+      updateTimer();
+      _voucherTimerInterval = setInterval(updateTimer, 1000);
+    }
+
+    function closeCorchoVoucherModal() {
+      document.getElementById('corcho-voucher-modal').style.display = 'none';
+      if (_voucherTimerInterval) clearInterval(_voucherTimerInterval);
+    }
+
 
 
     async function loadCorchoBalance() {

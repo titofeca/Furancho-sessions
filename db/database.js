@@ -3716,29 +3716,30 @@ function spendCorchoCoins(walletAddress, amount, type, description, referenceId 
   if (!walletAddress || !amount || amount <= 0) return { ok: false, error: 'invalid_amount' };
   const w = walletAddress.toLowerCase();
 
-  const current = db.prepare(
-    `SELECT balance FROM corcho_balances WHERE LOWER(wallet_address) = ?`
-  ).get(w);
-  const bal = current ? current.balance : 0;
-  if (bal < amount) {
-    return { ok: false, error: 'insufficient_balance', currentBalance: bal, required: amount };
-  }
-
-  db.prepare(`
+  const info = db.prepare(`
     UPDATE corcho_balances
     SET balance = balance - ?,
         total_spent = total_spent + ?,
         updated_at = datetime('now')
-    WHERE LOWER(wallet_address) = ?
-  `).run(amount, amount, w);
+    WHERE LOWER(wallet_address) = ? AND balance >= ?
+  `).run(amount, amount, w, amount);
+
+  if (info.changes === 0) {
+    const current = db.prepare(`SELECT balance FROM corcho_balances WHERE LOWER(wallet_address) = ?`).get(w);
+    const bal = current ? current.balance : 0;
+    return { ok: false, error: 'insufficient_balance', currentBalance: bal, required: amount };
+  }
+
+  const updated = db.prepare(`SELECT balance FROM corcho_balances WHERE LOWER(wallet_address) = ?`).get(w);
 
   db.prepare(`
     INSERT INTO corcho_transactions (wallet_address, amount, type, description, reference_id)
     VALUES (?, ?, ?, ?, ?)
   `).run(w, -amount, type, description, referenceId ? String(referenceId) : null);
 
-  return { ok: true, newBalance: bal - amount };
+  return { ok: true, newBalance: updated ? updated.balance : 0 };
 }
+
 
 function getCorchoHistory(walletAddress, limit = 20) {
   if (!walletAddress) return [];
