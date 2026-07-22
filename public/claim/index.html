@@ -9721,13 +9721,20 @@
       cta = `<div style="margin-top:12px; text-align:center; font-size:12px; color:#F2EDE3; opacity:0.7;">A venda está pechada agora mesmo. ${esc(d.note)}</div>`;
     } else {
       const precio = mine.nextPriceCents != null ? mine.nextPriceCents : d.priceCents;
+      const priceCorcho = d.priceCorcho || 500;
       const aviso = mine.owned > 0
         ? `<p style="font-size:10.5px; color:#F2EDE3; opacity:0.65; margin:6px 0 0; line-height:1.4;">Xa tes ${mine.owned}. Podes ter os que queiras —non cho prohibe ninguén— pero cada un custa o dobre que o anterior.</p>`
         : '';
-      cta = `<button onclick="requestMemeBuy(this)" style="margin-top:12px; width:100%; background:linear-gradient(135deg, var(--gold), #a47d2c); border:none; color:#2A1509; border-radius:100px; padding:13px; font-size:14px; font-weight:900; cursor:pointer; font-family:'Outfit',sans-serif;">
-               🛒 Mercar o meme · ${eur(precio)}
-             </button>${aviso}`;
+      cta = `<div style="display:flex; flex-direction:column; gap:8px; margin-top:12px;">
+               <button onclick="buyMemeWithCorcho(this)" style="width:100%; background:linear-gradient(135deg, var(--gold), #a47d2c); border:none; color:#2A1509; border-radius:100px; padding:13px; font-size:14px; font-weight:900; cursor:pointer; font-family:'Outfit',sans-serif; box-shadow:0 4px 14px rgba(196,151,58,0.35);">
+                 🍾 Comprar con $CORCHO (${priceCorcho} $CORCHO)
+               </button>
+               <button onclick="requestMemeBuy(this)" style="width:100%; background:rgba(255,255,255,0.08); border:1px solid rgba(196,151,58,0.4); color:#F2EDE3; border-radius:100px; padding:11px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">
+                 🛒 Reservar para pagar en efectivo/barra (${eur(precio)})
+               </button>
+             </div>${aviso}`;
     }
+
 
     const incluye = (d.perks || []).length
       ? `<div style="margin-top:10px;">
@@ -9759,7 +9766,42 @@
   }
 
   // "Mercar": no cobra nada aquí. Deja el aviso para pagar en la barra.
+  async function buyMemeWithCorcho(btn) {
+    if (!userWalletAddress) { alert('Conecta tu wallet primero'); return; }
+    const cost = (_memeShop && _memeShop.priceCorcho) || 4000;
+    if (!confirm(`¿Comprar el Meme VIP / Camiseta por ${cost.toLocaleString()} $CORCHO?`)) return;
+    if (btn) { btn.disabled = true; btn.innerText = 'Procesando…'; }
+    try {
+      const res = await fetch('/api/meme/buy-with-corcho', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: userWalletAddress })
+      }).then(r => r.json());
+
+      if (!res.success) {
+        if (res.error && res.error.includes('Saldo insuficiente')) {
+          if (confirm(`⚠️ ${res.error}\n\n¿Quieres recargar CorchoCoins ahora?`)) {
+            openCorchoPacksModal();
+          }
+        } else {
+          alert('⚠️ ' + (res.error || 'Error procesando compra'));
+        }
+        return;
+      }
+      alert(res.message || '🎉 ¡Meme VIP / Camiseta comprado con éxito!');
+      renderMemeShopCard();
+      loadCorchoBalance();
+      if (typeof initWallet === 'function') initWallet();
+    } catch (e) {
+      alert('Error de conexión');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+
   async function requestMemeBuy(btn) {
+
     if (!userWalletAddress) return;
     btn.disabled = true;
     btn.innerText = 'Un momentiño…';

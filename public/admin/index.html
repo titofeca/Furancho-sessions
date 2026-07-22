@@ -1808,19 +1808,22 @@
           </div>
 
           <!-- Precio -->
-          <div style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">💶 Precio</div>
+          <div style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">💶 Precio y Pago</div>
           <div style="display:flex; gap:8px; margin-bottom:8px;">
-            <!-- type="text" + inputmode a propósito: con type="number", escribir "50,5"
-                 con coma (teclado español) devuelve cadena vacía y se guardaría 0 €. -->
             <div style="flex:1;">
-              <label style="font-size:10px; color:var(--text-muted);">Precio base (€)</label>
+              <label style="font-size:10px; color:var(--text-muted);">Precio (€)</label>
               <input type="text" inputmode="decimal" id="meme-price" placeholder="25" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); box-sizing:border-box;" />
             </div>
             <div style="flex:1;">
-              <label style="font-size:10px; color:var(--text-muted);">×  por cada meme que ya tenga</label>
+              <label style="font-size:10px; color:var(--wine); font-weight:700;">Precio ($CORCHO)</label>
+              <input type="text" inputmode="numeric" id="meme-price-corcho" placeholder="500" style="width:100%; padding:10px; border-radius:10px; border:1.5px solid var(--gold); box-sizing:border-box;" />
+            </div>
+            <div style="flex:1;">
+              <label style="font-size:10px; color:var(--text-muted);">× por meme extra</label>
               <input type="text" inputmode="decimal" id="meme-mult" placeholder="2" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); box-sizing:border-box;" />
             </div>
           </div>
+
           <div id="meme-price-preview" style="font-size:11px; color:var(--text-muted); margin-bottom:8px;"></div>
           <input type="text" id="meme-note" placeholder="Nota para el cliente (opcional): 'pregunta en la barra'…" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); margin-bottom:8px; font-size:12px; box-sizing:border-box;" />
           <label style="display:flex; align-items:center; gap:8px; font-size:12px; margin-bottom:10px; cursor:pointer;">
@@ -10475,6 +10478,7 @@
       // Precio: si has empezado a cambiarlo, NO se toca hasta que guardes.
       if (!_memeCfgTocado) {
         document.getElementById('meme-price').value = String(d.config.priceCents / 100).replace('.', ',');
+        document.getElementById('meme-price-corcho').value = String(d.config.priceCorcho || 500);
         document.getElementById('meme-mult').value = String(d.config.multiplier).replace('.', ',');
         document.getElementById('meme-note').value = d.config.note || '';
         document.getElementById('meme-open').checked = !!d.config.open;
@@ -10492,19 +10496,17 @@
   // Muestra a cuánto le sale al cliente su 1º, 2º y 3º meme con el precio actual.
   function renderMemePricePreview() {
     const baseNum = numeroEs(document.getElementById('meme-price').value);
+    const priceCorcho = parseInt(document.getElementById('meme-price-corcho').value, 10) || 500;
     const el = document.getElementById('meme-price-preview');
     if (baseNum === null) { el.innerHTML = `<span style="color:var(--wine); font-weight:700;">Escribe el precio en euros (p. ej. 25 o 25,50).</span>`; return; }
     const base = Math.round(baseNum * 100);
     const m = numeroEs(document.getElementById('meme-mult').value) || 1;
-    if (m <= 1) { el.innerHTML = `Todos los memes al mismo precio: <strong>${eur(base)}</strong>.`; return; }
-    el.innerHTML = `Su 1º: <strong>${eur(base)}</strong> · el 2º: <strong>${eur(base * m)}</strong> · el 3º: <strong>${eur(base * m * m)}</strong>. `
-      + `Nadie puede tener prohibido comprar varios, pero acaparar sale caro.`;
+    el.innerHTML = `Precio en €: <strong>${eur(base)}</strong> · O bien: <strong style="color:var(--wine);">${priceCorcho} $CORCHO</strong>${m > 1 ? ` (multiplicador ×${m} por copia extra)` : ''}.`;
   }
-  // Al tocar cualquier campo del precio se marca como "en edición" (el refresco
-  // automático deja de pisarlo) y se recalcula la previsualización.
+
   document.addEventListener('input', (e) => {
     if (!e.target || !e.target.id) return;
-    if (['meme-price', 'meme-mult', 'meme-note'].includes(e.target.id)) {
+    if (['meme-price', 'meme-price-corcho', 'meme-mult', 'meme-note'].includes(e.target.id)) {
       _memeCfgTocado = true;
       renderMemePricePreview();
     }
@@ -10515,8 +10517,8 @@
 
   async function saveMemeConfig() {
     const precio = numeroEs(document.getElementById('meme-price').value);
+    const priceCorcho = parseInt(document.getElementById('meme-price-corcho').value, 10) || 0;
     const mult = numeroEs(document.getElementById('meme-mult').value);
-    // Validar ANTES de enviar: un precio mal escrito no puede acabar en 0 € callando.
     if (precio === null || precio < 0) return alert('Pon un precio válido en euros (p. ej. 25 o 25,50).');
     if (mult === null || mult < 1 || mult > 10) return alert('El multiplicador va de 1 (precio plano) a 10. Normalmente 2.');
     try {
@@ -10524,16 +10526,18 @@
         method: 'PUT',
         body: JSON.stringify({
           priceCents: Math.round(precio * 100),
+          priceCorcho,
           multiplier: mult,
           open: document.getElementById('meme-open').checked,
           note: document.getElementById('meme-note').value.trim()
         })
       });
-      _memeCfgTocado = false;   // ya está guardado: el refresco puede volver a mandar
+      _memeCfgTocado = false;
       await loadMemeShop();
-      alert(`Guardado ✅\nEl meme cuesta ${eur(Math.round(precio * 100))}${mult > 1 ? ` y cada siguiente ×${mult}` : ''}.`);
+      alert(`Guardado ✅\nEl meme cuesta ${eur(Math.round(precio * 100))} o ${priceCorcho} $CORCHO${mult > 1 ? ` (y cada siguiente ×${mult})` : ''}.`);
     } catch (e) { alert('Error: ' + e.message); }
   }
+
 
   function renderMemePerks(perks) {
     const el = document.getElementById('meme-perks-list');

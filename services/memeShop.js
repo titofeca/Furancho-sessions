@@ -40,8 +40,8 @@ const K_NOTE  = 'meme_shop_note';
 const K_CORCHO = 'meme_shop_price_corcho';
 
 function getConfig() {
-  const priceCents = parseInt(getSetting(K_PRICE, '2500'), 10) || 0;
-  const priceCorcho = parseInt(getSetting(K_CORCHO, '500'), 10) || 500;
+  const priceCents = parseInt(getSetting(K_PRICE, '4000'), 10) || 4000;
+  const priceCorcho = parseInt(getSetting(K_CORCHO, '4000'), 10) || 4000;
   const multiplier = parseFloat(getSetting(K_MULT, '2')) || 1;
   return {
     priceCents,
@@ -51,6 +51,7 @@ function getConfig() {
     note: getSetting(K_NOTE, '') || ''
   };
 }
+
 
 // Guarda SOLO precio, multiplicador, apertura y nota.
 function setConfig({ priceCents, priceCorcho, multiplier, open, note }) {
@@ -415,10 +416,11 @@ function buyWithCorchoCoins(wallet) {
   const s = supply();
   if (s.left <= 0) throw new Error('Se han agotado las 300 unidades del Meme VIP.');
 
-  const priceCorcho = cfg.priceCorcho || 500;
+  const priceCorcho = cfg.priceCorcho || 4000;
   const { spendCorchoCoins } = require('../db/database');
 
   const spendRes = spendCorchoCoins(wallet, priceCorcho, 'nft_purchase', `Compra de Meme VIP NFT con $CORCHO`, MEME.ACHIEVEMENT_ID);
+
   if (!spendRes.ok) {
     if (spendRes.error === 'insufficient_balance') {
       throw new Error(`Saldo insuficiente. El Meme VIP cuesta ${priceCorcho} $CORCHO (tienes ${spendRes.currentBalance} $CORCHO).`);
