@@ -110,6 +110,48 @@ function rewardReferral(referrerWallet, newWallet) {
   );
 }
 
+// Sincronización retroactiva idempotente de CorchoCoins para clientes existentes
+function syncRetroactiveCorchoCoins() {
+  try {
+    const { db } = require('../db/database');
+
+    // 1. Mints de Nivel
+    const mints = db.prepare(`SELECT wallet_address, level FROM mints WHERE status = 'success'`).all();
+    for (const m of mints) {
+      if (!m.wallet_address) continue;
+      rewardLevelAward(m.wallet_address, m.level);
+    }
+
+    // 2. Sesiones de eventos pasadas
+    const sessions = db.prepare(`SELECT wallet_address, entry_time FROM sessions WHERE counted_as_visit = 1`).all();
+    for (const s of sessions) {
+      if (!s.wallet_address) continue;
+      const dateStr = s.entry_time ? s.entry_time.slice(0, 10) : 'past_session';
+      rewardCheckin(s.wallet_address, `event_${dateStr}`);
+    }
+
+    // 3. Visitas pasadas
+    const visits = db.prepare(`SELECT wallet_address, event_date, visited_at FROM visits`).all();
+    for (const v of visits) {
+      if (!v.wallet_address) continue;
+      const dateStr = v.event_date || (v.visited_at ? v.visited_at.slice(0, 10) : 'past_visit');
+      rewardCheckin(v.wallet_address, `event_${dateStr}`);
+    }
+
+    // 4. Campaña de verano pasadas
+    const campVisits = db.prepare(`SELECT wallet_address, visit_date FROM campaign_visits`).all();
+    for (const c of campVisits) {
+      if (!c.wallet_address) continue;
+      rewardCampaignVisit(c.wallet_address, `camp_${c.visit_date}`);
+    }
+  } catch (e) {
+    console.error('Error en sincronización retroactiva de CorchoCoins:', e.message);
+  }
+}
+
+// Ejecutar sincronización retroactiva al inicializar
+setTimeout(syncRetroactiveCorchoCoins, 1000);
+
 module.exports = {
   DEFAULT_RATES,
   getRate,
@@ -119,9 +161,11 @@ module.exports = {
   rewardLevelAward,
   rewardCampaignVisit,
   rewardReferral,
+  syncRetroactiveCorchoCoins,
   getCorchoBalance,
   addCorchoCoins,
   spendCorchoCoins,
   getCorchoHistory,
   transferNftWithFee
 };
+
