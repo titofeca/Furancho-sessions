@@ -2359,146 +2359,230 @@
       <!-- Eclipse total CSS animation + Modal -->
       <style>
         /* ── Eclipse base ── */
-        #eclipse-card { cursor:pointer; -webkit-tap-highlight-color:transparent; }
-        #eclipse-card:active { transform:scale(0.985); }
+        #eclipse-card { cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform .15s; }
+        #eclipse-card:active { transform:scale(0.984); }
 
+        /* ── Escena: contexto de apilado aislado ── */
         .ecl-scene {
-          position:relative; width:120px; height:120px; margin:0 auto 16px;
+          position:relative; width:128px; height:128px; margin:0 auto 16px;
+          isolation: isolate;          /* <── contexto propio, evita z-index leaks */
         }
-        /* El sol (logo) */
+
+        /* ── Corona: debe quedar FUERA e independiente del contexto del moon ── */
+        .ecl-corona-wrap {
+          position:absolute; inset:-28px; border-radius:50%; z-index:0;
+          pointer-events:none;
+          animation: eclCorona 30s linear infinite;
+        }
+
+        /* ── Sol (logo Furancho) ── */
         .ecl-sun {
           position:absolute; inset:0; border-radius:50%; overflow:hidden;
-          box-shadow: 0 0 0 0 rgba(255,200,80,0);
-          animation: eclSunGlow 24s ease-in-out infinite;
           z-index:1;
+          animation: eclSunGlow 30s linear infinite;
         }
-        .ecl-sun img { width:100%; height:100%; object-fit:cover; }
+        .ecl-sun img { width:100%; height:100%; object-fit:cover; display:block; }
+        /* Oscurecimiento de bordo (limb darkening) — capa decorativa sobre la imagen */
+        .ecl-sun::after {
+          content:''; position:absolute; inset:0; border-radius:50%;
+          background: radial-gradient(circle at 50% 50%,
+            transparent 55%,
+            rgba(0,0,0,.22) 80%,
+            rgba(0,0,0,.48) 100%);
+          pointer-events:none; z-index:1;
+        }
 
-        /* Corona solar (rayos) */
-        .ecl-corona {
-          position:absolute; inset:-22px; border-radius:50%; z-index:0;
-          background: transparent;
-          box-shadow:
-            0 0 0 0 rgba(255,200,60,0),
-            0 0 0 0 rgba(255,170,30,0),
-            0 0 0 0 rgba(200,120,0,0);
-          animation: eclCorona 24s ease-in-out infinite;
-        }
-        /* Cromosfera (anillo rojo/rosa) */
+        /* ── Cromosfera (anillo rojo, C2 y C3) ── */
         .ecl-chromosphere {
-          position:absolute; inset:-4px; border-radius:50%; z-index:2;
-          border: 3px solid transparent;
-          animation: eclChroma 24s ease-in-out infinite;
+          position:absolute; inset:-3px; border-radius:50%; z-index:2;
+          border: 0px solid transparent;
+          box-shadow: 0 0 0 0 transparent;
+          animation: eclChroma 30s linear infinite;
+          pointer-events:none;
         }
-        /* La luna (disco negro) */
-        .ecl-moon {
-          position:absolute; width:118px; height:118px; border-radius:50%;
-          background:radial-gradient(circle at 48% 46%, #1a1a1a, #000);
-          z-index:3; top:1px; left:1px;
-          animation: eclMoonTotal 24s ease-in-out infinite;
-          transform: translateX(-130%);
-        }
-        /* Perlas de Baily */
-        .ecl-beads {
-          position:absolute; inset:0; border-radius:50%; z-index:4;
-          animation: eclBeads 24s ease-in-out infinite;
+
+        /* ── Prominencias solares durante totalidad ── */
+        .ecl-prom {
+          position:absolute; z-index:3;
           opacity:0;
+          animation: eclProminences 30s linear infinite;
+          pointer-events:none;
+          border-radius:50% 50% 20% 20%;
+          background: radial-gradient(ellipse at 50% 0%,
+            rgba(230,60,60,.95),
+            rgba(180,20,20,.55) 60%,
+            transparent 100%);
+          filter: blur(0.5px);
+        }
+
+        /* ── Luna: OPACA, z-index alto, sin transparencia ── */
+        .ecl-moon {
+          position:absolute;
+          width:128px; height:128px;
+          border-radius:50%;
+          top:0; left:0;
+          /* Sólido negro con mínima textura superficial — NUNCA transparente */
+          background: radial-gradient(circle at 44% 42%,
+            #111 0%, #080808 40%, #030303 70%, #000 100%);
+          z-index:20;                   /* <── muy por encima de todo */
+          opacity:1 !important;         /* <── forzar opacidad, sin excusas */
+          will-change: transform;       /* <── GPU layer separada, evita compositing bugs */
+          animation: eclMoonTotal 30s linear infinite;
+          transform: translateX(-140%);
+        }
+
+        /* ── Perlas de Baily (encima de la luna) ── */
+        .ecl-beads {
+          position:absolute; inset:0; border-radius:50%;
+          z-index:21;
+          opacity:0;
+          pointer-events:none;
+          animation: eclBeads 30s linear infinite;
         }
         .ecl-bead {
           position:absolute; border-radius:50%;
-          background:radial-gradient(circle, #fff8e0, #ffd060);
-          box-shadow: 0 0 6px 3px rgba(255,220,80,.9);
+          background: radial-gradient(circle, #fffde0 0%, #ffe066 55%, rgba(255,190,30,.2) 100%);
+          box-shadow:
+            0 0 4px 2px rgba(255,230,80,1),
+            0 0 10px 4px rgba(255,200,60,.7),
+            0 0 20px 8px rgba(255,160,0,.35);
         }
-        /* Anillo de diamante */
+
+        /* ── Anillo de diamante ── */
         .ecl-diamond-ring {
-          position:absolute; inset:-2px; border-radius:50%; z-index:5;
-          border:2px solid rgba(255,248,224,0);
-          animation: eclDiamondRing 24s ease-in-out infinite;
+          position:absolute; inset:-3px; border-radius:50%;
+          z-index:22;
+          border: 0px solid transparent;
+          pointer-events:none;
+          animation: eclDiamondRing 30s linear infinite;
         }
         .ecl-diamond-point {
-          position:absolute; width:10px; height:10px; border-radius:50%;
-          background:radial-gradient(circle, #fff, #ffd060);
-          box-shadow: 0 0 14px 8px rgba(255,240,140,.95), 0 0 30px 14px rgba(255,200,60,.6);
+          position:absolute; width:12px; height:12px; border-radius:50%;
+          background: radial-gradient(circle, #fff 0%, #fffbea 40%, rgba(255,230,80,.3) 100%);
+          box-shadow:
+            0 0 0 2px rgba(255,255,220,.6),
+            0 0 12px 6px rgba(255,248,140,1),
+            0 0 28px 14px rgba(255,210,60,.8),
+            0 0 50px 22px rgba(255,170,0,.4);
           opacity:0;
-          animation: eclDiamondPoint 24s ease-in-out infinite;
-        }
-        /* Prominencias solares */
-        .ecl-prom {
-          position:absolute; border-radius:50% 50% 0 0 / 80% 80% 0 0;
-          background: radial-gradient(ellipse, rgba(220,50,50,.9), rgba(180,20,20,.4) 70%, transparent);
-          z-index:6; opacity:0;
-          animation: eclProminences 24s ease-in-out infinite;
+          pointer-events:none;
+          animation: eclDiamondPoint 30s linear infinite;
         }
 
-        /* ──── KEYFRAMES ──── */
+        /* ════════════════════════════════════════════════
+           KEYFRAMES — ciclo de 30 segundos
+           0–7%   : Sol libre
+           7–33%  : Parcial creciente
+           33–36% : Casi totalidad
+           36–37% : Baily's beads C2
+           37–38% : Diamond ring C2
+           38–62% : TOTALIDAD (inmóvil)
+           62–63% : Diamond ring C3
+           63–64% : Baily's beads C3
+           64–90% : Parcial decreciente
+           90–100%: Sol libre, pausa
+        ════════════════════════════════════════════════ */
 
-        /* Sol: brilla normalmente → se apaga en totalidad → vuelve */
+        /* Sol: glow solar que desaparece durante totalidad */
         @keyframes eclSunGlow {
-          0%,12%  { box-shadow:0 0 30px 8px rgba(255,200,60,.5); }   /* sol libre */
-          35%,38% { box-shadow:0 0 6px 2px rgba(255,150,30,.1); }    /* casi tapado */
-          40%,58% { box-shadow:none; }                                /* totalidad */
-          62%,65% { box-shadow:0 0 6px 2px rgba(255,150,30,.1); }
-          80%,100%{ box-shadow:0 0 30px 8px rgba(255,200,60,.5); }
+          0%,6%   { box-shadow:0 0 28px 10px rgba(255,210,70,.6),0 0 50px 20px rgba(255,170,30,.25); }
+          30%,36% { box-shadow:0 0 6px 2px rgba(255,150,30,.08); }
+          38%,62% { box-shadow:none; }
+          64%,70% { box-shadow:0 0 6px 2px rgba(255,150,30,.08); }
+          88%,100%{ box-shadow:0 0 28px 10px rgba(255,210,70,.6),0 0 50px 20px rgba(255,170,30,.25); }
         }
 
-        /* Corona: solo visible durante totalidad */
+        /* Corona: pulsa ligeramente durante totalidad, invisible el resto */
         @keyframes eclCorona {
-          0%,37%  { box-shadow:0 0 0 0 rgba(255,200,60,0),0 0 0 0 rgba(255,170,30,0),0 0 0 0 rgba(200,120,0,0); }
-          42%,55% { box-shadow:0 0 55px 30px rgba(255,210,80,.55),0 0 90px 55px rgba(255,170,40,.28),0 0 130px 80px rgba(200,120,10,.12); }
-          60%,100%{ box-shadow:0 0 0 0 rgba(255,200,60,0),0 0 0 0 rgba(255,170,30,0),0 0 0 0 rgba(200,120,0,0); }
+          0%,36%  { box-shadow:none; opacity:0; }
+          40%     { opacity:1;
+                    box-shadow:
+                      0 0 0 4px rgba(240,200,80,.12),
+                      0 0 40px 20px rgba(255,210,80,.50),
+                      0 0 80px 50px rgba(255,170,40,.28),
+                      0 0 130px 80px rgba(200,120,10,.14),
+                      0 0 200px 110px rgba(160,90,0,.06); }
+          50%     { opacity:1;
+                    box-shadow:
+                      0 0 0 4px rgba(240,200,80,.16),
+                      0 0 45px 24px rgba(255,215,85,.55),
+                      0 0 85px 55px rgba(255,175,45,.30),
+                      0 0 140px 85px rgba(205,125,15,.16),
+                      0 0 210px 115px rgba(165,95,5,.08); }
+          60%     { opacity:1;
+                    box-shadow:
+                      0 0 0 4px rgba(240,200,80,.12),
+                      0 0 40px 20px rgba(255,210,80,.50),
+                      0 0 80px 50px rgba(255,170,40,.28),
+                      0 0 130px 80px rgba(200,120,10,.14),
+                      0 0 200px 110px rgba(160,90,0,.06); }
+          63%,100%{ box-shadow:none; opacity:0; }
         }
 
-        /* Cromosfera: anillo rojo solo en C2/C3 */
+        /* Cromosfera: llamarada roja en C2 y C3 */
         @keyframes eclChroma {
-          0%,36%  { border-color:transparent; }
-          38%,40% { border-color:rgba(220,60,60,.8); }  /* C2 - inicio totalidad */
-          58%,60% { border-color:rgba(220,60,60,.8); }  /* C3 - fin totalidad */
-          62%,100%{ border-color:transparent; }
+          0%,35%  { border-width:0px; box-shadow:none; }
+          37%,38% { border-width:3px; border-color:rgba(220,55,55,.9);
+                    box-shadow:0 0 14px 6px rgba(200,40,40,.5),inset 0 0 6px rgba(220,80,80,.3); }
+          39%,61% { border-width:0px; box-shadow:none; }
+          62%,63% { border-width:3px; border-color:rgba(220,55,55,.9);
+                    box-shadow:0 0 14px 6px rgba(200,40,40,.5),inset 0 0 6px rgba(220,80,80,.3); }
+          64%,100%{ border-width:0px; box-shadow:none; }
         }
 
-        /* Luna: viaje de izquierda a derecha */
+        /* Luna: de izquierda a derecha — SIEMPRE OPACA */
         @keyframes eclMoonTotal {
-          0%        { transform:translateX(-130%); }        /* fuera izquierda */
-          8%        { transform:translateX(-30%); }         /* parcial inicio */
-          20%       { transform:translateX(-10%); }         /* parcial avanzado */
-          35%       { transform:translateX(0%); }           /* casi total */
-          38%,60%   { transform:translateX(1%); }           /* TOTALIDAD (inmóvil) */
-          65%       { transform:translateX(10%); }
-          80%       { transform:translateX(30%); }
-          92%,100%  { transform:translateX(130%); }         /* fuera derecha */
+          0%      { transform:translateX(-140%); }   /* fuera, izquierda */
+          7%      { transform:translateX(-48%); }    /* mordisco inicial */
+          20%     { transform:translateX(-18%); }    /* ~30% cubierto */
+          33%     { transform:translateX(-2%); }     /* ~90% cubierto */
+          36%,64% { transform:translateX(0%); }      /* TOTALIDAD (anclada) */
+          78%     { transform:translateX(18%); }     /* recuperando */
+          92%     { transform:translateX(48%); }
+          100%    { transform:translateX(140%); }    /* fuera, derecha */
         }
 
-        /* Perlas de Baily: aparecen brevemente en C2 y C3 */
+        /* Baily's beads: breve flash en C2 y C3 */
         @keyframes eclBeads {
-          0%,34%  { opacity:0; }
-          36%,37% { opacity:1; }  /* C2 */
-          38%,57% { opacity:0; }  /* totalidad */
-          59%,60% { opacity:1; }  /* C3 */
-          62%,100%{ opacity:0; }
+          0%,34.5%{ opacity:0; }
+          36%     { opacity:1; }
+          37%     { opacity:0; }   /* C2 acaba, anillo empieza */
+          38%,61% { opacity:0; }
+          62.5%   { opacity:1; }  /* C3 */
+          64%     { opacity:0; }
+          100%    { opacity:0; }
         }
 
-        /* Anillo de diamante: flash en C2 y C3 */
+        /* Anillo de diamante */
         @keyframes eclDiamondRing {
-          0%,35%  { border-color:rgba(255,248,224,0); }
-          37%,38% { border-color:rgba(255,248,224,.85); box-shadow:0 0 20px 6px rgba(255,240,160,.6); }
-          39%,57% { border-color:rgba(255,248,224,0); }
-          59%,60% { border-color:rgba(255,248,224,.85); box-shadow:0 0 20px 6px rgba(255,240,160,.6); }
-          61%,100%{ border-color:rgba(255,248,224,0); }
-        }
-        @keyframes eclDiamondPoint {
-          0%,35%  { opacity:0; top:1px; left:50%; }
-          37%,38% { opacity:1; top:1px; left:50%; }
-          39%,57% { opacity:0; }
-          59%,60% { opacity:1; top:auto; bottom:1px; left:50%; }
-          61%,100%{ opacity:0; }
+          0%,36.5%{ border-width:0; box-shadow:none; }
+          37%     { border-width:1.5px; border-color:rgba(255,250,230,.9);
+                    box-shadow:0 0 18px 8px rgba(255,245,160,.8),0 0 35px 16px rgba(255,215,60,.45); }
+          38%     { border-width:0; box-shadow:none; }
+          62%     { border-width:0; box-shadow:none; }
+          62.5%   { border-width:1.5px; border-color:rgba(255,250,230,.9);
+                    box-shadow:0 0 18px 8px rgba(255,245,160,.8),0 0 35px 16px rgba(255,215,60,.45); }
+          63.5%   { border-width:0; box-shadow:none; }
+          100%    { border-width:0; }
         }
 
-        /* Prominencias: chispas rojas durante totalidad */
-        @keyframes eclProminences {
-          0%,39%  { opacity:0; }
-          42%,54% { opacity:1; }
-          57%,100%{ opacity:0; }
+        /* Punto diamante */
+        @keyframes eclDiamondPoint {
+          0%,36.5%  { opacity:0; top:2px; left:calc(50% - 6px); }
+          37%,37.5% { opacity:1; top:2px; left:calc(50% - 6px); }
+          38%,62%   { opacity:0; }
+          62.5%     { opacity:1; top:auto; bottom:2px; left:calc(50% - 6px); }
+          63.5%     { opacity:0; }
+          100%      { opacity:0; }
         }
+
+        /* Prominencias: aparecen durante totalidad, pulsan suavemente */
+        @keyframes eclProminences {
+          0%,38.5%  { opacity:0; }
+          41%,60%   { opacity:1; }
+          62%,100%  { opacity:0; }
+        }
+
 
         /* ── MODAL ECLIPSE ── */
         #eclipse-modal {
@@ -2588,33 +2672,37 @@
 
           <!-- Escena animada eclipse total -->
           <div class="ecl-scene">
-            <!-- Corona -->
-            <div class="ecl-corona"></div>
-            <!-- Cromosfera -->
-            <div class="ecl-chromosphere"></div>
-            <!-- Sol (logo Furancho) -->
+            <!-- Corona (z:0 — detrás de todo incluyendo la luna) -->
+            <div class="ecl-corona-wrap"></div>
+            <!-- Sol / logo Furancho (z:1) -->
             <div class="ecl-sun">
               <img src="/assets/logo.png" alt="Furancho Sessions" />
             </div>
-            <!-- Prominencias solares durante totalidad -->
-            <div class="ecl-prom" style="width:18px;height:10px;top:-6px;left:46px;transform:rotate(-20deg);"></div>
-            <div class="ecl-prom" style="width:12px;height:7px;bottom:-4px;left:70px;transform:rotate(160deg);"></div>
-            <div class="ecl-prom" style="width:10px;height:6px;top:30px;right:-4px;transform:rotate(70deg);"></div>
-            <!-- Luna -->
+            <!-- Cromosfera roja C2/C3 (z:2) -->
+            <div class="ecl-chromosphere"></div>
+            <!-- Prominencias solares (z:3 — visibles sobre la luna) -->
+            <div class="ecl-prom" style="width:16px;height:9px;top:-5px;left:48px;transform:rotate(-18deg);"></div>
+            <div class="ecl-prom" style="width:11px;height:6px;bottom:-3px;left:68px;transform:rotate(165deg);"></div>
+            <div class="ecl-prom" style="width:9px;height:5px;top:32px;right:-2px;transform:rotate(72deg);"></div>
+            <div class="ecl-prom" style="width:7px;height:4px;top:78px;left:4px;transform:rotate(-110deg);"></div>
+            <!-- Luna (z:20 — OPACA, sobre todo) -->
             <div class="ecl-moon"></div>
-            <!-- Perlas de Baily -->
+            <!-- Perlas de Baily (z:21 — sobre la luna, borde limbo C2/C3) -->
             <div class="ecl-beads">
-              <div class="ecl-bead" style="width:7px;height:7px;top:8px;left:30px;"></div>
-              <div class="ecl-bead" style="width:5px;height:5px;top:20px;left:14px;"></div>
-              <div class="ecl-bead" style="width:6px;height:6px;top:50px;left:6px;"></div>
-              <div class="ecl-bead" style="width:4px;height:4px;top:82px;left:22px;"></div>
-              <div class="ecl-bead" style="width:5px;height:5px;top:96px;left:50px;"></div>
+              <div class="ecl-bead" style="width:6px;height:6px;top:6px;left:42px;"></div>
+              <div class="ecl-bead" style="width:4px;height:4px;top:14px;left:24px;"></div>
+              <div class="ecl-bead" style="width:5px;height:5px;top:28px;left:10px;"></div>
+              <div class="ecl-bead" style="width:7px;height:7px;top:54px;left:4px;"></div>
+              <div class="ecl-bead" style="width:4px;height:4px;top:80px;left:12px;"></div>
+              <div class="ecl-bead" style="width:5px;height:5px;top:100px;left:36px;"></div>
+              <div class="ecl-bead" style="width:3px;height:3px;top:110px;left:60px;"></div>
             </div>
-            <!-- Anillo de diamante -->
+            <!-- Anillo de diamante (z:22) -->
             <div class="ecl-diamond-ring">
               <div class="ecl-diamond-point"></div>
             </div>
           </div>
+
 
           <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(196,151,58,.12);border-radius:100px;padding:3px 10px;margin-bottom:10px;">
             <span style="font-size:9px;font-weight:800;letter-spacing:1.5px;color:rgba(196,151,58,.9);">🌒 ECLIPSE TOTAL · 12 AGO 2026</span>
