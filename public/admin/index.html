@@ -2777,28 +2777,29 @@
       
       <div class="glass-card">
         <div class="card-header">
-          <div class="card-title">Coste del peaje de traspaso por NFT (€)</div>
+          <div class="card-title">Coste del peaje de traspaso por NFT ($CORCHO)</div>
         </div>
         <div style="padding: 16px;">
+          <p style="font-size:11.5px; color:var(--text-muted); margin-bottom:12px;">Todos los traspasos de NFTs entre socios se pagan en <strong>$CORCHO (CorchoCoins)</strong>. Si un socio no tiene el saldo configurado, el traspaso no se ejecutará.</p>
           <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:20px; margin-bottom:16px;">
             <div>
               <p style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">Niveles principales</p>
               <div style="display:flex; flex-direction:column; gap:8px;">
                 <label style="font-size:12px; display:flex; align-items:center; gap:8px;">
                   <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Nivel 1 (Cautivo):</span>
-                  <input type="number" id="fee-level-1" value="0" min="0" style="width:65px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15); flex-shrink:0;" />
+                  <input type="number" id="fee-level-1" value="0" min="0" placeholder="150" style="width:85px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15); flex-shrink:0;" /> <span style="font-size:10px; font-weight:700; color:var(--gold);">$CORCHO</span>
                 </label>
                 <label style="font-size:12px; display:flex; align-items:center; gap:8px;">
                   <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Nivel 2 (Cunqueiro):</span>
-                  <input type="number" id="fee-level-2" value="0" min="0" style="width:65px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15); flex-shrink:0;" />
+                  <input type="number" id="fee-level-2" value="0" min="0" placeholder="150" style="width:85px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15); flex-shrink:0;" /> <span style="font-size:10px; font-weight:700; color:var(--gold);">$CORCHO</span>
                 </label>
                 <label style="font-size:12px; display:flex; align-items:center; gap:8px;">
                   <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Nivel 3 (Larpeiro):</span>
-                  <input type="number" id="fee-level-3" value="30" min="0" style="width:65px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15); flex-shrink:0;" />
+                  <input type="number" id="fee-level-3" value="150" min="0" placeholder="150" style="width:85px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15); flex-shrink:0;" /> <span style="font-size:10px; font-weight:700; color:var(--gold);">$CORCHO</span>
                 </label>
                 <label style="font-size:12px; display:flex; align-items:center; gap:8px;">
                   <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Nivel 4 (Presidente):</span>
-                  <input type="number" id="fee-level-4" value="30" min="0" style="width:65px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15); flex-shrink:0;" />
+                  <input type="number" id="fee-level-4" value="250" min="0" placeholder="250" style="width:85px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15); flex-shrink:0;" /> <span style="font-size:10px; font-weight:700; color:var(--gold);">$CORCHO</span>
                 </label>
               </div>
             </div>
@@ -2809,9 +2810,10 @@
               </div>
             </div>
           </div>
-          <button class="btn-primary" onclick="saveTransferFeesSettings()" style="width:100%;">Guardar tarifas</button>
+          <button class="btn-primary" onclick="saveTransferFeesSettings()" style="width:100%;">💾 Guardar Tarifas de Peaje ($CORCHO)</button>
         </div>
       </div>
+
 
       <div class="glass-card">
         <div class="card-header">
@@ -3453,6 +3455,7 @@
         loadAchievementManager();
         loadPresentByLevel();
         loadCampaignAdmin();
+        loadCorchoAdminStats();
         loadEventFinanceStats();
         connectAdminSse();
       } else {
@@ -3479,6 +3482,8 @@
       loadScheduledMessages();
       loadPeakHours();
       loadVipBadge();
+      loadCorchoAdminStats();
+
       // Mismas cargas que el login con contraseña: sin esto, entrando con el token
       // guardado (PWA del móvil) "Logros NFT especiales" y "En el local ahora" se
       // quedaban en "Cargando…" — el aforo no salía hasta el refresco de los 30s.
@@ -4519,7 +4524,140 @@
     }
   }
 
+  // ==================== BANCO DO CORCHO ($CORCHO) ====================
+  async function loadCorchoAdminStats() {
+    try {
+      const res = await fetch('/api/admin/corcho/stats', { headers: authHeaders() });
+      if (!res.ok) return;
+      const data = await res.json();
+
+      // Totales
+      const circ = document.getElementById('corcho-stat-circulating');
+      const iss = document.getElementById('corcho-stat-issued');
+      const burn = document.getElementById('corcho-stat-burned');
+      if (circ && data.totals) circ.textContent = Number(data.totals.total_circulating || 0).toLocaleString();
+      if (iss && data.totals) iss.textContent = Number(data.totals.total_issued || 0).toLocaleString();
+      if (burn && data.totals) burn.textContent = Number(data.totals.total_burned || 0).toLocaleString();
+
+      // Tarifas
+      if (data.settings) {
+        const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+        setVal('rate-checkin', data.settings.checkin);
+        setVal('rate-nftTransferFee', data.settings.nftTransferFee);
+        setVal('rate-level1', data.settings.level1);
+        setVal('rate-level2', data.settings.level2);
+        setVal('rate-level3', data.settings.level3);
+        setVal('rate-level4', data.settings.level4);
+      }
+
+      // Top Holders
+      const holdersEl = document.getElementById('corcho-holders-list');
+      if (holdersEl && data.holders) {
+        if (!data.holders.length) {
+          holdersEl.innerHTML = '<p style="font-size:11px; color:var(--text-muted);">Sin movimientos registrados.</p>';
+        } else {
+          holdersEl.innerHTML = data.holders.map((h, i) => {
+            const w = `${h.wallet_address.slice(0,6)}…${h.wallet_address.slice(-4)}`;
+            return `<div style="display:flex; justify-content:space-between; padding:4px 6px; background:var(--bg); border-radius:6px; border:1px solid rgba(42,21,9,0.06);">
+              <span style="font-family:monospace;">${i+1}. ${w}</span>
+              <strong style="color:var(--wine);">${Number(h.balance).toLocaleString()} $CORCHO</strong>
+            </div>`;
+          }).join('');
+        }
+      }
+
+      // Últimas Transacciones
+      const recentTxEl = document.getElementById('corcho-recent-tx-list');
+      if (recentTxEl && data.recentTx) {
+        if (!data.recentTx.length) {
+          recentTxEl.innerHTML = '<p style="font-size:11px; color:var(--text-muted);">Sin transacciones recientes.</p>';
+        } else {
+          recentTxEl.innerHTML = data.recentTx.map(tx => {
+            const isPlus = tx.amount > 0;
+            const w = `${tx.wallet_address.slice(0,6)}…${tx.wallet_address.slice(-4)}`;
+            return `<div style="display:flex; justify-content:space-between; align-items:center; padding:5px 6px; background:var(--bg); border-radius:6px; border:1px solid rgba(42,21,9,0.06);">
+              <div style="flex:1; padding-right:6px; line-height:1.2;">
+                <div style="font-family:monospace; font-size:10px; color:var(--text-muted);">${w}</div>
+                <div style="font-size:10.5px; color:var(--text);">${tx.description}</div>
+              </div>
+              <span style="font-family:monospace; font-weight:800; color:${isPlus ? '#16a34a' : '#ef4444'}; white-space:nowrap;">
+                ${isPlus ? '+' : ''}${tx.amount}
+              </span>
+            </div>`;
+          }).join('');
+        }
+      }
+    } catch (e) {
+      console.error('Error cargando estadísticas del Banco do Corcho:', e);
+    }
+  }
+
+  async function saveCorchoAdminSettings() {
+    const getVal = id => parseInt(document.getElementById(id).value, 10) || 0;
+    const body = {
+      checkin: getVal('rate-checkin'),
+      nftTransferFee: getVal('rate-nftTransferFee'),
+      level1: getVal('rate-level1'),
+      level2: getVal('rate-level2'),
+      level3: getVal('rate-level3'),
+      level4: getVal('rate-level4')
+    };
+
+    try {
+      const res = await fetch('/api/admin/corcho/settings', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('✅ Tarifas del Banco do Corcho guardadas');
+        loadCorchoAdminStats();
+      } else {
+        showToast(data.error || 'Error guardando tarifas', true);
+      }
+    } catch (e) {
+      showToast('Error de red al guardar tarifas', true);
+    }
+  }
+
+  async function adminGrantCorchoCoins() {
+    const walletAddress = document.getElementById('corcho-grant-wallet').value.trim();
+    const amount = parseInt(document.getElementById('corcho-grant-amount').value, 10);
+    const description = document.getElementById('corcho-grant-desc').value.trim();
+
+    if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
+      showToast('Escribe una wallet válida (0x...)', true);
+      return;
+    }
+    if (!amount || isNaN(amount)) {
+      showToast('Escribe una cantidad válida', true);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/corcho/grant', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ walletAddress, amount, description })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(data.message);
+        document.getElementById('corcho-grant-wallet').value = '';
+        document.getElementById('corcho-grant-amount').value = '';
+        document.getElementById('corcho-grant-desc').value = '';
+        loadCorchoAdminStats();
+      } else {
+        showToast(data.error || 'Error aplicando ajuste', true);
+      }
+    } catch (e) {
+      showToast('Error de red al aplicar ajuste', true);
+    }
+  }
+
   // ==================== PEAK HOURS ====================
+
   async function loadPeakHours(dateVal) {
     try {
       const url = '/api/admin/peak-hours' + (dateVal ? `?date=${dateVal}` : '');
@@ -10263,12 +10401,12 @@
       const level3 = await fetch('/api/admin/settings/transfer_fee_3', { headers: authHeaders() }).then(r=>r.json());
       const level4 = await fetch('/api/admin/settings/transfer_fee_4', { headers: authHeaders() }).then(r=>r.json());
 
-      if (level1.value !== undefined) document.getElementById('fee-level-1').value = level1.value || 0;
-      if (level2.value !== undefined) document.getElementById('fee-level-2').value = level2.value || 0;
-      if (level3.value !== undefined) document.getElementById('fee-level-3').value = level3.value || 30;
-      if (level4.value !== undefined) document.getElementById('fee-level-4').value = level4.value || 30;
+      if (level1.value !== undefined) document.getElementById('fee-level-1').value = level1.value !== null ? level1.value : 150;
+      if (level2.value !== undefined) document.getElementById('fee-level-2').value = level2.value !== null ? level2.value : 150;
+      if (level3.value !== undefined) document.getElementById('fee-level-3').value = level3.value !== null ? level3.value : 150;
+      if (level4.value !== undefined) document.getElementById('fee-level-4').value = level4.value !== null ? level4.value : 250;
       
-      // Cargar catálogo de logros y sus peajes correspondientes
+      // Cargar catálogo de logros y sus peajes correspondientes en $CORCHO
       const achCatalogRes = await fetch('/api/achievements/admin/list', { headers: authHeaders() }).then(r=>r.json());
       const achievements = achCatalogRes.achievements || [];
       
@@ -10278,19 +10416,20 @@
       if (achContainer) {
         achContainer.innerHTML = '';
         for (const a of achievements) {
-          // Fetch dynamic fee for this achievement
+          // Fetch dynamic fee in $CORCHO for this achievement
           const feeRes = await fetch(`/api/admin/settings/transfer_fee_ach_${a.id}`, { headers: authHeaders() }).then(r=>r.json());
-          const feeVal = feeRes.value !== undefined ? feeRes.value : '15'; // default 15
+          const feeVal = (feeRes.value !== undefined && feeRes.value !== null) ? feeRes.value : '150'; // default 150 $CORCHO
           
           const label = document.createElement('label');
           label.style.cssText = 'font-size:12px; display:flex; align-items:center; gap:8px;';
           label.innerHTML = `
-            <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:8px;">${a.name}:</span>
-            <input type="number" id="fee-ach-${a.id}" value="${feeVal}" min="0" style="width:65px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15); flex-shrink:0;" />
+            <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:4px;">${a.name}:</span>
+            <input type="number" id="fee-ach-${a.id}" value="${feeVal}" min="0" style="width:80px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15); flex-shrink:0;" /> <span style="font-size:10px; font-weight:700; color:var(--gold);">$CORCHO</span>
           `;
           achContainer.appendChild(label);
         }
       }
+
 
       // Cargar traspasos pendientes
       const res = await fetch('/api/admin/transfers', { headers: authHeaders() });

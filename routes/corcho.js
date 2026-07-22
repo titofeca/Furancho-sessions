@@ -61,8 +61,12 @@ router.post('/transfer-nft', (req, res) => {
   }
 
   try {
-    const fee = corcho.getRate('nftTransferFee');
+    let feeKey = nftType === 'level' ? `transfer_fee_${nftId}` : `transfer_fee_ach_${nftId}`;
+    let feeSetting = require('../db/database').getSetting(feeKey, null);
+    let fee = (feeSetting !== null && !isNaN(parseInt(feeSetting, 10))) ? parseInt(feeSetting, 10) : corcho.getRate('nftTransferFee');
+
     const result = corcho.transferNftWithFee(fromWallet, toWallet, nftType, nftId, fee);
+
 
     if (!result.ok) {
       if (result.error === 'insufficient_balance') {
