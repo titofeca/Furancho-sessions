@@ -2,6 +2,7 @@
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'furancho.db');
 
@@ -690,6 +691,45 @@ try {
     insertPack.run('pack_20', 'Paquete Presidente', 20, 2500, '+500 Bonus');
   }
 } catch (_) {}
+
+// Vales de consumición: registro server-side para validación por staff/admin
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS corcho_redemptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL UNIQUE,
+    wallet_address TEXT NOT NULL,
+    item_id INTEGER NOT NULL,
+    item_name TEXT NOT NULL,
+    item_emoji TEXT DEFAULT '🎁',
+    price_corcho INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    validated_by TEXT,
+    validated_at TEXT,
+    expires_at TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`);
+} catch (_) {}
+
+// Compra de $CORCHO (recarga en €): solicitud PENDIENTE que staff/admin confirma
+// solo cuando el socio ha PAGADO en la barra. Sin esto, comprar acreditaría monedas
+// gratis. Mismo patrón que vales de canje, meme y premios NFT: nada de dinero se
+// mueve hasta que un humano del local valida el pago.
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS corcho_pack_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_address TEXT NOT NULL,
+    pack_id TEXT NOT NULL,
+    pack_name TEXT NOT NULL,
+    price_eur REAL NOT NULL,
+    coins INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    confirmed_by TEXT,
+    confirmed_at TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_corcho_pack_req_status ON corcho_pack_requests(status)`);
+} catch (_) {}
+
 
 
 
@@ -3139,7 +3179,17 @@ module.exports = {
   updateCorchoItem,
   deleteCorchoItem,
   getCorchoPacks,
-  saveCorchoPack
+  saveCorchoPack,
+  createRedemptionVoucher,
+  getPendingRedemptions,
+  validateRedemptionVoucher,
+  getRedemptionByCode,
+  cancelRedemptionVoucher,
+  createCorchoPackRequest,
+  getPendingCorchoPackRequests,
+  getCorchoPackRequest,
+  confirmCorchoPackRequest,
+  cancelCorchoPackRequest
 };
 
 
@@ -3884,5 +3934,170 @@ function saveCorchoPack(id, { name, priceEur, coins, badge, active }) {
 }
 
 
+// ── VALES DE CANJE ($CORCHO) — validados por staff/admin ─────────────────────
+// El socio canjea desde su móvil: se le DESCUENTAN los $CORCHO y se genera un
+// vale con código real (no cosmético) y caducidad "en vivo". El staff/admin lo
+// valida al entregar la consumición (idempotente, anti-doble-canje). Si nunca se
+// entrega, el admin puede anularlo y reembolsar. Fuente única de la validación.
+
+function _corchoVoucherCode() {
+  const part = () => crypto.randomBytes(2).toString('hex').toUpperCase();
+  return `FUR-${part()}-${part()}`;
+}
+
+// Registra el vale PENDIENTE. El caller ya ha descontado los $CORCHO.
+function createRedemptionVoucher({ walletAddress, item, ttlMinutes = 15 }) {
+  if (!walletAddress || !item || !item.id) throw new Error('Datos de canje incompletos');
+  const w = walletAddress.toLowerCase();
+  let code = _corchoVoucherCode();
+  for (let i = 0; i < 6 && db.prepare(`SELECT 1 FROM corcho_redemptions WHERE code = ?`).get(code); i++) {
+    code = _corchoVoucherCode();
+  }
+  const expiresAt = new Date(Date.now() + ttlMinutes * 60000).toISOString().replace('T', ' ').slice(0, 19);
+  const info = db.prepare(`
+    INSERT INTO corcho_redemptions (code, wallet_address, item_id, item_name, item_emoji, price_corcho, status, expires_at)
+    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
+  `).run(code, w, item.id, item.name, item.emoji || '🎁', item.price_corcho, expiresAt);
+  return db.prepare(`SELECT * FROM corcho_redemptions WHERE id = ?`).get(info.lastInsertRowid);
+}
+
+function getRedemptionByCode(code) {
+  if (!code) return null;
+  return db.prepare(`SELECT * FROM corcho_redemptions WHERE code = ?`).get(String(code).trim().toUpperCase());
+}
+
+// Vales PENDIENTES y sin caducar. Con wallet, solo los de ese socio.
+function getPendingRedemptions(walletAddress = null) {
+  const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  if (walletAddress) {
+    return db.prepare(`
+      SELECT * FROM corcho_redemptions
+      WHERE status = 'pending' AND expires_at > ? AND LOWER(wallet_address) = LOWER(?)
+      ORDER BY id DESC
+    `).all(nowStr, walletAddress);
+  }
+  return db.prepare(`
+    SELECT * FROM corcho_redemptions
+    WHERE status = 'pending' AND expires_at > ?
+    ORDER BY id DESC
+  `).all(nowStr);
+}
+
+// Staff/admin confirma la ENTREGA del canje. Idempotente. No mueve $CORCHO
+// (ya se descontó al canjear). Si el vale caducó, no se puede validar.
+function validateRedemptionVoucher(code, validatedBy) {
+  const v = getRedemptionByCode(code);
+  if (!v) return { ok: false, error: 'not_found' };
+  if (v.status === 'validated') return { ok: true, already: true, voucher: v };
+  if (v.status === 'cancelled') return { ok: false, error: 'cancelled' };
+  const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  if (v.expires_at <= nowStr) {
+    db.prepare(`UPDATE corcho_redemptions SET status = 'expired' WHERE id = ? AND status = 'pending'`).run(v.id);
+    return { ok: false, error: 'expired' };
+  }
+  const upd = db.prepare(`
+    UPDATE corcho_redemptions SET status = 'validated', validated_by = ?, validated_at = datetime('now')
+    WHERE id = ? AND status = 'pending'
+  `).run(validatedBy || 'staff', v.id);
+  if (upd.changes === 0) {
+    const cur = getRedemptionByCode(code);
+    if (cur && cur.status === 'validated') return { ok: true, already: true, voucher: cur };
+    return { ok: false, error: 'not_pending' };
+  }
+  return { ok: true, voucher: getRedemptionByCode(code) };
+}
+
+// El admin anula un vale pendiente y (por defecto) reembolsa los $CORCHO.
+function cancelRedemptionVoucher(code, by, refund = true) {
+  const v = getRedemptionByCode(code);
+  if (!v) return { ok: false, error: 'not_found' };
+  if (v.status === 'validated') return { ok: false, error: 'already_validated' };
+  if (v.status === 'cancelled') return { ok: true, already: true };
+  db.prepare(`
+    UPDATE corcho_redemptions SET status = 'cancelled', validated_by = ?, validated_at = datetime('now')
+    WHERE id = ? AND status IN ('pending','expired')
+  `).run(by || 'admin', v.id);
+  let refunded = false;
+  if (refund) {
+    addCorchoCoins(v.wallet_address, v.price_corcho, 'admin_adjustment',
+      `↩️ Reembolso canje anulado: ${v.item_emoji} ${v.item_name}`, `refund_voucher_${v.id}`);
+    refunded = true;
+  }
+  return { ok: true, refunded };
+}
+
+
+// ── COMPRA DE $CORCHO (recarga €) — validada por staff/admin ─────────────────
+// El socio pide comprar un paquete desde su móvil: NO se acredita nada. Queda una
+// solicitud PENDIENTE que el staff/admin confirma SOLO cuando el socio paga en la
+// barra. Al confirmar se acreditan los $CORCHO. Idempotente (no dobla el abono).
+
+function createCorchoPackRequest({ walletAddress, pack }) {
+  if (!walletAddress || !pack || !pack.id) throw new Error('Datos de compra incompletos');
+  const w = walletAddress.toLowerCase();
+  // No apilar solicitudes: si ya hay una pendiente para el mismo paquete, se reutiliza.
+  const existing = db.prepare(`
+    SELECT * FROM corcho_pack_requests
+    WHERE LOWER(wallet_address) = ? AND status = 'pending' AND pack_id = ?
+    ORDER BY id DESC LIMIT 1
+  `).get(w, pack.id);
+  if (existing) return { request: existing, already: true };
+  const info = db.prepare(`
+    INSERT INTO corcho_pack_requests (wallet_address, pack_id, pack_name, price_eur, coins, status)
+    VALUES (?, ?, ?, ?, ?, 'pending')
+  `).run(w, pack.id, pack.name, pack.price_eur, pack.coins);
+  return { request: db.prepare(`SELECT * FROM corcho_pack_requests WHERE id = ?`).get(info.lastInsertRowid) };
+}
+
+function getPendingCorchoPackRequests(walletAddress = null) {
+  if (walletAddress) {
+    return db.prepare(`
+      SELECT * FROM corcho_pack_requests
+      WHERE status = 'pending' AND LOWER(wallet_address) = LOWER(?)
+      ORDER BY id DESC
+    `).all(walletAddress);
+  }
+  return db.prepare(`SELECT * FROM corcho_pack_requests WHERE status = 'pending' ORDER BY id DESC`).all();
+}
+
+function getCorchoPackRequest(id) {
+  return db.prepare(`SELECT * FROM corcho_pack_requests WHERE id = ?`).get(parseInt(id, 10));
+}
+
+// Staff/admin confirma que el socio PAGÓ → se acreditan los $CORCHO. Idempotente:
+// el cambio de estado 'pending'→'confirmed' es la guarda contra doble abono.
+function confirmCorchoPackRequest(id, confirmedBy) {
+  const r = getCorchoPackRequest(id);
+  if (!r) return { ok: false, error: 'not_found' };
+  if (r.status === 'confirmed') return { ok: true, already: true, request: r };
+  if (r.status === 'cancelled') return { ok: false, error: 'cancelled' };
+  const upd = db.prepare(`
+    UPDATE corcho_pack_requests SET status = 'confirmed', confirmed_by = ?, confirmed_at = datetime('now')
+    WHERE id = ? AND status = 'pending'
+  `).run(confirmedBy || 'staff', r.id);
+  if (upd.changes === 0) {
+    const cur = getCorchoPackRequest(id);
+    if (cur && cur.status === 'confirmed') return { ok: true, already: true, request: cur };
+    return { ok: false, error: 'not_pending' };
+  }
+  const credit = addCorchoCoins(
+    r.wallet_address, r.coins, 'buy_pack',
+    `💳 Recarga ${r.pack_name} (+${r.coins} $CORCHO · ${r.price_eur}€) — validada por ${confirmedBy || 'staff'}`,
+    `packreq_${r.id}`
+  );
+  return { ok: true, request: getCorchoPackRequest(id), newBalance: credit.newBalance };
+}
+
+function cancelCorchoPackRequest(id, by) {
+  const r = getCorchoPackRequest(id);
+  if (!r) return { ok: false, error: 'not_found' };
+  if (r.status === 'confirmed') return { ok: false, error: 'already_confirmed' };
+  if (r.status === 'cancelled') return { ok: true, already: true };
+  db.prepare(`
+    UPDATE corcho_pack_requests SET status = 'cancelled', confirmed_by = ?, confirmed_at = datetime('now')
+    WHERE id = ? AND status = 'pending'
+  `).run(by || 'admin', r.id);
+  return { ok: true };
+}
 
 

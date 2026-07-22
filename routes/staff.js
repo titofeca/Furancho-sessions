@@ -156,6 +156,21 @@ router.post('/checkin', staffLimiter, requireStaff, (req, res) => {
         }));
     } catch (_) { result.memePerks = []; }
 
+    // ── Banco do Corcho: compras y canjes pendientes de validar ─────────────
+    // COMPRA: solicitudes de recarga en € que el socio pidió desde su móvil y aún
+    // no ha pagado/validado — el camarero cobra en la barra y confirma (acredita
+    // los $CORCHO). CANJE: vales de consumición pendientes de entregar. Fuente
+    // única: db/database.js. Sin validar aquí, la compra acreditaría monedas gratis.
+    try {
+      const { getPendingCorchoPackRequests, getPendingRedemptions } = require('../db/database');
+      result.corchoPacks = getPendingCorchoPackRequests(walletAddress).map(r => ({
+        id: r.id, packName: r.pack_name, coins: r.coins, priceEur: r.price_eur
+      }));
+      result.corchoVouchers = getPendingRedemptions(walletAddress).map(v => ({
+        code: v.code, itemName: v.item_name, itemEmoji: v.item_emoji, priceCorcho: v.price_corcho, expiresAt: v.expires_at
+      }));
+    } catch (_) { result.corchoPacks = []; result.corchoVouchers = []; }
+
     return res.json(result);
   } catch (e) {
     console.error('Error en /staff/checkin:', e.message);
@@ -288,6 +303,63 @@ router.post('/claim-daily-tapa', staffLimiter, requireStaff, (req, res) => {
     res.json({ success: true, message: 'Privilexio consumido — tapa e cunca entregadas.' });
   } catch (e) {
     res.status(400).json({ error: e.message });
+  }
+});
+
+// POST /api/staff/corcho-pack/:id/confirm — el camarero COBRA en la barra la
+// recarga de $CORCHO y la confirma. Solo aquí se acreditan las monedas. Idempotente.
+router.post('/corcho-pack/:id/confirm', staffLimiter, requireStaff, (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: 'Solicitud de compra no válida' });
+  try {
+    const { confirmCorchoPackRequest } = require('../db/database');
+    const result = confirmCorchoPackRequest(id, getStaffName(req));
+    if (!result.ok) {
+      const msg = {
+        not_found: 'Esa compra ya no existe',
+        cancelled: 'Esa compra fue anulada',
+        not_pending: 'Esa compra ya no está pendiente'
+      }[result.error] || 'No se pudo confirmar la compra';
+      return res.status(400).json({ error: msg });
+    }
+    res.json({
+      success: true, already: !!result.already,
+      coins: result.request ? result.request.coins : null,
+      newBalance: result.newBalance,
+      message: result.already ? 'Esta compra ya estaba confirmada.' : 'Pago confirmado — $CORCHO acreditados.'
+    });
+  } catch (e) {
+    console.error('Error en /staff/corcho-pack/confirm:', e.message);
+    res.status(500).json({ error: 'Error confirmando la compra' });
+  }
+});
+
+// POST /api/staff/corcho-voucher/:code/validate — el camarero valida el vale de
+// canje al entregar la consumición. Idempotente y anti-caducidad (los $CORCHO ya
+// se descontaron al canjear; aquí solo se marca la entrega).
+router.post('/corcho-voucher/:code/validate', staffLimiter, requireStaff, (req, res) => {
+  const code = req.params.code;
+  if (!code) return res.status(400).json({ error: 'Falta el código del vale' });
+  try {
+    const { validateRedemptionVoucher } = require('../db/database');
+    const result = validateRedemptionVoucher(code, getStaffName(req));
+    if (!result.ok) {
+      const msg = {
+        not_found: 'Ese vale no existe',
+        cancelled: 'Ese vale fue anulado',
+        expired: 'Ese vale caducó — pídele que lo genere de nuevo desde su app',
+        not_pending: 'Ese vale ya no está pendiente'
+      }[result.error] || 'No se pudo validar el vale';
+      return res.status(400).json({ error: msg });
+    }
+    res.json({
+      success: true, already: !!result.already,
+      item: result.voucher ? `${result.voucher.item_emoji} ${result.voucher.item_name}` : null,
+      message: result.already ? 'Este vale ya estaba validado.' : 'Vale validado — entrega la consumición.'
+    });
+  } catch (e) {
+    console.error('Error en /staff/corcho-voucher/validate:', e.message);
+    res.status(500).json({ error: 'Error validando el vale' });
   }
 });
 

@@ -1238,6 +1238,16 @@
             </div>
           </div>
 
+          <!-- Validaciones pendientes: compras por cobrar + vales por entregar -->
+          <div style="margin-bottom:16px; padding:14px; background:linear-gradient(135deg, rgba(196,151,58,0.12), rgba(139,25,24,0.05)); border:1.5px solid var(--gold); border-radius:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <div class="card-title" style="font-size:14px;">🧾 Pendiente de validar (staff/admin)</div>
+              <button class="btn-download" onclick="loadCorchoPending()" style="font-size:11px; padding:5px 10px;">↻</button>
+            </div>
+            <p style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">Compras de $CORCHO por <strong>cobrar en €</strong> (solo al confirmar se acreditan) y vales de canje por <strong>entregar</strong>. Es lo mismo que ve el camarero en <em>/staff</em> al fichar.</p>
+            <div id="corcho-pending-list" style="display:flex; flex-direction:column; gap:8px;">Cargando…</div>
+          </div>
+
           <!-- Ajuste Manual / Recarga a Usuario -->
           <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
             <div class="card-title" style="font-size:14px; margin-bottom:8px;">⚡ Ajuste Manual o Recarga de $CORCHO</div>
@@ -4567,8 +4577,86 @@
   }
 
   // ==================== BANCO DO CORCHO ($CORCHO) ====================
+
+  // Compras de $CORCHO por cobrar + vales de canje por entregar. El admin valida
+  // aquí lo mismo que el camarero en /staff: nada de $CORCHO se mueve sin este OK.
+  async function loadCorchoPending() {
+    const el = document.getElementById('corcho-pending-list');
+    if (!el) return;
+    try {
+      const res = await fetch('/api/admin/corcho/pending', { headers: authHeaders() });
+      if (!res.ok) { el.innerHTML = '<p style="font-size:11px; color:var(--wine);">No se pudo cargar.</p>'; return; }
+      const data = await res.json();
+      const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const packs = data.packs || [], vouchers = data.vouchers || [];
+      if (!packs.length && !vouchers.length) {
+        el.innerHTML = '<p style="font-size:11.5px; color:var(--text-muted); text-align:center; margin:4px 0;">✅ Nada pendiente ahora mismo.</p>';
+        return;
+      }
+      let html = '';
+      packs.forEach(p => {
+        html += `<div style="display:flex; align-items:center; gap:8px; padding:8px 10px; background:#fff; border:1px solid rgba(196,151,58,0.4); border-radius:10px;">
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:12.5px; font-weight:800; color:var(--wine);">💳 ${Number(p.coins).toLocaleString()} $CORCHO · cobra ${esc(String(p.priceEur))}€</div>
+            <div style="font-size:10px; color:var(--text-muted); font-family:monospace;">${esc(p.packName)} · ${esc(p.walletMasked)}</div>
+          </div>
+          <button onclick="confirmCorchoPack(this, ${p.id})" style="background:#16a34a; color:#fff; border:none; border-radius:8px; padding:7px 12px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap;">✓ Cobrado</button>
+          <button onclick="cancelCorchoPack(this, ${p.id})" style="background:none; color:var(--wine); border:1px solid rgba(139,25,24,0.3); border-radius:8px; padding:7px 10px; font-size:11px; font-weight:700; cursor:pointer;">✕</button>
+        </div>`;
+      });
+      vouchers.forEach(v => {
+        html += `<div style="display:flex; align-items:center; gap:8px; padding:8px 10px; background:#fff; border:1px solid rgba(196,151,58,0.4); border-radius:10px;">
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:12.5px; font-weight:800; color:var(--text);">${esc(v.itemEmoji)} ${esc(v.itemName)}</div>
+            <div style="font-size:10px; color:var(--text-muted); font-family:monospace;">${esc(v.code)} · ${esc(v.walletMasked)}</div>
+          </div>
+          <button onclick="validateCorchoVoucher(this, '${esc(v.code)}')" style="background:var(--gold); color:#fff; border:none; border-radius:8px; padding:7px 12px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap;">✓ Entregado</button>
+          <button onclick="cancelCorchoVoucher(this, '${esc(v.code)}')" title="Anular y reembolsar" style="background:none; color:var(--wine); border:1px solid rgba(139,25,24,0.3); border-radius:8px; padding:7px 10px; font-size:11px; font-weight:700; cursor:pointer;">↩</button>
+        </div>`;
+      });
+      el.innerHTML = html;
+    } catch (e) {
+      el.innerHTML = '<p style="font-size:11px; color:var(--wine);">Error de red.</p>';
+    }
+  }
+
+  async function _corchoAction(btn, url, okText, confirmMsg) {
+    if (confirmMsg && !confirm(confirmMsg)) return;
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.textContent = '…';
+    try {
+      const r = await fetch(url, { method: 'POST', headers: authHeaders() });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && d.success) {
+        loadCorchoPending();
+        loadCorchoAdminStats();
+      } else {
+        btn.disabled = false; btn.textContent = original;
+        alert('⚠️ ' + (d.error || 'No se pudo completar'));
+      }
+    } catch (e) {
+      btn.disabled = false; btn.textContent = original;
+      alert('⚠️ Error de red.');
+    }
+  }
+
+  function confirmCorchoPack(btn, id) {
+    _corchoAction(btn, `/api/admin/corcho/pack/${id}/confirm`, '✅', '¿Confirmar que el socio ya PAGÓ esta recarga? Se le acreditarán los $CORCHO.');
+  }
+  function cancelCorchoPack(btn, id) {
+    _corchoAction(btn, `/api/admin/corcho/pack/${id}/cancel`, '✕', '¿Anular esta compra pendiente? (no se ha cobrado ni acreditado nada)');
+  }
+  function validateCorchoVoucher(btn, code) {
+    _corchoAction(btn, `/api/admin/corcho/voucher/${encodeURIComponent(code)}/validate`, '✅', null);
+  }
+  function cancelCorchoVoucher(btn, code) {
+    _corchoAction(btn, `/api/admin/corcho/voucher/${encodeURIComponent(code)}/cancel`, '↩', '¿Anular este vale y REEMBOLSAR los $CORCHO al socio?');
+  }
+
   async function loadCorchoAdminStats() {
     try {
+      loadCorchoPending();
       const res = await fetch('/api/admin/corcho/stats', { headers: authHeaders() });
       if (!res.ok) return;
       const data = await res.json();

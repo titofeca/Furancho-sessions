@@ -2235,6 +2235,85 @@ router.post('/corcho/grant', requireAuth, (req, res) => {
   }
 });
 
+// ── VALIDACIÓN DE COMPRAS Y CANJES PENDIENTES ($CORCHO) ─────────────────────
+// El admin ve/valida lo mismo que el staff en la barra: compras de $CORCHO por
+// pagar (recargas en €) y vales de canje por entregar. Fuente única en database.js.
+
+// GET /api/admin/corcho/pending — compras y canjes pendientes (todas las wallets)
+router.get('/corcho/pending', requireAuth, (req, res) => {
+  try {
+    const { getPendingCorchoPackRequests, getPendingRedemptions } = require('../db/database');
+    const mask = w => w ? `${w.slice(0,6)}…${w.slice(-4)}` : '';
+    const packs = getPendingCorchoPackRequests().map(r => ({
+      id: r.id, wallet: r.wallet_address, walletMasked: mask(r.wallet_address),
+      packName: r.pack_name, coins: r.coins, priceEur: r.price_eur, createdAt: r.created_at
+    }));
+    const vouchers = getPendingRedemptions().map(v => ({
+      code: v.code, wallet: v.wallet_address, walletMasked: mask(v.wallet_address),
+      itemName: v.item_name, itemEmoji: v.item_emoji, priceCorcho: v.price_corcho, expiresAt: v.expires_at
+    }));
+    res.json({ packs, vouchers });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/corcho/pack/:id/confirm — confirmar pago de una compra (acredita)
+router.post('/corcho/pack/:id/confirm', requireAuth, (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: 'Solicitud no válida' });
+  try {
+    const { confirmCorchoPackRequest } = require('../db/database');
+    const result = confirmCorchoPackRequest(id, 'admin');
+    if (!result.ok) return res.status(400).json({ error: result.error });
+    res.json({ success: true, already: !!result.already, newBalance: result.newBalance });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/corcho/pack/:id/cancel — anular una compra pendiente (no cobrada)
+router.post('/corcho/pack/:id/cancel', requireAuth, (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: 'Solicitud no válida' });
+  try {
+    const { cancelCorchoPackRequest } = require('../db/database');
+    const result = cancelCorchoPackRequest(id, 'admin');
+    if (!result.ok) return res.status(400).json({ error: result.error });
+    res.json({ success: true, already: !!result.already });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/corcho/voucher/:code/validate — validar entrega de un vale de canje
+router.post('/corcho/voucher/:code/validate', requireAuth, (req, res) => {
+  const code = req.params.code;
+  if (!code) return res.status(400).json({ error: 'Falta el código' });
+  try {
+    const { validateRedemptionVoucher } = require('../db/database');
+    const result = validateRedemptionVoucher(code, 'admin');
+    if (!result.ok) return res.status(400).json({ error: result.error });
+    res.json({ success: true, already: !!result.already });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/corcho/voucher/:code/cancel — anular un vale y reembolsar $CORCHO
+router.post('/corcho/voucher/:code/cancel', requireAuth, (req, res) => {
+  const code = req.params.code;
+  if (!code) return res.status(400).json({ error: 'Falta el código' });
+  try {
+    const { cancelRedemptionVoucher } = require('../db/database');
+    const result = cancelRedemptionVoucher(code, 'admin', true);
+    if (!result.ok) return res.status(400).json({ error: result.error });
+    res.json({ success: true, already: !!result.already, refunded: !!result.refunded });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/admin/corcho/items — listar todos los ítems/canjes del Banco do Corcho
 router.get('/corcho/items', requireAuth, (req, res) => {
   try {

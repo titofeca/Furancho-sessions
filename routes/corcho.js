@@ -101,7 +101,10 @@ router.get('/packs', (req, res) => {
   }
 });
 
-// POST /api/corcho/buy-pack — comprar paquete de CorchoCoins
+// POST /api/corcho/buy-pack — SOLICITAR compra de un paquete de $CORCHO.
+// NO acredita monedas: el $CORCHO es dinero real (se paga en €). Se crea una
+// solicitud PENDIENTE que el staff/admin confirma en la barra SOLO cuando el
+// socio ha pagado. Sin esta validación cualquiera se autoacreditaría gratis.
 router.post('/buy-pack', (req, res) => {
   const { walletAddress, packId } = req.body || {};
   if (!walletAddress || !ETH_REGEX.test(walletAddress)) {
@@ -109,28 +112,53 @@ router.post('/buy-pack', (req, res) => {
   }
 
   try {
-    const { db } = require('../db/database');
+    const { db, createCorchoPackRequest } = require('../db/database');
     const pack = db.prepare(`SELECT * FROM corcho_packs WHERE id = ? AND active = 1`).get(packId);
     if (!pack) {
       return res.status(400).json({ error: 'Paquete de recarga no válido o inactivo' });
     }
 
-    const result = corcho.addCorchoCoins(
-      walletAddress,
-      pack.coins,
-      'buy_pack',
-      `💳 Recarga ${pack.name} (+${pack.coins} $CORCHO por ${pack.price_eur}€)`,
-      `buy_${packId}_${Date.now()}`
-    );
+    const { request, already } = createCorchoPackRequest({ walletAddress, pack });
 
     res.json({
       success: true,
-      message: `🎉 ¡Recarga efectuada! Has recibido ${pack.coins.toLocaleString()} $CORCHO.`,
-      newBalance: result.newBalance
+      pending: true,
+      request: {
+        id: request.id,
+        packName: request.pack_name,
+        coins: request.coins,
+        priceEur: request.price_eur
+      },
+      message: already
+        ? `⏳ Xa tes esta compra pendente. Paga ${pack.price_eur}€ na barra e o camareiro cha validará (recibirás ${pack.coins.toLocaleString()} $CORCHO).`
+        : `⏳ Compra rexistrada. Paga ${pack.price_eur}€ na barra: cando o camareiro ou o admin o confirme recibirás ${pack.coins.toLocaleString()} $CORCHO. Ata entón non se acredita nada.`
     });
   } catch (e) {
     console.error('Error en POST /api/corcho/buy-pack:', e.message);
-    res.status(500).json({ error: 'Error procesando recarga' });
+    res.status(500).json({ error: 'Error procesando la solicitud de compra' });
+  }
+});
+
+// GET /api/corcho/pending?wallet=0x... — compras y canjes pendientes del socio,
+// para que su móvil muestre "pendiente de validar en la barra".
+router.get('/pending', (req, res) => {
+  const { wallet } = req.query;
+  if (!wallet || !ETH_REGEX.test(wallet)) {
+    return res.status(400).json({ error: 'Wallet no válida' });
+  }
+  try {
+    const { getPendingCorchoPackRequests, getPendingRedemptions } = require('../db/database');
+    const packs = getPendingCorchoPackRequests(wallet).map(r => ({
+      id: r.id, packName: r.pack_name, coins: r.coins, priceEur: r.price_eur, createdAt: r.created_at
+    }));
+    const vouchers = getPendingRedemptions(wallet).map(v => ({
+      code: v.code, itemName: v.item_name, itemEmoji: v.item_emoji,
+      priceCorcho: v.price_corcho, expiresAt: v.expires_at
+    }));
+    res.json({ packs, vouchers });
+  } catch (e) {
+    console.error('Error en GET /api/corcho/pending:', e.message);
+    res.status(500).json({ error: 'Error obteniendo pendientes' });
   }
 });
 
@@ -156,7 +184,7 @@ router.post('/redeem-item', (req, res) => {
   }
 
   try {
-    const { db, spendCorchoCoins } = require('../db/database');
+    const { db, spendCorchoCoins, createRedemptionVoucher } = require('../db/database');
     const item = db.prepare(`SELECT * FROM corcho_items WHERE id = ? AND active = 1`).get(itemId);
     if (!item) {
       return res.status(404).json({ error: 'El producto o canje ya no está disponible' });
@@ -179,10 +207,21 @@ router.post('/redeem-item', (req, res) => {
       return res.status(400).json({ error: 'No se pudo procesar el canje.' });
     }
 
+    // Vale server-side con código REAL: el staff/admin lo valida al entregar la
+    // consumición. Antes el código era cosmético (aleatorio en el móvil) y nadie
+    // lo comprobaba — ahora la entrega queda registrada y es anti-doble-canje.
+    let voucher = null;
+    try {
+      voucher = createRedemptionVoucher({ walletAddress, item, ttlMinutes: 15 });
+    } catch (ve) {
+      console.error('Error creando vale de canje:', ve.message);
+    }
+
     res.json({
       success: true,
       item,
-      message: `🎉 ¡Canje realizado! Has obtenido ${item.emoji} ${item.name}. Enseña la confirmación en la barra.`,
+      voucher: voucher ? { code: voucher.code, expiresAt: voucher.expires_at } : null,
+      message: `🎉 ¡Canje realizado! Enseña el vale en la barra: el camarero lo validará al darte ${item.emoji} ${item.name}.`,
       newBalance: spendRes.newBalance
     });
   } catch (e) {

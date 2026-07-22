@@ -11016,7 +11016,7 @@
         }
 
         closeCorchoItemsModal();
-        openCorchoVoucherModal(itemName, res.item ? res.item.emoji : '🎁');
+        openCorchoVoucherModal(itemName, res.item ? res.item.emoji : '🎁', res.voucher || null);
         loadCorchoBalance();
       } catch (e) {
         alert('Error de conexión al procesar el canje');
@@ -11024,16 +11024,25 @@
     }
 
     let _voucherTimerInterval = null;
-    function openCorchoVoucherModal(itemName, itemEmoji) {
+    function openCorchoVoucherModal(itemName, itemEmoji, voucher) {
       const modal = document.getElementById('corcho-voucher-modal');
       document.getElementById('voucher-item-name').textContent = `${itemEmoji || '🎁'} ${itemName}`;
-      
-      const randomCode = 'FUR-' + Math.random().toString(36).substring(2, 6).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-      document.getElementById('voucher-code').textContent = randomCode;
-      
+
+      // Código REAL del servidor: es el que valida el camarero/admin al entregar.
+      // (Antes era aleatorio en el móvil y nadie lo comprobaba.) Si por lo que sea
+      // no llega, el camarero igualmente puede validarlo al ficharte en /staff.
+      const code = (voucher && voucher.code) ? voucher.code : '—';
+      document.getElementById('voucher-code').textContent = code;
+
       modal.style.display = 'flex';
 
+      // El tiempo restante manda desde la caducidad del servidor.
       let secondsLeft = 15 * 60;
+      if (voucher && voucher.expiresAt) {
+        const expMs = new Date(voucher.expiresAt.replace(' ', 'T') + 'Z').getTime();
+        const diff = Math.round((expMs - Date.now()) / 1000);
+        if (!isNaN(diff)) secondsLeft = Math.max(0, diff);
+      }
       if (_voucherTimerInterval) clearInterval(_voucherTimerInterval);
 
       const updateTimer = () => {
