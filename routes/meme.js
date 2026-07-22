@@ -42,6 +42,7 @@ router.get('/status', (req, res) => {
       open: cfg.open && s.left > 0,
       note: cfg.note,
       priceCents: cfg.priceCents,
+      priceCorcho: cfg.priceCorcho || 500,
       perks: shop.listPerks(true).map(p => ({ emoji: p.emoji, label: p.label, qty: p.qty, kind: p.kind }))
     };
     if (wallet && ETH.test(wallet)) {
@@ -62,6 +63,22 @@ router.get('/status', (req, res) => {
     }
     res.json(out);
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/meme/buy-with-corcho — el cliente compra el Meme VIP directamente con su saldo de $CORCHO.
+router.post('/buy-with-corcho', buyLimiter, (req, res) => {
+  const { walletAddress } = req.body || {};
+  if (!walletAddress || !ETH.test(walletAddress)) return res.status(400).json({ error: 'Wallet no válida' });
+  try {
+    const result = shop.buyWithCorchoCoins(walletAddress);
+    res.json({
+      success: true,
+      message: `🎉 ¡Enhorabuena! Has comprado el Meme VIP por ${result.priceCorcho} $CORCHO.`,
+      result
+    });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 // POST /api/meme/request — el cliente pulsa "Comprar". No cobra nada aquí: deja
@@ -87,6 +104,7 @@ router.post('/cancel', buyLimiter, (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+
 // ─── ADMIN ───────────────────────────────────────────────────────────────────
 
 // GET /api/meme/admin/overview — panel: existencias, caja, solicitudes y pendientes.
@@ -103,14 +121,14 @@ router.get('/admin/overview', requireAuth, (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// PUT /api/meme/admin/config — precio base, multiplicador, venta abierta y nota.
-// NO existe forma de tocar las 300 unidades: no se lee del cuerpo ni se guarda.
+// PUT /api/meme/admin/config — precio base, precio en corchos, multiplicador, venta abierta y nota.
 router.put('/admin/config', requireAuth, (req, res) => {
   try {
-    const { priceCents, multiplier, open, note } = req.body;
-    res.json({ success: true, config: shop.setConfig({ priceCents, multiplier, open, note }), supply: shop.supply() });
+    const { priceCents, priceCorcho, multiplier, open, note } = req.body;
+    res.json({ success: true, config: shop.setConfig({ priceCents, priceCorcho, multiplier, open, note }), supply: shop.supply() });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
+
 
 // Qué incluye el meme (catálogo). Cambiarlo NO altera lo ya vendido.
 router.post('/admin/perks', requireAuth, (req, res) => {

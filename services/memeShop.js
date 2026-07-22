@@ -37,24 +37,32 @@ const K_MULT  = 'meme_shop_multiplier';
 const K_OPEN  = 'meme_shop_open';
 const K_NOTE  = 'meme_shop_note';
 
+const K_CORCHO = 'meme_shop_price_corcho';
+
 function getConfig() {
   const priceCents = parseInt(getSetting(K_PRICE, '2500'), 10) || 0;
+  const priceCorcho = parseInt(getSetting(K_CORCHO, '500'), 10) || 500;
   const multiplier = parseFloat(getSetting(K_MULT, '2')) || 1;
   return {
     priceCents,
+    priceCorcho,
     multiplier: Math.max(1, multiplier),
     open: getSetting(K_OPEN, '1') !== '0',
     note: getSetting(K_NOTE, '') || ''
   };
 }
 
-// Guarda SOLO precio, multiplicador, apertura y nota. Cualquier intento de colar
-// un límite de unidades se ignora por diseño (no hay rama que lo lea).
-function setConfig({ priceCents, multiplier, open, note }) {
+// Guarda SOLO precio, multiplicador, apertura y nota.
+function setConfig({ priceCents, priceCorcho, multiplier, open, note }) {
   if (priceCents !== undefined) {
     const c = Math.max(0, Math.round(Number(priceCents)));
     if (!isFinite(c)) throw new Error('Precio no válido');
     setSetting(K_PRICE, String(c));
+  }
+  if (priceCorcho !== undefined) {
+    const co = Math.max(0, Math.round(Number(priceCorcho)));
+    if (!isFinite(co)) throw new Error('Precio en CorchoCoins no válido');
+    setSetting(K_CORCHO, String(co));
   }
   if (multiplier !== undefined) {
     const m = Number(multiplier);
@@ -65,6 +73,7 @@ function setConfig({ priceCents, multiplier, open, note }) {
   if (note !== undefined) setSetting(K_NOTE, note || '');
   return getConfig();
 }
+
 
 // ─── EXISTENCIAS ─────────────────────────────────────────────────────────────
 // Los mints fallidos no cuentan (se pueden reintentar). Incluye los memes
@@ -399,6 +408,29 @@ function syncUnitsFromAchievementMints() {
   } catch (_) {}
 }
 
+function buyWithCorchoCoins(wallet) {
+  if (!wallet || !/^0x[a-fA-F0-9]{40}$/i.test(wallet)) throw new Error('Wallet no válida');
+  const cfg = getConfig();
+  if (!cfg.open) throw new Error('La venta del meme está cerrada ahora mismo.');
+  const s = supply();
+  if (s.left <= 0) throw new Error('Se han agotado las 300 unidades del Meme VIP.');
+
+  const priceCorcho = cfg.priceCorcho || 500;
+  const { spendCorchoCoins } = require('../db/database');
+
+  const spendRes = spendCorchoCoins(wallet, priceCorcho, 'nft_purchase', `Compra de Meme VIP NFT con $CORCHO`, MEME.ACHIEVEMENT_ID);
+  if (!spendRes.ok) {
+    if (spendRes.error === 'insufficient_balance') {
+      throw new Error(`Saldo insuficiente. El Meme VIP cuesta ${priceCorcho} $CORCHO (tienes ${spendRes.currentBalance} $CORCHO).`);
+    }
+    throw new Error('No se pudo procesar el cobro en $CORCHO.');
+  }
+
+  // Ejecutar entrega del Meme
+  const sale = sellTo(wallet, { source: 'corcho', priceCents: 0, withPerks: true });
+  return { ...sale, newCorchoBalance: spendRes.newBalance, priceCorcho };
+}
+
 setTimeout(startMemeQueueWorker, 1500);
 
 module.exports = {
@@ -407,8 +439,9 @@ module.exports = {
   supply, unitsOfWallet, priceForWallet,
   listPerks, createPerk, updatePerk, deletePerk,
   requestPurchase, cancelRequest, listRequests, pendingRequestOf,
-  sellTo,
+  sellTo, buyWithCorchoCoins,
   moveUnitOnTransfer,
   entitlementsOfWallet, entitlementsOfUnit, usePerk, undoLastUse, pendingDeliveries,
   adminOverview, listUnits, notifyMemeQueue, syncUnitsFromAchievementMints
 };
+
