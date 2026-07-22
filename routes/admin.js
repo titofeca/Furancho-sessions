@@ -2154,3 +2154,85 @@ router.get('/referral/stats', requireAuth, (req, res) => {
   }
 });
 
+// ── BANCO DO CORCHO ($CORCHO) ────────────────────────────────────────────────
+
+// GET /api/admin/corcho/stats — ajustes de economía, totales globales y ranking de holders
+router.get('/corcho/stats', requireAuth, (req, res) => {
+  try {
+    const corcho = require('../services/corcho');
+    const { db } = require('../db/database');
+    const settings = corcho.getEconomySettings();
+
+    const totals = db.prepare(`
+      SELECT
+        COALESCE(SUM(balance), 0) as total_circulating,
+        COALESCE(SUM(total_earned), 0) as total_issued,
+        COALESCE(SUM(total_spent), 0) as total_burned
+      FROM corcho_balances
+    `).get();
+
+    const holders = db.prepare(`
+      SELECT wallet_address, balance, total_earned, total_spent
+      FROM corcho_balances
+      ORDER BY balance DESC LIMIT 15
+    `).all();
+
+    const recentTx = db.prepare(`
+      SELECT id, wallet_address, amount, type, description, created_at
+      FROM corcho_transactions
+      ORDER BY id DESC LIMIT 20
+    `).all();
+
+    res.json({
+      settings,
+      totals,
+      holders,
+      recentTx
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/corcho/settings — actualizar tarifas y recompensas de $CORCHO
+router.post('/corcho/settings', requireAuth, (req, res) => {
+  try {
+    const corcho = require('../services/corcho');
+    const updated = corcho.saveEconomySettings(req.body || {});
+    res.json({ success: true, message: 'Tarifas del Banco do Corcho actualizadas', settings: updated });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/corcho/grant — recargar o ajustar monedas manualmente a un usuario
+router.post('/corcho/grant', requireAuth, (req, res) => {
+  const { walletAddress, amount, description } = req.body || {};
+  if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
+    return res.status(400).json({ error: 'Wallet no válida' });
+  }
+  const qty = parseInt(amount, 10);
+  if (!qty || isNaN(qty)) {
+    return res.status(400).json({ error: 'Cantidad no válida' });
+  }
+
+  try {
+    const corcho = require('../services/corcho');
+    let result;
+    if (qty > 0) {
+      result = corcho.addCorchoCoins(walletAddress, qty, 'admin_adjustment', description || 'Ajuste manual del administrador', `admin_${Date.now()}`);
+    } else {
+      result = corcho.spendCorchoCoins(walletAddress, Math.abs(qty), 'admin_adjustment', description || 'Ajuste manual del administrador', `admin_${Date.now()}`);
+    }
+
+    if (result.error) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    res.json({ success: true, message: `Ajuste de ${qty} $CORCHO realizado con éxito.`, newBalance: result.newBalance });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+

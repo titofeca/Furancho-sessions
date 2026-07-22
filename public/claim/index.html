@@ -2154,8 +2154,50 @@
         </div>
       </div>
 
+      <!-- 🍾 BANCO DO CORCHO ($CORCHO) -->
+      <div class="profile-progress-card" id="corcho-card" style="padding:22px; margin-bottom:20px; background:linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(245, 236, 216, 0.65) 100%); border:1.5px solid rgba(196, 151, 58, 0.4); box-shadow:0 10px 30px -10px rgba(42, 21, 9, 0.08); position:relative; overflow:hidden;">
+        <div style="position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--gold),var(--wine));"></div>
+        
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:26px;">🍾</span>
+            <div>
+              <h3 style="font-family:'Playfair Display',serif; font-size:18px; font-weight:900; color:var(--wine); margin:0;">Banco do Corcho</h3>
+              <span style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--gold);">Moneda Social $CORCHO</span>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-family:'Playfair Display',serif; font-size:24px; font-weight:900; color:var(--wine); line-height:1;" id="corcho-user-balance">0</div>
+            <div style="font-size:10px; font-weight:800; color:var(--gold); letter-spacing:1px;">$CORCHO</div>
+          </div>
+        </div>
+
+        <p style="font-size:11.5px; color:var(--text-muted); line-height:1.45; margin:0 0 14px;">Gana monedas fichando, subiendo de nivel o invitando a amigos. Úsalas para traspasar NFTs entre socios o canjear ventajas.</p>
+
+        <!-- Botones de Acción -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
+          <button onclick="openCorchoTransferModal()" style="padding:10px 8px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:12px; font-family:'Outfit',sans-serif; font-size:12px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+            🔄 Traspasar NFT
+          </button>
+          <button onclick="openCorchoPacksModal()" style="padding:10px 8px; background:linear-gradient(135deg,var(--gold),#a97b1f); color:#fff; border:none; border-radius:12px; font-family:'Outfit',sans-serif; font-size:12px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+            💳 Comprar $CORCHO
+          </button>
+        </div>
+
+        <!-- Desplegable Historial -->
+        <details style="margin-top:10px;">
+          <summary style="font-size:11.5px; font-weight:700; color:var(--wine); cursor:pointer; list-style:none; display:flex; align-items:center; gap:4px; justify-content:center;">
+            📜 Ver historial de transacciones ▾
+          </summary>
+          <div id="corcho-history-list" style="margin-top:10px; max-height:180px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;">
+            <p style="font-size:11px; color:var(--text-muted); text-align:center;">Cargando historial…</p>
+          </div>
+        </details>
+      </div>
+
       <!-- ①bis EL RETO DE LOS 5 (campaña de verano) -->
       <div class="profile-progress-card" id="campaign-card" style="display:none; padding:22px; margin-bottom:20px; background:linear-gradient(135deg,rgba(255,255,255,.75) 0%,rgba(245,236,216,.55) 100%); border:1.5px solid rgba(196,151,58,.35); box-shadow:0 10px 30px -10px rgba(42,21,9,.08);">
+
 
         <div style="text-align:center; margin-bottom:6px;">
           <span style="font-size:30px;">👑</span>
@@ -10697,6 +10739,229 @@
     </div>
   </div>
 
+  <!-- ==================== MODALES DEL BANCO DO CORCHO ($CORCHO) ==================== -->
+
+  <!-- MODAL: TRASPASO DE NFT CON PEAJE EN $CORCHO -->
+  <div id="corcho-transfer-modal" style="display:none; position:fixed; inset:0; z-index:2400; background:rgba(0,0,0,0.65); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); align-items:center; justify-content:center; padding:18px;">
+    <div style="background:var(--cream); width:100%; max-width:400px; border-radius:20px; padding:22px; border:1.5px solid var(--gold); box-shadow:0 20px 40px rgba(0,0,0,0.3); position:relative;">
+      <button onclick="closeCorchoTransferModal()" style="position:absolute; top:16px; right:16px; background:none; border:none; font-size:20px; color:var(--text-muted); cursor:pointer;">✕</button>
+      <h3 style="font-family:'Playfair Display',serif; font-size:20px; color:var(--wine); margin:0 0 6px;">🔄 Traspasar NFT a otro Socio</h3>
+      <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin-bottom:14px;">Elige el NFT que quieres transferir e introduce la wallet del destinatario. Se descontará la tasa de <strong style="color:var(--wine);" id="transfer-fee-amount">150 $CORCHO</strong>.</p>
+      
+      <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase;">Selecciona tu NFT:</label>
+      <select id="transfer-nft-select" style="width:100%; padding:12px; border-radius:12px; border:1.5px solid rgba(42,21,9,0.15); background:#fff; font-size:13px; font-family:'Outfit',sans-serif; margin-bottom:12px; outline:none;"></select>
+
+      <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase;">Wallet Destino (0x...):</label>
+      <input type="text" id="transfer-to-wallet" placeholder="0x1234...abcd" style="width:100%; padding:12px; border-radius:12px; border:1.5px solid rgba(42,21,9,0.15); background:#fff; font-size:13px; font-family:'Outfit',sans-serif; margin-bottom:14px; outline:none;" />
+
+      <button onclick="submitCorchoTransfer()" style="width:100%; padding:14px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:800; cursor:pointer;">
+        Confirmar Traspaso (Cobrar Peaje)
+      </button>
+      <div id="corcho-transfer-err" style="color:var(--wine); font-size:12px; font-weight:700; text-align:center; margin-top:10px; min-height:16px;"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: COMPRAR PAQUETES $CORCHO -->
+  <div id="corcho-packs-modal" style="display:none; position:fixed; inset:0; z-index:2400; background:rgba(0,0,0,0.65); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); align-items:center; justify-content:center; padding:18px;">
+    <div style="background:var(--cream); width:100%; max-width:400px; border-radius:20px; padding:22px; border:1.5px solid var(--gold); box-shadow:0 20px 40px rgba(0,0,0,0.3); position:relative;">
+      <button onclick="closeCorchoPacksModal()" style="position:absolute; top:16px; right:16px; background:none; border:none; font-size:20px; color:var(--text-muted); cursor:pointer;">✕</button>
+      <h3 style="font-family:'Playfair Display',serif; font-size:20px; color:var(--wine); margin:0 0 6px;">💳 Recargar CorchoCoins</h3>
+      <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin-bottom:14px;">Consigue $CORCHO al instante para traspasar tus NFTs o canjear ventajas exclusivas:</p>
+      
+      <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
+        <div onclick="buyCorchoPack('pack_5')" style="padding:14px; border-radius:14px; border:1.5px solid rgba(196,151,58,0.4); background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:space-between;">
+          <div>
+            <div style="font-weight:800; color:var(--wine); font-size:14px;">500 $CORCHO</div>
+            <div style="font-size:11px; color:var(--text-muted);">Paquete Cunca</div>
+          </div>
+          <button style="padding:8px 16px; background:var(--wine); color:#fff; border:none; border-radius:20px; font-weight:800; font-size:13px;">5 €</button>
+        </div>
+
+        <div onclick="buyCorchoPack('pack_10')" style="padding:14px; border-radius:14px; border:2px solid var(--gold); background:linear-gradient(135deg,rgba(196,151,58,0.1),#fff); cursor:pointer; display:flex; align-items:center; justify-content:space-between; position:relative;">
+          <span style="position:absolute; top:-8px; right:14px; background:var(--gold); color:#fff; font-size:9px; font-weight:800; padding:2px 8px; border-radius:10px; text-transform:uppercase;">🔥 Más Popular (+100 Bonus)</span>
+          <div>
+            <div style="font-weight:800; color:var(--wine); font-size:14px;">1.100 $CORCHO</div>
+            <div style="font-size:11px; color:var(--text-muted);">Paquete Garrafa</div>
+          </div>
+          <button style="padding:8px 16px; background:var(--gold); color:#fff; border:none; border-radius:20px; font-weight:800; font-size:13px;">10 €</button>
+        </div>
+
+        <div onclick="buyCorchoPack('pack_20')" style="padding:14px; border-radius:14px; border:1.5px solid rgba(196,151,58,0.4); background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:space-between;">
+          <div>
+            <div style="font-weight:800; color:var(--wine); font-size:14px;">2.500 $CORCHO</div>
+            <div style="font-size:11px; color:var(--text-muted);">Paquete Presidente (+500 Bonus)</div>
+          </div>
+          <button style="padding:8px 16px; background:var(--wine); color:#fff; border:none; border-radius:20px; font-weight:800; font-size:13px;">20 €</button>
+        </div>
+      </div>
+      <p style="text-align:center; font-size:11px; color:var(--text-muted); margin:0;">También puedes recargar en efectivo directamente con los camareros en la barra.</p>
+    </div>
+  </div>
+
+  <script>
+    // ── LÓGICA DEL BANCO DO CORCHO ($CORCHO) ──
+    let _corchoData = null;
+
+    async function loadCorchoBalance() {
+      if (!userWalletAddress) return;
+      try {
+        const r = await resilientFetch(`/api/corcho/balance?wallet=${userWalletAddress}`);
+        if (!r.ok) return;
+        _corchoData = await r.json();
+        
+        const balEl = document.getElementById('corcho-user-balance');
+        if (balEl) balEl.textContent = _corchoData.balance.toLocaleString();
+
+        const feeEl = document.getElementById('transfer-fee-amount');
+        if (feeEl) feeEl.textContent = `${_corchoData.transferFee} $CORCHO`;
+
+        // Renderizar Historial
+        const histEl = document.getElementById('corcho-history-list');
+        if (histEl) {
+          if (!_corchoData.history || !_corchoData.history.length) {
+            histEl.innerHTML = '<p style="font-size:11px; color:var(--text-muted); text-align:center; margin:4px 0;">Sin transacciones aún.</p>';
+          } else {
+            histEl.innerHTML = _corchoData.history.map(tx => {
+              const isPlus = tx.amount > 0;
+              return `<div style="display:flex; align-items:center; justify-content:space-between; padding:6px 8px; background:rgba(255,255,255,0.7); border-radius:8px; border:1px solid rgba(42,21,9,0.06); font-size:11px;">
+                <div style="flex:1; padding-right:8px; line-height:1.3;">
+                  <strong style="color:var(--text); font-weight:700;">${tx.description}</strong>
+                  <div style="font-size:9.5px; color:var(--text-muted);">${tx.created_at ? tx.created_at.slice(0,16) : ''}</div>
+                </div>
+                <span style="font-family:monospace; font-size:12px; font-weight:800; color:${isPlus ? '#16a34a' : 'var(--wine)'}; white-space:nowrap;">
+                  ${isPlus ? '+' : ''}${tx.amount} $CORCHO
+                </span>
+              </div>`;
+            }).join('');
+          }
+        }
+      } catch (e) {
+        console.error('Error cargando Banco do Corcho:', e);
+      }
+    }
+
+    function openCorchoTransferModal() {
+      if (!userWalletAddress) { alert('Conecta tu wallet primero'); return; }
+      const modal = document.getElementById('corcho-transfer-modal');
+      const select = document.getElementById('transfer-nft-select');
+      const err = document.getElementById('corcho-transfer-err');
+      if (err) err.textContent = '';
+
+      // Poblar NFTs del usuario
+      select.innerHTML = '';
+      let nftCount = 0;
+      
+      // Niveles
+      if (window._userPasses && window._userPasses.length) {
+        window._userPasses.forEach(p => {
+          if (p.status === 'success') {
+            nftCount++;
+            const opt = document.createElement('option');
+            opt.value = `level:${p.level}`;
+            opt.textContent = `🏆 Pase Nivel ${p.level} (${p.levelName || 'Socio'})`;
+            select.appendChild(opt);
+          }
+        });
+      }
+
+      // Logros
+      if (window._userAchievements && window._userAchievements.length) {
+        window._userAchievements.forEach(a => {
+          if (a.status === 'success') {
+            nftCount++;
+            const opt = document.createElement('option');
+            opt.value = `achievement:${a.achievement_id || a.id}`;
+            opt.textContent = `🏅 Logro: ${a.title || a.name || a.achievement_id}`;
+            select.appendChild(opt);
+          }
+        });
+      }
+
+      if (nftCount === 0) {
+        select.innerHTML = '<option value="">No tienes ningún NFT disponible para traspasar</option>';
+      }
+
+      modal.style.display = 'flex';
+    }
+
+    function closeCorchoTransferModal() {
+      document.getElementById('corcho-transfer-modal').style.display = 'none';
+    }
+
+    async function submitCorchoTransfer() {
+      const select = document.getElementById('transfer-nft-select');
+      const toInput = document.getElementById('transfer-to-wallet');
+      const err = document.getElementById('corcho-transfer-err');
+
+      if (!select.value) { err.textContent = 'Selecciona un NFT válido.'; return; }
+      const toWallet = toInput.value.trim();
+      if (!toWallet || !/^0x[a-fA-F0-9]{40}$/i.test(toWallet)) {
+        err.textContent = 'Escribe una wallet de destino válida (0x...).';
+        return;
+      }
+
+      const [nftType, nftId] = select.value.split(':');
+      err.textContent = 'Procesando traspaso…';
+
+      try {
+        const r = await fetch('/api/corcho/transfer-nft', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fromWallet: userWalletAddress,
+            toWallet,
+            nftType,
+            nftId
+          })
+        });
+        const d = await r.json();
+        if (!r.ok) {
+          err.textContent = d.error || 'Error procesando traspaso';
+          return;
+        }
+
+        alert(d.message);
+        closeCorchoTransferModal();
+        loadCorchoBalance();
+        if (typeof initWallet === 'function') initWallet();
+      } catch (e) {
+        err.textContent = 'Error de conexión';
+      }
+    }
+
+    function openCorchoPacksModal() {
+      document.getElementById('corcho-packs-modal').style.display = 'flex';
+    }
+    function closeCorchoPacksModal() {
+      document.getElementById('corcho-packs-modal').style.display = 'none';
+    }
+
+    async function buyCorchoPack(packId) {
+      if (!userWalletAddress) { alert('Conecta tu wallet primero'); return; }
+      try {
+        const r = await fetch('/api/corcho/buy-pack', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ walletAddress: userWalletAddress, packId })
+        });
+        const d = await r.json();
+        if (!r.ok) { alert('⚠️ ' + (d.error || 'Error procesando recarga')); return; }
+
+        alert(d.message);
+        closeCorchoPacksModal();
+        loadCorchoBalance();
+      } catch (e) {
+        alert('Error de conexión');
+      }
+    }
+
+    // Auto-cargar saldo al iniciar wallet
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(loadCorchoBalance, 1200);
+    });
+  </script>
+
   <script src="/claim/app.js"></script>
 </body>
 </html>
+

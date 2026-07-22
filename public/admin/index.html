@@ -1211,6 +1211,91 @@
         </div>
       </div>
 
+      <!-- Banco do Corcho — Economía $CORCHO -->
+      <details class="glass-card" id="corcho-admin-card" style="margin-bottom:20px; outline:none;" open>
+        <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; padding:14px 18px; border-bottom:1px solid rgba(42,21,9,0.06);">
+          <span class="card-title">🍾 Banco do Corcho — Economía $CORCHO</span>
+          <button class="btn-download" onclick="loadCorchoAdminStats()" style="font-size:11px; padding:6px 12px;">↻</button>
+        </summary>
+        <div style="padding:18px;">
+          <!-- Totales -->
+          <div style="display:flex; gap:10px; margin-bottom:16px;">
+            <div style="flex:1; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px; padding:12px; text-align:center;">
+              <div style="font-family:'Playfair Display',serif; font-size:22px; font-weight:900; color:var(--wine);" id="corcho-stat-circulating">—</div>
+              <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">En Circulación</div>
+            </div>
+            <div style="flex:1; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px; padding:12px; text-align:center;">
+              <div style="font-family:'Playfair Display',serif; font-size:22px; font-weight:900; color:var(--gold);" id="corcho-stat-issued">—</div>
+              <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">Emitidos</div>
+            </div>
+            <div style="flex:1; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px; padding:12px; text-align:center;">
+              <div style="font-family:'Playfair Display',serif; font-size:22px; font-weight:900; color:#ef4444;" id="corcho-stat-burned">—</div>
+              <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">Gastados / Peajes</div>
+            </div>
+          </div>
+
+          <!-- Ajuste Manual / Recarga a Usuario -->
+          <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
+            <div class="card-title" style="font-size:14px; margin-bottom:8px;">⚡ Ajuste Manual o Recarga de $CORCHO</div>
+            <div style="display:grid; grid-template-columns:2fr 1fr 2fr; gap:8px; margin-bottom:8px;">
+              <input type="text" id="corcho-grant-wallet" class="input-field" placeholder="Wallet socio (0x...)" style="font-size:12px;" />
+              <input type="number" id="corcho-grant-amount" class="input-field" placeholder="Cantidad (ej: 200 o -100)" style="font-size:12px;" />
+              <input type="text" id="corcho-grant-desc" class="input-field" placeholder="Motivo / Justificación" style="font-size:12px;" />
+            </div>
+            <button onclick="adminGrantCorchoCoins()" style="background:var(--wine); color:#fff; border:none; border-radius:10px; padding:9px 18px; font-size:12px; font-weight:700; cursor:pointer;">
+              Aplicar Ajuste de $CORCHO
+            </button>
+          </div>
+
+          <!-- Tarifas y Recompensas Configurables -->
+          <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
+            <div class="card-title" style="font-size:14px; margin-bottom:10px;">⚙️ Configuración de Recompensas y Peaje ($CORCHO)</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Recompensa por Fichaje Entrada:</label>
+                <input type="number" id="rate-checkin" class="input-field" style="font-size:12px; padding:6px 10px;" />
+              </div>
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--wine);">Peaje por Traspaso de NFT:</label>
+                <input type="number" id="rate-nftTransferFee" class="input-field" style="font-size:12px; padding:6px 10px;" />
+              </div>
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Recompensa Nivel 1 (Cautivo):</label>
+                <input type="number" id="rate-level1" class="input-field" style="font-size:12px; padding:6px 10px;" />
+              </div>
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Recompensa Nivel 2 (Cunqueiro):</label>
+                <input type="number" id="rate-level2" class="input-field" style="font-size:12px; padding:6px 10px;" />
+              </div>
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Recompensa Nivel 3 (Larpeiro):</label>
+                <input type="number" id="rate-level3" class="input-field" style="font-size:12px; padding:6px 10px;" />
+              </div>
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Recompensa Nivel 4 (Presidente):</label>
+                <input type="number" id="rate-level4" class="input-field" style="font-size:12px; padding:6px 10px;" />
+              </div>
+            </div>
+            <button onclick="saveCorchoAdminSettings()" style="background:var(--gold); color:#fff; border:none; border-radius:10px; padding:9px 18px; font-size:12px; font-weight:700; cursor:pointer;">
+              Guardar Tarifas
+            </button>
+          </div>
+
+          <!-- Top Holders y Últimas Transacciones -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div>
+              <div class="card-title" style="font-size:13px; margin-bottom:6px;">🏆 Mayor Saldo en $CORCHO</div>
+              <div id="corcho-holders-list" style="font-size:11.5px; display:flex; flex-direction:column; gap:4px;">—</div>
+            </div>
+            <div>
+              <div class="card-title" style="font-size:13px; margin-bottom:6px;">🕒 Últimas Transacciones</div>
+              <div id="corcho-recent-tx-list" style="font-size:11px; display:flex; flex-direction:column; gap:4px; max-height:220px; overflow-y:auto;">—</div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+
 
       <!-- Crear logro NFT desde la app -->
       <!-- Crear logro NFT desde la app (Plegable) -->
@@ -3498,7 +3583,8 @@
     }, 0);
     if (pageId === 'events') loadEventsPage();
     if (pageId === 'messages') { loadMsgRsvpEvents(); loadScheduledMessages(); loadAchievementFilterOptions(); }
-    if (pageId === 'dashboard') { loadStats(); loadHourlyChart(); loadAchievementStats(); loadAchievementManager(); loadPresentByLevel(); loadCampaignAdmin(); loadEventFinanceStats(); }
+    if (pageId === 'dashboard') { loadStats(); loadHourlyChart(); loadAchievementStats(); loadAchievementManager(); loadPresentByLevel(); loadCampaignAdmin(); loadCorchoAdminStats(); loadEventFinanceStats(); }
+
     loadVipBadge();
     if (pageId === 'holders') {
       loadVisits('__totales__');

@@ -126,6 +126,11 @@ function _doRecordVisit(walletAddress, dateStr) {
   const completed = totalVisits >= CAMPAIGN.requiredVisits;
   let claimStatus = null;
 
+  if (counted) {
+    try { require('./corcho').rewardCampaignVisit(walletAddress, dateStr); } catch (_) {}
+  }
+
+
   if (completed) {
     const a = achievements.getById(CAMPAIGN.achievementId);
     if (a) {

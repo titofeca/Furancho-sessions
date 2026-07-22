@@ -53,6 +53,7 @@ function awardLevelByVisits({ walletAddress, email = null, visitCount, ipAddress
   if (targetLevel <= 2) {
     // Nv1/Nv2 — off-chain, registro instantáneo (idéntico a POST /api/mint).
     insertMint({ email, level: targetLevel, levelName, walletAddress, status: 'success', ipAddress });
+    try { require('../services/corcho').rewardLevelAward(walletAddress, targetLevel); } catch (_) {}
     return { level: targetLevel, levelName, status: 'success' };
   }
 
@@ -62,6 +63,7 @@ function awardLevelByVisits({ walletAddress, email = null, visitCount, ipAddress
   sendNftApprovalEmail({ mintId, walletAddress, level: targetLevel, levelName, visitCount, adminUrl }).catch(() => {});
   return { level: targetLevel, levelName, status: 'pending_approval', mintId };
 }
+
 
 
 // POST /api/mint/entry — abre sesión y cuenta la visita en el momento de entrada
@@ -107,15 +109,19 @@ router.post('/entry', mintLimiter, async (req, res) => {
         const tooMany = referrerCount && referrerCount.c >= 100;
 
         if (!hadPriorVisit && !isCircular && !tooMany) {
-          db.prepare(`
+          const info = db.prepare(`
             INSERT OR IGNORE INTO referrals (referrer_wallet, referred_wallet)
             VALUES (?, ?)
           `).run(refWallet, newWallet);
+          if (info.changes > 0) {
+            try { require('../services/corcho').rewardReferral(refWallet, newWallet); } catch (_) {}
+          }
         }
       } catch (err) {
         console.error('Error al registrar referido:', err.message);
       }
     }
+
 
     // Anti-picaresca: el QR DEBE llevar la fecha del evento (ev=YYYY-MM-DD) y
     // coincidir con el evento activo. Sin fecha o fecha incorrecta → rechazado.
@@ -263,9 +269,18 @@ function performCheckin(walletAddress, ipAddress) {
   const result = openSession(walletAddress, false);
   const visitCount = getVisitCount(walletAddress);
   let levelUp = null;
+  let corchoReward = null;
+
   if (result.counted) {
     try { levelUp = awardLevelByVisits({ walletAddress, visitCount, ipAddress }); }
     catch (e) { console.error('Error otorgando nivel en check-in:', e.message); }
+
+    try {
+      const corcho = require('../services/corcho');
+      const win = require('../db/database').getActiveEventWindow();
+      const refId = win && win.event ? `event_${win.event.id}` : `checkin_${new Date().toISOString().slice(0,10)}`;
+      corchoReward = corcho.rewardCheckin(walletAddress, refId);
+    } catch (e) { console.error('Error recompensando CorchoCoins en check-in:', e.message); }
   }
 
   completeVipReservationOnCheckin(walletAddress);
@@ -277,9 +292,11 @@ function performCheckin(walletAddress, ipAddress) {
     visitCount,
     counted: !!result.counted,
     hasEventNow: result.hasEventNow !== false,
-    levelUp
+    levelUp,
+    corchoReward
   };
 }
+
 
 // POST /api/mint/admin-checkin — el STAFF ficha la ENTRADA de un cliente que enseña su
 // "ID Socio (QR)". Misma lógica exacta que /entry, pero autenticado y SIN el límite del

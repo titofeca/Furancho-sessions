@@ -624,7 +624,41 @@ try {
     updated_at TEXT DEFAULT (datetime('now'))
   )`);
 } catch (_) {}
+// Banco do Corcho: saldos, transacciones en $CORCHO y registro de traspasos de NFTs
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS corcho_balances (
+    wallet_address TEXT PRIMARY KEY,
+    balance INTEGER NOT NULL DEFAULT 0,
+    total_earned INTEGER NOT NULL DEFAULT 0,
+    total_spent INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT DEFAULT (datetime('now'))
+  )`);
+  db.exec(`CREATE TABLE IF NOT EXISTS corcho_transactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_address TEXT NOT NULL,
+    amount INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    description TEXT NOT NULL,
+    reference_id TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_corcho_tx_wallet ON corcho_transactions(wallet_address)`);
+  db.exec(`CREATE TABLE IF NOT EXISTS nft_transfers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nft_type TEXT,
+    nft_id TEXT,
+    from_wallet TEXT NOT NULL,
+    to_wallet TEXT NOT NULL,
+    fee_paid INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`);
+  try { db.exec(`ALTER TABLE nft_transfers ADD COLUMN nft_type TEXT`); } catch (_) {}
+  try { db.exec(`ALTER TABLE nft_transfers ADD COLUMN nft_id TEXT`); } catch (_) {}
+  try { db.exec(`ALTER TABLE nft_transfers ADD COLUMN fee_paid INTEGER DEFAULT 0`); } catch (_) {}
+} catch (_) {}
+
 // Visibilidad POR LOGRO en el museo: qué NFT ven los clientes (sombreados) ANTES de
+
 // conseguirlos. Se guardan aquí SOLO los que el admin ha decidido OCULTAR; por defecto
 // (no está en la tabla) el logro se muestra. Aplica a logros del código y creados.
 try {
@@ -2949,6 +2983,12 @@ module.exports = {
   getBoolSetting,
   getHiddenLockedAchievementIds,
   setAchievementLockedVisibility,
+  getCorchoBalance,
+  addCorchoCoins,
+  spendCorchoCoins,
+  getCorchoHistory,
+  transferNftWithFee,
+
   getPendingNftPrizes,
   grantNftPrize,
   grantWeeklyNftPrize,
@@ -3605,3 +3645,134 @@ function updateScheduledMessage(id, { subject, body, levelFilter, rsvpEventId, a
 function deleteScheduledMessage(id) {
   db.prepare(`DELETE FROM scheduled_messages WHERE id = ?`).run(id);
 }
+
+
+// ==================== BANCO DO CORCHO ($CORCHO) ====================
+
+function getCorchoBalance(walletAddress) {
+  if (!walletAddress) return { balance: 0, totalEarned: 0, totalSpent: 0 };
+  const row = db.prepare(
+    `SELECT balance, total_earned, total_spent FROM corcho_balances WHERE LOWER(wallet_address) = LOWER(?)`
+  ).get(walletAddress);
+  return {
+    balance: row ? row.balance : 0,
+    totalEarned: row ? row.total_earned : 0,
+    totalSpent: row ? row.total_spent : 0
+  };
+}
+
+function addCorchoCoins(walletAddress, amount, type, description, referenceId = null) {
+  if (!walletAddress || !amount || amount <= 0) return { added: false, reason: 'invalid_params' };
+  const w = walletAddress.toLowerCase();
+  
+  // Idempotencia para recompensas con referenceId (checkin, level_award, etc.)
+  if (referenceId && ['checkin', 'level_award', 'campaign_visit', 'referral'].includes(type)) {
+    const existing = db.prepare(
+      `SELECT id FROM corcho_transactions WHERE LOWER(wallet_address) = ? AND type = ? AND reference_id = ? LIMIT 1`
+    ).get(w, type, String(referenceId));
+    if (existing) return { added: false, alreadyGranted: true };
+  }
+
+  db.prepare(`
+    INSERT INTO corcho_balances (wallet_address, balance, total_earned, updated_at)
+    VALUES (?, ?, ?, datetime('now'))
+    ON CONFLICT(wallet_address) DO UPDATE SET
+      balance = balance + excluded.balance,
+      total_earned = total_earned + excluded.total_earned,
+      updated_at = datetime('now')
+  `).run(w, amount, amount);
+
+  db.prepare(`
+    INSERT INTO corcho_transactions (wallet_address, amount, type, description, reference_id)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(w, amount, type, description, referenceId ? String(referenceId) : null);
+
+  return { added: true, newBalance: getCorchoBalance(w).balance };
+}
+
+function spendCorchoCoins(walletAddress, amount, type, description, referenceId = null) {
+  if (!walletAddress || !amount || amount <= 0) return { ok: false, error: 'invalid_amount' };
+  const w = walletAddress.toLowerCase();
+
+  const current = db.prepare(
+    `SELECT balance FROM corcho_balances WHERE LOWER(wallet_address) = ?`
+  ).get(w);
+  const bal = current ? current.balance : 0;
+  if (bal < amount) {
+    return { ok: false, error: 'insufficient_balance', currentBalance: bal, required: amount };
+  }
+
+  db.prepare(`
+    UPDATE corcho_balances
+    SET balance = balance - ?,
+        total_spent = total_spent + ?,
+        updated_at = datetime('now')
+    WHERE LOWER(wallet_address) = ?
+  `).run(amount, amount, w);
+
+  db.prepare(`
+    INSERT INTO corcho_transactions (wallet_address, amount, type, description, reference_id)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(w, -amount, type, description, referenceId ? String(referenceId) : null);
+
+  return { ok: true, newBalance: bal - amount };
+}
+
+function getCorchoHistory(walletAddress, limit = 20) {
+  if (!walletAddress) return [];
+  return db.prepare(`
+    SELECT id, amount, type, description, reference_id, created_at
+    FROM corcho_transactions
+    WHERE LOWER(wallet_address) = LOWER(?)
+    ORDER BY id DESC LIMIT ?
+  `).all(walletAddress, limit);
+}
+
+function transferNftWithFee(fromWallet, toWallet, nftType, nftId, feeAmount) {
+  if (!fromWallet || !toWallet || !nftType || !nftId) return { ok: false, error: 'invalid_params' };
+  const fromW = fromWallet.toLowerCase();
+  const toW = toWallet.toLowerCase();
+
+  if (fromW === toW) return { ok: false, error: 'same_wallet' };
+
+  // 1. Deducir peaje en $CORCHO
+  const spendRes = spendCorchoCoins(fromW, feeAmount, 'nft_transfer_fee', `Peaje por traspaso de NFT (${nftType} #${nftId}) a ${toW.slice(0,6)}…${toW.slice(-4)}`, nftId);
+  if (!spendRes.ok) return spendRes;
+
+  // 2. Ejecutar traspaso
+  if (nftType === 'level') {
+    const levelNum = parseInt(nftId, 10);
+    const mint = db.prepare(`
+      SELECT id FROM mints WHERE LOWER(wallet_address) = ? AND level = ? AND status = 'success' LIMIT 1
+    `).get(fromW, levelNum);
+
+    if (!mint) {
+      // Revertir cobro
+      addCorchoCoins(fromW, feeAmount, 'admin_adjustment', 'Reembolso por fallo en traspaso NFT', nftId);
+      return { ok: false, error: 'nft_not_owned' };
+    }
+
+    db.prepare(`UPDATE mints SET wallet_address = ? WHERE id = ?`).run(toW, mint.id);
+  } else if (nftType === 'achievement') {
+    const mint = db.prepare(`
+      SELECT id FROM achievement_mints WHERE LOWER(wallet_address) = ? AND (achievement_id = ? OR id = ?) LIMIT 1
+    `).get(fromW, nftId, parseInt(nftId, 10) || -1);
+
+    if (!mint) {
+      addCorchoCoins(fromW, feeAmount, 'admin_adjustment', 'Reembolso por fallo en traspaso NFT', nftId);
+      return { ok: false, error: 'nft_not_owned' };
+    }
+
+    db.prepare(`UPDATE achievement_mints SET wallet_address = ? WHERE id = ?`).run(toW, mint.id);
+  }
+
+  // 3. Registrar en nft_transfers
+  db.prepare(`
+    INSERT INTO nft_transfers (nft_type, nft_id, from_wallet, to_wallet, fee_paid, token_id, private_key_enc, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'completed')
+  `).run(nftType, String(nftId), fromW, toW, feeAmount, parseInt(nftId, 10) || 0, '');
+
+  return { ok: true, newBalance: spendRes.newBalance };
+}
+
+

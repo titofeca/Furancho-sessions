@@ -35,6 +35,8 @@ app.use('/api/campaign', require('./routes/campaign'));
 app.use('/api/inbox', require('./routes/inbox'));
 app.use('/api/meme', require('./routes/meme'));
 app.use('/api/eclipse', require('./routes/eclipse'));
+app.use('/api/corcho', require('./routes/corcho'));
+
 
 
 // Rutas HTML explícitas — sin caché para siempre recibir versión actualizada
