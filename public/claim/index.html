@@ -10816,33 +10816,11 @@
       <h3 style="font-family:'Playfair Display',serif; font-size:20px; color:var(--wine); margin:0 0 6px;">💳 Recargar CorchoCoins</h3>
       <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin-bottom:14px;">Consigue $CORCHO al instante para traspasar tus NFTs o canjear ventajas exclusivas:</p>
       
-      <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
-        <div onclick="buyCorchoPack('pack_5')" style="padding:14px; border-radius:14px; border:1.5px solid rgba(196,151,58,0.4); background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:space-between;">
-          <div>
-            <div style="font-weight:800; color:var(--wine); font-size:14px;">500 $CORCHO</div>
-            <div style="font-size:11px; color:var(--text-muted);">Paquete Cunca</div>
-          </div>
-          <button style="padding:8px 16px; background:var(--wine); color:#fff; border:none; border-radius:20px; font-weight:800; font-size:13px;">5 €</button>
-        </div>
-
-        <div onclick="buyCorchoPack('pack_10')" style="padding:14px; border-radius:14px; border:2px solid var(--gold); background:linear-gradient(135deg,rgba(196,151,58,0.1),#fff); cursor:pointer; display:flex; align-items:center; justify-content:space-between; position:relative;">
-          <span style="position:absolute; top:-8px; right:14px; background:var(--gold); color:#fff; font-size:9px; font-weight:800; padding:2px 8px; border-radius:10px; text-transform:uppercase;">🔥 Más Popular (+100 Bonus)</span>
-          <div>
-            <div style="font-weight:800; color:var(--wine); font-size:14px;">1.100 $CORCHO</div>
-            <div style="font-size:11px; color:var(--text-muted);">Paquete Garrafa</div>
-          </div>
-          <button style="padding:8px 16px; background:var(--gold); color:#fff; border:none; border-radius:20px; font-weight:800; font-size:13px;">10 €</button>
-        </div>
-
-        <div onclick="buyCorchoPack('pack_20')" style="padding:14px; border-radius:14px; border:1.5px solid rgba(196,151,58,0.4); background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:space-between;">
-          <div>
-            <div style="font-weight:800; color:var(--wine); font-size:14px;">2.500 $CORCHO</div>
-            <div style="font-size:11px; color:var(--text-muted);">Paquete Presidente (+500 Bonus)</div>
-          </div>
-          <button style="padding:8px 16px; background:var(--wine); color:#fff; border:none; border-radius:20px; font-weight:800; font-size:13px;">20 €</button>
-        </div>
+      <div id="corcho-packs-modal-list" style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
+        <p style="font-size:12px; color:var(--text-muted); text-align:center;">Cargando paquetes…</p>
       </div>
       <p style="text-align:center; font-size:11px; color:var(--text-muted); margin:0;">También puedes recargar en efectivo directamente con los camareros en la barra.</p>
+
     </div>
   </div>
 
@@ -11126,12 +11104,36 @@
       }
     }
 
-    function openCorchoPacksModal() {
+    async function openCorchoPacksModal() {
       document.getElementById('corcho-packs-modal').style.display = 'flex';
+      const container = document.getElementById('corcho-packs-modal-list');
+      if (!container) return;
+      try {
+        const res = await resilientFetch('/api/corcho/packs').then(r => r.json());
+        const packs = res.packs || [];
+        if (!packs.length) {
+          container.innerHTML = '<p style="font-size:12px; color:var(--text-muted); text-align:center;">De momento no hay paquetes de recarga activos.</p>';
+          return;
+        }
+        container.innerHTML = packs.map(p => `
+          <div onclick="buyCorchoPack('${p.id}')" style="padding:14px; border-radius:14px; border:${p.badge ? '2px solid var(--gold)' : '1.5px solid rgba(196,151,58,0.4)'}; background:${p.badge ? 'linear-gradient(135deg,rgba(196,151,58,0.1),#fff)' : '#fff'}; cursor:pointer; display:flex; align-items:center; justify-content:space-between; position:relative;">
+            ${p.badge ? `<span style="position:absolute; top:-8px; right:14px; background:var(--gold); color:#fff; font-size:9px; font-weight:800; padding:2px 8px; border-radius:10px; text-transform:uppercase;">${esc(p.badge)}</span>` : ''}
+            <div>
+              <div style="font-weight:800; color:var(--wine); font-size:14px;">${p.coins.toLocaleString()} $CORCHO</div>
+              <div style="font-size:11px; color:var(--text-muted);">${esc(p.name)}</div>
+            </div>
+            <button style="padding:8px 16px; background:${p.badge ? 'var(--gold)' : 'var(--wine)'}; color:#fff; border:none; border-radius:20px; font-weight:800; font-size:13px;">${p.price_eur} €</button>
+          </div>
+        `).join('');
+      } catch (e) {
+        container.innerHTML = '<p style="font-size:12px; color:var(--wine); text-align:center;">Error cargando paquetes.</p>';
+      }
     }
+
     function closeCorchoPacksModal() {
       document.getElementById('corcho-packs-modal').style.display = 'none';
     }
+
 
     async function buyCorchoPack(packId) {
       if (!userWalletAddress) { alert('Conecta tu wallet primero'); return; }

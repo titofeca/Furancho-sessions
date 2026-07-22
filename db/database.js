@@ -671,7 +671,26 @@ try {
     insertItem.run('1 Ración Gourmet / Especial', '🍖', 1200, 'Ración especial de la casa');
     insertItem.run('Camiseta Oficial Furancho / Meme VIP', '👕', 4000, 'Camiseta o producto exclusivo oficial Furancho');
   }
+
+  db.exec(`CREATE TABLE IF NOT EXISTS corcho_packs (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    price_eur REAL NOT NULL,
+    coins INTEGER NOT NULL,
+    badge TEXT,
+    active INTEGER DEFAULT 1,
+    updated_at TEXT DEFAULT (datetime('now'))
+  )`);
+
+  const packCount = db.prepare(`SELECT COUNT(*) c FROM corcho_packs`).get().c;
+  if (packCount === 0) {
+    const insertPack = db.prepare(`INSERT INTO corcho_packs (id, name, price_eur, coins, badge) VALUES (?, ?, ?, ?, ?)`);
+    insertPack.run('pack_5', 'Paquete Cunca', 5, 500, '');
+    insertPack.run('pack_10', 'Paquete Garrafa', 10, 1100, '🔥 Más Popular (+100 Bonus)');
+    insertPack.run('pack_20', 'Paquete Presidente', 20, 2500, '+500 Bonus');
+  }
 } catch (_) {}
+
 
 
 // Visibilidad POR LOGRO en el museo: qué NFT ven los clientes (sombreados) ANTES de
@@ -3118,8 +3137,11 @@ module.exports = {
   getCorchoItems,
   addCorchoItem,
   updateCorchoItem,
-  deleteCorchoItem
+  deleteCorchoItem,
+  getCorchoPacks,
+  saveCorchoPack
 };
+
 
 
 function getEventRecap(eventDate) {
@@ -3835,6 +3857,32 @@ function updateCorchoItem(id, { name, emoji, priceCorcho, description, active })
 function deleteCorchoItem(id) {
   return db.prepare(`DELETE FROM corcho_items WHERE id = ?`).run(id).changes > 0;
 }
+
+// Paquetes configurables de recarga $CORCHO en Euros (€)
+function getCorchoPacks(onlyActive = true) {
+  if (onlyActive) {
+    return db.prepare(`SELECT * FROM corcho_packs WHERE active = 1 ORDER BY price_eur ASC`).all();
+  }
+  return db.prepare(`SELECT * FROM corcho_packs ORDER BY price_eur ASC`).all();
+}
+
+function saveCorchoPack(id, { name, priceEur, coins, badge, active }) {
+  const existing = db.prepare(`SELECT id FROM corcho_packs WHERE id = ?`).get(id);
+  if (existing) {
+    db.prepare(`
+      UPDATE corcho_packs
+      SET name = ?, price_eur = ?, coins = ?, badge = ?, active = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `).run(name, parseFloat(priceEur) || 0, parseInt(coins, 10) || 0, badge || '', active ? 1 : 0, id);
+  } else {
+    db.prepare(`
+      INSERT INTO corcho_packs (id, name, price_eur, coins, badge, active)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(id, name, parseFloat(priceEur) || 0, parseInt(coins, 10) || 0, badge || '', active ? 1 : 0);
+  }
+  return db.prepare(`SELECT * FROM corcho_packs WHERE id = ?`).get(id);
+}
+
 
 
 

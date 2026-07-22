@@ -2278,5 +2278,31 @@ router.delete('/corcho/items/:id', requireAuth, (req, res) => {
   }
 });
 
+// GET /api/admin/corcho/packs — listar todos los paquetes de compra en Euros
+router.get('/corcho/packs', requireAuth, (req, res) => {
+  try {
+    const { getCorchoPacks } = require('../db/database');
+    res.json({ packs: getCorchoPacks(false) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/corcho/packs — guardar/editar paquete de compra en Euros
+router.post('/corcho/packs', requireAuth, (req, res) => {
+  try {
+    const { saveCorchoPack } = require('../db/database');
+    const { id, name, priceEur, coins, badge, active } = req.body || {};
+    if (!id || !name || priceEur === undefined || coins === undefined) {
+      return res.status(400).json({ error: 'Faltan campos obligatorios' });
+    }
+    const pack = saveCorchoPack(id, { name, priceEur, coins, badge, active });
+    res.json({ success: true, pack });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+
 
 

@@ -1285,6 +1285,16 @@
             </button>
           </div>
 
+          <!-- Configurador de Paquetes de Venta $CORCHO (€) -->
+          <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <div class="card-title" style="font-size:14px;">💳 Precios de Venta de $CORCHO en Euros (€)</div>
+              <button onclick="saveCorchoAdminPacks()" style="background:var(--gold); color:#fff; border:none; border-radius:8px; padding:6px 14px; font-size:11px; font-weight:700; cursor:pointer;">💾 Guardar Precios (€)</button>
+            </div>
+            <p style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">Ajusta el precio en Euros (€) y la cantidad de $CORCHO que recibe el cliente al comprar en la app o en la barra.</p>
+            <div id="corcho-packs-admin-list" style="display:flex; flex-direction:column; gap:8px;">Cargando paquetes…</div>
+          </div>
+
           <!-- Catálogo Dinámico de Canjes -->
           <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
@@ -1294,6 +1304,7 @@
             <p style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">Configura los artículos, consumiciones o raciones que los socios pueden canjear desde su móvil con sus $CORCHO.</p>
             <div id="corcho-items-admin-list" style="display:flex; flex-direction:column; gap:8px;">Cargando catálogo…</div>
           </div>
+
 
 
           <!-- Top Holders y Últimas Transacciones -->
@@ -4604,10 +4615,72 @@
       }
 
       loadCorchoAdminItems();
+      loadCorchoAdminPacks();
     } catch (e) {
       console.error('Error cargando estadísticas del Banco do Corcho:', e);
     }
   }
+
+  async function loadCorchoAdminPacks() {
+    const container = document.getElementById('corcho-packs-admin-list');
+    if (!container) return;
+    try {
+      const res = await fetch('/api/admin/corcho/packs', { headers: authHeaders() });
+      if (!res.ok) return;
+      const data = await res.json();
+      const packs = data.packs || [];
+      window._corchoAdminPacks = packs;
+      container.innerHTML = packs.map(p => `
+        <div style="display:grid; grid-template-columns:1.5fr 1fr 1fr 1.2fr 40px; gap:8px; align-items:center; padding:8px; background:var(--bg); border-radius:8px; border:1px solid rgba(42,21,9,0.08);">
+          <div>
+            <label style="font-size:9px; color:var(--text-muted); display:block;">Nombre</label>
+            <input type="text" id="pack-name-${p.id}" value="${escapeHtml(p.name)}" class="input-field" style="font-size:12px; padding:6px 8px;" placeholder="Nombre paquete" />
+          </div>
+          <div>
+            <label style="font-size:9px; color:var(--text-muted); display:block;">Precio (€)</label>
+            <input type="number" id="pack-price-${p.id}" value="${p.price_eur}" step="0.5" class="input-field" style="font-size:12px; padding:6px 8px;" />
+          </div>
+          <div>
+            <label style="font-size:9px; color:var(--text-muted); display:block;">$CORCHO</label>
+            <input type="number" id="pack-coins-${p.id}" value="${p.coins}" class="input-field" style="font-size:12px; padding:6px 8px;" />
+          </div>
+          <div>
+            <label style="font-size:9px; color:var(--text-muted); display:block;">Bonus / Etiqueta</label>
+            <input type="text" id="pack-badge-${p.id}" value="${escapeHtml(p.badge||'')}" class="input-field" style="font-size:11px; padding:6px 8px;" placeholder="Ej: +100 Bonus" />
+          </div>
+          <div style="text-align:center;">
+            <label style="font-size:9px; color:var(--text-muted); display:block;">Ver</label>
+            <input type="checkbox" id="pack-active-${p.id}" ${p.active ? 'checked' : ''} style="cursor:pointer;" />
+          </div>
+        </div>
+      `).join('');
+    } catch (e) {
+      container.innerHTML = '<p style="font-size:11px; color:var(--text-muted);">Error cargando paquetes.</p>';
+    }
+  }
+
+  async function saveCorchoAdminPacks() {
+    const packs = window._corchoAdminPacks || [];
+    if (!packs.length) return;
+    try {
+      for (const p of packs) {
+        const name = document.getElementById(`pack-name-${p.id}`).value.trim();
+        const priceEur = parseFloat(document.getElementById(`pack-price-${p.id}`).value);
+        const coins = parseInt(document.getElementById(`pack-coins-${p.id}`).value, 10);
+        const badge = document.getElementById(`pack-badge-${p.id}`).value.trim();
+        const active = document.getElementById(`pack-active-${p.id}`).checked;
+
+        await fetch('/api/admin/corcho/packs', {
+          method: 'POST',
+          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: p.id, name, priceEur, coins, badge, active })
+        });
+      }
+      showToast('✅ Precios de compra en Euros (€) guardados');
+      loadCorchoAdminPacks();
+    } catch (e) { showToast('Error guardando paquetes', true); }
+  }
+
 
   async function loadCorchoAdminItems() {
     const container = document.getElementById('corcho-items-admin-list');

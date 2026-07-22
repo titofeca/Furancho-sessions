@@ -91,12 +91,15 @@ router.post('/transfer-nft', (req, res) => {
   }
 });
 
-// PACKS DE RECARGA DISPONIBLES
-const BUY_PACKS = {
-  pack_5: { id: 'pack_5', name: 'Paquete Cunca', coins: 500, priceEur: 5 },
-  pack_10: { id: 'pack_10', name: 'Paquete Garrafa', coins: 1100, priceEur: 10, bonus: '100 $CORCHO gratis' },
-  pack_20: { id: 'pack_20', name: 'Paquete Presidente', coins: 2500, priceEur: 20, bonus: '500 $CORCHO gratis' }
-};
+// GET /api/corcho/packs — paquetes públicos activos de recarga en Euros (€)
+router.get('/packs', (req, res) => {
+  try {
+    const { getCorchoPacks } = require('../db/database');
+    res.json({ packs: getCorchoPacks(true) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // POST /api/corcho/buy-pack — comprar paquete de CorchoCoins
 router.post('/buy-pack', (req, res) => {
@@ -104,24 +107,25 @@ router.post('/buy-pack', (req, res) => {
   if (!walletAddress || !ETH_REGEX.test(walletAddress)) {
     return res.status(400).json({ error: 'Wallet no válida' });
   }
-  const pack = BUY_PACKS[packId];
-  if (!pack) {
-    return res.status(400).json({ error: 'Paquete de recarga no válido' });
-  }
 
   try {
-    // Registra la recarga en el Banco do Corcho
+    const { db } = require('../db/database');
+    const pack = db.prepare(`SELECT * FROM corcho_packs WHERE id = ? AND active = 1`).get(packId);
+    if (!pack) {
+      return res.status(400).json({ error: 'Paquete de recarga no válido o inactivo' });
+    }
+
     const result = corcho.addCorchoCoins(
       walletAddress,
       pack.coins,
       'buy_pack',
-      `💳 Recarga ${pack.name} (+${pack.coins} $CORCHO por ${pack.priceEur}€)`,
+      `💳 Recarga ${pack.name} (+${pack.coins} $CORCHO por ${pack.price_eur}€)`,
       `buy_${packId}_${Date.now()}`
     );
 
     res.json({
       success: true,
-      message: `🎉 ¡Recarga efectuada! Has recibido ${pack.coins} $CORCHO.`,
+      message: `🎉 ¡Recarga efectuada! Has recibido ${pack.coins.toLocaleString()} $CORCHO.`,
       newBalance: result.newBalance
     });
   } catch (e) {
@@ -129,6 +133,7 @@ router.post('/buy-pack', (req, res) => {
     res.status(500).json({ error: 'Error procesando recarga' });
   }
 });
+
 
 // GET /api/corcho/items — catálogo activo de canjes en $CORCHO
 router.get('/items', (req, res) => {
