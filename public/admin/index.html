@@ -1141,7 +1141,8 @@
       </div>
 
       <!-- Reto de los 5 — Campaña de verano -->
-      <div class="glass-card" id="campaign-admin-card" style="margin-bottom:20px; display:none;">
+      <div class="glass-card" id="campaign-admin-card" style="margin-bottom:20px;">
+
         <div class="card-header" style="margin-bottom:12px;">
           <span class="card-title">👑 Reto de los 5 — Campaña Verano</span>
           <button class="btn-download" onclick="loadCampaignAdmin()" style="font-size:11px; padding:6px 12px;">↻</button>
@@ -4284,11 +4285,8 @@
     const card = document.getElementById('campaign-admin-card');
     try {
       const d = await fetch('/api/admin/campaign/stats', { headers: authHeaders() }).then(r => r.json());
-      if (d.error) return;
-      // La tarjeta se muestra si la campaña está activa o si ya hay participantes.
-      const hasData = d.stats && (d.stats.participants > 0 || d.pending.length > 0);
-      if (!d.active && !hasData) { if (card) card.style.display = 'none'; return; }
       if (card) card.style.display = 'block';
+
 
       const thumb = document.getElementById('campaign-nft-thumb');
       if (thumb && d.nftImage) thumb.src = d.nftImage + '?t=' + Date.now();

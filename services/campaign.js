@@ -95,12 +95,10 @@ function getPrivilegeTiers() {
 
   return [
     { minVisits: 10, emoji: '👑', label: 'Presidente da Terraza', perks: perks10 },
-    { minVisits: 7,  emoji: '🌟', label: 'Leyenda da Terraza',    perks: ['Prioridad en lista de reservas para septiembre', 'Tapa extra en su primera noche de vuelta', 'Entrada en sorteo exclusivo de temporada'] },
     { minVisits: 5,  emoji: '🏅', label: 'Veterano da Terraza',   perks: perks5 },
-    { minVisits: 3,  emoji: '⭐', label: 'Habitual da Terraza',   perks: ['Invitación a la noche de apertura de septiembre', 'Bienvenida especial del staff'] },
-    { minVisits: 1,  emoji: '🌱', label: 'Participante',         perks: ['Reconocimiento como cliente fiel del verano'] },
   ];
 }
+
 
 function savePrivileges(perks5, perks10) {
   const { setSetting } = require('../db/database');
