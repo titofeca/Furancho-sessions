@@ -2356,30 +2356,428 @@
         </div>
       </div>
 
-      <div id="eclipse-card" style="display:none; margin-bottom:20px; border-radius:20px; border:1.5px solid rgba(42,21,9,.4); background:linear-gradient(160deg, #2a1509, #4a2a15);">
-        <div style="padding:20px; text-align:center;">
-          <!-- ⬇️ EMBLEMA ECLIPSE — PLACEHOLDER animado (luna cruzando el logo). -->
-          <!--    SWAP: sustituir este bloque por el logo animado que pasará Tito.   -->
-          <div style="display:flex; justify-content:center; margin-bottom:12px;">
-            <div style="position:relative; width:92px; height:92px; border-radius:50%; overflow:hidden; animation:eclCorona 4s ease-in-out infinite;">
-              <img src="/assets/logo.png" style="width:100%; height:100%; object-fit:cover; background:#fff;" alt="Furancho" />
-              <div style="position:absolute; inset:0; border-radius:50%; background:radial-gradient(circle at 50% 50%, rgba(15,8,4,.97) 58%, transparent 61%); animation:eclMoonCross 5s ease-in-out infinite;"></div>
+      <!-- Eclipse total CSS animation + Modal -->
+      <style>
+        /* ── Eclipse base ── */
+        #eclipse-card { cursor:pointer; -webkit-tap-highlight-color:transparent; }
+        #eclipse-card:active { transform:scale(0.985); }
+
+        .ecl-scene {
+          position:relative; width:120px; height:120px; margin:0 auto 16px;
+        }
+        /* El sol (logo) */
+        .ecl-sun {
+          position:absolute; inset:0; border-radius:50%; overflow:hidden;
+          box-shadow: 0 0 0 0 rgba(255,200,80,0);
+          animation: eclSunGlow 24s ease-in-out infinite;
+          z-index:1;
+        }
+        .ecl-sun img { width:100%; height:100%; object-fit:cover; }
+
+        /* Corona solar (rayos) */
+        .ecl-corona {
+          position:absolute; inset:-22px; border-radius:50%; z-index:0;
+          background: transparent;
+          box-shadow:
+            0 0 0 0 rgba(255,200,60,0),
+            0 0 0 0 rgba(255,170,30,0),
+            0 0 0 0 rgba(200,120,0,0);
+          animation: eclCorona 24s ease-in-out infinite;
+        }
+        /* Cromosfera (anillo rojo/rosa) */
+        .ecl-chromosphere {
+          position:absolute; inset:-4px; border-radius:50%; z-index:2;
+          border: 3px solid transparent;
+          animation: eclChroma 24s ease-in-out infinite;
+        }
+        /* La luna (disco negro) */
+        .ecl-moon {
+          position:absolute; width:118px; height:118px; border-radius:50%;
+          background:radial-gradient(circle at 48% 46%, #1a1a1a, #000);
+          z-index:3; top:1px; left:1px;
+          animation: eclMoonTotal 24s ease-in-out infinite;
+          transform: translateX(-130%);
+        }
+        /* Perlas de Baily */
+        .ecl-beads {
+          position:absolute; inset:0; border-radius:50%; z-index:4;
+          animation: eclBeads 24s ease-in-out infinite;
+          opacity:0;
+        }
+        .ecl-bead {
+          position:absolute; border-radius:50%;
+          background:radial-gradient(circle, #fff8e0, #ffd060);
+          box-shadow: 0 0 6px 3px rgba(255,220,80,.9);
+        }
+        /* Anillo de diamante */
+        .ecl-diamond-ring {
+          position:absolute; inset:-2px; border-radius:50%; z-index:5;
+          border:2px solid rgba(255,248,224,0);
+          animation: eclDiamondRing 24s ease-in-out infinite;
+        }
+        .ecl-diamond-point {
+          position:absolute; width:10px; height:10px; border-radius:50%;
+          background:radial-gradient(circle, #fff, #ffd060);
+          box-shadow: 0 0 14px 8px rgba(255,240,140,.95), 0 0 30px 14px rgba(255,200,60,.6);
+          opacity:0;
+          animation: eclDiamondPoint 24s ease-in-out infinite;
+        }
+        /* Prominencias solares */
+        .ecl-prom {
+          position:absolute; border-radius:50% 50% 0 0 / 80% 80% 0 0;
+          background: radial-gradient(ellipse, rgba(220,50,50,.9), rgba(180,20,20,.4) 70%, transparent);
+          z-index:6; opacity:0;
+          animation: eclProminences 24s ease-in-out infinite;
+        }
+
+        /* ──── KEYFRAMES ──── */
+
+        /* Sol: brilla normalmente → se apaga en totalidad → vuelve */
+        @keyframes eclSunGlow {
+          0%,12%  { box-shadow:0 0 30px 8px rgba(255,200,60,.5); }   /* sol libre */
+          35%,38% { box-shadow:0 0 6px 2px rgba(255,150,30,.1); }    /* casi tapado */
+          40%,58% { box-shadow:none; }                                /* totalidad */
+          62%,65% { box-shadow:0 0 6px 2px rgba(255,150,30,.1); }
+          80%,100%{ box-shadow:0 0 30px 8px rgba(255,200,60,.5); }
+        }
+
+        /* Corona: solo visible durante totalidad */
+        @keyframes eclCorona {
+          0%,37%  { box-shadow:0 0 0 0 rgba(255,200,60,0),0 0 0 0 rgba(255,170,30,0),0 0 0 0 rgba(200,120,0,0); }
+          42%,55% { box-shadow:0 0 55px 30px rgba(255,210,80,.55),0 0 90px 55px rgba(255,170,40,.28),0 0 130px 80px rgba(200,120,10,.12); }
+          60%,100%{ box-shadow:0 0 0 0 rgba(255,200,60,0),0 0 0 0 rgba(255,170,30,0),0 0 0 0 rgba(200,120,0,0); }
+        }
+
+        /* Cromosfera: anillo rojo solo en C2/C3 */
+        @keyframes eclChroma {
+          0%,36%  { border-color:transparent; }
+          38%,40% { border-color:rgba(220,60,60,.8); }  /* C2 - inicio totalidad */
+          58%,60% { border-color:rgba(220,60,60,.8); }  /* C3 - fin totalidad */
+          62%,100%{ border-color:transparent; }
+        }
+
+        /* Luna: viaje de izquierda a derecha */
+        @keyframes eclMoonTotal {
+          0%        { transform:translateX(-130%); }        /* fuera izquierda */
+          8%        { transform:translateX(-30%); }         /* parcial inicio */
+          20%       { transform:translateX(-10%); }         /* parcial avanzado */
+          35%       { transform:translateX(0%); }           /* casi total */
+          38%,60%   { transform:translateX(1%); }           /* TOTALIDAD (inmóvil) */
+          65%       { transform:translateX(10%); }
+          80%       { transform:translateX(30%); }
+          92%,100%  { transform:translateX(130%); }         /* fuera derecha */
+        }
+
+        /* Perlas de Baily: aparecen brevemente en C2 y C3 */
+        @keyframes eclBeads {
+          0%,34%  { opacity:0; }
+          36%,37% { opacity:1; }  /* C2 */
+          38%,57% { opacity:0; }  /* totalidad */
+          59%,60% { opacity:1; }  /* C3 */
+          62%,100%{ opacity:0; }
+        }
+
+        /* Anillo de diamante: flash en C2 y C3 */
+        @keyframes eclDiamondRing {
+          0%,35%  { border-color:rgba(255,248,224,0); }
+          37%,38% { border-color:rgba(255,248,224,.85); box-shadow:0 0 20px 6px rgba(255,240,160,.6); }
+          39%,57% { border-color:rgba(255,248,224,0); }
+          59%,60% { border-color:rgba(255,248,224,.85); box-shadow:0 0 20px 6px rgba(255,240,160,.6); }
+          61%,100%{ border-color:rgba(255,248,224,0); }
+        }
+        @keyframes eclDiamondPoint {
+          0%,35%  { opacity:0; top:1px; left:50%; }
+          37%,38% { opacity:1; top:1px; left:50%; }
+          39%,57% { opacity:0; }
+          59%,60% { opacity:1; top:auto; bottom:1px; left:50%; }
+          61%,100%{ opacity:0; }
+        }
+
+        /* Prominencias: chispas rojas durante totalidad */
+        @keyframes eclProminences {
+          0%,39%  { opacity:0; }
+          42%,54% { opacity:1; }
+          57%,100%{ opacity:0; }
+        }
+
+        /* ── MODAL ECLIPSE ── */
+        #eclipse-modal {
+          position:fixed; inset:0; z-index:9999; display:none;
+          background:rgba(5,2,0,.85); backdrop-filter:blur(6px);
+          -webkit-backdrop-filter:blur(6px);
+          align-items:flex-end;
+          animation: none;
+        }
+        #eclipse-modal.open { display:flex; }
+        #eclipse-modal-sheet {
+          width:100%; max-height:92vh; overflow-y:auto;
+          background:linear-gradient(180deg,#0d0503 0%,#1a0a04 40%,#0d0503 100%);
+          border-radius:24px 24px 0 0;
+          border-top:1.5px solid rgba(196,151,58,.3);
+          padding:0 0 48px;
+          transform:translateY(100%);
+          transition:transform .38s cubic-bezier(.32,1,.45,1);
+        }
+        #eclipse-modal.open #eclipse-modal-sheet { transform:translateY(0); }
+        .ecl-modal-handle {
+          width:36px; height:4px; background:rgba(245,230,200,.3); border-radius:100px;
+          margin:12px auto 20px; cursor:pointer;
+        }
+        .ecl-modal-hero {
+          text-align:center; padding:0 24px 20px;
+          border-bottom:1px solid rgba(196,151,58,.15);
+        }
+        .ecl-phase-row {
+          display:flex; align-items:center; gap:12px; padding:12px 24px;
+          border-bottom:1px solid rgba(245,230,200,.06);
+        }
+        .ecl-phase-icon {
+          width:36px; height:36px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+          font-size:18px; border-radius:50%;
+          background:rgba(245,230,200,.06); border:1px solid rgba(196,151,58,.2);
+        }
+        .ecl-phase-time {
+          font-family:'Outfit',monospace; font-size:13px; font-weight:800;
+          color:var(--gold); min-width:54px;
+        }
+        .ecl-phase-desc { font-size:12px; color:rgba(245,230,200,.8); line-height:1.45; flex:1; }
+        .ecl-phase-name { font-size:11px; font-weight:800; color:#f5e6c8; text-transform:uppercase; letter-spacing:.5px; }
+        .ecl-section-title {
+          font-size:10px; font-weight:800; letter-spacing:2px; text-transform:uppercase;
+          color:rgba(196,151,58,.8); padding:18px 24px 6px; margin:0;
+        }
+        .ecl-info-box {
+          margin:0 20px 10px; padding:14px 16px; border-radius:14px;
+          background:rgba(245,230,200,.04); border:1px solid rgba(196,151,58,.2);
+          font-size:12px; color:rgba(245,230,200,.8); line-height:1.55;
+        }
+        .ecl-info-box strong { color:#f5e6c8; }
+        .ecl-spot-row {
+          display:flex; align-items:flex-start; gap:10px;
+          margin:0 20px 8px; padding:10px 14px; border-radius:12px;
+          background:rgba(245,230,200,.03); border:1px solid rgba(245,230,200,.08);
+        }
+        .ecl-spot-emoji { font-size:20px; flex-shrink:0; padding-top:1px; }
+        .ecl-spot-name { font-size:12.5px; font-weight:700; color:#f5e6c8; }
+        .ecl-spot-detail { font-size:11px; color:rgba(245,230,200,.65); line-height:1.4; margin-top:2px; }
+        .ecl-weather-badge {
+          display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:700;
+          padding:2px 8px; border-radius:100px; margin-top:4px;
+        }
+        .ecl-weather-good { background:rgba(34,197,94,.15); color:#4ade80; border:1px solid rgba(34,197,94,.3); }
+        .ecl-weather-ok   { background:rgba(249,115,22,.12); color:#fb923c; border:1px solid rgba(249,115,22,.3); }
+        .ecl-perseid-bar {
+          margin:0 20px; padding:16px; border-radius:14px;
+          background:linear-gradient(135deg,rgba(88,28,135,.25),rgba(49,46,129,.2));
+          border:1px solid rgba(139,92,246,.35);
+        }
+        .ecl-close-btn {
+          display:block; width:calc(100% - 40px); margin:20px 20px 0;
+          padding:14px; border-radius:50px; font-size:14px; font-weight:800;
+          background:rgba(196,151,58,.12); border:1.5px solid rgba(196,151,58,.35);
+          color:var(--gold); cursor:pointer; font-family:'Outfit',sans-serif;
+          -webkit-tap-highlight-color:transparent;
+        }
+      </style>
+
+      <div id="eclipse-card" style="display:none; margin-bottom:20px; border-radius:20px; border:1.5px solid rgba(196,151,58,.35); background:linear-gradient(160deg,#0d0503,#1e0c07,#2a1509);"
+           onclick="openEclipseModal()" role="button" tabindex="0" aria-label="Ver guía del eclipse total">
+        <div style="padding:22px 18px; text-align:center; position:relative; overflow:hidden;">
+          <!-- Fondo de estrellas (puntitos CSS) -->
+          <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 20% 30%,rgba(255,255,255,.04) 1px,transparent 1px) 0 0 / 18px 18px, radial-gradient(ellipse at 70% 65%,rgba(255,255,255,.03) 1px,transparent 1px) 0 0 / 11px 11px;pointer-events:none;"></div>
+
+          <!-- Escena animada eclipse total -->
+          <div class="ecl-scene">
+            <!-- Corona -->
+            <div class="ecl-corona"></div>
+            <!-- Cromosfera -->
+            <div class="ecl-chromosphere"></div>
+            <!-- Sol (logo Furancho) -->
+            <div class="ecl-sun">
+              <img src="/assets/logo.png" alt="Furancho Sessions" />
+            </div>
+            <!-- Prominencias solares durante totalidad -->
+            <div class="ecl-prom" style="width:18px;height:10px;top:-6px;left:46px;transform:rotate(-20deg);"></div>
+            <div class="ecl-prom" style="width:12px;height:7px;bottom:-4px;left:70px;transform:rotate(160deg);"></div>
+            <div class="ecl-prom" style="width:10px;height:6px;top:30px;right:-4px;transform:rotate(70deg);"></div>
+            <!-- Luna -->
+            <div class="ecl-moon"></div>
+            <!-- Perlas de Baily -->
+            <div class="ecl-beads">
+              <div class="ecl-bead" style="width:7px;height:7px;top:8px;left:30px;"></div>
+              <div class="ecl-bead" style="width:5px;height:5px;top:20px;left:14px;"></div>
+              <div class="ecl-bead" style="width:6px;height:6px;top:50px;left:6px;"></div>
+              <div class="ecl-bead" style="width:4px;height:4px;top:82px;left:22px;"></div>
+              <div class="ecl-bead" style="width:5px;height:5px;top:96px;left:50px;"></div>
+            </div>
+            <!-- Anillo de diamante -->
+            <div class="ecl-diamond-ring">
+              <div class="ecl-diamond-point"></div>
             </div>
           </div>
-          <!-- ⬆️ FIN EMBLEMA -->
-          <h3 style="font-family:'Playfair Display',serif; font-size:19px; font-weight:900; color:#f5e6c8; margin:0 0 3px;">🌒 Eclipse total sobre A Coruña</h3>
-          <p style="font-size:12px; color:rgba(245,230,200,.72); line-height:1.5; margin:0 0 14px;">El <strong style="color:#f5e6c8;">12 de agosto a las 20:28</strong> se hace de noche 76 segundos en A Coruña. Un momentazo único — que no te lo cuenten, ho. 🌘</p>
-          <div id="eclipse-countdown" style="display:flex; gap:8px; justify-content:center;">
-            <div class="cd-box" style="background:rgba(255,255,255,.08); border-color:rgba(245,230,200,.2);"><div class="cd-num" style="color:#f5e6c8;" id="ecl-d">--</div><div class="cd-lbl" style="color:rgba(245,230,200,.6);">Días</div></div>
-            <div class="cd-box" style="background:rgba(255,255,255,.08); border-color:rgba(245,230,200,.2);"><div class="cd-num" style="color:#f5e6c8;" id="ecl-h">--</div><div class="cd-lbl" style="color:rgba(245,230,200,.6);">Horas</div></div>
-            <div class="cd-box" style="background:rgba(255,255,255,.08); border-color:rgba(245,230,200,.2);"><div class="cd-num" style="color:#f5e6c8;" id="ecl-m">--</div><div class="cd-lbl" style="color:rgba(245,230,200,.6);">Min</div></div>
-            <div class="cd-box" style="background:rgba(255,255,255,.08); border-color:rgba(245,230,200,.2);"><div class="cd-num" style="color:#f5e6c8;" id="ecl-s">--</div><div class="cd-lbl" style="color:rgba(245,230,200,.6);">Seg</div></div>
+
+          <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(196,151,58,.12);border-radius:100px;padding:3px 10px;margin-bottom:10px;">
+            <span style="font-size:9px;font-weight:800;letter-spacing:1.5px;color:rgba(196,151,58,.9);">🌒 ECLIPSE TOTAL · 12 AGO 2026</span>
+          </div>
+          <h3 style="font-family:'Playfair Display',serif;font-size:18px;font-weight:900;color:#f5e6c8;margin:0 0 4px;">76 segundos de noche en A Coruña</h3>
+          <p style="font-size:11.5px;color:rgba(245,230,200,.65);line-height:1.5;margin:0 0 14px;">Toca para ver las fases, mejores miradores y la lluvia de Perseidas 🌠</p>
+
+          <div id="eclipse-countdown" style="display:flex;gap:8px;justify-content:center;">
+            <div class="cd-box" style="background:rgba(255,255,255,.07);border-color:rgba(245,230,200,.15);"><div class="cd-num" style="color:#f5e6c8;" id="ecl-d">--</div><div class="cd-lbl" style="color:rgba(245,230,200,.5);">Días</div></div>
+            <div class="cd-box" style="background:rgba(255,255,255,.07);border-color:rgba(245,230,200,.15);"><div class="cd-num" style="color:#f5e6c8;" id="ecl-h">--</div><div class="cd-lbl" style="color:rgba(245,230,200,.5);">Horas</div></div>
+            <div class="cd-box" style="background:rgba(255,255,255,.07);border-color:rgba(245,230,200,.15);"><div class="cd-num" style="color:#f5e6c8;" id="ecl-m">--</div><div class="cd-lbl" style="color:rgba(245,230,200,.5);">Min</div></div>
+            <div class="cd-box" style="background:rgba(255,255,255,.07);border-color:rgba(245,230,200,.15);"><div class="cd-num" style="color:#f5e6c8;" id="ecl-s">--</div><div class="cd-lbl" style="color:rgba(245,230,200,.5);">Seg</div></div>
           </div>
           <div id="eclipse-live" style="display:none;">
-            <p style="font-size:15px; font-weight:800; color:#f5e6c8; margin:6px 0 0;">🌑 ¡Está pasando! Mira al cielo, ho.</p>
+            <p style="font-size:15px;font-weight:800;color:#f5e6c8;margin:6px 0 0;">🌑 ¡Está pasando! Mira al cielo, ho.</p>
           </div>
         </div>
       </div>
+
+      <!-- MODAL ECLIPSE TOTAL -->
+      <div id="eclipse-modal" role="dialog" aria-modal="true" aria-label="Guía del eclipse total"
+           onclick="if(event.target===this)closeEclipseModal()">
+        <div id="eclipse-modal-sheet">
+          <div class="ecl-modal-handle" onclick="closeEclipseModal()"></div>
+
+          <div class="ecl-modal-hero">
+            <div style="font-size:36px;margin-bottom:6px;">🌑</div>
+            <h2 style="font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:#f5e6c8;margin:0 0 4px;">Eclipse Total · A Coruña</h2>
+            <p style="font-size:12px;color:rgba(245,230,200,.6);margin:0;">Miércoles 12 de agosto de 2026 · Hora local (CEST)</p>
+          </div>
+
+          <p class="ecl-section-title">⏱ Fases del eclipse en A Coruña</p>
+
+          <div class="ecl-phase-row">
+            <div class="ecl-phase-icon">🌤</div>
+            <span class="ecl-phase-time">17:42</span>
+            <div class="ecl-phase-desc">
+              <div class="ecl-phase-name">C1 — Primer contacto</div>
+              La luna empieza a tocar el disco solar por el borde derecho. Solo visible con gafas de eclipse homologadas.
+            </div>
+          </div>
+          <div class="ecl-phase-row">
+            <div class="ecl-phase-icon">🌗</div>
+            <span class="ecl-phase-time">19:58</span>
+            <div class="ecl-phase-desc">
+              <div class="ecl-phase-name">~ 75% cubierto</div>
+              El ambiente se vuelve extraño: temperatura baja, animales se inquietan, la luz tiene un color frío metálico.
+            </div>
+          </div>
+          <div class="ecl-phase-row" style="background:rgba(196,151,58,.05);border-radius:12px;margin:0 8px;">
+            <div class="ecl-phase-icon" style="background:rgba(255,200,60,.12);border-color:rgba(196,151,58,.5);">💍</div>
+            <span class="ecl-phase-time">20:26</span>
+            <div class="ecl-phase-desc">
+              <div class="ecl-phase-name" style="color:var(--gold);">C2 — Perlas de Baily y Anillo de Diamante</div>
+              Los valles lunares filtran los últimos rayos del sol creando destellos brillantes. En 1-2 segundos aparece el "anillo de diamante", el momento más fotografiado de un eclipse total. <strong style="color:#ffd060;">Sin gafas solo en este instante.</strong>
+            </div>
+          </div>
+          <div class="ecl-phase-row" style="background:rgba(139,92,246,.06);border-radius:12px;margin:0 8px;">
+            <div class="ecl-phase-icon" style="background:rgba(139,92,246,.15);border-color:rgba(139,92,246,.4);">🌑</div>
+            <span class="ecl-phase-time">20:26–20:28</span>
+            <div class="ecl-phase-desc">
+              <div class="ecl-phase-name" style="color:#c4b5fd;">TOTALIDAD · 76 segundos</div>
+              El cielo se oscurece como la noche. La corona solar (la atmósfera del sol) es visible a simple vista, irrepetible. Planetas como Venus y Júpiter aparecen. Las prominencias rojas bordean la luna. Solo ocurre este minuto y 16 segundos.
+            </div>
+          </div>
+          <div class="ecl-phase-row" style="background:rgba(196,151,58,.05);border-radius:12px;margin:0 8px;">
+            <div class="ecl-phase-icon" style="background:rgba(255,200,60,.12);border-color:rgba(196,151,58,.5);">💍</div>
+            <span class="ecl-phase-time">20:28</span>
+            <div class="ecl-phase-desc">
+              <div class="ecl-phase-name" style="color:var(--gold);">C3 — Segundo anillo de diamante</div>
+              La luna comienza a descubrir el sol. Nuevo destello cegador: <strong style="color:#ffd060;">vuelve a ponerte las gafas.</strong> Otro momento de Baily's Beads al emerger.
+            </div>
+          </div>
+          <div class="ecl-phase-row">
+            <div class="ecl-phase-icon">🌅</div>
+            <span class="ecl-phase-time">21:42</span>
+            <div class="ecl-phase-desc">
+              <div class="ecl-phase-name">C4 — Fin del eclipse parcial</div>
+              La luna abandona por completo el disco solar. El espectáculo termina antes del ocaso, que ese día es a las 21:50 en A Coruña.
+            </div>
+          </div>
+
+          <p class="ecl-section-title">🔭 Qué verás durante la totalidad</p>
+          <div class="ecl-info-box">
+            <strong>Corona solar:</strong> La atmósfera exterior del sol, normalmente invisible, se extiende varios diámetros solares. Tiene estructura de pétalos y plumas. No hay dos eclipses con la misma corona.<br><br>
+            <strong>Prominencias:</strong> Arcos de plasma rojo-rosado que sobresalen del borde de la luna. Son tan grandes como la Tierra.<br><br>
+            <strong>Planetas:</strong> Con el cielo oscuro, <strong>Venus</strong> será visible claramente al oeste y <strong>Júpiter</strong> al noroeste. Mercurio podría verse cerca del sol.<br><br>
+            <strong>Sombra de la luna:</strong> Verás la franja de totalidad moverse hacia el este a ~2.800 km/h sobre la superficie.
+          </div>
+
+          <p class="ecl-section-title">📍 Mejores miradores desde A Coruña</p>
+
+          <div class="ecl-spot-row">
+            <div class="ecl-spot-emoji">🏔️</div>
+            <div>
+              <div class="ecl-spot-name">Monte de San Pedro (A Coruña)</div>
+              <div class="ecl-spot-detail">A 10 min del centro, horizonte 360°. El mejor punto urbano. Llega temprano: se llenará.</div>
+              <span class="ecl-weather-badge ecl-weather-good">☀️ Buen horizonte oeste</span>
+            </div>
+          </div>
+          <div class="ecl-spot-row">
+            <div class="ecl-spot-emoji">🌊</div>
+            <div>
+              <div class="ecl-spot-name">Costa da Morte — Fisterra / Muxía</div>
+              <div class="ecl-spot-detail">90 km de A Coruña. En la ruta de totalidad con horizonte marítimo despejado al oeste. Dramático ver el eclipse sobre el Atlántico.</div>
+              <span class="ecl-weather-badge ecl-weather-good">🌊 Horizonte marino limpio</span>
+            </div>
+          </div>
+          <div class="ecl-spot-row">
+            <div class="ecl-spot-emoji">⛰️</div>
+            <div>
+              <div class="ecl-spot-name">Serra do Barbanza / Monte Pindo</div>
+              <div class="ecl-spot-detail">60-80 km al sur. Cimas por encima de 600 m, habitualmente por encima de las nieblas costeras. Vista panorámica de la ría.</div>
+              <span class="ecl-weather-badge ecl-weather-good">🌤️ Por encima de nieblas</span>
+            </div>
+          </div>
+          <div class="ecl-spot-row">
+            <div class="ecl-spot-emoji">🌾</div>
+            <div>
+              <div class="ecl-spot-name">Meseta — Lugo interior / Terras de Ourense</div>
+              <div class="ecl-spot-detail">100-120 km. El interior gallego es mucho más seco en agosto. Si hay niebla en la costa, el interior suele estar despejado.</div>
+              <span class="ecl-weather-badge ecl-weather-ok">⚡ Plan B si hay niebla costera</span>
+            </div>
+          </div>
+
+          <p class="ecl-section-title">🌤 Clima esperado · 12 agosto en Galicia</p>
+          <div class="ecl-info-box">
+            Agosto es el mes más seco y soleado en Galicia, pero la costa atlántica puede tener niebla matinal que se disipa hacia el mediodía. A las 20:00 h (hora del eclipse) las probabilidades de cielo despejado en A Coruña rondan el <strong>65-70%</strong> históricamente. En el interior (Ourense, Lugo) sube al <strong>80%</strong>. <strong>Consejo:</strong> consulta la predicción de AEMET 48h antes y ten un "plan B" de localización preparado.
+          </div>
+
+          <p class="ecl-section-title">🌠 La misma noche: lluvia de Perseidas</p>
+          <div class="ecl-perseid-bar">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+              <span style="font-size:28px;">☄️</span>
+              <div>
+                <div style="font-size:14px;font-weight:800;color:#c4b5fd;">Perseidas en máximo histórico</div>
+                <div style="font-size:11px;color:rgba(196,180,253,.7);">Noche del 12 al 13 de agosto · hasta 110 meteoros/hora</div>
+              </div>
+            </div>
+            <p style="font-size:12px;color:rgba(196,180,253,.85);line-height:1.55;margin:0;">Las Perseidas (meteoritos del cometa 109P/Swift-Tuttle) alcanzan su pico exactamente el 12-13 de agosto cada año. En 2026 coinciden con el eclipse total, haciendo de este día uno de los eventos astronómicos más extraordinarios del siglo en España. La luna nueva asegura cielos oscuros perfectos para ver meteoros a partir de las 22:00 h.</p>
+          </div>
+
+          <p class="ecl-section-title">⚠️ Seguridad ocular</p>
+          <div class="ecl-info-box" style="border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.06);">
+            <strong style="color:#fca5a5;">Nunca mires directamente al sol</strong> sin gafas de eclipse certificadas (ISO 12312-2). Las gafas de sol normales NO protegen. Solo durante los 76 segundos de totalidad puedes mirar a simple vista. En el momento en que veas el borde del sol reaparecer, vuelve a ponerte las gafas inmediatamente.
+          </div>
+
+          <button class="ecl-close-btn" onclick="closeEclipseModal()">Cerrar guía del eclipse ✕</button>
+        </div>
+      </div>
+
+      <script>
+        function openEclipseModal() {
+          const m = document.getElementById('eclipse-modal');
+          if (m) { m.style.display='flex'; requestAnimationFrame(()=>m.classList.add('open')); }
+        }
+        function closeEclipseModal() {
+          const m = document.getElementById('eclipse-modal');
+          if (m) { m.classList.remove('open'); setTimeout(()=>{ m.style.display='none'; }, 400); }
+        }
+        // Cerrar con tecla ESC
+        document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeEclipseModal(); });
+      </script>
 
       <!-- Tarjeta Plan Amigo (Movido a la base de recompensas) -->
       <div id="profile-referral-card" style="display:none; margin-bottom: 18px;"></div>
