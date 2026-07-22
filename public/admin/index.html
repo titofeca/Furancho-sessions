@@ -1281,6 +1281,17 @@
             </button>
           </div>
 
+          <!-- Catálogo Dinámico de Canjes -->
+          <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <div class="card-title" style="font-size:14px;">🎁 Catálogo de Canjes do Furancho ($CORCHO)</div>
+              <button onclick="addCorchoAdminItem()" style="background:var(--wine); color:#fff; border:none; border-radius:8px; padding:5px 12px; font-size:11px; font-weight:700; cursor:pointer;">+ Añadir Canje</button>
+            </div>
+            <p style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">Configura los artículos, consumiciones o raciones que los socios pueden canjear desde su móvil con sus $CORCHO.</p>
+            <div id="corcho-items-admin-list" style="display:flex; flex-direction:column; gap:8px;">Cargando catálogo…</div>
+          </div>
+
+
           <!-- Top Holders y Últimas Transacciones -->
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
             <div>
@@ -4587,10 +4598,110 @@
           }).join('');
         }
       }
+
+      loadCorchoAdminItems();
     } catch (e) {
       console.error('Error cargando estadísticas del Banco do Corcho:', e);
     }
   }
+
+  async function loadCorchoAdminItems() {
+    const container = document.getElementById('corcho-items-admin-list');
+    if (!container) return;
+    try {
+      const res = await fetch('/api/admin/corcho/items', { headers: authHeaders() });
+      if (!res.ok) return;
+      const data = await res.json();
+      const items = data.items || [];
+      if (!items.length) {
+        container.innerHTML = '<p style="font-size:11px; color:var(--text-muted);">Sin canjes configurados.</p>';
+        return;
+      }
+      container.innerHTML = items.map(item => `
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 10px; background:var(--bg); border-radius:8px; border:1px solid rgba(42,21,9,0.08); ${item.active ? '' : 'opacity:0.5;'}">
+          <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
+            <span style="font-size:16px;">${item.emoji || '🎁'}</span>
+            <div style="flex:1; min-width:0;">
+              <strong style="font-size:12px; color:var(--text);">${escapeHtml(item.name)}</strong>
+              <div style="font-size:10.5px; color:var(--text-muted);">${item.description ? escapeHtml(item.description) : 'Sin descripción'}</div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; white-space:nowrap;">
+            <strong style="font-size:13px; color:var(--wine);">${item.price_corcho.toLocaleString()} $CORCHO</strong>
+            <button onclick="editCorchoAdminItem(${item.id}, '${escapeHtml(item.name)}', '${escapeHtml(item.emoji)}', ${item.price_corcho}, '${escapeHtml(item.description||'')}', ${item.active})" style="background:none; border:none; color:var(--gold); font-size:12px; cursor:pointer;">✏️</button>
+            <button onclick="deleteCorchoAdminItem(${item.id})" style="background:none; border:none; color:#ef4444; font-size:12px; cursor:pointer;">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    } catch (e) {
+      container.innerHTML = '<p style="font-size:11px; color:var(--text-muted);">Error cargando catálogo.</p>';
+    }
+  }
+
+  async function addCorchoAdminItem() {
+    const name = prompt('Nombre de la consumición / ración / producto:');
+    if (!name) return;
+    const emoji = prompt('Emoji (ej: 🍷, 🧀, 🍖, 👕):', '🎁') || '🎁';
+    const priceStr = prompt('Precio en $CORCHO (ej: 400, 700, 1200, 4000):', '400');
+    if (!priceStr || isNaN(parseInt(priceStr, 10))) return alert('Precio en $CORCHO no válido.');
+    const description = prompt('Descripción / detalles opcionales:');
+
+    try {
+      const res = await fetch('/api/admin/corcho/items', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, emoji, priceCorcho: parseInt(priceStr, 10), description })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('✅ Canje añadido al catálogo');
+        loadCorchoAdminItems();
+      } else {
+        showToast(data.error || 'Error creando canje', true);
+      }
+    } catch (e) { showToast('Error de red', true); }
+  }
+
+  async function editCorchoAdminItem(id, currentName, currentEmoji, currentPrice, currentDesc, currentActive) {
+    const name = prompt('Editar nombre:', currentName);
+    if (!name) return;
+    const emoji = prompt('Editar emoji:', currentEmoji) || currentEmoji;
+    const priceStr = prompt('Editar precio en $CORCHO:', currentPrice);
+    if (!priceStr || isNaN(parseInt(priceStr, 10))) return;
+    const description = prompt('Editar descripción:', currentDesc);
+    const active = confirm('¿Mantener activo en la app del cliente? (Cancelar = Ocultar)');
+
+    try {
+      const res = await fetch(`/api/admin/corcho/items/${id}`, {
+        method: 'PUT',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, emoji, priceCorcho: parseInt(priceStr, 10), description, active })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('✅ Canje actualizado');
+        loadCorchoAdminItems();
+      } else {
+        showToast(data.error || 'Error editando canje', true);
+      }
+    } catch (e) { showToast('Error de red', true); }
+  }
+
+  async function deleteCorchoAdminItem(id) {
+    if (!confirm('¿Seguro que quieres borrar este canje del catálogo?')) return;
+    try {
+      const res = await fetch(`/api/admin/corcho/items/${id}`, {
+        method: 'DELETE',
+        headers: authHeaders()
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('✅ Canje eliminado');
+        loadCorchoAdminItems();
+      } else { showToast('Error eliminando canje', true); }
+    } catch (e) { showToast('Error de red', true); }
+  }
+
 
   async function saveCorchoAdminSettings() {
     const getVal = id => parseInt(document.getElementById(id).value, 10) || 0;

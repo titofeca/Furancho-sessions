@@ -652,10 +652,27 @@ try {
     fee_paid INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
   )`);
-  try { db.exec(`ALTER TABLE nft_transfers ADD COLUMN nft_type TEXT`); } catch (_) {}
-  try { db.exec(`ALTER TABLE nft_transfers ADD COLUMN nft_id TEXT`); } catch (_) {}
-  try { db.exec(`ALTER TABLE nft_transfers ADD COLUMN fee_paid INTEGER DEFAULT 0`); } catch (_) {}
+  db.exec(`CREATE TABLE IF NOT EXISTS corcho_items (
+
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    emoji TEXT DEFAULT '🎁',
+    price_corcho INTEGER NOT NULL,
+    description TEXT,
+    active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`);
+
+  const itemCount = db.prepare(`SELECT COUNT(*) c FROM corcho_items`).get().c;
+  if (itemCount === 0) {
+    const insertItem = db.prepare(`INSERT INTO corcho_items (name, emoji, price_corcho, description) VALUES (?, ?, ?, ?)`);
+    insertItem.run('1 Cunca do País', '🍷', 400, 'Consumición de 1 cunca de vino blanco o tinto do país');
+    insertItem.run('1 Tapa Tradicional', '🧀', 700, 'Tapa tradicional de queso, embutido o empanada');
+    insertItem.run('1 Ración Gourmet / Especial', '🍖', 1200, 'Ración especial de la casa');
+    insertItem.run('Camiseta Oficial Furancho / Meme VIP', '👕', 4000, 'Camiseta o producto exclusivo oficial Furancho');
+  }
 } catch (_) {}
+
 
 // Visibilidad POR LOGRO en el museo: qué NFT ven los clientes (sombreados) ANTES de
 
@@ -3097,8 +3114,13 @@ module.exports = {
   getCountdown,
   createCountdown,
   updateCountdown,
-  deleteCountdown
+  deleteCountdown,
+  getCorchoItems,
+  addCorchoItem,
+  updateCorchoItem,
+  deleteCorchoItem
 };
+
 
 function getEventRecap(eventDate) {
   const attendees = db.prepare(`
@@ -3774,5 +3796,44 @@ function transferNftWithFee(fromWallet, toWallet, nftType, nftId, feeAmount) {
 
   return { ok: true, newBalance: spendRes.newBalance };
 }
+
+// Catálogo dinámico de artículos/canjes en $CORCHO
+function getCorchoItems(onlyActive = true) {
+  if (onlyActive) {
+    return db.prepare(`SELECT * FROM corcho_items WHERE active = 1 ORDER BY price_corcho ASC`).all();
+  }
+  return db.prepare(`SELECT * FROM corcho_items ORDER BY price_corcho ASC`).all();
+}
+
+function addCorchoItem({ name, emoji, priceCorcho, description }) {
+  if (!name || !priceCorcho || isNaN(parseInt(priceCorcho, 10))) {
+    throw new Error('Nombre y precio en $CORCHO requeridos');
+  }
+  const info = db.prepare(`
+    INSERT INTO corcho_items (name, emoji, price_corcho, description, active)
+    VALUES (?, ?, ?, ?, 1)
+  `).run(name.trim(), emoji || '🎁', parseInt(priceCorcho, 10), description ? description.trim() : null);
+
+  return db.prepare(`SELECT * FROM corcho_items WHERE id = ?`).get(info.lastInsertRowid);
+}
+
+function updateCorchoItem(id, { name, emoji, priceCorcho, description, active }) {
+  const fields = [], vals = [];
+  if (name !== undefined) { fields.push('name = ?'); vals.push(name.trim()); }
+  if (emoji !== undefined) { fields.push('emoji = ?'); vals.push(emoji || '🎁'); }
+  if (priceCorcho !== undefined) { fields.push('price_corcho = ?'); vals.push(parseInt(priceCorcho, 10) || 0); }
+  if (description !== undefined) { fields.push('description = ?'); vals.push(description ? description.trim() : null); }
+  if (active !== undefined) { fields.push('active = ?'); vals.push(active ? 1 : 0); }
+  if (!fields.length) return db.prepare(`SELECT * FROM corcho_items WHERE id = ?`).get(id);
+
+  vals.push(id);
+  db.prepare(`UPDATE corcho_items SET ${fields.join(', ')} WHERE id = ?`).run(...vals);
+  return db.prepare(`SELECT * FROM corcho_items WHERE id = ?`).get(id);
+}
+
+function deleteCorchoItem(id) {
+  return db.prepare(`DELETE FROM corcho_items WHERE id = ?`).run(id).changes > 0;
+}
+
 
 

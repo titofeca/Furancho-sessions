@@ -2235,4 +2235,48 @@ router.post('/corcho/grant', requireAuth, (req, res) => {
   }
 });
 
+// GET /api/admin/corcho/items — listar todos los ítems/canjes del Banco do Corcho
+router.get('/corcho/items', requireAuth, (req, res) => {
+  try {
+    const { getCorchoItems } = require('../db/database');
+    res.json({ items: getCorchoItems(false) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/corcho/items — crear nuevo ítem de canje
+router.post('/corcho/items', requireAuth, (req, res) => {
+  try {
+    const { addCorchoItem } = require('../db/database');
+    const item = addCorchoItem(req.body || {});
+    res.json({ success: true, item });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// PUT /api/admin/corcho/items/:id — editar ítem de canje
+router.put('/corcho/items/:id', requireAuth, (req, res) => {
+  try {
+    const { updateCorchoItem } = require('../db/database');
+    const item = updateCorchoItem(parseInt(req.params.id, 10), req.body || {});
+    res.json({ success: true, item });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// DELETE /api/admin/corcho/items/:id — borrar ítem de canje
+router.delete('/corcho/items/:id', requireAuth, (req, res) => {
+  try {
+    const { deleteCorchoItem } = require('../db/database');
+    const ok = deleteCorchoItem(parseInt(req.params.id, 10));
+    res.json({ success: ok });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+
 

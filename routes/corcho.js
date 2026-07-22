@@ -130,4 +130,60 @@ router.post('/buy-pack', (req, res) => {
   }
 });
 
+// GET /api/corcho/items — catálogo activo de canjes en $CORCHO
+router.get('/items', (req, res) => {
+  try {
+    const { getCorchoItems } = require('../db/database');
+    res.json({ items: getCorchoItems(true) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/corcho/redeem-item — canjear un producto/consumición con $CORCHO
+router.post('/redeem-item', (req, res) => {
+  const { walletAddress, itemId } = req.body || {};
+  if (!walletAddress || !ETH_REGEX.test(walletAddress)) {
+    return res.status(400).json({ error: 'Wallet no válida' });
+  }
+  if (!itemId) {
+    return res.status(400).json({ error: 'Selecciona un artículo para canjear' });
+  }
+
+  try {
+    const { db, spendCorchoCoins } = require('../db/database');
+    const item = db.prepare(`SELECT * FROM corcho_items WHERE id = ? AND active = 1`).get(itemId);
+    if (!item) {
+      return res.status(404).json({ error: 'El producto o canje ya no está disponible' });
+    }
+
+    const spendRes = spendCorchoCoins(
+      walletAddress,
+      item.price_corcho,
+      'item_redemption',
+      `🎁 Canje: ${item.emoji} ${item.name} (-${item.price_corcho} $CORCHO)`,
+      `redeem_${item.id}_${Date.now()}`
+    );
+
+    if (!spendRes.ok) {
+      if (spendRes.error === 'insufficient_balance') {
+        return res.status(400).json({
+          error: `Saldo insuficiente. Requiere ${item.price_corcho.toLocaleString()} $CORCHO (tienes ${spendRes.currentBalance.toLocaleString()} $CORCHO).`
+        });
+      }
+      return res.status(400).json({ error: 'No se pudo procesar el canje.' });
+    }
+
+    res.json({
+      success: true,
+      item,
+      message: `🎉 ¡Canje realizado! Has obtenido ${item.emoji} ${item.name}. Enseña la confirmación en la barra.`,
+      newBalance: spendRes.newBalance
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;
+
