@@ -5604,6 +5604,35 @@
       }
     });
 
+    adminSseSource.addEventListener('corcho_pending', (e) => {
+      try {
+        const d = JSON.parse(e.data);
+        let icon = '💳', titleTxt = '💳 Compra $CORCHO pendiente', bodyTxt = '';
+        if (d.kind === 'canje') {
+          icon = '🎁'; titleTxt = '🎁 Canje $CORCHO pendiente';
+          bodyTxt = `${d.walletMasked} canjeó ${d.item} — código ${d.code}. Valídalo al entregar.`;
+        } else if (d.kind === 'meme') {
+          icon = '🎭'; titleTxt = '🎭 Meme por $CORCHO pendiente';
+          bodyTxt = `${d.walletMasked} pide el Meme VIP por ${Number(d.priceCorcho || 0).toLocaleString()} $CORCHO. Valida el pago en taquilla.`;
+        } else {
+          bodyTxt = `${d.walletMasked} pide ${Number(d.coins).toLocaleString()} $CORCHO (${d.priceEur}€). Cobra en taquilla y confirma.`;
+        }
+        showToast(icon + ' ' + bodyTxt);
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          new Notification(titleTxt, {
+            body: bodyTxt,
+            icon: '/assets/corcho_coin_gold.png',
+            tag: 'corcho-' + (d.code || d.requestId)
+          });
+        }
+        // Refresca las secciones afectadas si están montadas.
+        if (typeof loadCorchoPending === 'function') loadCorchoPending();
+        if (d.kind === 'meme' && typeof loadMemeShop === 'function') loadMemeShop();
+      } catch (err) {
+        console.error('Error procesando evento corcho_pending:', err);
+      }
+    });
+
     adminSseSource.addEventListener('bono_redeemed', (e) => {
       try {
         const d = JSON.parse(e.data);
@@ -11029,15 +11058,23 @@
     }
     badge.style.display = 'inline-block';
     badge.innerText = reqs.length;
-    el.innerHTML = reqs.map(r => `
+    el.innerHTML = reqs.map(r => {
+      const isCorcho = r.method === 'corcho';
+      const importe = isCorcho ? `${Number(r.price_corcho || 0).toLocaleString()} $CORCHO` : eur(r.price_cents);
+      const btnLabel = isCorcho ? '✓ Pago $CORCHO validado, dárselo' : '✓ Cobrado, dárselo';
+      const chip = isCorcho
+        ? '<span style="font-size:9px; font-weight:800; background:var(--gold); color:#fff; border-radius:6px; padding:1px 6px; margin-left:4px;">$CORCHO</span>'
+        : '<span style="font-size:9px; font-weight:800; background:var(--wine); color:#fff; border-radius:6px; padding:1px 6px; margin-left:4px;">EFECTIVO/TARJETA</span>';
+      return `
       <div style="padding:10px; background:rgba(212,175,55,0.10); border:1px solid rgba(212,175,55,0.35); border-radius:12px; margin-bottom:8px;">
-        <div style="font-family:monospace; font-size:11px; margin-bottom:2px;">${r.wallet_address.slice(0, 10)}…${r.wallet_address.slice(-6)}</div>
-        <div style="font-size:12px; margin-bottom:8px;">Sería su meme nº <strong>${r.unit_index}</strong> · a cobrar <strong>${eur(r.price_cents)}</strong></div>
+        <div style="font-family:monospace; font-size:11px; margin-bottom:2px;">${r.wallet_address.slice(0, 10)}…${r.wallet_address.slice(-6)}${chip}</div>
+        <div style="font-size:12px; margin-bottom:8px;">Sería su meme nº <strong>${r.unit_index}</strong> · a cobrar <strong>${importe}</strong>${isCorcho ? ' (se descuenta al validar)' : ' en taquilla'}</div>
         <div style="display:flex; gap:6px;">
-          <button onclick="sellMemeTo('${r.wallet_address}', ${r.id}, ${r.price_cents})" style="flex:3; padding:9px; background:var(--wine); color:#fff; border:none; border-radius:10px; font-weight:700; font-size:12px; cursor:pointer;">✓ Cobrado, dárselo</button>
+          <button onclick="sellMemeTo('${r.wallet_address}', ${r.id}, ${r.price_cents}, '${r.method || 'cash'}', ${r.price_corcho || 0})" style="flex:3; padding:9px; background:var(--wine); color:#fff; border:none; border-radius:10px; font-weight:700; font-size:12px; cursor:pointer;">${btnLabel}</button>
           <button onclick="rejectMemeRequest(${r.id})" style="flex:1; padding:9px; background:transparent; border:1px solid rgba(42,21,9,0.2); border-radius:10px; font-size:12px; cursor:pointer;">Descartar</button>
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 
   async function rejectMemeRequest(id) {
@@ -11045,9 +11082,14 @@
     catch (e) { alert('Error: ' + e.message); }
   }
 
-  // Confirma la venta de una solicitud (el dinero ya está cobrado en la barra).
-  async function sellMemeTo(wallet, purchaseId, priceCents) {
-    if (!confirm(`¿Has cobrado ${eur(priceCents)}? Se le entrega el meme y lo que incluye.`)) return;
+  // Confirma la venta de una solicitud. En efectivo/tarjeta: el dinero ya está
+  // cobrado en taquilla. En $CORCHO: al validar se descuenta el saldo del cliente.
+  async function sellMemeTo(wallet, purchaseId, priceCents, method, priceCorcho) {
+    const isCorcho = method === 'corcho';
+    const msg = isCorcho
+      ? `¿Validar el pago de ${Number(priceCorcho || 0).toLocaleString()} $CORCHO? Se le descuenta el saldo y se le entrega el meme y lo que incluye.`
+      : `¿Has cobrado ${eur(priceCents)} en taquilla? Se le entrega el meme y lo que incluye.`;
+    if (!confirm(msg)) return;
     try {
       const d = await memeApi('/admin/sell', { method: 'POST', body: JSON.stringify({ walletAddress: wallet, purchaseId, priceCents }) });
       alert(`Meme nº ${d.serial} vendido ✅\nQuedan ${d.supply.left} de ${d.supply.max}.` +

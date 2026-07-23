@@ -15,6 +15,7 @@ router.get('/balance', (req, res) => {
     const stats = corcho.getCorchoBalance(wallet);
     const history = corcho.getCorchoHistory(wallet, 30);
     const settings = corcho.getEconomySettings();
+    const { getSessionCanjeCounts } = require('../db/database');
 
     res.json({
       wallet,
@@ -23,7 +24,8 @@ router.get('/balance', (req, res) => {
       totalSpent: stats.totalSpent,
       history,
       transferFee: settings.nftTransferFee,
-      rates: settings
+      rates: settings,
+      sessionCanjes: getSessionCanjeCounts(wallet)   // { tapa, cunca } de la sesión de hoy
     });
   } catch (e) {
     console.error('Error en GET /api/corcho/balance:', e.message);
@@ -120,6 +122,21 @@ router.post('/buy-pack', (req, res) => {
 
     const { request, already } = createCorchoPackRequest({ walletAddress, pack });
 
+    // Aviso EN VIVO al admin de la compra por cobrar (efectivo/tarjeta en taquilla).
+    if (!already) {
+      try {
+        require('./raffle').broadcastToAdmins('corcho_pending', {
+          kind: 'compra',
+          requestId: request.id,
+          wallet: walletAddress,
+          walletMasked: `${walletAddress.slice(0,6)}…${walletAddress.slice(-4)}`,
+          packName: request.pack_name,
+          coins: request.coins,
+          priceEur: request.price_eur
+        });
+      } catch (_) {}
+    }
+
     res.json({
       success: true,
       pending: true,
@@ -184,10 +201,21 @@ router.post('/redeem-item', (req, res) => {
   }
 
   try {
-    const { db, spendCorchoCoins, createRedemptionVoucher } = require('../db/database');
+    const { db, spendCorchoCoins, createRedemptionVoucher, corchoItemCategory, sessionCanjeCount } = require('../db/database');
     const item = db.prepare(`SELECT * FROM corcho_items WHERE id = ? AND active = 1`).get(itemId);
     if (!item) {
       return res.status(404).json({ error: 'El producto o canje ya no está disponible' });
+    }
+
+    // Límite por sesión de furancho: máximo 1 tapa y 1 cunca por noche. Se comprueba
+    // ANTES de gastar $CORCHO para no cobrar un canje que no se va a permitir.
+    const category = corchoItemCategory(item.name);
+    if (category && sessionCanjeCount(walletAddress, category) >= 1) {
+      const cat = category === 'tapa' ? 'tapa' : 'cunca';
+      return res.status(400).json({
+        error: `Xa canxeaches a túa ${cat} desta sesión. Só 1 tapa e 1 cunca por noite de furancho, neno.`,
+        limitReached: true
+      });
     }
 
     const spendRes = spendCorchoCoins(
@@ -215,6 +243,21 @@ router.post('/redeem-item', (req, res) => {
       voucher = createRedemptionVoucher({ walletAddress, item, ttlMinutes: 15 });
     } catch (ve) {
       console.error('Error creando vale de canje:', ve.message);
+    }
+
+    // Aviso EN VIVO al admin con el código clave: así la validación no depende solo
+    // del móvil del cliente. El staff además lo ve al fichar / en el panel.
+    if (voucher) {
+      try {
+        require('./raffle').broadcastToAdmins('corcho_pending', {
+          kind: 'canje',
+          code: voucher.code,
+          wallet: walletAddress,
+          walletMasked: `${walletAddress.slice(0,6)}…${walletAddress.slice(-4)}`,
+          item: `${item.emoji} ${item.name}`,
+          priceCorcho: item.price_corcho
+        });
+      } catch (_) {}
     }
 
     res.json({

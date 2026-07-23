@@ -708,6 +708,9 @@ try {
     expires_at TEXT NOT NULL,
     created_at TEXT DEFAULT (datetime('now'))
   )`);
+  // session_date (fecha Madrid de la sesión) para el límite "1 tapa + 1 cunca por
+  // sesión de furancho". Aditivo: las filas antiguas quedan con NULL (no cuentan hoy).
+  try { db.exec(`ALTER TABLE corcho_redemptions ADD COLUMN session_date TEXT`); } catch (_) {}
 } catch (_) {}
 
 // Compra de $CORCHO (recarga en €): solicitud PENDIENTE que staff/admin confirma
@@ -808,6 +811,11 @@ try {
     created_at TEXT DEFAULT (datetime('now')),
     resolved_at TEXT
   )`);
+  // Método de pago de la solicitud: 'cash' (efectivo/tarjeta en taquilla, precio en
+  // price_cents) o 'corcho' (se paga con $CORCHO, importe en price_corcho). Ambos
+  // los valida staff/admin antes de entregar. Aditivo.
+  try { db.exec(`ALTER TABLE meme_purchases ADD COLUMN method TEXT DEFAULT 'cash'`); } catch (_) {}
+  try { db.exec(`ALTER TABLE meme_purchases ADD COLUMN price_corcho INTEGER DEFAULT 0`); } catch (_) {}
 } catch (_) {}
 // Catálogo editable de lo que INCLUYE el meme (admin: "1 camiseta, 3 tapas…").
 // kind: 'consumible' (se gasta en el local) | 'entrega' (artículo físico, puede
@@ -3185,6 +3193,9 @@ module.exports = {
   validateRedemptionVoucher,
   getRedemptionByCode,
   cancelRedemptionVoucher,
+  corchoItemCategory,
+  sessionCanjeCount,
+  getSessionCanjeCounts,
   createCorchoPackRequest,
   getPendingCorchoPackRequests,
   getCorchoPackRequest,
@@ -3945,6 +3956,39 @@ function _corchoVoucherCode() {
   return `FUR-${part()}-${part()}`;
 }
 
+function _madridToday() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+}
+
+// Categoría del canje a efectos del límite por sesión. Regla fija (Tito, 23 jul 2026):
+// máximo 1 "tapa" y 1 "cunca" por sesión de furancho; el resto (raciones, camiseta…)
+// sin límite. Se deduce del nombre del artículo del catálogo.
+function corchoItemCategory(name) {
+  const n = String(name || '').toLowerCase();
+  if (/\btapas?\b/.test(n)) return 'tapa';
+  if (/\bcuncas?\b/.test(n)) return 'cunca';
+  return null;
+}
+
+// Cuántos canjes NO anulados de esa categoría lleva la wallet en la sesión de hoy.
+function sessionCanjeCount(walletAddress, category) {
+  if (!walletAddress || !category) return 0;
+  const today = _madridToday();
+  const rows = db.prepare(`
+    SELECT item_name FROM corcho_redemptions
+    WHERE LOWER(wallet_address) = LOWER(?) AND session_date = ? AND status != 'cancelled'
+  `).all(walletAddress, today);
+  return rows.filter(r => corchoItemCategory(r.item_name) === category).length;
+}
+
+// Conteos de la sesión de hoy, para que el móvil pueda avisar/agrisar. { tapa, cunca }.
+function getSessionCanjeCounts(walletAddress) {
+  return {
+    tapa: sessionCanjeCount(walletAddress, 'tapa'),
+    cunca: sessionCanjeCount(walletAddress, 'cunca')
+  };
+}
+
 // Registra el vale PENDIENTE. El caller ya ha descontado los $CORCHO.
 function createRedemptionVoucher({ walletAddress, item, ttlMinutes = 15 }) {
   if (!walletAddress || !item || !item.id) throw new Error('Datos de canje incompletos');
@@ -3955,9 +3999,9 @@ function createRedemptionVoucher({ walletAddress, item, ttlMinutes = 15 }) {
   }
   const expiresAt = new Date(Date.now() + ttlMinutes * 60000).toISOString().replace('T', ' ').slice(0, 19);
   const info = db.prepare(`
-    INSERT INTO corcho_redemptions (code, wallet_address, item_id, item_name, item_emoji, price_corcho, status, expires_at)
-    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
-  `).run(code, w, item.id, item.name, item.emoji || '🎁', item.price_corcho, expiresAt);
+    INSERT INTO corcho_redemptions (code, wallet_address, item_id, item_name, item_emoji, price_corcho, status, expires_at, session_date)
+    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+  `).run(code, w, item.id, item.name, item.emoji || '🎁', item.price_corcho, expiresAt, _madridToday());
   return db.prepare(`SELECT * FROM corcho_redemptions WHERE id = ?`).get(info.lastInsertRowid);
 }
 

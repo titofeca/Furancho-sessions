@@ -58,26 +58,46 @@ router.get('/status', (req, res) => {
           id: e.id, emoji: e.emoji, label: e.label, kind: e.kind,
           left: Math.max(0, e.qty_total - e.qty_used), total: e.qty_total, serial: e.serial
         })),
-        pendingRequest: req0 ? { id: req0.id, priceCents: req0.price_cents, at: req0.created_at } : null
+        pendingRequest: req0 ? { id: req0.id, priceCents: req0.price_cents, method: req0.method || 'cash', priceCorcho: req0.price_corcho || 0, at: req0.created_at } : null
       };
     }
     res.json(out);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/meme/buy-with-corcho — el cliente compra el Meme VIP directamente con su saldo de $CORCHO.
+// POST /api/meme/buy-with-corcho — el cliente PIDE comprar el Meme VIP con $CORCHO.
+// No se cobra aquí: queda pendiente y staff/admin lo valida en taquilla (mismo
+// principio que la recarga y el canje). El $CORCHO se descuenta al confirmar.
 router.post('/buy-with-corcho', buyLimiter, (req, res) => {
   const { walletAddress } = req.body || {};
   if (!walletAddress || !ETH.test(walletAddress)) return res.status(400).json({ error: 'Wallet no válida' });
   try {
-    const result = shop.buyWithCorchoCoins(walletAddress);
+    const r = shop.requestPurchaseCorcho(walletAddress);
+    const price = r.priceCorcho || (r.request && r.request.price_corcho) || 0;
+
+    if (!r.alreadyRequested) {
+      try {
+        require('./raffle').broadcastToAdmins('corcho_pending', {
+          kind: 'meme',
+          requestId: r.request.id,
+          wallet: walletAddress,
+          walletMasked: `${walletAddress.slice(0,6)}…${walletAddress.slice(-4)}`,
+          priceCorcho: price
+        });
+      } catch (_) {}
+    }
+
     res.json({
       success: true,
-      message: `🎉 ¡Enhorabuena! Has comprado el Meme VIP por ${result.priceCorcho} $CORCHO.`,
-      result
+      pending: true,
+      alreadyRequested: !!r.alreadyRequested,
+      request: r.request,
+      message: r.alreadyRequested
+        ? `⏳ Xa tes o meme pedido. Pásate pola taquilla: alí validan o pago de ${price.toLocaleString()} $CORCHO e cho entregan.`
+        : `⏳ Meme pedido. Pásate pola taquilla: cando o staff valide o pago de ${price.toLocaleString()} $CORCHO descóntase o saldo e lévalo. Ata entón non se cobra nada.`
     });
   } catch (e) {
-    res.status(400).json({ error: e.message });
+    return res.status(400).json({ error: e.message, insufficient: !!e.insufficient });
   }
 });
 
@@ -153,6 +173,15 @@ router.post('/admin/sell', requireAuth, (req, res) => {
   const { walletAddress, purchaseId, priceCents, source, withPerks } = req.body;
   if (!walletAddress || !ETH.test(walletAddress)) return res.status(400).json({ error: 'Wallet no válida' });
   try {
+    // Si la solicitud es de pago con $CORCHO, se valida por su vía (descuenta saldo).
+    if (purchaseId) {
+      const { db } = require('../db/database');
+      const p = db.prepare(`SELECT method FROM meme_purchases WHERE id = ?`).get(purchaseId);
+      if (p && p.method === 'corcho') {
+        const out = shop.confirmCorchoPurchase(purchaseId, 'admin');
+        return res.json(out);
+      }
+    }
     const out = shop.sellTo(walletAddress, {
       purchaseId: purchaseId || null,
       source: source === 'regalo' ? 'regalo' : 'venta',

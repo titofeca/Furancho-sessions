@@ -9717,9 +9717,13 @@
                ESGOTADO · vendéronse os 300. Non haberá máis.
              </div>`;
     } else if (mine.pendingRequest) {
+      const pr = mine.pendingRequest;
+      const importe = pr.method === 'corcho'
+        ? `${Number(pr.priceCorcho || 0).toLocaleString()} $CORCHO`
+        : eur(pr.priceCents);
       cta = `<div style="margin-top:12px; background:rgba(196,151,58,0.15); border:1.5px solid rgba(196,151,58,0.45); border-radius:12px; padding:11px; text-align:center;">
-               <p style="font-size:12.5px; font-weight:800; color:var(--gold); margin:0 0 4px;">⏳ Xa o pediches — ${eur(mine.pendingRequest.priceCents)}</p>
-               <p style="font-size:11px; color:#F2EDE3; opacity:0.75; margin:0 0 8px; line-height:1.4;">Pásate pola barra e págao: alí che entregan o meme e o que trae.</p>
+               <p style="font-size:12.5px; font-weight:800; color:var(--gold); margin:0 0 4px;">⏳ Xa o pediches — ${importe}</p>
+               <p style="font-size:11px; color:#F2EDE3; opacity:0.75; margin:0 0 8px; line-height:1.4;">Pásate pola taquilla: alí valídano e che entregan o meme e o que trae.</p>
                <button onclick="cancelMemeRequest(this)" style="background:transparent; border:none; color:#F2EDE3; opacity:0.6; font-size:11px; text-decoration:underline; cursor:pointer; font-family:'Outfit',sans-serif;">Anular a solicitude</button>
              </div>`;
     } else if (!d.open) {
@@ -9770,11 +9774,13 @@
     el.style.display = 'block';
   }
 
-  // "Mercar": no cobra nada aquí. Deja el aviso para pagar en la barra.
+  // "Comprar con $CORCHO": NO cobra aquí. Deja la solicitud pendiente; el pago en
+  // $CORCHO lo valida staff/admin en taquilla y solo entonces se descuenta y entrega.
   async function buyMemeWithCorcho(btn) {
     if (!userWalletAddress) { alert('Conecta tu wallet primero'); return; }
     const cost = (_memeShop && _memeShop.priceCorcho) || 4000;
-    if (!confirm(`¿Comprar el Meme VIP / Camiseta por ${cost.toLocaleString()} $CORCHO?`)) return;
+    if (!confirm(`¿Pedir el Meme VIP / Camiseta por ${cost.toLocaleString()} $CORCHO?\n\nPasarás por taquilla y el staff valida el pago antes de entregártelo.`)) return;
+    const original = btn ? btn.innerText : '';
     if (btn) { btn.disabled = true; btn.innerText = 'Procesando…'; }
     try {
       const res = await fetch('/api/meme/buy-with-corcho', {
@@ -9784,23 +9790,23 @@
       }).then(r => r.json());
 
       if (!res.success) {
-        if (res.error && res.error.includes('Saldo insuficiente')) {
+        if (res.insufficient || (res.error && res.error.includes('Saldo insuficiente'))) {
           if (confirm(`⚠️ ${res.error}\n\n¿Quieres recargar CorchoCoins ahora?`)) {
             openCorchoPacksModal();
           }
         } else {
-          alert('⚠️ ' + (res.error || 'Error procesando compra'));
+          alert('⚠️ ' + (res.error || 'Error procesando la solicitud'));
         }
         return;
       }
-      alert(res.message || '🎉 ¡Meme VIP / Camiseta comprado con éxito!');
+      alert(res.message || '⏳ Meme pedido. Pásate por taquilla para validar el pago.');
       renderMemeShopCard();
       loadCorchoBalance();
       if (typeof initWallet === 'function') initWallet();
     } catch (e) {
       alert('Error de conexión');
     } finally {
-      if (btn) btn.disabled = false;
+      if (btn) { btn.disabled = false; btn.innerText = original; }
     }
   }
 
@@ -10813,12 +10819,12 @@
     <div style="background:var(--cream); width:100%; max-width:400px; border-radius:20px; padding:22px; border:1.5px solid var(--gold); box-shadow:0 20px 40px rgba(0,0,0,0.3); position:relative;">
       <button onclick="closeCorchoPacksModal()" style="position:absolute; top:16px; right:16px; background:none; border:none; font-size:20px; color:var(--text-muted); cursor:pointer;">✕</button>
       <h3 style="font-family:'Playfair Display',serif; font-size:20px; color:var(--wine); margin:0 0 6px;">💳 Recargar CorchoCoins</h3>
-      <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin-bottom:14px;">Consigue $CORCHO al instante para traspasar tus NFTs o canjear ventajas exclusivas:</p>
-      
+      <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin-bottom:14px;">Elige un paquete para usar $CORCHO en canjes y ventajas exclusivas. <strong>El pago se hace en taquilla (efectivo o tarjeta)</strong> y un camarero o el admin lo valida — solo entonces se te acreditan las monedas.</p>
+
       <div id="corcho-packs-modal-list" style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
         <p style="font-size:12px; color:var(--text-muted); text-align:center;">Cargando paquetes…</p>
       </div>
-      <p style="text-align:center; font-size:11px; color:var(--text-muted); margin:0;">También puedes recargar en efectivo directamente con los camareros en la barra.</p>
+      <p style="text-align:center; font-size:11px; color:var(--text-muted); margin:0;">Al pedir un paquete queda una solicitud pendiente: acércate a la taquilla, paga y el staff te lo confirma. Nada se acredita solo.</p>
 
     </div>
   </div>

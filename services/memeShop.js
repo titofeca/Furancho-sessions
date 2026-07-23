@@ -160,6 +160,62 @@ function requestPurchase(wallet, note) {
   return { request: db.prepare(`SELECT * FROM meme_purchases WHERE id = ?`).get(info.lastInsertRowid), alreadyRequested: false };
 }
 
+// El cliente pide comprar el meme pagando con $CORCHO. NO se cobra aquí: queda
+// PENDIENTE hasta que staff/admin lo valide en taquilla (mismo principio que la
+// recarga y el canje). Se comprueba el saldo ya, para no dejar solicitudes que
+// luego no se pueden cobrar; el descuento real se hace al confirmar.
+function requestPurchaseCorcho(wallet) {
+  const cfg = getConfig();
+  if (!cfg.open) throw new Error('La venta del meme está cerrada ahora mismo, ho.');
+  const s = supply();
+  if (s.left <= 0) throw new Error('Non queda ningún meme: los 300 están vendidos. Y no habrá más.');
+  const already = pendingRequestOf(wallet);
+  if (already) return { request: already, alreadyRequested: true };
+  const priceCorcho = cfg.priceCorcho || 4000;
+  const { getCorchoBalance } = require('../db/database');
+  const bal = getCorchoBalance(wallet).balance;
+  if (bal < priceCorcho) {
+    const err = new Error(`Saldo insuficiente. El Meme VIP cuesta ${priceCorcho} $CORCHO (tienes ${bal}). Recarga primero.`);
+    err.insufficient = true;
+    throw err;
+  }
+  const p = priceForWallet(wallet);
+  const info = db.prepare(`INSERT INTO meme_purchases (wallet_address, status, price_cents, unit_index, note, method, price_corcho)
+                           VALUES (?, 'requested', 0, ?, ?, 'corcho', ?)`)
+    .run(wallet, p.index, null, priceCorcho);
+  return { request: db.prepare(`SELECT * FROM meme_purchases WHERE id = ?`).get(info.lastInsertRowid), alreadyRequested: false, priceCorcho };
+}
+
+// Staff/admin valida la compra con $CORCHO: AQUÍ se descuenta el saldo y se entrega
+// el meme. Idempotente (la guarda 'requested'→'paid' de sellTo evita doble venta).
+// Si el descuento va bien pero la venta falla (p.ej. tirada agotada), se reembolsa.
+function confirmCorchoPurchase(purchaseId, by = 'staff') {
+  const p = db.prepare(`SELECT * FROM meme_purchases WHERE id = ?`).get(purchaseId);
+  if (!p) throw new Error('Esa solicitud ya no existe');
+  if (p.method !== 'corcho') throw new Error('Esa solicitud no es de pago con $CORCHO');
+  if (p.status !== 'requested') throw new Error('Esa solicitud ya se cobró o se descartó, ho. Refresca la lista.');
+
+  const priceCorcho = p.price_corcho || (getConfig().priceCorcho || 4000);
+  const { spendCorchoCoins, addCorchoCoins } = require('../db/database');
+  const spendRes = spendCorchoCoins(p.wallet_address, priceCorcho, 'nft_purchase',
+    `Compra de Meme VIP NFT con $CORCHO (validada por ${by})`, `memereq_${purchaseId}`);
+  if (!spendRes.ok) {
+    if (spendRes.error === 'insufficient_balance') {
+      throw new Error(`El cliente no tiene saldo: cuesta ${priceCorcho} $CORCHO y tiene ${spendRes.currentBalance}.`);
+    }
+    throw new Error('No se pudo cobrar en $CORCHO.');
+  }
+  let sale;
+  try {
+    sale = sellTo(p.wallet_address, { purchaseId, source: 'corcho', priceCents: 0, withPerks: true });
+  } catch (e) {
+    // Reembolso: el cobro entró pero la venta no pudo completarse.
+    try { addCorchoCoins(p.wallet_address, priceCorcho, 'admin_adjustment', 'Reembolso: venta de meme no completada', `memereq_refund_${purchaseId}`); } catch (_) {}
+    throw e;
+  }
+  return { ...sale, priceCorcho, newCorchoBalance: spendRes.newBalance };
+}
+
 function cancelRequest(id) {
   return db.prepare(`UPDATE meme_purchases SET status = 'cancelled', resolved_at = datetime('now')
                      WHERE id = ? AND status = 'requested'`).run(id).changes > 0;
@@ -440,7 +496,7 @@ module.exports = {
   getConfig, setConfig,
   supply, unitsOfWallet, priceForWallet,
   listPerks, createPerk, updatePerk, deletePerk,
-  requestPurchase, cancelRequest, listRequests, pendingRequestOf,
+  requestPurchase, requestPurchaseCorcho, confirmCorchoPurchase, cancelRequest, listRequests, pendingRequestOf,
   sellTo, buyWithCorchoCoins,
   moveUnitOnTransfer,
   entitlementsOfWallet, entitlementsOfUnit, usePerk, undoLastUse, pendingDeliveries,
