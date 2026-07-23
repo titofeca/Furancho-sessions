@@ -1696,9 +1696,78 @@
       from { opacity: 0; transform: translateY(-4px); }
       to   { opacity: 1; transform: translateY(0); }
     }
+
+    /* ── Modal corporativo $CORCHO (reemplaza confirm() nativo) ── */
+    .corcho-modal-overlay {
+      position: fixed; inset: 0; z-index: 99999;
+      background: rgba(42,21,9,0.55); backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+      opacity: 0; transition: opacity .2s ease;
+    }
+    .corcho-modal-overlay.visible { opacity: 1; }
+    .corcho-modal-box {
+      background: #fff; border-radius: 20px; width: 100%; max-width: 340px;
+      box-shadow: 0 16px 48px rgba(42,21,9,0.35);
+      overflow: hidden; transform: scale(0.92) translateY(12px);
+      transition: transform .25s cubic-bezier(.34,1.56,.64,1);
+    }
+    .corcho-modal-overlay.visible .corcho-modal-box {
+      transform: scale(1) translateY(0);
+    }
+    .corcho-modal-header {
+      background: linear-gradient(135deg, var(--wine) 0%, var(--wine-dark) 100%);
+      padding: 20px 20px 16px; text-align: center; color: #fff;
+    }
+    .corcho-modal-header .cm-icon { font-size: 36px; margin-bottom: 4px; }
+    .corcho-modal-header .cm-title {
+      font-family: 'Playfair Display', serif; font-weight: 900;
+      font-size: 17px; letter-spacing: .3px;
+    }
+    .corcho-modal-body {
+      padding: 18px 20px 8px; text-align: center;
+      font-size: 14px; color: #4A3728; line-height: 1.5;
+    }
+    .corcho-modal-body .cm-amount {
+      display: inline-block; margin: 10px 0 4px;
+      font-size: 22px; font-weight: 900; color: var(--gold);
+    }
+    .corcho-modal-body .cm-sub {
+      font-size: 12px; color: var(--text-muted); margin-top: 2px;
+    }
+    .corcho-modal-actions {
+      display: flex; gap: 10px; padding: 12px 20px 20px; justify-content: center;
+    }
+    .corcho-modal-actions button {
+      flex: 1; padding: 13px 0; border-radius: 14px; font-weight: 800;
+      font-size: 14px; border: none; cursor: pointer; transition: transform .1s, box-shadow .15s;
+    }
+    .corcho-modal-actions button:active { transform: scale(0.96); }
+    .corcho-modal-actions .cm-cancel {
+      background: #F1ECE5; color: var(--text-muted);
+    }
+    .corcho-modal-actions .cm-ok {
+      background: linear-gradient(135deg, var(--gold), #a47d2c);
+      color: #2A1509; box-shadow: 0 4px 14px rgba(196,151,58,0.35);
+    }
   </style>
 </head>
 <body>
+
+  <!-- Modal corporativo $CORCHO -->
+  <div class="corcho-modal-overlay" id="corcho-modal" style="display:none;">
+    <div class="corcho-modal-box">
+      <div class="corcho-modal-header">
+        <div class="cm-icon" id="cm-icon"></div>
+        <div class="cm-title" id="cm-title"></div>
+      </div>
+      <div class="corcho-modal-body" id="cm-body"></div>
+      <div class="corcho-modal-actions">
+        <button class="cm-cancel" id="cm-cancel">Cancelar</button>
+        <button class="cm-ok" id="cm-ok">Confirmar</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ==================== PANTALLA: ONBOARDING ==================== -->
   <div class="screen active" id="screen-onboarding" style="justify-content:center; padding:40px 24px;">
@@ -3436,6 +3505,41 @@
         }
         throw e;
       }
+    }
+
+    function corchoConfirm({ icon, title, body, amount, sub, okText, okStyle }) {
+      return new Promise(resolve => {
+        const ov = document.getElementById('corcho-modal');
+        document.getElementById('cm-icon').textContent = icon || '🪙';
+        document.getElementById('cm-title').textContent = title || 'Furancho Sessions';
+        const bodyEl = document.getElementById('cm-body');
+        let html = body ? `<div>${body}</div>` : '';
+        if (amount) html += `<div class="cm-amount">${amount}</div>`;
+        if (sub) html += `<div class="cm-sub">${sub}</div>`;
+        bodyEl.innerHTML = html;
+        const okBtn = document.getElementById('cm-ok');
+        okBtn.textContent = okText || 'Confirmar';
+        if (okStyle === 'danger') {
+          okBtn.style.background = 'linear-gradient(135deg, #c0392b, #962d22)';
+          okBtn.style.color = '#fff';
+        } else {
+          okBtn.style.background = '';
+          okBtn.style.color = '';
+        }
+        ov.style.display = 'flex';
+        requestAnimationFrame(() => ov.classList.add('visible'));
+        function close(val) {
+          ov.classList.remove('visible');
+          setTimeout(() => { ov.style.display = 'none'; }, 220);
+          document.getElementById('cm-ok').removeEventListener('click', onOk);
+          document.getElementById('cm-cancel').removeEventListener('click', onCancel);
+          resolve(val);
+        }
+        function onOk() { close(true); }
+        function onCancel() { close(false); }
+        document.getElementById('cm-ok').addEventListener('click', onOk);
+        document.getElementById('cm-cancel').addEventListener('click', onCancel);
+      });
     }
 
     // Registro Service Worker para PWA
@@ -5218,7 +5322,11 @@
     // Canje del premio en el local: lo pulsa el STAFF en el móvil del cliente.
     // Cierra el bono de forma irreversible para que no se pueda usar dos veces.
     async function redeemPrize(id) {
-      const ok = confirm('✅ ENTREGAR PREMIO\n\nEsto CIERRA el bono y NO se puede deshacer.\nDebe pulsarlo el STAFF del local al entregar el premio.\n\n¿Confirmar entrega?');
+      const ok = await corchoConfirm({
+        icon: '🏆', title: 'Entregar Premio',
+        body: 'Esto <strong>cierra el bono</strong> y no se puede deshacer.<br>Debe pulsarlo el <strong>staff del local</strong> al entregar el premio.',
+        okText: 'Entregar', okStyle: 'danger'
+      });
       if (!ok) return;
       try {
         const res = await fetch(`/api/raffle/${id}/redeem`, {
@@ -9779,7 +9887,13 @@
   async function buyMemeWithCorcho(btn) {
     if (!userWalletAddress) { alert('Conecta tu wallet primero'); return; }
     const cost = (_memeShop && _memeShop.priceCorcho) || 4000;
-    if (!confirm(`¿Pedir el Meme VIP / Camiseta por ${cost.toLocaleString()} $CORCHO?\n\nPasarás por taquilla y el staff valida el pago antes de entregártelo.`)) return;
+    if (!await corchoConfirm({
+      icon: '👕', title: 'Meme VIP / Camiseta',
+      body: '¿Pedir el Meme VIP / Camiseta Oficial?',
+      amount: `${cost.toLocaleString()} $CORCHO`,
+      sub: 'Pasarás por taquilla y el staff valida el pago antes de entregártelo.',
+      okText: 'Pedir'
+    })) return;
     const original = btn ? btn.innerText : '';
     if (btn) { btn.disabled = true; btn.innerText = 'Procesando…'; }
     try {
@@ -9791,9 +9905,11 @@
 
       if (!res.success) {
         if (res.insufficient || (res.error && res.error.includes('Saldo insuficiente'))) {
-          if (confirm(`⚠️ ${res.error}\n\n¿Quieres recargar CorchoCoins ahora?`)) {
-            openCorchoPacksModal();
-          }
+          if (await corchoConfirm({
+            icon: '⚠️', title: 'Saldo insuficiente',
+            body: res.error,
+            okText: 'Recargar', sub: '¿Quieres recargar CorchoCoins ahora?'
+          })) { openCorchoPacksModal(); }
         } else {
           alert('⚠️ ' + (res.error || 'Error procesando la solicitud'));
         }
@@ -10963,7 +11079,13 @@
 
     async function buyMemeWithCorchoFromCat() {
       if (!userWalletAddress) { alert('Conecta tu wallet primero'); return; }
-      if (!confirm('¿Comprar Meme VIP / Camiseta Oficial por 4.000 $CORCHO?')) return;
+      if (!await corchoConfirm({
+        icon: '👕', title: 'Meme VIP / Camiseta',
+        body: '¿Comprar Meme VIP / Camiseta Oficial?',
+        amount: '4.000 $CORCHO',
+        sub: 'Pasarás por taquilla y el staff valida el pago.',
+        okText: 'Comprar'
+      })) return;
       try {
         const res = await resilientFetch('/api/meme/buy-with-corcho', {
           method: 'POST',
@@ -10973,10 +11095,11 @@
 
         if (!res.success) {
           if (res.error && res.error.includes('insuficiente')) {
-            if (confirm(`⚠️ ${res.error}\n\n¿Quieres recargar CorchoCoins ahora?`)) {
-              closeCorchoItemsModal();
-              openCorchoPacksModal();
-            }
+            if (await corchoConfirm({
+              icon: '⚠️', title: 'Saldo insuficiente',
+              body: res.error,
+              okText: 'Recargar', sub: '¿Quieres recargar CorchoCoins ahora?'
+            })) { closeCorchoItemsModal(); openCorchoPacksModal(); }
           } else {
             alert('⚠️ ' + (res.error || 'Error procesando la compra'));
           }
@@ -10984,7 +11107,7 @@
         }
 
         closeCorchoItemsModal();
-        alert('🎉 ¡Enhorabuena! Has comprado el Meme VIP con tus $CORCHO.');
+        showToast('🎉 ¡Meme VIP pedido! Pásate por taquilla.');
         loadCorchoBalance();
         if (typeof initWallet === 'function') initWallet();
       } catch (e) {
@@ -11000,7 +11123,13 @@
 
     async function redeemCorchoItem(itemId, itemName, price) {
       if (!userWalletAddress) { alert('Conecta tu wallet primero'); return; }
-      if (!confirm(`¿Canjear "${itemName}" por ${price.toLocaleString()} $CORCHO?`)) return;
+      if (!await corchoConfirm({
+        icon: '🪙', title: 'Canjear $CORCHO',
+        body: `¿Canjear <strong>${itemName}</strong>?`,
+        amount: `${price.toLocaleString()} $CORCHO`,
+        sub: 'Se descontará de tu saldo. El staff te lo entregará en barra.',
+        okText: 'Canjear'
+      })) return;
       try {
         const res = await resilientFetch('/api/corcho/redeem-item', {
           method: 'POST',
@@ -11011,10 +11140,11 @@
 
         if (!res.success) {
           if (res.error && res.error.includes('Saldo insuficiente')) {
-            if (confirm(`⚠️ ${res.error}\n\n¿Quieres recargar CorchoCoins ahora?`)) {
-              closeCorchoItemsModal();
-              openCorchoPacksModal();
-            }
+            if (await corchoConfirm({
+              icon: '⚠️', title: 'Saldo insuficiente',
+              body: res.error,
+              okText: 'Recargar', sub: '¿Quieres recargar CorchoCoins ahora?'
+            })) { closeCorchoItemsModal(); openCorchoPacksModal(); }
           } else {
             alert('⚠️ ' + (res.error || 'Error en el canje'));
           }
