@@ -795,11 +795,19 @@ function gracefulShutdown(signal) {
     process.exit(0);
   });
 
-  // Forzar salida si tarda más de 10 segundos (Railway espera máximo ~30s)
+  // Forzar salida si tarda más de 8 segundos (Railway espera ~30s). Un SIGTERM es
+  // una PARADA ORDENADA de Railway (redeploy/restart), no un fallo: salimos con 0 para
+  // que no aparezca como "Crashed" ni dispare la política de reinicio ON_FAILURE.
+  // (server.close() puede colgarse por las conexiones SSE de larga duración.)
   setTimeout(() => {
-    console.error('[Server] Forzando salida tras timeout de cierre.');
-    process.exit(1);
-  }, 10000);
+    console.warn('[Server] Cierre por timeout — salida limpia (0) igualmente.');
+    try {
+      const { db } = require('./db/database');
+      db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
+      db.close();
+    } catch (_) {}
+    process.exit(0);
+  }, 8000);
 }
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
