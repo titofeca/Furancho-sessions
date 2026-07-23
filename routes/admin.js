@@ -2314,6 +2314,21 @@ router.post('/corcho/voucher/:code/cancel', requireAuth, (req, res) => {
   }
 });
 
+// ── LIMPIEZA DE DOBLE-CRÉDITOS PASADOS (mantenimiento puntual) ───────────────
+// GET = dry-run (no toca nada); POST = aplica (borra dups + reconcilia saldos).
+
+// GET /api/admin/corcho/dedup-audit — impacto de la limpieza, SIN aplicar nada
+router.get('/corcho/dedup-audit', requireAuth, (req, res) => {
+  try { res.json(require('../db/database').auditCorchoDedup()); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/admin/corcho/dedup-apply — aplica la limpieza (irreversible)
+router.post('/corcho/dedup-apply', requireAuth, (req, res) => {
+  try { res.json({ success: true, ...require('../db/database').applyCorchoDedup() }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // GET /api/admin/corcho/items — listar todos los ítems/canjes del Banco do Corcho
 router.get('/corcho/items', requireAuth, (req, res) => {
   try {

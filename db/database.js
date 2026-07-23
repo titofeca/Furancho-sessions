@@ -3200,6 +3200,8 @@ module.exports = {
   corchoItemCategory,
   sessionCanjeCount,
   getSessionCanjeCounts,
+  auditCorchoDedup,
+  applyCorchoDedup,
   createCorchoPackRequest,
   getPendingCorchoPackRequests,
   getCorchoPackRequest,
@@ -3946,6 +3948,84 @@ function saveCorchoPack(id, { name, priceEur, coins, badge, active }) {
     `).run(id, name, parseFloat(priceEur) || 0, parseInt(coins, 10) || 0, badge || '', active ? 1 : 0);
   }
   return db.prepare(`SELECT * FROM corcho_packs WHERE id = ?`).get(id);
+}
+
+
+// ── LIMPIEZA DE DOBLE-CRÉDITOS PASADOS (fichaje/campaña) ──────────────────────
+// Antes del fix 7442d62, el registro EN VIVO y el backfill usaban refIds distintos
+// para la MISMA visita → se acreditaba dos veces. Canónico: checkin → event_<fecha>
+// (o event_past*); campaña → camp_<fecha>. Los créditos con otra refId son el
+// duplicado del esquema viejo en vivo (checkin: event_<id> o checkin_*; campaña:
+// fecha sin prefijo). Esto los localiza para poder limpiarlos.
+function _findCorchoDupCredits() {
+  const canonCheckin = ref => /^event_\d{4}-\d{2}-\d{2}$/.test(ref) || /^event_past/.test(ref);
+  const checkin = db.prepare(
+    `SELECT id, wallet_address, amount, reference_id, created_at FROM corcho_transactions WHERE type='checkin' AND amount > 0`
+  ).all().filter(t => t.reference_id && !canonCheckin(t.reference_id));
+  const camp = db.prepare(
+    `SELECT id, wallet_address, amount, reference_id, created_at FROM corcho_transactions WHERE type='campaign_visit' AND amount > 0`
+  ).all().filter(t => !t.reference_id || !/^camp_/.test(t.reference_id));
+  return { checkin, camp };
+}
+
+// DRY-RUN: no toca nada. Devuelve cuánto se quitaría y a cuántos clientes.
+function auditCorchoDedup() {
+  const { checkin, camp } = _findCorchoDupCredits();
+  const all = [...checkin, ...camp];
+  const sum = arr => arr.reduce((a, t) => a + t.amount, 0);
+  const perWallet = {};
+  for (const t of all) {
+    const w = t.wallet_address.toLowerCase();
+    perWallet[w] = (perWallet[w] || 0) + t.amount;
+  }
+  const samples = Object.entries(perWallet)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 15)
+    .map(([w, removed]) => {
+      const bal = getCorchoBalance(w).balance;
+      return {
+        wallet: `${w.slice(0, 6)}…${w.slice(-4)}`,
+        removeCorcho: removed, currentBalance: bal, newBalance: Math.max(0, bal - removed)
+      };
+    });
+  return {
+    checkinDupCount: checkin.length, checkinDupCorcho: sum(checkin),
+    campaignDupCount: camp.length, campaignDupCorcho: sum(camp),
+    walletsAffected: Object.keys(perWallet).length,
+    totalCorchoToRemove: sum(all),
+    samples
+  };
+}
+
+// APLICAR: borra los créditos duplicados y RECONCILIA el saldo de cada wallet
+// afectada desde sus transacciones (nunca por debajo de 0). Idempotente: tras
+// aplicarlo, el dry-run da 0.
+function applyCorchoDedup() {
+  const { checkin, camp } = _findCorchoDupCredits();
+  const all = [...checkin, ...camp];
+  if (!all.length) return { removed: 0, corchoRemoved: 0, walletsReconciled: 0 };
+  const corchoRemoved = all.reduce((a, t) => a + t.amount, 0);
+  const wallets = [...new Set(all.map(t => t.wallet_address.toLowerCase()))];
+  const del = db.prepare(`DELETE FROM corcho_transactions WHERE id = ?`);
+  const reconcile = db.prepare(`
+    UPDATE corcho_balances SET balance = ?, total_earned = ?, total_spent = ?, updated_at = datetime('now')
+    WHERE LOWER(wallet_address) = ?
+  `);
+  db.exec('BEGIN TRANSACTION');
+  try {
+    for (const t of all) del.run(t.id);
+    for (const w of wallets) {
+      const rows = db.prepare(`SELECT amount FROM corcho_transactions WHERE LOWER(wallet_address) = ?`).all(w);
+      const earned = rows.filter(r => r.amount > 0).reduce((a, r) => a + r.amount, 0);
+      const spent = rows.filter(r => r.amount < 0).reduce((a, r) => a + Math.abs(r.amount), 0);
+      reconcile.run(Math.max(0, earned - spent), earned, spent, w);
+    }
+    db.exec('COMMIT');
+  } catch (e) {
+    try { db.exec('ROLLBACK'); } catch (_) {}
+    throw e;
+  }
+  return { removed: all.length, corchoRemoved, walletsReconciled: wallets.length };
 }
 
 
