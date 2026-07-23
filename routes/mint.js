@@ -282,8 +282,11 @@ function performCheckin(walletAddress, ipAddress) {
 
     try {
       const corcho = require('../services/corcho');
-      const win = require('../db/database').getActiveEventWindow();
-      const refId = win && win.event ? `event_${win.event.id}` : `checkin_${new Date().toISOString().slice(0,10)}`;
+      // refId por DÍA (UTC) — MISMO esquema que el backfill (sessions.entry_time y
+      // visits.event_date son UTC). Antes el vivo usaba event_<id> y el backfill
+      // event_<fecha>: al no coincidir, la MISMA visita se acreditaba dos veces
+      // (100 en vivo + 100 en el backfill). Con la misma clave se deduplica → 1 vez.
+      const refId = `event_${new Date().toISOString().slice(0, 10)}`;
       corchoReward = corcho.rewardCheckin(walletAddress, refId);
     } catch (e) { console.error('Error recompensando CorchoCoins en check-in:', e.message); }
   }

@@ -201,7 +201,13 @@ function confirmCorchoPurchase(purchaseId, by = 'staff') {
     `Compra de Meme VIP NFT con $CORCHO (validada por ${by})`, `memereq_${purchaseId}`);
   if (!spendRes.ok) {
     if (spendRes.error === 'insufficient_balance') {
-      throw new Error(`El cliente no tiene saldo: cuesta ${priceCorcho} $CORCHO y tiene ${spendRes.currentBalance}.`);
+      // El cliente gastó su saldo en otra cosa mientras la solicitud estaba
+      // pendiente: se ANULA (sale de la lista) para no dejar una compra fantasma
+      // que no se puede cobrar. No se le entrega nada. Sin doble gasto posible.
+      cancelRequest(purchaseId);
+      const err = new Error(`El cliente ya no tiene saldo (${spendRes.currentBalance}/${priceCorcho} $CORCHO). La solicitud se ha anulado.`);
+      err.cancelled = true;
+      throw err;
     }
     throw new Error('No se pudo cobrar en $CORCHO.');
   }
@@ -465,29 +471,9 @@ function syncUnitsFromAchievementMints() {
   } catch (_) {}
 }
 
-function buyWithCorchoCoins(wallet) {
-  if (!wallet || !/^0x[a-fA-F0-9]{40}$/i.test(wallet)) throw new Error('Wallet no válida');
-  const cfg = getConfig();
-  if (!cfg.open) throw new Error('La venta del meme está cerrada ahora mismo.');
-  const s = supply();
-  if (s.left <= 0) throw new Error('Se han agotado las 300 unidades del Meme VIP.');
-
-  const priceCorcho = cfg.priceCorcho || 4000;
-  const { spendCorchoCoins } = require('../db/database');
-
-  const spendRes = spendCorchoCoins(wallet, priceCorcho, 'nft_purchase', `Compra de Meme VIP NFT con $CORCHO`, MEME.ACHIEVEMENT_ID);
-
-  if (!spendRes.ok) {
-    if (spendRes.error === 'insufficient_balance') {
-      throw new Error(`Saldo insuficiente. El Meme VIP cuesta ${priceCorcho} $CORCHO (tienes ${spendRes.currentBalance} $CORCHO).`);
-    }
-    throw new Error('No se pudo procesar el cobro en $CORCHO.');
-  }
-
-  // Ejecutar entrega del Meme
-  const sale = sellTo(wallet, { source: 'corcho', priceCents: 0, withPerks: true });
-  return { ...sale, newCorchoBalance: spendRes.newBalance, priceCorcho };
-}
+// (Eliminada buyWithCorchoCoins: era la compra INSTANTÁNEA con $CORCHO, sin
+// validación de staff/admin. La compra con $CORCHO va ahora SIEMPRE por
+// requestPurchaseCorcho → confirmCorchoPurchase, validada en taquilla.)
 
 setTimeout(startMemeQueueWorker, 1500);
 
@@ -497,7 +483,7 @@ module.exports = {
   supply, unitsOfWallet, priceForWallet,
   listPerks, createPerk, updatePerk, deletePerk,
   requestPurchase, requestPurchaseCorcho, confirmCorchoPurchase, cancelRequest, listRequests, pendingRequestOf,
-  sellTo, buyWithCorchoCoins,
+  sellTo,
   moveUnitOnTransfer,
   entitlementsOfWallet, entitlementsOfUnit, usePerk, undoLastUse, pendingDeliveries,
   adminOverview, listUnits, notifyMemeQueue, syncUnitsFromAchievementMints

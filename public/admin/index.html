@@ -11101,7 +11101,10 @@
       alert(`Meme nº ${d.serial} vendido ✅\nQuedan ${d.supply.left} de ${d.supply.max}.` +
         (d.perks.length ? `\n\nLe tienes que dar:\n` + d.perks.map(p => `· ${p.qty_total}× ${p.label}`).join('\n') : ''));
       loadMemeShop();
-    } catch (e) { alert('Error: ' + e.message); }
+    } catch (e) {
+      alert('Error: ' + e.message);
+      loadMemeShop();   // si se anuló por falta de saldo, refresca para quitarla de la lista
+    }
   }
 
   // Venta directa (sin solicitud previa) o regalo.

@@ -93,15 +93,19 @@ function rewardLevelAward(walletAddress, level) {
   );
 }
 
-// Recompensa por visita de campaña
+// Recompensa por visita de campaña. La refId se normaliza SIEMPRE a `camp_<fecha>`
+// (aquí dentro), para que el registro EN VIVO y el backfill produzcan la misma clave
+// y no se acredite dos veces la misma visita. Acepta que le pasen la fecha ya con
+// prefijo (idempotente) o sin él.
 function rewardCampaignVisit(walletAddress, visitDate) {
   const amount = getRate('campaignVisit');
+  const key = String(visitDate || '').startsWith('camp_') ? visitDate : `camp_${visitDate}`;
   return addCorchoCoins(
     walletAddress,
     amount,
     'campaign_visit',
     `☀️ Visita Terraza de Verano (+${amount} $CORCHO)`,
-    visitDate
+    key
   );
 }
 
