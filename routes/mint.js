@@ -225,9 +225,14 @@ router.post('/exit', mintLimiter, (req, res) => {
       _exitLocks.delete(walletAddress.toLowerCase());
       return res.json({ success: true, action: 'no_session' });
     }
-    closeSession(walletAddress);
+    const closedId = closeSession(walletAddress);
+    // Recompensa en $CORCHO por fichar salida (idempotente por sesión).
+    let corchoExit = null;
+    if (closedId) {
+      try { corchoExit = require('../services/corcho').rewardExit(walletAddress, closedId); } catch (_) {}
+    }
     _exitLocks.delete(walletAddress.toLowerCase());
-    return res.json({ success: true, action: 'exit' });
+    return res.json({ success: true, action: 'exit', corchoExit });
   } catch (e) {
     _exitLocks.delete(walletAddress.toLowerCase());
     console.error('Error en /exit:', e.message);
@@ -330,8 +335,12 @@ router.post('/admin-checkout', requireAuth, (req, res) => {
     const { closeSession, db } = require('../db/database');
     const activeSession = db.prepare(`SELECT id FROM sessions WHERE LOWER(wallet_address) = LOWER(?) AND exit_time IS NULL LIMIT 1`).get(walletAddress);
     if (!activeSession) return res.json({ success: true, action: 'no_session' });
-    closeSession(walletAddress);
-    return res.json({ success: true, action: 'exit' });
+    const closedId = closeSession(walletAddress);
+    let corchoExit = null;
+    if (closedId) {
+      try { corchoExit = require('../services/corcho').rewardExit(walletAddress, closedId); } catch (_) {}
+    }
+    return res.json({ success: true, action: 'exit', corchoExit });
   } catch (e) {
     console.error('Error en /admin-checkout:', e.message);
     res.status(500).json({ error: 'Error al registrar salida' });

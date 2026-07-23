@@ -1270,6 +1270,10 @@
                 <input type="number" id="rate-checkin" class="input-field" style="font-size:12px; padding:6px 10px;" />
               </div>
               <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Recompensa por Fichaje Salida:</label>
+                <input type="number" id="rate-exit" class="input-field" style="font-size:12px; padding:6px 10px;" />
+              </div>
+              <div>
                 <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Recompensa Nivel 1 (Cautivo):</label>
                 <input type="number" id="rate-level1" class="input-field" style="font-size:12px; padding:6px 10px;" />
               </div>
@@ -4673,6 +4677,7 @@
       if (data.settings) {
         const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
         setVal('rate-checkin', data.settings.checkin);
+        setVal('rate-exit', data.settings.exit);
         setVal('rate-nftTransferFee', data.settings.nftTransferFee);
         setVal('rate-level1', data.settings.level1);
         setVal('rate-level2', data.settings.level2);
@@ -4888,6 +4893,7 @@
     const getVal = id => parseInt(document.getElementById(id).value, 10) || 0;
     const body = {
       checkin: getVal('rate-checkin'),
+      exit: getVal('rate-exit'),
       nftTransferFee: getVal('rate-nftTransferFee'),
       level1: getVal('rate-level1'),
       level2: getVal('rate-level2'),

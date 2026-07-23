@@ -1525,7 +1525,7 @@ function openSession(walletAddress, evMismatch) {
 }
 
 function closeSession(walletAddress) {
-  if (!walletAddress) return;
+  if (!walletAddress) return null;
   // Solo registra la salida y duración — counted_as_visit ya fue fijado en openSession (en la entrada)
   const session = db.prepare(`
     SELECT id, entry_time FROM sessions
@@ -1550,7 +1550,11 @@ function closeSession(walletAddress) {
         WHERE LOWER(wallet_address) = LOWER(?)
       `).run(walletAddress);
     } catch(e) {}
+
+    // Devuelve el id de la sesión cerrada para poder recompensar la salida en $CORCHO.
+    return session.id;
   }
+  return null;
 }
 
 function savePushSubscription(walletAddress, subscription, channels = null) {
@@ -3770,8 +3774,8 @@ function addCorchoCoins(walletAddress, amount, type, description, referenceId = 
   if (!walletAddress || !amount || amount <= 0) return { added: false, reason: 'invalid_params' };
   const w = walletAddress.toLowerCase();
   
-  // Idempotencia para recompensas con referenceId (checkin, level_award, etc.)
-  if (referenceId && ['checkin', 'level_award', 'campaign_visit', 'referral'].includes(type)) {
+  // Idempotencia para recompensas con referenceId (checkin, exit, level_award, etc.)
+  if (referenceId && ['checkin', 'exit', 'level_award', 'campaign_visit', 'referral'].includes(type)) {
     const existing = db.prepare(
       `SELECT id FROM corcho_transactions WHERE LOWER(wallet_address) = ? AND type = ? AND reference_id = ? LIMIT 1`
     ).get(w, type, String(referenceId));

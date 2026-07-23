@@ -10,6 +10,7 @@ const {
 
 const DEFAULT_RATES = {
   checkin: 100,            // Recompensa por fichar entrada en un Furancho
+  exit: 25,               // Recompensa por fichar SALIDA (cerrar la noche)
   level1: 50,              // Recompensa por alcanzar Nivel 1 (Cautivo)
   level2: 100,             // Recompensa por alcanzar Nivel 2 (O Cunqueiro)
   level3: 250,             // Recompensa por alcanzar Nivel 3 (O Larpeiro)
@@ -31,6 +32,7 @@ function getRate(key) {
 function getEconomySettings() {
   return {
     checkin: getRate('checkin'),
+    exit: getRate('exit'),
     level1: getRate('level1'),
     level2: getRate('level2'),
     level3: getRate('level3'),
@@ -60,6 +62,20 @@ function rewardCheckin(walletAddress, eventIdOrDate) {
     'checkin',
     `🍷 Fichaje no Furancho (+${amount} $CORCHO)`,
     eventIdOrDate || 'checkin_event'
+  );
+}
+
+// Recompensa por fichar SALIDA. Idempotente por sesión: cada salida cerrada da una
+// sola vez su recompensa (refId = id de la sesión), tanto en vivo como en el backfill.
+function rewardExit(walletAddress, sessionId) {
+  const amount = getRate('exit');
+  if (!amount || amount <= 0) return { added: false };
+  return addCorchoCoins(
+    walletAddress,
+    amount,
+    'exit',
+    `🚪 Fichaje de salida (+${amount} $CORCHO)`,
+    `exit_session_${sessionId}`
   );
 }
 
@@ -130,6 +146,16 @@ function syncRetroactiveCorchoCoins() {
       rewardCheckin(s.wallet_address, `event_${dateStr}`);
     }
 
+    // 2b. Salidas ya registradas. Solo las sesiones que CONTARON como visita
+    // (counted_as_visit = 1): así el premio de salida va 1:1 con las visitas reales
+    // y no se puede farmear con re-entradas (que abren sesiones sin contar). Cubre
+    // salidas cerradas por el cliente, el staff o el auto-cierre. Idempotente por sesión.
+    const exits = db.prepare(`SELECT id, wallet_address FROM sessions WHERE exit_time IS NOT NULL AND counted_as_visit = 1`).all();
+    for (const s of exits) {
+      if (!s.wallet_address) continue;
+      rewardExit(s.wallet_address, s.id);
+    }
+
     // 3. Visitas pasadas
     const visits = db.prepare(`SELECT wallet_address, event_date, visited_at FROM visits`).all();
     for (const v of visits) {
@@ -158,6 +184,7 @@ module.exports = {
   getEconomySettings,
   saveEconomySettings,
   rewardCheckin,
+  rewardExit,
   rewardLevelAward,
   rewardCampaignVisit,
   rewardReferral,
