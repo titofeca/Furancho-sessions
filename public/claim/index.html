@@ -6465,6 +6465,27 @@
 
       evtSource.addEventListener('raffle_result', (e) => { _handleRaffleResult(JSON.parse(e.data)); });
 
+      // Fichaje EN VIVO: el camarero (o el admin) fichó la entrada de este cliente.
+      // Su app se actualiza sola —botón "Registrar Salida", badge "Estás dentro" y
+      // contador de visitas— sin que tenga que refrescar a mano (bug de ayer).
+      _evtSource.addEventListener('checkin_done', (e) => {
+        try {
+          const d = JSON.parse(e.data || '{}');
+          if (typeof setActiveSession === 'function') setActiveSession(true);
+          if (typeof updateFicharButtons === 'function') updateFicharButtons();
+          if (typeof d.visitCount === 'number') {
+            const vc = document.getElementById('visit-count-display');
+            if (vc) vc.textContent = d.visitCount;
+          }
+          if (typeof checkUserHistoryAndAdjustLevel === 'function') checkUserHistoryAndAdjustLevel();
+          if (typeof renderPrizes === 'function') renderPrizes();
+          if (typeof loadAgenda === 'function') loadAgenda();
+          showToast(d.counted === false && d.hasEventNow === false
+            ? '🍷 Entrada registrada — hoy no hay sesión, así que no suma, pero quedas dentro.'
+            : '✅ ¡Entrada registrada! Xa estás dentro, ho.');
+        } catch (_) {}
+      });
+
       evtSource.addEventListener('raffle_timeout', () => {
         hideAcceptBanner();
         const modal = document.getElementById('raffle-modal');

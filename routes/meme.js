@@ -77,7 +77,7 @@ router.post('/buy-with-corcho', buyLimiter, (req, res) => {
 
     if (!r.alreadyRequested) {
       try {
-        require('./raffle').broadcastToAdmins('corcho_pending', {
+        require('./raffle').broadcastCorchoPending({
           kind: 'meme',
           requestId: r.request.id,
           wallet: walletAddress,

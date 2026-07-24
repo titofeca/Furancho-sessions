@@ -293,7 +293,7 @@ function performCheckin(walletAddress, ipAddress) {
 
   completeVipReservationOnCheckin(walletAddress);
 
-  return {
+  const payload = {
     success: true,
     action: 'entry',
     isNew: visitCount === 1 && result.counted,
@@ -303,6 +303,20 @@ function performCheckin(walletAddress, ipAddress) {
     levelUp,
     corchoReward
   };
+
+  // Aviso EN VIVO a la app del cliente por SSE: cuando el camarero (o el admin) le
+  // ficha la entrada, su móvil se actualiza solo (botón → "Registrar Salida", badge
+  // "Estás dentro") sin tener que refrescar a mano. Antes no cambiaba hasta recargar.
+  try {
+    require('./raffle').broadcastToEligible('checkin_done', {
+      visitCount: payload.visitCount,
+      counted: payload.counted,
+      isNew: payload.isNew,
+      hasEventNow: payload.hasEventNow
+    }, [walletAddress]);
+  } catch (_) {}
+
+  return payload;
 }
 
 

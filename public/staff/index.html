@@ -95,6 +95,16 @@
       <ol id="camp-rank-list"></ol>
     </div>
 
+    <!-- BANCO DO CORCHO: compras y canjes por validar (aviso en vivo, sin escanear) -->
+    <div class="card" id="corcho-inbox-card" style="display:none; margin-top:18px; border:2px solid var(--gold);">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2 style="font-size:17px; margin:0;">🪙 $CORCHO por validar <span id="corcho-inbox-count" style="font-size:12px; font-weight:800; color:#fff; background:var(--wine); border-radius:100px; padding:2px 9px; margin-left:4px;">0</span></h2>
+        <button onclick="loadStaffCorchoInbox(true)" style="background:rgba(42,21,9,0.06); border:none; border-radius:100px; padding:7px 12px; font-size:11.5px; font-weight:800; cursor:pointer; color:var(--text-muted); font-family:'Outfit',sans-serif;">↻ Actualizar</button>
+      </div>
+      <p class="lead" style="margin:8px 0 12px; font-size:12.5px;">Recargas por cobrar en € y vales por entregar. Te avisa en vivo cuando un cliente pide algo — cobra/entrega y valida aquí mismo, sin tener que escanearlo.</p>
+      <div id="corcho-inbox-body" style="display:flex; flex-direction:column; gap:10px;"></div>
+    </div>
+
     <!-- RESERVAS VIP DE HOY (para recibir a los grupos y llevarlos a su mesa) -->
     <div class="card" id="vip-card" style="display:none; margin-top:18px;">
       <div onclick="toggleVipList()" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none;">
@@ -450,6 +460,13 @@
         status.innerHTML = '⚠️ No se pudo abrir la cámara. Permite el acceso a cámara en el navegador y recarga.';
       }
       loadCampaign();   // banner + ranking del Reto de los 5 (si está activo)
+      loadStaffCorchoInbox();   // bandeja de $CORCHO por validar
+      connectStaffSse();        // aviso en vivo de compras/canjes
+      if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+        try { Notification.requestPermission(); } catch(_){}
+      }
+      if (_corchoInboxTimer) clearInterval(_corchoInboxTimer);
+      _corchoInboxTimer = setInterval(() => loadStaffCorchoInbox(), 60000);   // respaldo por si el SSE se cae
     }
 
     // Decodifica el QR del cliente. Acepta tres cosas:
@@ -936,6 +953,7 @@
         if (r.ok && d.success){
           btn.style.background = 'rgba(22,163,74,0.9)';
           btn.textContent = d.already ? '✅ Xa estaba' : '✅ Acreditado';
+          if (typeof loadStaffCorchoInbox === 'function') setTimeout(() => loadStaffCorchoInbox(), 900);
         } else {
           btn.disabled = false; btn.textContent = original;
           alert('⚠️ ' + (d.error || 'No se pudo confirmar'));
@@ -958,6 +976,7 @@
         if (r.ok && d.success){
           btn.style.background = 'rgba(22,163,74,0.9)';
           btn.textContent = d.already ? '✅ Xa estaba' : '✅ Validado';
+          if (typeof loadStaffCorchoInbox === 'function') setTimeout(() => loadStaffCorchoInbox(), 900);
         } else {
           btn.disabled = false; btn.textContent = original;
           alert('⚠️ ' + (d.error || 'No se pudo validar'));
@@ -990,7 +1009,10 @@
         | renderCorchoPending(d.corchoPacks, d.corchoVouchers, wallet);
 
       // ── MODO CAMPAÑA: durante el Reto de los 5, el resultado gira en torno al reto ──
-      if (d.campaign && d.campaign.active){
+      // EXCEPCIÓN: en día de Furancho el reto NO computa (el cliente viene a la sesión),
+      // así que NO mostramos mensaje de reto — cae al MODO NORMAL y enseña el fichaje de
+      // entrada, que es lo que toca hacer ese día.
+      if (d.campaign && d.campaign.active && d.campaign.error !== 'furancho_day'){
         if (nextEl) nextEl.style.display = 'none';   // el nivel no es relevante en vacaciones
         const c = d.campaign;
         let bg = green, ic = '✅', t = '', m = '';
@@ -1033,6 +1055,11 @@
       else if (d.counted){ t = '¡Fichado!'; m = `Entrada registrada · visita #${d.visitCount}. Ya participa en los sorteos.`; if (d.levelUp && d.levelUp.levelName) m += ` ¡Sube a ${d.levelUp.levelName}!`; }
       else if (d.hasEventNow === false){ ic = '🍷'; t = 'Entrada registrada'; m = 'Hoy no hay sesión en la agenda, así que la visita no suma — pero queda dentro para los sorteos.'; }
       else { ic = '✅'; t = '¡Ya está dentro!'; m = `La visita de esta semana ya estaba contada (lleva ${d.visitCount}). Sigue participando en los sorteos.`; }
+      // Si hoy hay Furancho durante el Reto de los 5: aclara que el fichaje es de
+      // ENTRADA y que hoy no suma punto al reto (evita el falso "ya selló su visita").
+      if (d.campaign && d.campaign.active && d.campaign.error === 'furancho_day'){
+        m += ' (Hoy es día de sesión: no suma al Reto de los 5.)';
+      }
       icon.style.background = bg; icon.textContent = ic;
       title.textContent = t; msg.textContent = m;
       // Cuánto le falta para el siguiente nivel — para decírselo al cliente
@@ -1074,6 +1101,86 @@
           }
         }
       }catch(e){ /* silencioso: la campaña es opcional */ }
+    }
+
+    // ── Banco do Corcho: bandeja de compras/canjes por validar (aviso en vivo) ──
+    let _staffSse = null, _corchoInboxTimer = null;
+
+    function staffToast(msg){
+      let t = document.getElementById('staff-toast');
+      if (!t){
+        t = document.createElement('div');
+        t.id = 'staff-toast';
+        t.style.cssText = 'position:fixed; left:50%; bottom:22px; transform:translateX(-50%); z-index:9999; background:var(--wine); color:#fff; padding:13px 18px; border-radius:14px; font-size:13.5px; font-weight:700; box-shadow:0 8px 24px rgba(0,0,0,0.25); max-width:90%; text-align:center; opacity:0; transition:opacity .25s;';
+        document.body.appendChild(t);
+      }
+      t.textContent = msg;
+      requestAnimationFrame(() => { t.style.opacity = '1'; });
+      clearTimeout(t._h);
+      t._h = setTimeout(() => { t.style.opacity = '0'; }, 5000);
+    }
+
+    async function loadStaffCorchoInbox(manual){
+      const card = document.getElementById('corcho-inbox-card');
+      const body = document.getElementById('corcho-inbox-body');
+      const countEl = document.getElementById('corcho-inbox-count');
+      if (!card || !body) return;
+      try{
+        const r = await fetch('/api/staff/corcho/pending', { headers: staffHeaders() });
+        if (!r.ok) return;
+        const d = await r.json();
+        const packs = d.packs || [], vouchers = d.vouchers || [];
+        const total = packs.length + vouchers.length;
+        if (countEl) countEl.textContent = total;
+        if (!total){
+          card.style.display = manual ? 'block' : 'none';
+          body.innerHTML = '<p style="color:var(--text-muted); font-size:12.5px; margin:0;">Nada pendiente ahora mismo. ✨</p>';
+          return;
+        }
+        const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        let html = '';
+        packs.forEach(p => {
+          html += `<div style="display:flex; align-items:center; gap:8px; padding:10px; background:rgba(22,163,74,0.06); border:1px solid rgba(22,163,74,0.25); border-radius:12px;">
+            <div style="flex:1; min-width:0;">
+              <p style="margin:0; font-size:14px; font-weight:800; color:var(--text);">💳 ${Number(p.coins).toLocaleString()} $CORCHO</p>
+              <p style="margin:0; font-size:10.5px; color:var(--text-muted);">${esc(p.walletMasked)} · ${esc(p.packName)} · cobra <strong>${esc(String(p.priceEur))}€</strong></p>
+            </div>
+            <button type="button" onclick="confirmCorchoPack(this, ${p.id})" style="padding:11px 15px; background:linear-gradient(135deg, #16a34a, #0f7a37); color:#fff; border:none; border-radius:12px; font-size:13px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif; white-space:nowrap;">✓ Cobrado</button>
+          </div>`;
+        });
+        vouchers.forEach(v => {
+          html += `<div style="display:flex; align-items:center; gap:8px; padding:10px; background:rgba(196,151,58,0.08); border:1px solid rgba(196,151,58,0.3); border-radius:12px;">
+            <div style="flex:1; min-width:0;">
+              <p style="margin:0; font-size:14px; font-weight:800; color:var(--text);">${esc(v.itemEmoji)} ${esc(v.itemName)}</p>
+              <p style="margin:0; font-size:10.5px; color:var(--text-muted);">${esc(v.walletMasked)} · <span style="font-family:monospace;">${esc(v.code)}</span></p>
+            </div>
+            <button type="button" onclick="validateCorchoVoucher(this, '${esc(v.code)}')" style="padding:11px 15px; background:linear-gradient(135deg, var(--gold), #a97b1f); color:#fff; border:none; border-radius:12px; font-size:13px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif; white-space:nowrap;">✓ Entregado</button>
+          </div>`;
+        });
+        body.innerHTML = html;
+        card.style.display = 'block';
+      }catch(e){ /* silencioso */ }
+    }
+
+    function connectStaffSse(){
+      if (_staffSse) return;
+      try{
+        _staffSse = new EventSource('/api/raffle/stream?staff=true');
+        _staffSse.addEventListener('corcho_pending', (e) => {
+          try{
+            const d = JSON.parse(e.data);
+            let msg = '';
+            if (d.kind === 'canje')      msg = `🎁 ${d.walletMasked} canjeó ${d.item}. Entrégalo y valídalo abajo.`;
+            else if (d.kind === 'meme')  msg = `🎭 ${d.walletMasked} pide el Meme por ${Number(d.priceCorcho||0).toLocaleString()} $CORCHO. Valida el pago.`;
+            else                          msg = `💳 ${d.walletMasked} pide ${Number(d.coins).toLocaleString()} $CORCHO (${d.priceEur}€). Cobra y confirma abajo.`;
+            staffToast(msg);
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted'){
+              new Notification('🪙 $CORCHO por validar', { body: msg, icon: '/assets/corcho_coin_gold.png', tag: 'corcho-' + (d.code || d.requestId) });
+            }
+            loadStaffCorchoInbox();
+          }catch(_){}
+        });
+      }catch(_){ _staffSse = null; }
     }
 
     function resumeScan(){

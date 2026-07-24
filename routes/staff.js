@@ -306,6 +306,29 @@ router.post('/claim-daily-tapa', staffLimiter, requireStaff, (req, res) => {
   }
 });
 
+// GET /api/staff/corcho/pending — TODAS las compras y canjes de $CORCHO por validar
+// (de cualquier cliente, no solo el escaneado). Alimenta la bandeja del camarero, que
+// además recibe el aviso en vivo por SSE. Misma fuente única que admin. Read-only.
+router.get('/corcho/pending', requireStaff, (req, res) => {
+  try {
+    const { getPendingCorchoPackRequests, getPendingRedemptions } = require('../db/database');
+    const packs = getPendingCorchoPackRequests().map(r => ({
+      id: r.id, wallet: r.wallet_address,
+      walletMasked: `${r.wallet_address.slice(0,6)}…${r.wallet_address.slice(-4)}`,
+      packName: r.pack_name, coins: r.coins, priceEur: r.price_eur
+    }));
+    const vouchers = getPendingRedemptions().map(v => ({
+      code: v.code, wallet: v.wallet_address,
+      walletMasked: `${v.wallet_address.slice(0,6)}…${v.wallet_address.slice(-4)}`,
+      itemName: v.item_name, itemEmoji: v.item_emoji, priceCorcho: v.price_corcho, expiresAt: v.expires_at
+    }));
+    res.json({ packs, vouchers });
+  } catch (e) {
+    console.error('Error en /staff/corcho/pending:', e.message);
+    res.status(500).json({ error: 'Error cargando pendientes de $CORCHO' });
+  }
+});
+
 // POST /api/staff/corcho-pack/:id/confirm — el camarero COBRA en la barra la
 // recarga de $CORCHO y la confirma. Solo aquí se acreditan las monedas. Idempotente.
 router.post('/corcho-pack/:id/confirm', staffLimiter, requireStaff, (req, res) => {

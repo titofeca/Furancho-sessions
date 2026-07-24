@@ -119,6 +119,29 @@ function broadcastToAdmins(event, data) {
   if (dead.length) clients = clients.filter(c => !dead.includes(c.id));
 }
 
+// Envía evento SSE a las pantallas de STAFF conectadas (/staff con ?staff=true).
+// Se usa para que el camarero reciba en vivo los avisos de compra/canje de $CORCHO
+// por cobrar, igual que el admin — no solo cuando escanea al cliente.
+function broadcastToStaff(event, data) {
+  const dead = [];
+  clients.filter(c => c.isStaff).forEach(client => {
+    try {
+      client.res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      if (typeof client.res.flush === 'function') client.res.flush();
+    } catch (e) {
+      dead.push(client.id);
+    }
+  });
+  if (dead.length) clients = clients.filter(c => !dead.includes(c.id));
+}
+
+// Aviso de $CORCHO pendiente (compra/canje/meme) a admin Y staff a la vez: el dinero
+// lo puede validar cualquiera de los dos en taquilla, así que ambos deben enterarse.
+function broadcastCorchoPending(data) {
+  broadcastToAdmins('corcho_pending', data);
+  broadcastToStaff('corcho_pending', data);
+}
+
 // GET /api/raffle/stream?wallet=0x...
 router.get('/stream', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
@@ -131,7 +154,8 @@ router.get('/stream', (req, res) => {
   const clientId = Date.now() + Math.random();
   const walletAddress = req.query.wallet || null;
   const isAdmin = req.query.admin === 'true';
-  const newClient = { id: clientId, res, walletAddress, isAdmin };
+  const isStaff = req.query.staff === 'true';
+  const newClient = { id: clientId, res, walletAddress, isAdmin, isStaff };
 
   // Cap: máximo 500 conexiones SSE activas para evitar memory leaks
   if (clients.length >= 500) {
@@ -1148,6 +1172,9 @@ router.get('/scheduled/:id/voucher-preview', requireAuth, (req, res) => {
 module.exports = router;
 module.exports.broadcast = broadcast;
 module.exports.broadcastToAdmins = broadcastToAdmins;
+module.exports.broadcastToStaff = broadcastToStaff;
+module.exports.broadcastCorchoPending = broadcastCorchoPending;
+module.exports.broadcastToEligible = broadcastToEligible;
 module.exports.doLaunch = doLaunch;
 
 // --- LÓGICA DE SORTEO SEMANAL ("LA CHAVE SEMANAL") ---

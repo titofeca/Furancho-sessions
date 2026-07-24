@@ -125,7 +125,7 @@ router.post('/buy-pack', (req, res) => {
     // Aviso EN VIVO al admin de la compra por cobrar (efectivo/tarjeta en taquilla).
     if (!already) {
       try {
-        require('./raffle').broadcastToAdmins('corcho_pending', {
+        require('./raffle').broadcastCorchoPending({
           kind: 'compra',
           requestId: request.id,
           wallet: walletAddress,
@@ -249,7 +249,7 @@ router.post('/redeem-item', (req, res) => {
     // del móvil del cliente. El staff además lo ve al fichar / en el panel.
     if (voucher) {
       try {
-        require('./raffle').broadcastToAdmins('corcho_pending', {
+        require('./raffle').broadcastCorchoPending({
           kind: 'canje',
           code: voucher.code,
           wallet: walletAddress,
