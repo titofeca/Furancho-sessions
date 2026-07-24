@@ -6033,13 +6033,48 @@
         chips.push(chip('rgba(196,151,58,0.12)', '#7A5A00', 'rgba(196,151,58,0.4)', res.isNft ? '🏅 NFT sin entregar aún' : '🎁 Sin recoger aún'));
       }
     }
+    // Premio aceptado y SIN recoger: el admin ve el código y puede entregarlo aquí
+    // mismo (sin depender del móvil del cliente ni ir al Historial). NFT → botón de
+    // entrega presencial; el resto → marcar entregado + código de verificación.
+    const canDeliver = res.status === 'accepted';
+    let deliverHtml = '';
+    if (canDeliver && res.raffleId) {
+      if (res.isNft && !res.nftGrantedAt) {
+        deliverHtml = `<button onclick="grantNftFromHistory(${res.raffleId}, '${res.winnerWallet}', this); setTimeout(loadScheduled, 900);"
+          style="margin-top:8px; width:100%; padding:9px; background:linear-gradient(135deg, var(--gold), #a97b1f); border:none; border-radius:10px; font-size:12px; font-weight:800; color:#fff; cursor:pointer; font-family:'Outfit',sans-serif;">🏅 Entregar NFT ✓</button>`;
+      } else if (!res.isNft) {
+        deliverHtml = `
+          ${res.verificationCode ? `<div style="margin-top:8px; text-align:center; background:#fff; border:1.5px dashed var(--gold); border-radius:10px; padding:8px;">
+            <span style="font-size:9px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted);">Código de verificación</span>
+            <div style="font-family:monospace; font-size:20px; font-weight:900; letter-spacing:4px; color:var(--wine);">${res.verificationCode}</div>
+          </div>` : ''}
+          <button onclick="collectScheduled(${res.raffleId}, this)"
+            style="margin-top:8px; width:100%; padding:10px; background:linear-gradient(135deg,#16a34a,#0f7a37); border:none; border-radius:10px; font-size:12.5px; font-weight:800; color:#fff; cursor:pointer; font-family:'Outfit',sans-serif;">✓ Entregar premio</button>`;
+      }
+    }
     return `<div style="margin-top:8px; padding:7px 10px; background:rgba(42,21,9,0.03); border:1px solid rgba(42,21,9,0.08); border-radius:10px;">
       <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
         <span style="font-size:11px; font-weight:800; color:var(--wine);">🏆 Ganador:</span>
         <span style="font-family:monospace; font-size:11px; font-weight:700; color:var(--text);">${res.walletMasked}</span>
         ${chips.join(' ')}
       </div>
+      ${deliverHtml}
     </div>`;
+  }
+
+  // Marca un premio de la AGENDA como entregado (mismo endpoint admin que el Historial),
+  // refrescando la agenda al terminar. Idempotente en servidor.
+  async function collectScheduled(raffleId, btn) {
+    if (!confirm('¿Marcar este premio como ENTREGADO? Cierra el bono.')) return;
+    btn.disabled = true; const orig = btn.textContent; btn.textContent = 'Entregando…';
+    try {
+      const res = await fetch(`/api/raffle/${raffleId}/collect`, {
+        method: 'PATCH', headers: { ...authHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({})
+      });
+      const data = await res.json();
+      if (data.success) { showToast('✅ Premio entregado · bono cerrado'); loadScheduled(); }
+      else { showToast(data.error || 'Error', true); btn.disabled = false; btn.textContent = orig; }
+    } catch(e) { showToast('Error de red', true); btn.disabled = false; btn.textContent = orig; }
   }
 
   // ── AGENDA DE SORTEOS ──────────────────────────────────────────────────────

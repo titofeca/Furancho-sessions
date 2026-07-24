@@ -823,17 +823,20 @@
     // Pinta los premios de sorteo del cliente: bonos aceptados por canjear (el canje
     // es SOLO desde la app del cliente — botón verde) y premios por aceptar aún.
     // Devuelve true si se muestra algo.
-    function renderClientPrizes(prizes){
+    function renderClientPrizes(prizes, wallet){
       const wrap = document.getElementById('result-prizes');
       if (!wrap) return false;
       if (!prizes || !prizes.length){ wrap.style.display = 'none'; wrap.innerHTML = ''; return false; }
+      const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
       wrap.innerHTML = prizes.map(p => {
         if (p.status === 'accepted'){
           return `
           <div style="padding:12px 14px; background:rgba(22,163,74,0.08); border:1.5px solid rgba(22,163,74,0.35); border-radius:14px; margin-bottom:8px; text-align:left;">
-            <p style="margin:0; font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:#16a34a;">🎁 Bono por canjear${p.establishment ? ' · ' + p.establishment : ''}</p>
+            <p style="margin:0; font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:#16a34a;">🎁 Bono por entregar${p.establishment ? ' · ' + p.establishment : ''}</p>
             <p style="margin:4px 0 0; font-size:15px; font-weight:800; color:var(--text);">${p.prize}${p.code ? ` <span style="font-family:monospace; font-size:13px; color:var(--wine); letter-spacing:2px;">· ${p.code}</span>` : ''}</p>
-            <p style="margin:4px 0 0; font-size:11px; color:var(--text-muted);">El canje se cierra desde SU app: que abra Mis premios y pulsa TÚ el botón verde "Entregar premio".${p.validityEndDate ? ' Caduca el ' + p.validityEndDate + '.' : ''}</p>
+            <p style="margin:4px 0 8px; font-size:11px; color:var(--text-muted);">Entrégale el premio y ciérralo aquí.${p.validityEndDate ? ' Caduca el ' + p.validityEndDate + '.' : ''}</p>
+            <button type="button" onclick="staffRedeemPrize(this, ${p.raffleId}, '${esc(wallet)}')"
+              style="width:100%; padding:11px; background:linear-gradient(135deg,#16a34a,#0f7a37); color:#fff; border:none; border-radius:12px; font-size:13px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif;">✓ Entregar premio</button>
           </div>`;
         }
         return `
@@ -964,6 +967,32 @@
       }
     }
 
+    // Entrega del premio de sorteo al ganador presente: el camarero cierra el bono
+    // aquí mismo (ya escaneó al cliente, así que la wallet está verificada). El
+    // servidor comprueba que sea el ganador → a prueba de capturas ajenas. Idempotente.
+    async function staffRedeemPrize(btn, raffleId, wallet){
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = 'Entregando…';
+      try {
+        const r = await fetch(`/api/raffle/${raffleId}/redeem`, {
+          method:'POST', headers: staffHeaders({ 'Content-Type':'application/json' }),
+          body: JSON.stringify({ wallet })
+        });
+        const d = await r.json().catch(()=>({}));
+        if (r.ok && d.success){
+          btn.style.background = 'rgba(22,163,74,0.9)';
+          btn.textContent = d.alreadyCollected ? '✅ Xa estaba' : '✅ Entregado';
+        } else {
+          btn.disabled = false; btn.textContent = original;
+          alert('⚠️ ' + (d.error || 'No se pudo entregar'));
+        }
+      } catch(e){
+        btn.disabled = false; btn.textContent = original;
+        alert('⚠️ Error de red.');
+      }
+    }
+
     async function validateCorchoVoucher(btn, code){
       btn.disabled = true;
       const original = btn.textContent;
@@ -1003,7 +1032,7 @@
       // Igual con el privilexio do Guardián y los bonos de sorteo del cliente.
       const hasNftPrize = renderNftPrizes(d.pendingNftPrizes, wallet)
         | renderDailyTapa(d.dailyTapa, wallet)
-        | renderClientPrizes(d.prizes)
+        | renderClientPrizes(d.prizes, wallet)
         | renderVipToday(d.vipToday)
         | renderMemePerks(d.memePerks, wallet)
         | renderCorchoPending(d.corchoPacks, d.corchoVouchers, wallet);

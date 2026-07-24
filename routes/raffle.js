@@ -952,11 +952,16 @@ router.get('/scheduled/all', requireAuth, (req, res) => {
       if (!s.raffle_id) return s;
       const r = db.prepare(`
         SELECT winner_wallet, status, accepted_at, collected_at, rejection_note,
-               nft_achievement_id, nft_granted_at
+               nft_achievement_id, nft_granted_at, verification_code
         FROM raffles WHERE id = ?
       `).get(s.raffle_id);
       if (!r) return s;
+      // El código solo se muestra cuando ya está aceptado/entregado (el ganador ya lo
+      // tiene). Antes de aceptar no se expone. Sirve para que admin/staff lo vean y
+      // puedan entregar el premio sin depender del móvil del cliente.
+      const codeUnlocked = r.status === 'accepted' || r.status === 'collected';
       return { ...s, result: {
+        raffleId: s.raffle_id,
         winnerWallet: r.winner_wallet,
         walletMasked: r.winner_wallet ? r.winner_wallet.slice(0, 6) + '…' + r.winner_wallet.slice(-4) : null,
         status: r.status,
@@ -964,7 +969,8 @@ router.get('/scheduled/all', requireAuth, (req, res) => {
         collectedAt: r.collected_at,
         rejectionNote: r.rejection_note,
         isNft: !!r.nft_achievement_id,
-        nftGrantedAt: r.nft_granted_at
+        nftGrantedAt: r.nft_granted_at,
+        verificationCode: (codeUnlocked && !r.nft_achievement_id) ? r.verification_code : null
       } };
     });
     res.json(rows);
