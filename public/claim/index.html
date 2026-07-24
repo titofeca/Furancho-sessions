@@ -3547,6 +3547,39 @@
       });
     }
 
+    function corchoAlert({ icon, title, body, amount, sub, okText }) {
+      return new Promise(resolve => {
+        const ov = document.getElementById('corcho-modal');
+        if (!ov) { alert(body || title); resolve(); return; }
+        document.getElementById('cm-icon').textContent = icon || '🍷';
+        document.getElementById('cm-title').textContent = title || 'Furancho Sessions';
+        const bodyEl = document.getElementById('cm-body');
+        let html = body ? `<div>${body}</div>` : '';
+        if (amount) html += `<div class="cm-amount">${amount}</div>`;
+        if (sub) html += `<div class="cm-sub">${sub}</div>`;
+        bodyEl.innerHTML = html;
+        const okBtn = document.getElementById('cm-ok');
+        const cancelBtn = document.getElementById('cm-cancel');
+        if (cancelBtn) cancelBtn.style.display = 'none';
+        okBtn.textContent = okText || 'Entendido 🍷';
+        okBtn.style.background = 'linear-gradient(135deg,var(--wine),var(--wine-dark))';
+        okBtn.style.color = '#fff';
+        ov.style.display = 'flex';
+        requestAnimationFrame(() => ov.classList.add('visible'));
+        function close() {
+          ov.classList.remove('visible');
+          setTimeout(() => {
+            ov.style.display = 'none';
+            if (cancelBtn) cancelBtn.style.display = '';
+          }, 220);
+          okBtn.removeEventListener('click', onOk);
+          resolve();
+        }
+        function onOk() { close(); }
+        okBtn.addEventListener('click', onOk);
+      });
+    }
+
     // Registro Service Worker para PWA
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
@@ -11503,7 +11536,10 @@
 
 
     async function buyCorchoPack(packId) {
-      if (!userWalletAddress) { alert('Conecta tu wallet primero'); return; }
+      if (!userWalletAddress) {
+        await corchoAlert({ icon: '🔐', title: 'Conecta tu wallet', body: 'Necesitas conectar tu wallet primero para poder recargar saldo.' });
+        return;
+      }
       try {
         const r = await fetch('/api/corcho/buy-pack', {
           method: 'POST',
@@ -11511,13 +11547,21 @@
           body: JSON.stringify({ walletAddress: userWalletAddress, packId })
         });
         const d = await r.json();
-        if (!r.ok) { alert('⚠️ ' + (d.error || 'Error procesando recarga')); return; }
+        if (!r.ok) {
+          await corchoAlert({ icon: '⚠️', title: 'Recarga de CorchoCoins', body: d.error || 'Error procesando la recarga' });
+          return;
+        }
 
-        alert(d.message);
         closeCorchoPacksModal();
+        await corchoAlert({
+          icon: '💳',
+          title: 'Solicitud Registrada en Taquilla',
+          body: d.message || 'Acércate a la taquilla para abonar tu paquete. El staff te lo validará al instante.',
+          okText: 'Entendido 🍷'
+        });
         loadCorchoBalance();
       } catch (e) {
-        alert('Error de conexión');
+        await corchoAlert({ icon: '⚠️', title: 'Error de conexión', body: 'Comprueba tu red e inténtalo de nuevo.' });
       }
     }
 
