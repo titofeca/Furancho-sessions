@@ -1209,6 +1209,71 @@ router.get('/inspect-wallet/:address', requireAuth, (req, res) => {
   }
 });
 
+// GET /api/admin/wallet-detail/:address — ficha del socio para la vista de detalle
+// del panel (al pulsar una wallet en "Mayor Saldo" o en una transacción): saldo y
+// totales de $CORCHO, nivel, visitas, historial de sesiones (fecha + hora entrada/
+// salida + evento) y movimientos de $CORCHO. Read-only.
+router.get('/wallet-detail/:address', requireAuth, (req, res) => {
+  const { address } = req.params;
+  if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+    return res.status(400).json({ error: 'Dirección no válida' });
+  }
+  try {
+    const { db, getVisitCount, getCorchoBalance } = require('../db/database');
+
+    const holder = db.prepare(`
+      SELECT level, level_name FROM mints
+      WHERE LOWER(wallet_address) = LOWER(?) AND status = 'success'
+      ORDER BY level DESC LIMIT 1
+    `).get(address);
+
+    const bal = getCorchoBalance(address);
+
+    // Sesiones: fecha, hora de entrada/salida y evento de ese día (si lo hubo).
+    const sessions = db.prepare(`
+      SELECT s.entry_time, s.exit_time, s.counted_as_visit, e.title AS event_title
+      FROM sessions s
+      LEFT JOIN events e ON date(s.entry_time) = e.event_date
+      WHERE LOWER(s.wallet_address) = LOWER(?)
+      ORDER BY s.entry_time DESC
+      LIMIT 40
+    `).all(address);
+
+    const activeSession = db.prepare(`
+      SELECT entry_time FROM sessions
+      WHERE LOWER(wallet_address) = LOWER(?) AND exit_time IS NULL
+      ORDER BY entry_time DESC LIMIT 1
+    `).get(address);
+
+    // Movimientos de $CORCHO (ganados y gastados), más recientes primero.
+    const corcho = db.prepare(`
+      SELECT amount, type, description, created_at
+      FROM corcho_transactions
+      WHERE LOWER(wallet_address) = LOWER(?)
+      ORDER BY id DESC
+      LIMIT 60
+    `).all(address);
+
+    res.json({
+      address,
+      walletMasked: `${address.slice(0, 6)}…${address.slice(-4)}`,
+      level: holder ? holder.level : 1,
+      levelName: holder ? holder.level_name : 'Cautivo',
+      visitCount: getVisitCount(address),
+      balance: bal.balance,
+      totalEarned: bal.totalEarned,
+      totalSpent: bal.totalSpent,
+      activeNow: !!activeSession,
+      activeSince: activeSession ? activeSession.entry_time : null,
+      sessions,
+      corcho
+    });
+  } catch (e) {
+    console.error('Error en /wallet-detail:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/admin/polygon-balance — saldo de la billetera que paga el gas de los mints
 router.get('/polygon-balance', requireAuth, async (_req, res) => {
   try {

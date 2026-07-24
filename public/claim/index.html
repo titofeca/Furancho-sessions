@@ -11268,31 +11268,33 @@
       const err = document.getElementById('corcho-transfer-err');
       if (err) err.textContent = '';
 
-      // Poblar NFTs del usuario
+      // Poblar NFTs del usuario desde las MISMAS fuentes que pintan el museo y las
+      // tarjetas (antes leía window._userPasses/_userAchievements, que NUNCA se
+      // asignan → el modal salía siempre vacío aunque el socio tuviese NFTs):
+      //  · Niveles → userClaimedLevels (array de nº de nivel conseguidos).
+      //  · Logros  → _nftAchById (mapa de logros) con claimStatus === 'success'.
       select.innerHTML = '';
       let nftCount = 0;
-      
-      // Niveles
-      if (window._userPasses && window._userPasses.length) {
-        window._userPasses.forEach(p => {
-          if (p.status === 'success') {
-            nftCount++;
-            const opt = document.createElement('option');
-            opt.value = `level:${p.level}`;
-            opt.textContent = `🏆 Pase Nivel ${p.level} (${p.levelName || 'Socio'})`;
-            select.appendChild(opt);
-          }
+      const levelNames = { 1: 'Cautivo', 2: 'Cunqueiro', 3: 'Larpeiro', 4: 'Presidente' };
+
+      if (typeof userClaimedLevels !== 'undefined' && userClaimedLevels && userClaimedLevels.length) {
+        [...userClaimedLevels].sort((a, b) => a - b).forEach(lvl => {
+          nftCount++;
+          const opt = document.createElement('option');
+          opt.value = `level:${lvl}`;
+          opt.textContent = `🏆 Pase Nivel ${lvl} (${levelNames[lvl] || 'Socio'})`;
+          select.appendChild(opt);
         });
       }
 
-      // Logros
-      if (window._userAchievements && window._userAchievements.length) {
-        window._userAchievements.forEach(a => {
-          if (a.status === 'success') {
+      if (typeof _nftAchById !== 'undefined' && _nftAchById) {
+        Object.values(_nftAchById).forEach(a => {
+          // meme_vip no se traspasa (es la tienda del meme, otro flujo)
+          if (a && a.claimStatus === 'success' && a.id !== 'meme_vip') {
             nftCount++;
             const opt = document.createElement('option');
-            opt.value = `achievement:${a.achievement_id || a.id}`;
-            opt.textContent = `🏅 Logro: ${a.title || a.name || a.achievement_id}`;
+            opt.value = `achievement:${a.id}`;
+            opt.textContent = `🏅 ${a.name || a.title || a.id}`;
             select.appendChild(opt);
           }
         });
