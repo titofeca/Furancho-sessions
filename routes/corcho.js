@@ -190,6 +190,43 @@ router.get('/items', (req, res) => {
   }
 });
 
+// GET /api/corcho/economy-info — información de la economía, reglas, quema y supply
+router.get('/economy-info', (req, res) => {
+  try {
+    const { isCorchoStoreEventScheduledThisWeek, getCorchoGlobalSupply, processFifoBurnForWallet } = require('../db/database');
+    const { wallet } = req.query;
+    let walletStats = null;
+    let burnedThisCheck = 0;
+
+    if (wallet && ETH_REGEX.test(wallet)) {
+      const bRes = processFifoBurnForWallet(wallet);
+      burnedThisCheck = bRes.burned || 0;
+      walletStats = corcho.getCorchoBalance(wallet);
+    }
+
+    const supply = getCorchoGlobalSupply();
+    const isStoreOpen = isCorchoStoreEventScheduledThisWeek();
+
+    res.json({
+      storeOpenForItems: isStoreOpen,
+      globalSupply: supply.currentSupply,
+      totalEarned: supply.totalEarned,
+      totalBurned: supply.totalBurned,
+      walletStats,
+      burnedThisCheck,
+      rules: [
+        { title: '1 Canje por Producto/Noche', desc: 'Cada día de furancho puedes canjear máximo 1 unidad de cada consumición (1 tapa, 1 cunca, 1 ración...).' },
+        { title: 'Caducidad FIFO (3 meses)', desc: 'Los $CORCHO no consumidos en eventos se queman a los 3 meses (se gastan primero las monedas más antiguas).' },
+        { title: 'Quema Transparente', desc: 'Al quemar monedas no canjeadas, desaparecen del suministro total y quedan registradas públicamente.' },
+        { title: 'Tienda Ligada a Eventos', desc: 'La tienda de consumiciones solo abre en semanas con evento de Furancho programado. La tienda de NFTs (Meme VIP) abre siempre.' },
+        { title: 'Compensación en Taquilla', desc: 'Los $CORCHO se obtienen participando en el Furancho o mediante paquetes fijos en taquilla.' }
+      ]
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /api/corcho/redeem-item — canjear un producto/consumición con $CORCHO
 router.post('/redeem-item', (req, res) => {
   const { walletAddress, itemId } = req.body || {};
@@ -201,24 +238,32 @@ router.post('/redeem-item', (req, res) => {
   }
 
   try {
-    const { db, spendCorchoCoins, createRedemptionVoucher, corchoItemCategory, sessionCanjeCount, decrementCorchoItemStock } = require('../db/database');
+    const { db, spendCorchoCoins, createRedemptionVoucher, corchoItemCategory, sessionCanjeCount, decrementCorchoItemStock, isCorchoStoreEventScheduledThisWeek } = require('../db/database');
+
+    // 1. Verificar si hay evento de Furancho esta semana para abrir la tienda de consumiciones
+    if (!isCorchoStoreEventScheduledThisWeek()) {
+      return res.status(400).json({
+        error: '🔒 A tienda de consumicións está pechada esta semana porque non hai ningún evento do Furancho programado. O tempo corre para a quema FIFO dos corchos. Só puedes usar $CORCHO para comprar NFTs (como o Meme VIP).',
+        storeClosed: true
+      });
+    }
+
     const item = db.prepare(`SELECT * FROM corcho_items WHERE id = ? AND active = 1`).get(itemId);
     if (!item) {
       return res.status(404).json({ error: 'El producto o canje ya no está disponible' });
     }
 
-    // Comprobar stock disponible si el artículo tiene stock acotado
+    // Comprobar stock disponible
     if (item.stock !== null && item.stock !== undefined && item.stock <= 0) {
       return res.status(400).json({ error: '🔴 Producto o canje agotado (0 unidades disponibles en stock).' });
     }
 
-    // Límite por sesión de furancho: máximo 1 tapa y 1 cunca por noche. Se comprueba
-    // ANTES de gastar $CORCHO para no cobrar un canje que no se va a permitir.
+    // Límite: máximo 1 unidad de este producto/categoría por día de evento
     const category = corchoItemCategory(item.name);
     if (category && sessionCanjeCount(walletAddress, category) >= 1) {
-      const cat = category === 'tapa' ? 'tapa' : 'cunca';
+      const catName = category === 'tapa' ? 'tapa' : 'cunca';
       return res.status(400).json({
-        error: `Xa canxeaches a túa ${cat} desta sesión. Só 1 tapa e 1 cunca por noite de furancho, neno.`,
+        error: `Xa canxeaches a túa ${catName} desta sesión. Só 1 por cada producto por noite de furancho, neno.`,
         limitReached: true
       });
     }

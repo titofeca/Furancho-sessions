@@ -3085,6 +3085,10 @@ module.exports = {
   spendCorchoCoins,
   getCorchoHistory,
   transferNftWithFee,
+  isCorchoStoreEventScheduledThisWeek,
+  processFifoBurnForWallet,
+  processAllWalletsFifoBurn,
+  getCorchoGlobalSupply,
 
   getPendingNftPrizes,
   grantNftPrize,
@@ -3840,8 +3844,137 @@ function spendCorchoCoins(walletAddress, amount, type, description, referenceId 
 }
 
 
+function isCorchoStoreEventScheduledThisWeek() {
+  try {
+    const activeSession = db.prepare(`SELECT id FROM sessions WHERE exit_time IS NULL LIMIT 1`).get();
+    if (activeSession) return true;
+
+    const now = new Date();
+    const day = now.getDay();
+    const diffToMonday = (day === 0 ? -6 : 1 - day);
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diffToMonday);
+    monday.setHours(0, 0, 0, 0);
+
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+
+    const monStr = monday.toISOString().slice(0, 10);
+    const sunStr = sunday.toISOString().slice(0, 10);
+
+    const sched = db.prepare(`
+      SELECT id FROM scheduled_raffles 
+      WHERE (event_date BETWEEN ? AND ?) OR status = 'launched'
+      LIMIT 1
+    `).get(monStr, sunStr);
+
+    if (sched) return true;
+
+    const recentRaffle = db.prepare(`
+      SELECT id FROM raffles
+      WHERE created_at >= datetime('now', '-7 days')
+      LIMIT 1
+    `).get();
+
+    if (recentRaffle) return true;
+
+    return false;
+  } catch (_) {
+    return true;
+  }
+}
+
+function processFifoBurnForWallet(walletAddress) {
+  if (!walletAddress) return { burned: 0 };
+  const w = walletAddress.toLowerCase();
+
+  const earns = db.prepare(`
+    SELECT id, amount, created_at,
+           julianday('now') - julianday(created_at) AS days_old
+    FROM corcho_transactions
+    WHERE LOWER(wallet_address) = ? AND amount > 0 AND type != 'fifo_burn'
+    ORDER BY id ASC
+  `).all(w);
+
+  if (!earns.length) return { burned: 0 };
+
+  const spentRow = db.prepare(`
+    SELECT COALESCE(SUM(-amount), 0) AS total_spent
+    FROM corcho_transactions
+    WHERE LOWER(wallet_address) = ? AND amount < 0 AND type != 'fifo_burn'
+  `).get(w);
+
+  let remainingSpentToConsume = spentRow ? spentRow.total_spent : 0;
+  let totalToBurn = 0;
+
+  for (const tx of earns) {
+    let unspentInTx = tx.amount;
+    if (remainingSpentToConsume > 0) {
+      if (remainingSpentToConsume >= unspentInTx) {
+        remainingSpentToConsume -= unspentInTx;
+        unspentInTx = 0;
+      } else {
+        unspentInTx -= remainingSpentToConsume;
+        remainingSpentToConsume = 0;
+      }
+    }
+
+    if (tx.days_old >= 90 && unspentInTx > 0) {
+      totalToBurn += unspentInTx;
+    }
+  }
+
+  if (totalToBurn > 0) {
+    const res = spendCorchoCoins(
+      w,
+      totalToBurn,
+      'fifo_burn',
+      `🔥 Quema FIFO: ${totalToBurn.toLocaleString()} $CORCHO caducados tras 3 meses sin canjear en eventos`,
+      `fifo_burn_${Date.now()}`
+    );
+    if (res.ok) {
+      return { burned: totalToBurn, newBalance: res.newBalance };
+    }
+  }
+
+  return { burned: 0 };
+}
+
+function processAllWalletsFifoBurn() {
+  try {
+    const wallets = db.prepare(`SELECT wallet_address FROM corcho_balances WHERE balance > 0`).all();
+    let grandTotalBurned = 0;
+    for (const row of wallets) {
+      const res = processFifoBurnForWallet(row.wallet_address);
+      if (res.burned > 0) grandTotalBurned += res.burned;
+    }
+    return grandTotalBurned;
+  } catch (e) {
+    return 0;
+  }
+}
+
+function getCorchoGlobalSupply() {
+  try {
+    const earned = db.prepare(`SELECT COALESCE(SUM(amount), 0) s FROM corcho_transactions WHERE amount > 0 AND type != 'fifo_burn'`).get().s || 0;
+    const burned = db.prepare(`SELECT COALESCE(SUM(-amount), 0) b FROM corcho_transactions WHERE amount < 0 AND type = 'fifo_burn'`).get().b || 0;
+    const spent  = db.prepare(`SELECT COALESCE(SUM(-amount), 0) sp FROM corcho_transactions WHERE amount < 0 AND type != 'fifo_burn'`).get().sp || 0;
+    return {
+      totalEarned: earned,
+      totalBurned: burned,
+      totalSpent: spent,
+      currentSupply: Math.max(0, earned - burned)
+    };
+  } catch (_) {
+    return { totalEarned: 0, totalBurned: 0, totalSpent: 0, currentSupply: 0 };
+  }
+}
+
 function getCorchoHistory(walletAddress, limit = 20) {
   if (!walletAddress) return [];
+  // Ejecutar quema FIFO previa si le corresponde
+  processFifoBurnForWallet(walletAddress);
   return db.prepare(`
     SELECT id, amount, type, description, reference_id, created_at
     FROM corcho_transactions
