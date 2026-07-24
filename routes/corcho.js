@@ -201,10 +201,15 @@ router.post('/redeem-item', (req, res) => {
   }
 
   try {
-    const { db, spendCorchoCoins, createRedemptionVoucher, corchoItemCategory, sessionCanjeCount } = require('../db/database');
+    const { db, spendCorchoCoins, createRedemptionVoucher, corchoItemCategory, sessionCanjeCount, decrementCorchoItemStock } = require('../db/database');
     const item = db.prepare(`SELECT * FROM corcho_items WHERE id = ? AND active = 1`).get(itemId);
     if (!item) {
       return res.status(404).json({ error: 'El producto o canje ya no está disponible' });
+    }
+
+    // Comprobar stock disponible si el artículo tiene stock acotado
+    if (item.stock !== null && item.stock !== undefined && item.stock <= 0) {
+      return res.status(400).json({ error: '🔴 Producto o canje agotado (0 unidades disponibles en stock).' });
     }
 
     // Límite por sesión de furancho: máximo 1 tapa y 1 cunca por noche. Se comprueba
@@ -233,6 +238,11 @@ router.post('/redeem-item', (req, res) => {
         });
       }
       return res.status(400).json({ error: 'No se pudo procesar el canje.' });
+    }
+
+    // Descontar 1 unidad del stock si es un artículo con unidades limitadas
+    if (item.stock !== null && item.stock !== undefined && item.stock > 0) {
+      try { decrementCorchoItemStock(item.id); } catch (_) {}
     }
 
     // Vale server-side con código REAL: el staff/admin lo valida al entregar la

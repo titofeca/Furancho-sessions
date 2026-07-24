@@ -4964,8 +4964,9 @@
             </div>
           </div>
           <div style="display:flex; align-items:center; gap:8px; white-space:nowrap;">
+            <span style="font-size:10.5px; font-weight:800; color:var(--wine); background:rgba(139,25,24,0.06); padding:2px 6px; border-radius:4px;">${item.stock != null && item.stock >= 0 ? item.stock + ' ud.' : '♾️ Ilimitado'}</span>
             <strong style="font-size:13px; color:var(--wine);">${item.price_corcho.toLocaleString()} $CORCHO</strong>
-            <button onclick="editCorchoAdminItem(${item.id}, '${escapeHtml(item.name)}', '${escapeHtml(item.emoji)}', ${item.price_corcho}, '${escapeHtml(item.description||'')}', ${item.active})" style="background:none; border:none; color:var(--gold); font-size:12px; cursor:pointer;">✏️</button>
+            <button onclick="editCorchoAdminItem(${item.id}, '${escapeHtml(item.name)}', '${escapeHtml(item.emoji)}', ${item.price_corcho}, '${escapeHtml(item.description||'')}', ${item.active}, ${item.stock != null ? item.stock : 'null'})" style="background:none; border:none; color:var(--gold); font-size:12px; cursor:pointer;">✏️</button>
             <button onclick="deleteCorchoAdminItem(${item.id})" style="background:none; border:none; color:#ef4444; font-size:12px; cursor:pointer;">🗑️</button>
           </div>
         </div>
@@ -4982,12 +4983,14 @@
     const priceStr = prompt('Precio en $CORCHO (ej: 400, 700, 1200, 4000):', '400');
     if (!priceStr || isNaN(parseInt(priceStr, 10))) return alert('Precio en $CORCHO no válido.');
     const description = prompt('Descripción / detalles opcionales:');
+    const stockStr = prompt('Stock / unidades disponibles (ej: 10, o dejar vacío / cancelar para ilimitado):', '10');
+    const stock = stockStr !== null && stockStr.trim() !== '' && !isNaN(parseInt(stockStr, 10)) ? parseInt(stockStr, 10) : null;
 
     try {
       const res = await fetch('/api/admin/corcho/items', {
         method: 'POST',
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, emoji, priceCorcho: parseInt(priceStr, 10), description })
+        body: JSON.stringify({ name, emoji, priceCorcho: parseInt(priceStr, 10), description, stock })
       });
       const data = await res.json();
       if (data.success) {
@@ -4999,20 +5002,23 @@
     } catch (e) { showToast('Error de red', true); }
   }
 
-  async function editCorchoAdminItem(id, currentName, currentEmoji, currentPrice, currentDesc, currentActive) {
+  async function editCorchoAdminItem(id, currentName, currentEmoji, currentPrice, currentDesc, currentActive, currentStock) {
     const name = prompt('Editar nombre:', currentName);
     if (!name) return;
     const emoji = prompt('Editar emoji:', currentEmoji) || currentEmoji;
     const priceStr = prompt('Editar precio en $CORCHO:', currentPrice);
     if (!priceStr || isNaN(parseInt(priceStr, 10))) return;
     const description = prompt('Editar descripción:', currentDesc);
+    const stockDefaultStr = currentStock != null ? String(currentStock) : '';
+    const stockStr = prompt('Stock / unidades disponibles (dejar vacío para ilimitado):', stockDefaultStr);
+    const stock = stockStr !== null && stockStr.trim() !== '' && !isNaN(parseInt(stockStr, 10)) ? parseInt(stockStr, 10) : null;
     const active = confirm('¿Mantener activo en la app del cliente? (Cancelar = Ocultar)');
 
     try {
       const res = await fetch(`/api/admin/corcho/items/${id}`, {
         method: 'PUT',
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, emoji, priceCorcho: parseInt(priceStr, 10), description, active })
+        body: JSON.stringify({ name, emoji, priceCorcho: parseInt(priceStr, 10), description, stock, active })
       });
       const data = await res.json();
       if (data.success) {

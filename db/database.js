@@ -654,23 +654,32 @@ try {
     created_at TEXT DEFAULT (datetime('now'))
   )`);
   db.exec(`CREATE TABLE IF NOT EXISTS corcho_items (
-
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     emoji TEXT DEFAULT '🎁',
     price_corcho INTEGER NOT NULL,
     description TEXT,
+    stock INTEGER DEFAULT NULL,
     active INTEGER DEFAULT 1,
     created_at TEXT DEFAULT (datetime('now'))
   )`);
+  try { db.exec(`ALTER TABLE corcho_items ADD COLUMN stock INTEGER DEFAULT NULL`); } catch (_) {}
 
   const itemCount = db.prepare(`SELECT COUNT(*) c FROM corcho_items`).get().c;
   if (itemCount === 0) {
-    const insertItem = db.prepare(`INSERT INTO corcho_items (name, emoji, price_corcho, description) VALUES (?, ?, ?, ?)`);
-    insertItem.run('1 Cunca do País', '🍷', 400, 'Consumición de 1 cunca de vino blanco o tinto do país');
-    insertItem.run('1 Tapa Tradicional', '🧀', 700, 'Tapa tradicional de queso, embutido o empanada');
-    insertItem.run('1 Ración Gourmet / Especial', '🍖', 1200, 'Ración especial de la casa');
-    insertItem.run('Camiseta Oficial Furancho / Meme VIP', '👕', 4000, 'Camiseta o producto exclusivo oficial Furancho');
+    const insertItem = db.prepare(`INSERT INTO corcho_items (name, emoji, price_corcho, description, stock) VALUES (?, ?, ?, ?, ?)`);
+    insertItem.run('1 Cunca do País', '🍷', 400, 'Consumición de 1 cunca de vino blanco o tinto do país', 10);
+    insertItem.run('1 Tapa Tradicional', '🧀', 700, 'Tapa tradicional de queso, embutido o empanada', 15);
+    insertItem.run('1 Ración Gourmet / Especial', '🍖', 1200, 'Ración especial de la casa', 5);
+    insertItem.run('Camiseta Oficial Furancho / Meme VIP', '👕', 4000, 'Camiseta o producto exclusivo oficial Furancho', 3);
+  } else {
+    // Si ya existían ítems con stock NULO, darles valores de stock por defecto iniciales
+    try {
+      db.prepare(`UPDATE corcho_items SET stock = 10 WHERE name LIKE '%Cunca%' AND stock IS NULL`).run();
+      db.prepare(`UPDATE corcho_items SET stock = 15 WHERE name LIKE '%Tapa%' AND stock IS NULL`).run();
+      db.prepare(`UPDATE corcho_items SET stock = 5 WHERE name LIKE '%Ración%' AND stock IS NULL`).run();
+      db.prepare(`UPDATE corcho_items SET stock = 3 WHERE name LIKE '%Camiseta%' AND stock IS NULL`).run();
+    } catch (_) {}
   }
 
   db.exec(`CREATE TABLE IF NOT EXISTS corcho_packs (
@@ -3189,6 +3198,7 @@ module.exports = {
   getCorchoItems,
   addCorchoItem,
   updateCorchoItem,
+  decrementCorchoItemStock,
   deleteCorchoItem,
   getCorchoPacks,
   saveCorchoPack,
@@ -3895,30 +3905,41 @@ function getCorchoItems(onlyActive = true) {
   return db.prepare(`SELECT * FROM corcho_items ORDER BY price_corcho ASC`).all();
 }
 
-function addCorchoItem({ name, emoji, priceCorcho, description }) {
+function addCorchoItem({ name, emoji, priceCorcho, description, stock }) {
   if (!name || !priceCorcho || isNaN(parseInt(priceCorcho, 10))) {
     throw new Error('Nombre y precio en $CORCHO requeridos');
   }
+  const stockVal = (stock !== undefined && stock !== null && stock !== '' && !isNaN(parseInt(stock, 10)))
+    ? parseInt(stock, 10)
+    : null;
   const info = db.prepare(`
-    INSERT INTO corcho_items (name, emoji, price_corcho, description, active)
-    VALUES (?, ?, ?, ?, 1)
-  `).run(name.trim(), emoji || '🎁', parseInt(priceCorcho, 10), description ? description.trim() : null);
+    INSERT INTO corcho_items (name, emoji, price_corcho, description, stock, active)
+    VALUES (?, ?, ?, ?, ?, 1)
+  `).run(name.trim(), emoji || '🎁', parseInt(priceCorcho, 10), description ? description.trim() : null, stockVal);
 
   return db.prepare(`SELECT * FROM corcho_items WHERE id = ?`).get(info.lastInsertRowid);
 }
 
-function updateCorchoItem(id, { name, emoji, priceCorcho, description, active }) {
+function updateCorchoItem(id, { name, emoji, priceCorcho, description, stock, active }) {
   const fields = [], vals = [];
   if (name !== undefined) { fields.push('name = ?'); vals.push(name.trim()); }
   if (emoji !== undefined) { fields.push('emoji = ?'); vals.push(emoji || '🎁'); }
   if (priceCorcho !== undefined) { fields.push('price_corcho = ?'); vals.push(parseInt(priceCorcho, 10) || 0); }
   if (description !== undefined) { fields.push('description = ?'); vals.push(description ? description.trim() : null); }
+  if (stock !== undefined) {
+    const stockVal = (stock !== null && stock !== '' && !isNaN(parseInt(stock, 10))) ? parseInt(stock, 10) : null;
+    fields.push('stock = ?'); vals.push(stockVal);
+  }
   if (active !== undefined) { fields.push('active = ?'); vals.push(active ? 1 : 0); }
   if (!fields.length) return db.prepare(`SELECT * FROM corcho_items WHERE id = ?`).get(id);
 
   vals.push(id);
   db.prepare(`UPDATE corcho_items SET ${fields.join(', ')} WHERE id = ?`).run(...vals);
   return db.prepare(`SELECT * FROM corcho_items WHERE id = ?`).get(id);
+}
+
+function decrementCorchoItemStock(id) {
+  return db.prepare(`UPDATE corcho_items SET stock = stock - 1 WHERE id = ? AND stock IS NOT NULL AND stock > 0`).run(id).changes > 0;
 }
 
 function deleteCorchoItem(id) {
