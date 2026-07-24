@@ -1519,6 +1519,47 @@ router.post('/admin/weekly/forfeit', requireAuth, (req, res) => {
   }
 });
 
+// POST /api/raffle/grant-corcho-prize (ADMIN/STAFF) — Acreditar $CORCHO ganado en un sorteo
+router.post('/grant-corcho-prize', requireAuth, (req, res) => {
+  const { walletAddress, amount, prizeName, raffleId } = req.body || {};
+  if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
+    return res.status(400).json({ error: 'Wallet no válida' });
+  }
+  const qty = parseInt(amount, 10);
+  if (!qty || isNaN(qty) || qty <= 0) {
+    return res.status(400).json({ error: 'Cantidad de $CORCHO no válida' });
+  }
+
+  try {
+    const { addCorchoCoins } = require('../db/database');
+    const title = prizeName ? `🎉 Premio de sorteo: ${prizeName}` : '🎉 Premio de sorteo do Furancho';
+    const ref = raffleId ? `raffle_prize_${raffleId}` : `raffle_grant_${Date.now()}`;
+    const result = addCorchoCoins(walletAddress, qty, 'raffle_prize', title, ref);
+
+    try {
+      sendPushToWallet(
+        walletAddress,
+        '🪙 ¡CorchoCoins Acreditadas!',
+        `🎉 Has recibido ${qty.toLocaleString()} $CORCHO como premio do Furancho. ¡Disfrútalas en tus canjes!`
+      );
+    } catch (_) {}
+
+    try {
+      broadcastCorchoPending({
+        kind: 'prize_corcho',
+        wallet: walletAddress,
+        walletMasked: `${walletAddress.slice(0,6)}…${walletAddress.slice(-4)}`,
+        coins: qty,
+        prizeName
+      });
+    } catch (_) {}
+
+    res.json({ success: true, newBalance: result.newBalance, message: `✅ Acreditadas ${qty.toLocaleString()} $CORCHO a ${walletAddress.slice(0,6)}…${walletAddress.slice(-4)}` });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/admin/weekly/app-policy (ADMIN) — política de "abrir La Chave a los de solo-app"
 router.get('/admin/weekly/app-policy', requireAuth, (req, res) => {
   try {

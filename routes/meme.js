@@ -109,6 +109,18 @@ router.post('/request', buyLimiter, (req, res) => {
   if (!walletAddress || !ETH.test(walletAddress)) return res.status(400).json({ error: 'Wallet no válida' });
   try {
     const r = shop.requestPurchase(walletAddress, note);
+    if (!r.alreadyRequested && r.request) {
+      try {
+        require('./raffle').broadcastCorchoPending({
+          kind: 'meme',
+          requestId: r.request.id,
+          wallet: walletAddress,
+          walletMasked: `${walletAddress.slice(0,6)}…${walletAddress.slice(-4)}`,
+          priceEur: (r.request.price_cents / 100).toFixed(2),
+          method: 'cash'
+        });
+      } catch (_) {}
+    }
     res.json({ success: true, alreadyRequested: r.alreadyRequested, request: r.request });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });

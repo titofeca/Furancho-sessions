@@ -306,12 +306,12 @@ router.post('/claim-daily-tapa', staffLimiter, requireStaff, (req, res) => {
   }
 });
 
-// GET /api/staff/corcho/pending — TODAS las compras y canjes de $CORCHO por validar
-// (de cualquier cliente, no solo el escaneado). Alimenta la bandeja del camarero, que
-// además recibe el aviso en vivo por SSE. Misma fuente única que admin. Read-only.
+// GET /api/staff/corcho/pending — TODAS las compras, canjes de $CORCHO y solicitudes de Meme VIP por validar
 router.get('/corcho/pending', requireStaff, (req, res) => {
   try {
     const { getPendingCorchoPackRequests, getPendingRedemptions } = require('../db/database');
+    const memeShop = require('../services/memeShop');
+
     const packs = getPendingCorchoPackRequests().map(r => ({
       id: r.id, wallet: r.wallet_address,
       walletMasked: `${r.wallet_address.slice(0,6)}…${r.wallet_address.slice(-4)}`,
@@ -322,10 +322,46 @@ router.get('/corcho/pending', requireStaff, (req, res) => {
       walletMasked: `${v.wallet_address.slice(0,6)}…${v.wallet_address.slice(-4)}`,
       itemName: v.item_name, itemEmoji: v.item_emoji, priceCorcho: v.price_corcho, expiresAt: v.expires_at
     }));
-    res.json({ packs, vouchers });
+    const memeRequests = memeShop.listRequests('requested').map(r => ({
+      id: r.id,
+      wallet: r.wallet_address,
+      walletMasked: `${r.wallet_address.slice(0,6)}…${r.wallet_address.slice(-4)}`,
+      priceEur: (r.price_cents / 100).toFixed(2),
+      priceCorcho: r.price_corcho || 0,
+      method: r.method || 'cash'
+    }));
+
+    res.json({ packs, vouchers, memeRequests });
   } catch (e) {
     console.error('Error en /staff/corcho/pending:', e.message);
     res.status(500).json({ error: 'Error cargando pendientes de $CORCHO' });
+  }
+});
+
+// POST /api/staff/meme-request/:id/confirm — el camarero confirma el pago de Meme VIP en barra
+router.post('/meme-request/:id/confirm', staffLimiter, requireStaff, (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: 'Solicitud no válida' });
+  try {
+    const memeShop = require('../services/memeShop');
+    const { db } = require('../db/database');
+    const p = db.prepare(`SELECT method FROM meme_purchases WHERE id = ?`).get(id);
+    let out;
+    if (p && p.method === 'corcho') {
+      out = memeShop.confirmCorchoPurchase(id, getStaffName(req));
+    } else {
+      const reqInfo = db.prepare(`SELECT wallet_address, price_cents FROM meme_purchases WHERE id = ?`).get(id);
+      if (!reqInfo) return res.status(404).json({ error: 'Solicitud no encontrada' });
+      out = memeShop.sellTo(reqInfo.wallet_address, {
+        purchaseId: id,
+        source: 'venta',
+        priceCents: reqInfo.price_cents,
+        withPerks: true
+      });
+    }
+    res.json(out);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
   }
 });
 

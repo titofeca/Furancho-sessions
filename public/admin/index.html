@@ -2752,6 +2752,9 @@
             <button id="weekly-collect-btn" onclick="collectWeeklyPrize()" style="background:linear-gradient(135deg,#4ade80,#16a34a); color:#fff; border:none; border-radius:10px; padding:10px 16px; font-size:13px; font-weight:700; cursor:pointer; width:100%; font-family:'Outfit',sans-serif; margin-bottom:8px;">
               ✅ Marcar Premio como Entregado
             </button>
+            <button id="weekly-corcho-btn" onclick="grantCorchoPrizeToWeeklyWinner()" style="background:linear-gradient(135deg,var(--gold),#a47d2c); color:#2A1509; border:none; border-radius:10px; padding:10px 16px; font-size:13px; font-weight:800; cursor:pointer; width:100%; font-family:'Outfit',sans-serif; margin-bottom:8px;">
+              🪙 Acreditar $CORCHO al Ganador
+            </button>
             <button id="weekly-forfeit-btn" onclick="forfeitWeeklyPrize()" style="background:transparent; color:var(--text-muted); border:1.5px solid rgba(42,21,9,0.2); border-radius:10px; padding:9px 16px; font-size:12px; font-weight:700; cursor:pointer; width:100%; font-family:'Outfit',sans-serif;">
               ⌛ Dar por perdido (no recogido)
             </button>
@@ -8039,10 +8042,30 @@
       } else {
         showToast(data.error || 'Error al guardar configuración', true);
       }
-    } catch (e) {
-      console.error('Error al guardar config:', e);
-      showToast('Error al conectar con el servidor', true);
+  async function grantCorchoPrizeToWeeklyWinner() {
+    const addressEl = document.getElementById('weekly-winner-address');
+    const wallet = addressEl ? addressEl.textContent.trim() : '';
+    if (!wallet || !/^0x[a-fA-F0-9]{40}$/i.test(wallet)) {
+      return showToast('No hay una wallet de ganador válida seleccionada.', true);
     }
+    const amountStr = prompt(`¿Cuántas CorchoCoins ($CORCHO) deseas acreditar a ${wallet.slice(0,6)}…${wallet.slice(-4)}?`, '1000');
+    if (!amountStr || isNaN(parseInt(amountStr, 10))) return;
+    const amount = parseInt(amountStr, 10);
+    const prizeName = prompt('Nombre/Concepto del sorteo (ej: Premio Sorteo Chave Semanal):', 'Premio Sorteo Chave') || 'Premio Sorteo Chave';
+
+    try {
+      const res = await fetch('/api/raffle/grant-corcho-prize', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: wallet, amount, prizeName })
+      }).then(r => r.json());
+
+      if (res.success) {
+        showToast(res.message);
+      } else {
+        showToast('Error: ' + (res.error || 'No se pudo acreditar'), true);
+      }
+    } catch (e) { showToast('Error de conexión', true); }
   }
 
   async function drawWeeklyRaffleAdmin() {

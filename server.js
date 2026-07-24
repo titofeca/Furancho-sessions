@@ -255,10 +255,11 @@ function scheduleWeeklyRaffle() {
       }
 
       const hasPrize = existing && existing.prize;
-      const eventOnThursday = hasEventOnThursday();
+      const { isCorchoStoreEventScheduledThisWeek } = require('./db/database');
+      const isEventScheduled = isCorchoStoreEventScheduledThisWeek();
 
-      if (!hasPrize && !eventOnThursday) {
-        console.log(`[WeeklyRaffle] Miércoles 21:00 — sin premio configurado ni evento el jueves. Sin sorteo.`);
+      if (!isEventScheduled) {
+        console.log(`[WeeklyRaffle] Miércoles 21:00 — sin evento programado en agenda esta semana. Sin sorteo de Chave.`);
         _weeklyLastDrawnWeek = weekStr;
         return;
       }

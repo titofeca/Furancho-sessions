@@ -3387,6 +3387,10 @@ function updateWeeklyPrize(weekStr, prize, rules, winnersCount = 1, prizeDetails
 }
 
 function drawWeeklyRaffle(weekStr) {
+  if (!isCorchoStoreEventScheduledThisWeek()) {
+    throw new Error('No hay ningún evento programado en la agenda esta semana. No se realiza el sorteo de la Chave.');
+  }
+
   let raffle = db.prepare(`SELECT * FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
   if (!raffle) {
     db.prepare(`INSERT OR IGNORE INTO weekly_raffles (claimed_week) VALUES (?)`).run(weekStr);

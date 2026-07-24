@@ -1016,6 +1016,26 @@
       }
     }
 
+    async function confirmStaffMemeRequest(btn, id) {
+      if (btn) { btn.disabled = true; btn.textContent = 'Procesando…'; }
+      try {
+        const r = await fetch(`/api/staff/meme-request/${id}/confirm`, {
+          method: 'POST', headers: staffHeaders({ 'Content-Type': 'application/json' })
+        });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok && d.success) {
+          if (btn) { btn.style.background = 'rgba(22,163,74,0.9)'; btn.textContent = '✅ Venta confirmada'; }
+          if (typeof loadStaffCorchoInbox === 'function') setTimeout(() => loadStaffCorchoInbox(), 900);
+        } else {
+          if (btn) { btn.disabled = false; btn.textContent = '✓ Cobrado'; }
+          alert('⚠️ ' + (d.error || 'No se pudo confirmar'));
+        }
+      } catch (e) {
+        if (btn) { btn.disabled = false; btn.textContent = '✓ Cobrado'; }
+        alert('⚠️ Error de red.');
+      }
+    }
+
     function showResult(d, wallet){
       const icon = document.getElementById('result-icon');
       const title = document.getElementById('result-title');
@@ -1158,8 +1178,8 @@
         const r = await fetch('/api/staff/corcho/pending', { headers: staffHeaders() });
         if (!r.ok) return;
         const d = await r.json();
-        const packs = d.packs || [], vouchers = d.vouchers || [];
-        const total = packs.length + vouchers.length;
+        const packs = d.packs || [], vouchers = d.vouchers || [], memeReqs = d.memeRequests || [];
+        const total = packs.length + vouchers.length + memeReqs.length;
         if (countEl) countEl.textContent = total;
         if (!total){
           card.style.display = manual ? 'block' : 'none';
@@ -1184,6 +1204,16 @@
               <p style="margin:0; font-size:10.5px; color:var(--text-muted);">${esc(v.walletMasked)} · <span style="font-family:monospace;">${esc(v.code)}</span></p>
             </div>
             <button type="button" onclick="validateCorchoVoucher(this, '${esc(v.code)}')" style="padding:11px 15px; background:linear-gradient(135deg, var(--gold), #a97b1f); color:#fff; border:none; border-radius:12px; font-size:13px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif; white-space:nowrap;">✓ Entregado</button>
+          </div>`;
+        });
+        memeReqs.forEach(m => {
+          const costTxt = m.method === 'corcho' ? `${Number(m.priceCorcho).toLocaleString()} $CORCHO` : `${m.priceEur}€ en taquilla`;
+          html += `<div style="display:flex; align-items:center; gap:8px; padding:10px; background:rgba(212,175,55,0.1); border:1px solid rgba(212,175,55,0.3); border-radius:12px;">
+            <div style="flex:1; min-width:0;">
+              <p style="margin:0; font-size:14px; font-weight:800; color:var(--wine);">🎭 Meme VIP (${costTxt})</p>
+              <p style="margin:0; font-size:10.5px; color:var(--text-muted);">${esc(m.walletMasked)} · Solicitude de compra en barra</p>
+            </div>
+            <button type="button" onclick="confirmStaffMemeRequest(this, ${m.id})" style="padding:11px 15px; background:linear-gradient(135deg, var(--gold), #a97b1f); color:#fff; border:none; border-radius:12px; font-size:13px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif; white-space:nowrap;">✓ Cobrado</button>
           </div>`;
         });
         body.innerHTML = html;
