@@ -2745,60 +2745,61 @@
           margin:12px auto 20px; cursor:pointer;
         }
         .ecl-modal-hero {
-          text-align:center; padding:0 24px 20px;
+          text-align:center; padding:0 24px 22px;
           border-bottom:1px solid rgba(196,151,58,.15);
         }
         .ecl-phase-row {
-          display:flex; align-items:center; gap:12px; padding:12px 24px;
+          display:flex; align-items:center; gap:14px; padding:14px 24px;
           border-bottom:1px solid rgba(245,230,200,.06);
         }
         .ecl-phase-icon {
-          width:36px; height:36px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
-          font-size:18px; border-radius:50%;
-          background:rgba(245,230,200,.06); border:1px solid rgba(196,151,58,.2);
+          width:42px; height:42px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+          font-size:20px; border-radius:50%;
+          background:rgba(245,230,200,.06); border:1px solid rgba(196,151,58,.25);
         }
         .ecl-phase-time {
-          font-family:'Outfit',monospace; font-size:13px; font-weight:800;
-          color:var(--gold); min-width:54px;
+          font-family:'Outfit',monospace; font-size:15px; font-weight:800;
+          color:var(--gold); min-width:66px;
         }
-        .ecl-phase-desc { font-size:12px; color:rgba(245,230,200,.8); line-height:1.45; flex:1; }
-        .ecl-phase-name { font-size:11px; font-weight:800; color:#f5e6c8; text-transform:uppercase; letter-spacing:.5px; }
+        .ecl-phase-desc { font-size:13.5px; color:rgba(245,230,200,.88); line-height:1.55; flex:1; }
+        .ecl-phase-name { font-size:12px; font-weight:800; color:#f5e6c8; text-transform:uppercase; letter-spacing:.6px; margin-bottom:3px; }
         .ecl-section-title {
-          font-size:10px; font-weight:800; letter-spacing:2px; text-transform:uppercase;
-          color:rgba(196,151,58,.8); padding:18px 24px 6px; margin:0;
+          font-size:12px; font-weight:800; letter-spacing:1.8px; text-transform:uppercase;
+          color:rgba(196,151,58,.9); padding:22px 24px 8px; margin:0;
         }
         .ecl-info-box {
-          margin:0 20px 10px; padding:14px 16px; border-radius:14px;
+          margin:0 20px 12px; padding:16px 18px; border-radius:14px;
           background:rgba(245,230,200,.04); border:1px solid rgba(196,151,58,.2);
-          font-size:12px; color:rgba(245,230,200,.8); line-height:1.55;
+          font-size:13.5px; color:rgba(245,230,200,.85); line-height:1.6;
         }
         .ecl-info-box strong { color:#f5e6c8; }
         .ecl-spot-row {
-          display:flex; align-items:flex-start; gap:10px;
-          margin:0 20px 8px; padding:10px 14px; border-radius:12px;
+          display:flex; align-items:flex-start; gap:12px;
+          margin:0 20px 10px; padding:12px 16px; border-radius:14px;
           background:rgba(245,230,200,.03); border:1px solid rgba(245,230,200,.08);
         }
-        .ecl-spot-emoji { font-size:20px; flex-shrink:0; padding-top:1px; }
-        .ecl-spot-name { font-size:12.5px; font-weight:700; color:#f5e6c8; }
-        .ecl-spot-detail { font-size:11px; color:rgba(245,230,200,.65); line-height:1.4; margin-top:2px; }
+        .ecl-spot-emoji { font-size:24px; flex-shrink:0; padding-top:2px; }
+        .ecl-spot-name { font-size:14.5px; font-weight:700; color:#f5e6c8; }
+        .ecl-spot-detail { font-size:13px; color:rgba(245,230,200,.75); line-height:1.5; margin-top:4px; }
         .ecl-weather-badge {
-          display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:700;
-          padding:2px 8px; border-radius:100px; margin-top:4px;
+          display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700;
+          padding:3px 10px; border-radius:100px; margin-top:6px;
         }
         .ecl-weather-good { background:rgba(34,197,94,.15); color:#4ade80; border:1px solid rgba(34,197,94,.3); }
         .ecl-weather-ok   { background:rgba(249,115,22,.12); color:#fb923c; border:1px solid rgba(249,115,22,.3); }
         .ecl-perseid-bar {
-          margin:0 20px; padding:16px; border-radius:14px;
+          margin:0 20px; padding:18px; border-radius:14px;
           background:linear-gradient(135deg,rgba(88,28,135,.25),rgba(49,46,129,.2));
           border:1px solid rgba(139,92,246,.35);
         }
         .ecl-close-btn {
-          display:block; width:calc(100% - 40px); margin:20px 20px 0;
-          padding:14px; border-radius:50px; font-size:14px; font-weight:800;
-          background:rgba(196,151,58,.12); border:1.5px solid rgba(196,151,58,.35);
+          display:block; width:calc(100% - 40px); margin:24px 20px 0;
+          padding:16px; border-radius:50px; font-size:15px; font-weight:800;
+          background:rgba(196,151,58,.15); border:1.5px solid rgba(196,151,58,.4);
           color:var(--gold); cursor:pointer; font-family:'Outfit',sans-serif;
-          -webkit-tap-highlight-color:transparent;
+          -webkit-tap-highlight-color:transparent; transition:transform .15s ease, background .15s ease;
         }
+        .ecl-close-btn:active { transform:scale(0.98); background:rgba(196,151,58,.25); }
       </style>
 
       <div id="eclipse-card" style="display:none; margin-bottom:20px; border-radius:20px; border:1.5px solid rgba(196,151,58,.35); background:linear-gradient(160deg,#0d0503,#1e0c07,#2a1509);"
@@ -2841,11 +2842,11 @@
           </div>
 
 
-          <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(196,151,58,.12);border-radius:100px;padding:3px 10px;margin-bottom:10px;">
-            <span style="font-size:9px;font-weight:800;letter-spacing:1.5px;color:rgba(196,151,58,.9);">🌒 ECLIPSE TOTAL · 12 AGO 2026</span>
+          <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(196,151,58,.12);border-radius:100px;padding:4px 12px;margin-bottom:10px;">
+            <span style="font-size:10px;font-weight:800;letter-spacing:1.5px;color:rgba(196,151,58,.95);">🌒 ECLIPSE TOTAL · 12 AGO 2026</span>
           </div>
-          <h3 style="font-family:'Playfair Display',serif;font-size:18px;font-weight:900;color:#f5e6c8;margin:0 0 4px;">76 segundos de noche en A Coruña</h3>
-          <p style="font-size:11.5px;color:rgba(245,230,200,.65);line-height:1.5;margin:0 0 14px;">Toca para ver las fases, mejores miradores y la lluvia de Perseidas 🌠</p>
+          <h3 style="font-family:'Playfair Display',serif;font-size:19.5px;font-weight:900;color:#f5e6c8;margin:0 0 4px;">76 segundos de noche en A Coruña</h3>
+          <p style="font-size:13px;color:rgba(245,230,200,.75);line-height:1.5;margin:0 0 14px;">Toca para ver las fases, mejores miradores y la lluvia de Perseidas 🌠</p>
 
           <div id="eclipse-countdown" style="display:flex;gap:8px;justify-content:center;">
             <div class="cd-box" style="background:rgba(255,255,255,.07);border-color:rgba(245,230,200,.15);"><div class="cd-num" style="color:#f5e6c8;" id="ecl-d">--</div><div class="cd-lbl" style="color:rgba(245,230,200,.5);">Días</div></div>
@@ -2854,7 +2855,7 @@
             <div class="cd-box" style="background:rgba(255,255,255,.07);border-color:rgba(245,230,200,.15);"><div class="cd-num" style="color:#f5e6c8;" id="ecl-s">--</div><div class="cd-lbl" style="color:rgba(245,230,200,.5);">Seg</div></div>
           </div>
           <div id="eclipse-live" style="display:none;">
-            <p style="font-size:15px;font-weight:800;color:#f5e6c8;margin:6px 0 0;">🌑 ¡Está pasando! Mira al cielo, ho.</p>
+            <p style="font-size:16px;font-weight:800;color:#f5e6c8;margin:6px 0 0;">🌑 ¡Está pasando! Mira al cielo, ho.</p>
           </div>
         </div>
       </div>
@@ -2866,9 +2867,9 @@
           <div class="ecl-modal-handle" onclick="closeEclipseModal()"></div>
 
           <div class="ecl-modal-hero">
-            <div style="font-size:36px;margin-bottom:6px;">🌑</div>
-            <h2 style="font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:#f5e6c8;margin:0 0 4px;">Eclipse Total · A Coruña</h2>
-            <p style="font-size:12px;color:rgba(245,230,200,.6);margin:0;">Miércoles 12 de agosto de 2026 · Hora local (CEST)</p>
+            <div style="font-size:40px;margin-bottom:6px;">🌑</div>
+            <h2 style="font-family:'Playfair Display',serif;font-size:24px;font-weight:900;color:#f5e6c8;margin:0 0 4px;">Eclipse Total · A Coruña</h2>
+            <p style="font-size:13.5px;color:rgba(245,230,200,.7);margin:0;">Miércoles 12 de agosto de 2026 · Hora local (CEST)</p>
           </div>
 
           <p class="ecl-section-title">⏱ Fases del eclipse en A Coruña</p>
@@ -2935,7 +2936,7 @@
           <div class="ecl-spot-row" style="border-color:rgba(196,151,58,.25);background:rgba(196,151,58,.06);">
             <div class="ecl-spot-emoji">🌊</div>
             <div>
-              <div class="ecl-spot-name" style="display:flex;align-items:center;gap:6px;">Paseo Marítimo · Explanada de la Marina <span style="font-size:9px;font-weight:800;letter-spacing:.8px;background:rgba(196,151,58,.2);color:var(--gold);padding:1px 7px;border-radius:100px;">MÁS CERCA</span></div>
+              <div class="ecl-spot-name" style="display:flex;align-items:center;gap:6px;">Paseo Marítimo · Explanada de la Marina <span style="font-size:10px;font-weight:800;letter-spacing:.8px;background:rgba(196,151,58,.2);color:var(--gold);padding:2px 8px;border-radius:100px;">MÁS CERCA</span></div>
               <div class="ecl-spot-detail">Horizonte completamente abierto al suroeste. El sol estará a ~12° de altura durante la totalidad — suficiente para verlo sobre el agua sin que ningún edificio lo tape desde la orilla. Simplemente busca un tramo del paseo con vista despejada al mar. Cómodo, sin desplazamiento.</div>
               <span class="ecl-weather-badge ecl-weather-good">🌅 Vista libre al mar · sin edificios</span>
             </div>
@@ -2988,8 +2989,8 @@
           <div id="ecl-weather-wrap">
             <!-- Cargando... -->
             <div id="ecl-weather-loading" class="ecl-info-box" style="text-align:center;color:rgba(245,230,200,.5);">
-              <span style="font-size:18px;">🌡️</span><br>
-              <span style="font-size:12px;">Cargando previsión meteorológica…</span>
+              <span style="font-size:20px;">🌡️</span><br>
+              <span style="font-size:13px;">Cargando previsión meteorológica…</span>
             </div>
             <!-- Resultado dinámico -->
             <div id="ecl-weather-content" style="display:none;"></div>
@@ -3000,18 +3001,18 @@
           <p class="ecl-section-title">🌠 La misma noche: lluvia de Perseidas</p>
           <div class="ecl-perseid-bar">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-              <span style="font-size:28px;">☄️</span>
+              <span style="font-size:30px;">☄️</span>
               <div>
-                <div style="font-size:14px;font-weight:800;color:#c4b5fd;">Perseidas en máximo histórico</div>
-                <div style="font-size:11px;color:rgba(196,180,253,.7);">Noche del 12 al 13 de agosto · hasta 110 meteoros/hora</div>
+                <div style="font-size:15.5px;font-weight:800;color:#c4b5fd;">Perseidas en máximo histórico</div>
+                <div style="font-size:12.5px;color:rgba(196,180,253,.75);">Noche del 12 al 13 de agosto · hasta 110 meteoros/hora</div>
               </div>
             </div>
-            <p style="font-size:12px;color:rgba(196,180,253,.85);line-height:1.55;margin:0;">Las Perseidas (meteoritos del cometa 109P/Swift-Tuttle) alcanzan su pico exactamente el 12-13 de agosto cada año. En 2026 coinciden con el eclipse total, haciendo de este día uno de los eventos astronómicos más extraordinarios del siglo en España. La luna nueva asegura cielos oscuros perfectos para ver meteoros a partir de las 22:00 h.</p>
+            <p style="font-size:13.5px;color:rgba(196,180,253,.9);line-height:1.6;margin:0;">Las Perseidas (meteoritos del cometa 109P/Swift-Tuttle) alcanzan su pico exactamente el 12-13 de agosto cada año. En 2026 coinciden con el eclipse total, haciendo de este día uno de los eventos astronómicos más extraordinarios del siglo en España. La luna nueva asegura cielos oscuros perfectos para ver meteoros a partir de las 22:00 h.</p>
           </div>
 
           <p class="ecl-section-title">⚠️ Seguridad ocular</p>
           <div class="ecl-info-box" style="border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.06);">
-            <strong style="color:#fca5a5;">Nunca mires directamente al sol</strong> sin gafas de eclipse certificadas (ISO 12312-2). Las gafas de sol normales NO protegen. Solo durante los 76 segundos de totalidad puedes mirar a simple vista. En el momento en que veas el borde del sol reaparecer, vuelve a ponerte las gafas inmediatamente.
+            <strong style="color:#fca5a5;font-size:14.5px;">Nunca mires directamente al sol</strong> sin gafas de eclipse certificadas (ISO 12312-2). Las gafas de sol normales NO protegen. Solo durante los 76 segundos de totalidad puedes mirar a simple vista. En el momento en que veas el borde del sol reaparecer, vuelve a ponerte las gafas inmediatamente.
           </div>
 
           <button class="ecl-close-btn" onclick="closeEclipseModal()">Cerrar guía del eclipse ✕</button>
@@ -3053,10 +3054,10 @@
               content.innerHTML = `
                 <div class="ecl-info-box" style="border-color:rgba(148,163,184,.25);background:rgba(148,163,184,.06);">
                   <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                    <span style="font-size:16px;">📅</span>
-                    <strong style="color:#94a3b8;font-size:11px;">PREVISIÓN EN ${data.daysUntil - 16} DÍAS</strong>
+                    <span style="font-size:18px;">📅</span>
+                    <strong style="color:#94a3b8;font-size:12px;letter-spacing:1px;">PREVISIÓN EN ${data.daysUntil - 16} DÍAS</strong>
                   </div>
-                  <span style="font-size:12px;color:rgba(245,230,200,.7);">
+                  <span style="font-size:13.5px;color:rgba(245,230,200,.8);line-height:1.6;">
                     ${data.message}<br><br>
                     <strong>Datos históricos de agosto en Galicia:</strong> La probabilidad de cielo despejado a las 20:00 h ronda el
                     <strong style="color:#f5e6c8;">65-70%</strong> en A Coruña y <strong style="color:#f5e6c8;">80%</strong> en el interior.
@@ -3067,28 +3068,28 @@
               // Tenemos previsión real
               const relColor = data.reliabilityColor || '#94a3b8';
               let html = `
-                <div style="display:flex;align-items:center;gap:6px;margin:0 20px 10px;padding:6px 12px;border-radius:100px;background:rgba(0,0,0,.2);border:1px solid ${relColor}40;width:fit-content;">
-                  <span style="width:7px;height:7px;border-radius:50%;background:${relColor};display:inline-block;"></span>
-                  <span style="font-size:10px;font-weight:700;color:${relColor};">${data.reliabilityLabel}</span>
-                  <span style="font-size:10px;color:rgba(245,230,200,.4);">· Actualizado ${new Date(data.fetchedAt).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</span>
+                <div style="display:flex;align-items:center;gap:6px;margin:0 20px 10px;padding:6px 14px;border-radius:100px;background:rgba(0,0,0,.2);border:1px solid ${relColor}40;width:fit-content;">
+                  <span style="width:8px;height:8px;border-radius:50%;background:${relColor};display:inline-block;"></span>
+                  <span style="font-size:11.5px;font-weight:700;color:${relColor};">${data.reliabilityLabel}</span>
+                  <span style="font-size:11px;color:rgba(245,230,200,.5);">· Actualizado ${new Date(data.fetchedAt).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</span>
                 </div>`;
 
               for (const loc of data.locations) {
                 const cInfo = loc.clarityInfo || { text: 'Sin datos', color: '#94a3b8' };
                 const cloudBar = loc.cloudPct !== null
-                  ? `<div style="margin-top:5px;height:3px;border-radius:100px;background:rgba(255,255,255,.1);overflow:hidden;">
+                  ? `<div style="margin-top:6px;height:4px;border-radius:100px;background:rgba(255,255,255,.1);overflow:hidden;">
                        <div style="height:100%;width:${loc.cloudPct}%;background:${loc.cloudPct < 40 ? '#4ade80' : loc.cloudPct < 65 ? '#fb923c' : '#f87171'};transition:width .6s ease;"></div>
-                     </div>
-                     <span style="font-size:10px;color:rgba(245,230,200,.5);">Nubosidad ${loc.cloudPct}%${loc.precPct !== null ? ' · Lluvia ' + loc.precPct + '%' : ''}</span>`
+                      </div>
+                      <span style="font-size:11.5px;color:rgba(245,230,200,.6);">Nubosidad ${loc.cloudPct}%${loc.precPct !== null ? ' · Lluvia ' + loc.precPct + '%' : ''}</span>`
                   : '';
                 html += `
-                  <div style="display:flex;align-items:flex-start;gap:10px;margin:0 20px 8px;padding:10px 14px;border-radius:12px;background:rgba(245,230,200,.03);border:1px solid rgba(245,230,200,.08);">
-                    <span style="font-size:24px;flex-shrink:0;">${loc.emoji}</span>
+                  <div style="display:flex;align-items:flex-start;gap:12px;margin:0 20px 10px;padding:12px 16px;border-radius:14px;background:rgba(245,230,200,.03);border:1px solid rgba(245,230,200,.08);">
+                    <span style="font-size:26px;flex-shrink:0;">${loc.emoji}</span>
                     <div style="flex:1;min-width:0;">
-                      <div style="font-size:12px;font-weight:700;color:#f5e6c8;">${loc.name}</div>
-                      <div style="font-size:12px;color:rgba(245,230,200,.7);">${loc.label}${loc.tMax !== null ? ' · ' + Math.round(loc.tMin) + '–' + Math.round(loc.tMax) + '°C' : ''}</div>
+                      <div style="font-size:14.5px;font-weight:700;color:#f5e6c8;">${loc.name}</div>
+                      <div style="font-size:13px;color:rgba(245,230,200,.75);">${loc.label}${loc.tMax !== null ? ' · ' + Math.round(loc.tMin) + '–' + Math.round(loc.tMax) + '°C' : ''}</div>
                       ${cloudBar}
-                      <div style="margin-top:5px;display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:100px;background:${cInfo.color}18;color:${cInfo.color};border:1px solid ${cInfo.color}40;">
+                      <div style="margin-top:6px;display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:100px;background:${cInfo.color}18;color:${cInfo.color};border:1px solid ${cInfo.color}40;">
                         ${cInfo.text}
                       </div>
                     </div>
@@ -3098,7 +3099,7 @@
             }
             _eclWeatherLoaded = true;
           } catch (e) {
-            loading.innerHTML = `<span style="font-size:12px;color:rgba(245,230,200,.5);">⚠️ No se pudo cargar la previsión. Comprueba tu conexión.</span>`;
+            loading.innerHTML = `<span style="font-size:13px;color:rgba(245,230,200,.5);">⚠️ No se pudo cargar la previsión. Comprueba tu conexión.</span>`;
           }
         }
       </script>
