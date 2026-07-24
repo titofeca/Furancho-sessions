@@ -802,7 +802,7 @@ try {
 try {
   db.exec(`DROP TRIGGER IF EXISTS meme_units_max_supply`);
   db.exec(`CREATE TRIGGER meme_units_max_supply BEFORE INSERT ON meme_units
-    WHEN (SELECT COUNT(*) FROM meme_units WHERE status != 'failed') >= 300
+    WHEN (SELECT COUNT(*) FROM meme_units WHERE status IS NULL OR status != 'cancelled') >= 300
     BEGIN
       SELECT RAISE(ABORT, 'MEME_SUPPLY_AGOTADO: solo existen 300 memes y ya no queda ninguno');
     END`);
@@ -3877,7 +3877,7 @@ function transferNftWithFee(fromWallet, toWallet, nftType, nftId, feeAmount) {
     db.prepare(`UPDATE mints SET wallet_address = ? WHERE id = ?`).run(toW, mint.id);
   } else if (nftType === 'achievement') {
     const mint = db.prepare(`
-      SELECT id FROM achievement_mints WHERE LOWER(wallet_address) = ? AND (achievement_id = ? OR id = ?) LIMIT 1
+      SELECT id, achievement_id FROM achievement_mints WHERE LOWER(wallet_address) = ? AND (achievement_id = ? OR id = ?) LIMIT 1
     `).get(fromW, nftId, parseInt(nftId, 10) || -1);
 
     if (!mint) {
@@ -3886,6 +3886,9 @@ function transferNftWithFee(fromWallet, toWallet, nftType, nftId, feeAmount) {
     }
 
     db.prepare(`UPDATE achievement_mints SET wallet_address = ? WHERE id = ?`).run(toW, mint.id);
+    if (mint.achievement_id === 'meme_vip') {
+      try { require('../services/memeShop').moveUnitOnTransfer(fromW, toW); } catch (_) {}
+    }
   }
 
   // 3. Registrar en nft_transfers

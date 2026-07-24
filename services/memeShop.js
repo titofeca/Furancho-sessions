@@ -79,24 +79,33 @@ function setConfig({ priceCents, priceCorcho, multiplier, open, note }) {
 // ─── EXISTENCIAS ─────────────────────────────────────────────────────────────
 // Los mints fallidos no cuentan (se pueden reintentar). Incluye los memes
 // entregados antes de existir la tienda (se registraron como 'historico').
+// Los mints fallidos o en proceso no anulan el derecho de compra pagado.
 function supply() {
-  const sold = db.prepare(`SELECT COUNT(*) c FROM meme_units WHERE status != 'failed'`).get().c || 0;
+  const sold = db.prepare(`SELECT COUNT(*) c FROM meme_units WHERE status IS NULL OR status != 'cancelled'`).get().c || 0;
   return { max: MEME.MAX_SUPPLY, sold, left: Math.max(0, MEME.MAX_SUPPLY - sold) };
 }
 
 function unitsOfWallet(wallet) {
-  return db.prepare(`SELECT * FROM meme_units WHERE LOWER(wallet_address) = LOWER(?) AND status != 'failed'
+  return db.prepare(`SELECT * FROM meme_units WHERE LOWER(wallet_address) = LOWER(?) AND (status IS NULL OR status != 'cancelled')
                      ORDER BY serial ASC`).all(wallet);
 }
 
 // Precio de la SIGUIENTE unidad para esta wallet: base · multiplicador^(memes que ya tiene).
-// El 1º al precio base, el 2º el doble, el 3º el doble del 2º… La criptografía no
-// permite prohibir tener varios; el precio sí desincentiva acaparar.
+// Tanto en Euros (cents) como en $CORCHO (corcho).
 function priceForWallet(wallet) {
   const cfg = getConfig();
   const owned = wallet ? unitsOfWallet(wallet).length : 0;
   const cents = Math.round(cfg.priceCents * Math.pow(cfg.multiplier, owned));
-  return { index: owned + 1, owned, cents, baseCents: cfg.priceCents, multiplier: cfg.multiplier };
+  const corcho = Math.round((cfg.priceCorcho || 4000) * Math.pow(cfg.multiplier, owned));
+  return {
+    index: owned + 1,
+    owned,
+    cents,
+    corcho,
+    baseCents: cfg.priceCents,
+    baseCorcho: cfg.priceCorcho || 4000,
+    multiplier: cfg.multiplier
+  };
 }
 
 // ─── QUÉ INCLUYE (catálogo editable) ─────────────────────────────────────────
@@ -171,15 +180,17 @@ function requestPurchaseCorcho(wallet) {
   if (s.left <= 0) throw new Error('Non queda ningún meme: los 300 están vendidos. Y no habrá más.');
   const already = pendingRequestOf(wallet);
   if (already) return { request: already, alreadyRequested: true };
-  const priceCorcho = cfg.priceCorcho || 4000;
+
+  const p = priceForWallet(wallet);
+  const priceCorcho = p.corcho; // Escalado según memes ya poseídos por la wallet
+
   const { getCorchoBalance } = require('../db/database');
   const bal = getCorchoBalance(wallet).balance;
   if (bal < priceCorcho) {
-    const err = new Error(`Saldo insuficiente. El Meme VIP cuesta ${priceCorcho} $CORCHO (tienes ${bal}). Recarga primero.`);
+    const err = new Error(`Saldo insuficiente. El Meme VIP te cuesta ${priceCorcho.toLocaleString()} $CORCHO (tienes ${bal.toLocaleString()}). Recarga primero.`);
     err.insufficient = true;
     throw err;
   }
-  const p = priceForWallet(wallet);
   const info = db.prepare(`INSERT INTO meme_purchases (wallet_address, status, price_cents, unit_index, note, method, price_corcho)
                            VALUES (?, 'requested', 0, ?, ?, 'corcho', ?)`)
     .run(wallet, p.index, null, priceCorcho);
@@ -328,10 +339,18 @@ function sellTo(wallet, { purchaseId = null, source = 'venta', priceCents = null
 // tomará él. Si tiene varios, se va el más nuevo y conserva el número más bajo.
 function moveUnitOnTransfer(fromWallet, toWallet) {
   try {
-    const unit = db.prepare(`SELECT * FROM meme_units WHERE LOWER(wallet_address) = LOWER(?) AND status != 'failed'
+    const unit = db.prepare(`SELECT * FROM meme_units WHERE LOWER(wallet_address) = LOWER(?) AND (status IS NULL OR status != 'cancelled')
                              ORDER BY serial DESC LIMIT 1`).get(fromWallet);
     if (!unit) return { moved: false };
-    db.prepare(`UPDATE meme_units SET wallet_address = ? WHERE id = ?`).run(toWallet, unit.id);
+
+    let achMintId = unit.achievement_mint_id;
+    if (achMintId) {
+      const achRow = db.prepare(`SELECT id FROM achievement_mints WHERE id = ?`).get(achMintId);
+      if (!achRow) achMintId = null;
+    }
+
+    db.prepare(`UPDATE meme_units SET wallet_address = ?, achievement_mint_id = ? WHERE id = ?`)
+      .run(toWallet, achMintId, unit.id);
     return { moved: true, serial: unit.serial };
   } catch (e) {
     console.error('[MemeShop] No se pudo mover la unidad traspasada:', e.message);
@@ -431,8 +450,9 @@ async function startMemeQueueWorker() {
           .run(r.txHash, r.costMatic || null, next.id);
         console.log(`[MemeQueue] ✅ Meme #${next.serial} minteado. Tx: ${r.txHash}`);
       } catch (err) {
-        console.error(`[MemeQueue] ❌ Error en meme #${next.serial}:`, err.message);
-        db.prepare(`UPDATE meme_units SET status = 'failed' WHERE id = ?`).run(next.id);
+        console.error(`[MemeQueue] ⚠️ Reintento pendiente en meme #${next.serial}:`, err.message);
+        // No borrar la unidad pagada: queda en pending_mint para reintento por el worker
+        db.prepare(`UPDATE meme_units SET status = 'pending_mint' WHERE id = ?`).run(next.id);
       }
       next = nextOf();
     }
@@ -451,6 +471,10 @@ function notifyMemeQueue() { setImmediate(startMemeQueueWorker); }
 // sorteo, entrega presencial…): así TODO meme que exista cuenta contra las 300.
 function syncUnitsFromAchievementMints() {
   try {
+    // Restaurar automáticamente cualquier unidad pagada que haya quedado bloqueada por fallos de RPC/red
+    db.prepare(`UPDATE meme_units SET status = 'pending' WHERE status = 'failed' AND (price_cents > 0 OR source IN ('venta', 'corcho', 'regalo', 'externo', 'historico'))`).run();
+  } catch (_) {}
+  try {
     const huerfanos = db.prepare(`SELECT m.id, m.wallet_address, m.status FROM achievement_mints m
                                   LEFT JOIN meme_units u ON u.achievement_mint_id = m.id
                                   WHERE m.achievement_id = ? AND m.status != 'failed' AND u.id IS NULL
@@ -467,6 +491,7 @@ function syncUnitsFromAchievementMints() {
     db.prepare(`UPDATE meme_units SET status = (SELECT status FROM achievement_mints WHERE id = meme_units.achievement_mint_id),
                                       tx_hash = (SELECT tx_hash FROM achievement_mints WHERE id = meme_units.achievement_mint_id)
                 WHERE achievement_mint_id IS NOT NULL
+                  AND (SELECT id FROM achievement_mints WHERE id = meme_units.achievement_mint_id) IS NOT NULL
                   AND status != (SELECT status FROM achievement_mints WHERE id = meme_units.achievement_mint_id)`).run();
   } catch (_) {}
 }

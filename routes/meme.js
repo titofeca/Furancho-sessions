@@ -52,6 +52,7 @@ router.get('/status', (req, res) => {
         owned: price.owned,
         nextIndex: price.index,
         nextPriceCents: price.cents,
+        nextPriceCorcho: price.corcho,
         multiplier: price.multiplier,
         units: shop.unitsOfWallet(wallet).map(u => ({ serial: u.serial, status: u.status, at: u.created_at })),
         entitlements: shop.entitlementsOfWallet(wallet).map(e => ({
