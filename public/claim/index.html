@@ -11287,11 +11287,10 @@
       const err = document.getElementById('corcho-transfer-err');
       if (err) err.textContent = '';
 
-      // Poblar NFTs del usuario desde las MISMAS fuentes que pintan el museo y las
-      // tarjetas (antes leía window._userPasses/_userAchievements, que NUNCA se
-      // asignan → el modal salía siempre vacío aunque el socio tuviese NFTs):
-      //  · Niveles → userClaimedLevels (array de nº de nivel conseguidos).
-      //  · Logros  → _nftAchById (mapa de logros) con claimStatus === 'success'.
+      // Poblar NFTs del usuario desde todas las fuentes activas:
+      //  · Niveles → userClaimedLevels (pases de nivel conseguidos).
+      //  · Logros  → _nftAchById (logros desbloqueados/poseídos).
+      //  · Meme VIP → _memeShop (unidades de Meme VIP poseídas por la wallet).
       select.innerHTML = '';
       let nftCount = 0;
       const levelNames = { 1: 'Cautivo', 2: 'Cunqueiro', 3: 'Larpeiro', 4: 'Presidente' };
@@ -11308,8 +11307,7 @@
 
       if (typeof _nftAchById !== 'undefined' && _nftAchById) {
         Object.values(_nftAchById).forEach(a => {
-          // meme_vip no se traspasa (es la tienda del meme, otro flujo)
-          if (a && a.claimStatus === 'success' && a.id !== 'meme_vip') {
+          if (a && (a.unlocked || a.claimStatus === 'success' || a.claimStatus === 'pending')) {
             nftCount++;
             const opt = document.createElement('option');
             opt.value = `achievement:${a.id}`;
@@ -11317,6 +11315,17 @@
             select.appendChild(opt);
           }
         });
+      }
+
+      if (typeof _memeShop !== 'undefined' && _memeShop && _memeShop.mine && _memeShop.mine.owned > 0) {
+        const alreadyInSelect = Array.from(select.options).some(o => o.value === 'achievement:meme_vip');
+        if (!alreadyInSelect) {
+          nftCount++;
+          const opt = document.createElement('option');
+          opt.value = 'achievement:meme_vip';
+          opt.textContent = `🎭 Meme VIP (${_memeShop.mine.owned} ud. poseídas)`;
+          select.appendChild(opt);
+        }
       }
 
       if (nftCount === 0) {

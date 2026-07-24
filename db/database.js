@@ -3876,16 +3876,37 @@ function transferNftWithFee(fromWallet, toWallet, nftType, nftId, feeAmount) {
 
     db.prepare(`UPDATE mints SET wallet_address = ? WHERE id = ?`).run(toW, mint.id);
   } else if (nftType === 'achievement') {
-    const mint = db.prepare(`
+    let mint = db.prepare(`
       SELECT id, achievement_id FROM achievement_mints WHERE LOWER(wallet_address) = ? AND (achievement_id = ? OR id = ?) LIMIT 1
     `).get(fromW, nftId, parseInt(nftId, 10) || -1);
+
+    if (!mint && nftId === 'meme_vip') {
+      const unit = db.prepare(`SELECT id FROM meme_units WHERE LOWER(wallet_address) = ? AND (status IS NULL OR status != 'cancelled') LIMIT 1`).get(fromW);
+      if (unit) {
+        const moveRes = require('../services/memeShop').moveUnitOnTransfer(fromW, toW);
+        if (moveRes.moved) {
+          // Registrar en nft_transfers
+          db.prepare(`
+            INSERT INTO nft_transfers (nft_type, nft_id, from_wallet, to_wallet, fee_paid)
+            VALUES (?, ?, ?, ?, ?)
+          `).run(nftType, String(nftId), fromW, toW, feeAmount);
+          return { ok: true, newBalance: spendRes.newBalance };
+        }
+      }
+    }
 
     if (!mint) {
       addCorchoCoins(fromW, feeAmount, 'admin_adjustment', 'Reembolso por fallo en traspaso NFT', nftId);
       return { ok: false, error: 'nft_not_owned' };
     }
 
-    db.prepare(`UPDATE achievement_mints SET wallet_address = ? WHERE id = ?`).run(toW, mint.id);
+    const destExisting = db.prepare(`SELECT id FROM achievement_mints WHERE LOWER(wallet_address) = ? AND achievement_id = ? AND status != 'failed'`).get(toW, mint.achievement_id);
+    if (destExisting) {
+      db.prepare(`DELETE FROM achievement_mints WHERE id = ?`).run(mint.id);
+    } else {
+      db.prepare(`UPDATE achievement_mints SET wallet_address = ? WHERE id = ?`).run(toW, mint.id);
+    }
+
     if (mint.achievement_id === 'meme_vip') {
       try { require('../services/memeShop').moveUnitOnTransfer(fromW, toW); } catch (_) {}
     }
