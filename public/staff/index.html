@@ -944,6 +944,66 @@
       return true;
     }
 
+    function renderCorchoDirectTopup(wallet) {
+      const wrap = document.getElementById('result-corcho');
+      if (!wrap) return;
+      const wMask = `${wallet.slice(0,6)}…${wallet.slice(-4)}`;
+      const topupHtml = `
+        <div style="margin-top:10px; padding:12px; background:#fff; border:1.5px solid var(--gold); border-radius:14px; text-align:left; box-shadow:0 4px 12px rgba(42,21,9,0.05);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <span style="font-size:12px; font-weight:800; color:var(--wine);">🪙 Recarga de $CORCHO en Taquilla</span>
+            <span style="font-size:10px; font-weight:700; color:var(--wine); background:rgba(196,151,58,0.18); border:1px solid rgba(196,151,58,0.4); padding:2px 7px; border-radius:6px;">Staff Autorizado</span>
+          </div>
+          <p style="font-size:10.5px; color:var(--text-muted); margin:0 0 8px;">Abona el importe en barra y pulsa para acreditar saldo al cliente (<strong>${wMask}</strong>):</p>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:6px;">
+            <button type="button" onclick="staffQuickGrantCorcho('${wallet}', 500, '5€ (Paquete Cunca)')" style="padding:8px 4px; background:rgba(42,21,9,0.05); border:1px solid rgba(42,21,9,0.12); border-radius:8px; font-size:11px; font-weight:700; cursor:pointer;">500 $ (5€)</button>
+            <button type="button" onclick="staffQuickGrantCorcho('${wallet}', 1100, '10€ (Paquete Garrafa)')" style="padding:8px 4px; background:rgba(196,151,58,0.15); border:1px solid rgba(196,151,58,0.4); border-radius:8px; font-size:11px; font-weight:800; color:var(--wine); cursor:pointer;">1.100 $ (10€)</button>
+            <button type="button" onclick="staffQuickGrantCorcho('${wallet}', 2300, '20€ (Paquete Presidente)')" style="padding:8px 4px; background:rgba(42,21,9,0.05); border:1px solid rgba(42,21,9,0.12); border-radius:8px; font-size:11px; font-weight:700; cursor:pointer;">2.300 $ (20€)</button>
+            <button type="button" onclick="staffQuickGrantCorcho('${wallet}', 6500, '50€ (Paquete Patrón)')" style="padding:8px 4px; background:rgba(196,151,58,0.22); border:1px solid var(--gold); border-radius:8px; font-size:11px; font-weight:900; color:var(--wine); cursor:pointer;">6.500 $ (50€)</button>
+          </div>
+          <button type="button" onclick="staffCustomGrantCorcho('${wallet}')" style="width:100%; padding:6px; background:transparent; border:1px dashed rgba(42,21,9,0.2); border-radius:8px; font-size:10.5px; font-weight:700; color:var(--text-muted); cursor:pointer;">✏️ Otra cantidad personalizada...</button>
+        </div>`;
+
+      if (wrap.style.display === 'block') {
+        wrap.innerHTML += topupHtml;
+      } else {
+        wrap.innerHTML = topupHtml;
+        wrap.style.display = 'block';
+      }
+    }
+
+    async function staffQuickGrantCorcho(wallet, amount, desc) {
+      if (!wallet || !/^0x[a-fA-F0-9]{40}$/i.test(wallet)) {
+        alert('⚠️ Wallet no válida');
+        return;
+      }
+      if (!confirm(`¿Confirmar recarga de ${amount.toLocaleString()} $CORCHO para el cliente (${desc})?\n\nWallet: ${wallet.slice(0,6)}…${wallet.slice(-4)}`)) {
+        return;
+      }
+      try {
+        const r = await fetch('/api/staff/corcho/grant-direct', {
+          method: 'POST',
+          headers: staffHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ walletAddress: wallet, amount, description: desc })
+        });
+        const d = await r.json();
+        if (r.ok && d.success) {
+          playNoticeSound();
+          alert(`✅ ¡Recarga realizada! ${amount.toLocaleString()} $CORCHO acreditadas a ${wallet.slice(0,6)}…${wallet.slice(-4)}`);
+        } else {
+          alert('⚠️ ' + (d.error || 'No se pudo realizar la recarga'));
+        }
+      } catch (e) { alert('⚠️ Error de conexión'); }
+    }
+
+    async function staffCustomGrantCorcho(wallet) {
+      const amountStr = prompt(`Acreditar $CORCHO a ${wallet.slice(0,6)}…${wallet.slice(-4)}\n\nIntroduce la cantidad de $CORCHO:`, '500');
+      if (!amountStr || isNaN(parseInt(amountStr, 10))) return;
+      const amount = parseInt(amountStr, 10);
+      const desc = prompt('Motivo / Justificación:', 'Recarga manual en taquilla') || 'Recarga manual en taquilla';
+      staffQuickGrantCorcho(wallet, amount, desc);
+    }
+
     async function confirmCorchoPack(btn, id){
       btn.disabled = true;
       const original = btn.textContent;
@@ -1056,6 +1116,8 @@
         | renderVipToday(d.vipToday)
         | renderMemePerks(d.memePerks, wallet)
         | renderCorchoPending(d.corchoPacks, d.corchoVouchers, wallet);
+
+      renderCorchoDirectTopup(wallet);
 
       // ── MODO CAMPAÑA: durante el Reto de los 5, el resultado gira en torno al reto ──
       // EXCEPCIÓN: en día de Furancho el reto NO computa (el cliente viene a la sesión),

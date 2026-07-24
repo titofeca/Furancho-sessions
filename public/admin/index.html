@@ -1252,10 +1252,14 @@
           <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
             <div class="card-title" style="font-size:14px; margin-bottom:8px;">⚡ Ajuste Manual o Recarga de $CORCHO</div>
             <div style="display:grid; grid-template-columns:2fr 1fr 2fr; gap:8px; margin-bottom:8px;">
-              <input type="text" id="corcho-grant-wallet" class="input-field" placeholder="Wallet socio (0x...)" style="font-size:12px;" />
-              <input type="number" id="corcho-grant-amount" class="input-field" placeholder="Cantidad (ej: 200 o -100)" style="font-size:12px;" />
+              <div style="display:flex; gap:6px;">
+                <input type="text" id="corcho-grant-wallet" class="input-field" placeholder="Wallet socio (0x...)" style="font-size:12px; flex:1;" />
+                <button type="button" onclick="startCorchoScanForAdmin()" style="padding:7px 10px; background:rgba(196,151,58,0.12); border:1.5px solid rgba(196,151,58,0.35); border-radius:8px; cursor:pointer; font-size:14px;" title="Escanear QR de socio con cámara">📷</button>
+              </div>
+              <input type="number" id="corcho-grant-amount" class="input-field" placeholder="Cantidad (ej: 500)" style="font-size:12px;" />
               <input type="text" id="corcho-grant-desc" class="input-field" placeholder="Motivo / Justificación" style="font-size:12px;" />
             </div>
+            <div id="corcho-scanner-container" style="display:none; margin-bottom:10px; border-radius:12px; overflow:hidden; border:2px solid var(--gold); background:#000;"></div>
             <button onclick="adminGrantCorchoCoins()" style="background:var(--wine); color:#fff; border:none; border-radius:10px; padding:9px 18px; font-size:12px; font-weight:700; cursor:pointer;">
               Aplicar Ajuste de $CORCHO
             </button>
@@ -5165,6 +5169,49 @@
     } catch (e) {
       showToast('Error de red al aplicar ajuste', true);
     }
+  }
+
+  let corchoAdminScanner = null;
+  function startCorchoScanForAdmin() {
+    const container = document.getElementById('corcho-scanner-container');
+    if (!container) return;
+    if (corchoAdminScanner) {
+      try { corchoAdminScanner.stop(); } catch (_) {}
+      container.style.display = 'none';
+      corchoAdminScanner = null;
+      return;
+    }
+
+    container.style.display = 'block';
+    container.innerHTML = '<div style="color:#fff; text-align:center; padding:15px; font-size:12px;">Cargando cámara...</div>';
+
+    loadHtml5QrcodeLib(() => {
+      try {
+        corchoAdminScanner = new Html5Qrcode('corcho-scanner-container');
+        corchoAdminScanner.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 220, height: 220 } },
+          (text) => {
+            let wallet = text.trim();
+            const match = wallet.match(/(0x[a-fA-F0-9]{40})/);
+            if (match) wallet = match[1];
+            if (/^0x[a-fA-F0-9]{40}$/i.test(wallet)) {
+              document.getElementById('corcho-grant-wallet').value = wallet;
+              showToast('✅ Wallet escaneada: ' + wallet.slice(0, 6) + '…' + wallet.slice(-4));
+              try { corchoAdminScanner.stop(); } catch (_) {}
+              container.style.display = 'none';
+              corchoAdminScanner = null;
+            } else {
+              showToast('⚠️ QR no contiene wallet válida', true);
+            }
+          },
+          () => {}
+        );
+      } catch (e) {
+        showToast('Error accediendo a la cámara', true);
+        container.style.display = 'none';
+      }
+    });
   }
 
   // ==================== PEAK HOURS ====================

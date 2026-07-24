@@ -365,6 +365,44 @@ router.post('/meme-request/:id/confirm', staffLimiter, requireStaff, (req, res) 
   }
 });
 
+// POST /api/staff/corcho/grant-direct — recargar saldo $CORCHO a cliente escaneado en barra
+router.post('/corcho/grant-direct', staffLimiter, requireStaff, (req, res) => {
+  const { walletAddress, amount, description } = req.body || {};
+  if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
+    return res.status(400).json({ error: 'Wallet no válida' });
+  }
+  const qty = parseInt(amount, 10);
+  if (!qty || isNaN(qty) || qty <= 0) {
+    return res.status(400).json({ error: 'Cantidad no válida' });
+  }
+
+  const staffName = getStaffName(req);
+  const title = description || `💳 Recarga en taquilla (${qty} $CORCHO)`;
+  const ref = `staff_grant_${Date.now()}_${staffName}`;
+
+  try {
+    const { addCorchoCoins } = require('../db/database');
+    const result = addCorchoCoins(walletAddress, qty, 'admin_adjustment', `${title} — cobrado por staff: ${staffName}`, ref);
+
+    try {
+      const { sendPushToWallet } = require('../services/push');
+      sendPushToWallet(
+        walletAddress,
+        '🪙 Recarga de $CORCHO Confirmada',
+        `🎉 El staff ha confirmado tu recarga de ${qty.toLocaleString()} $CORCHO en taquilla. ¡Disfrútalas!`
+      );
+    } catch (_) {}
+
+    res.json({
+      success: true,
+      newBalance: result.newBalance,
+      message: `✅ Acreditadas ${qty.toLocaleString()} $CORCHO a ${walletAddress.slice(0,6)}…${walletAddress.slice(-4)}`
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /api/staff/corcho-pack/:id/confirm — el camarero COBRA en la barra la
 // recarga de $CORCHO y la confirma. Solo aquí se acreditan las monedas. Idempotente.
 router.post('/corcho-pack/:id/confirm', staffLimiter, requireStaff, (req, res) => {
