@@ -3034,6 +3034,38 @@
         <button onclick="saveDailyTapaConfig()" style="width:100%; background:var(--wine); color:#fff; border:none; border-radius:50px; padding:12px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">Guardar privilexio</button>
       </div>
 
+      <!-- ==================== TARJETA DORADA DESTACADA (ADMIN OVERRIDE) ==================== -->
+      <div class="glass-card" style="margin-top:16px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+          <div class="card-title" style="margin:0;">💳 Tarjeta Dorada en Inicio / Perfil</div>
+          <span id="featured-card-pill" style="font-size:11px; color:var(--text-muted); font-weight:600;"></span>
+        </div>
+        <p style="font-size:11px; color:var(--text-muted); margin:0 0 14px;">Elige qué pase o tarjeta se muestra como la <b>Tarjeta Dorada destacada</b> en la pantalla de inicio del cliente (el Carné VIP). Puedes dejarlo en automático según el nivel del socio o forzar el pase que prefieras.</p>
+
+        <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Modo de visualización</label>
+        <select id="featured-card-mode" onchange="toggleFeaturedCardFields()" style="width:100%; background:#fff; color:var(--text); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:11px 13px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box; margin-bottom:12px;">
+          <option value="auto">🔄 Automático (según visitas y nivel alcanzado por cada socio)</option>
+          <option value="level_1">🏆 Forzar Pase Nivel 1 (Cautivo)</option>
+          <option value="level_2">🏆 Forzar Pase Nivel 2 (O Cunqueiro)</option>
+          <option value="level_3">🏆 Forzar Pase Nivel 3 (O Larpeiro)</option>
+          <option value="level_4">🏆 Forzar Pase Nivel 4 (O Presidente)</option>
+          <option value="custom">🎨 Personalizado por el Admin</option>
+        </select>
+
+        <div id="featured-card-custom-fields" style="display:none;">
+          <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Título personalizado de la tarjeta</label>
+          <input id="featured-card-title" type="text" maxlength="50" placeholder="ej: O PRESIDENTE DO FURANCHO" style="width:100%; background:#fff; color:var(--text); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:11px 13px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box; margin-bottom:12px;" />
+
+          <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">URL de la imagen de la tarjeta</label>
+          <input id="featured-card-image" type="text" placeholder="https://... o /assets/..." style="width:100%; background:#fff; color:var(--text); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:11px 13px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box; margin-bottom:12px;" />
+
+          <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Descripción personalizada</label>
+          <textarea id="featured-card-desc" rows="2" placeholder="ej: Pase exclusivo con privilegios Furancho Sessions..." style="width:100%; background:#fff; color:var(--text); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:11px 13px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box; margin-bottom:14px;"></textarea>
+        </div>
+
+        <button onclick="saveFeaturedCardConfig()" style="width:100%; background:var(--wine); color:#fff; border:none; border-radius:50px; padding:12px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">Guardar Tarjeta Dorada</button>
+      </div>
+
     </div>
 
     <!-- ==================== NFTs ==================== -->
@@ -8663,7 +8695,7 @@
 
   // ==================== EVENTOS & VIP ====================
   async function loadEventsPage() {
-    await Promise.all([loadAgenda(), loadAnalytics(), loadEventsData(), loadCountdowns(), loadVibeAdmin(), loadTerrazaAdmin(), loadDailyTapaConfig()]);
+    await Promise.all([loadAgenda(), loadAnalytics(), loadEventsData(), loadCountdowns(), loadVibeAdmin(), loadTerrazaAdmin(), loadDailyTapaConfig(), loadFeaturedCardConfig()]);
   }
 
   // ==================== PRIVILEXIO DO NFT (TAPA DO DÍA) ====================
@@ -8710,6 +8742,55 @@
       if (!r.ok) return showToast(data.error || 'Error al guardar');
       showToast('✅ Privilexio guardado');
       loadDailyTapaConfig();
+    } catch (e) { showToast('Error: ' + e.message); }
+  }
+
+  // ==================== TARJETA DORADA EN INICIO / PERFIL ====================
+  function toggleFeaturedCardFields() {
+    const mode = document.getElementById('featured-card-mode').value;
+    const wrap = document.getElementById('featured-card-custom-fields');
+    if (wrap) wrap.style.display = mode === 'custom' ? 'block' : 'none';
+  }
+
+  async function loadFeaturedCardConfig() {
+    try {
+      const r = await fetch('/api/admin/featured-card', { headers: authHeaders() });
+      if (!r.ok) return;
+      const d = await r.json();
+      const modeSel = document.getElementById('featured-card-mode');
+      if (modeSel) {
+        if (d.mode === 'custom') modeSel.value = 'custom';
+        else if (d.mode && d.mode.startsWith('level_')) modeSel.value = d.mode;
+        else modeSel.value = d.level ? `level_${d.level}` : 'auto';
+      }
+      document.getElementById('featured-card-title').value = d.title || '';
+      document.getElementById('featured-card-image').value = d.image || '';
+      document.getElementById('featured-card-desc').value = d.desc || '';
+      toggleFeaturedCardFields();
+      const pill = document.getElementById('featured-card-pill');
+      if (pill) { pill.textContent = d.mode === 'auto' ? '● Automático' : '★ Destacada'; pill.style.color = d.mode === 'auto' ? '#16a34a' : 'var(--gold)'; }
+    } catch (_) {}
+  }
+
+  async function saveFeaturedCardConfig() {
+    const mode = document.getElementById('featured-card-mode').value;
+    const body = {
+      mode,
+      level: mode.startsWith('level_') ? parseInt(mode.replace('level_', ''), 10) : undefined,
+      title: document.getElementById('featured-card-title').value,
+      image: document.getElementById('featured-card-image').value,
+      desc: document.getElementById('featured-card-desc').value
+    };
+    try {
+      const r = await fetch('/api/admin/featured-card', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await r.json();
+      if (!r.ok) return showToast(data.error || 'Error al guardar');
+      showToast('✅ Tarjeta Dorada actualizada');
+      loadFeaturedCardConfig();
     } catch (e) { showToast('Error: ' + e.message); }
   }
 

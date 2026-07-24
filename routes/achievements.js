@@ -23,6 +23,20 @@ router.get('/catalog', (req, res) => {
   res.json(achievements.list().map(a => ({ id: a.id, name: a.name, tokenId: a.tokenId })));
 });
 
+// GET /api/achievements/featured-card — Tarjeta Dorada destacada para el cliente
+router.get('/featured-card', (req, res) => {
+  try {
+    const { getSetting } = require('../db/database');
+    res.json({
+      mode: getSetting('featured_card_mode', 'auto'),
+      level: parseInt(getSetting('featured_card_level', '4'), 10) || 4,
+      title: getSetting('featured_card_title', ''),
+      image: getSetting('featured_card_image', ''),
+      desc: getSetting('featured_card_desc', '')
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // GET /api/achievements/status?wallet=0x... — catálogo de logros NFT + estado por wallet.
 router.get('/status', (req, res) => {
   const { wallet } = req.query;

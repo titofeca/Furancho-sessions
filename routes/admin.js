@@ -1867,25 +1867,30 @@ const {
 } = require('../db/transfers');
 const { executeTransferOnChain } = require('../services/polygon');
 
-// GET /api/admin/settings/:key
-router.get('/settings/:key', requireAuth, (req, res) => {
+// GET /api/admin/featured-card — configuración de la Tarjeta Dorada en inicio
+router.get('/featured-card', requireAuth, (req, res) => {
   try {
-    const value = getAppSetting(req.params.key);
-    res.json({ key: req.params.key, value });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+    res.json({
+      mode: getAppSetting('featured_card_mode', 'auto'),
+      level: parseInt(getAppSetting('featured_card_level', '4'), 10) || 4,
+      title: getAppSetting('featured_card_title', ''),
+      image: getAppSetting('featured_card_image', ''),
+      desc: getAppSetting('featured_card_desc', '')
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/admin/settings/:key
-router.post('/settings/:key', requireAuth, (req, res) => {
+// POST /api/admin/featured-card — guardar configuración de la Tarjeta Dorada
+router.post('/featured-card', requireAuth, (req, res) => {
   try {
-    const { value } = req.body;
-    setAppSetting(req.params.key, value);
+    const { mode, level, title, image, desc } = req.body || {};
+    setAppSetting('featured_card_mode', mode || 'auto');
+    if (level !== undefined) setAppSetting('featured_card_level', String(level));
+    if (title !== undefined) setAppSetting('featured_card_title', String(title || ''));
+    if (image !== undefined) setAppSetting('featured_card_image', String(image || ''));
+    if (desc !== undefined) setAppSetting('featured_card_desc', String(desc || ''));
     res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // GET /api/admin/daily-tapa-config — configuración del beneficio "tapa do día" ligado a un NFT

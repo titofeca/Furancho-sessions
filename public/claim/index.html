@@ -3619,7 +3619,7 @@
       const serialNum = (memeVip && memeVip.serial) ? memeVip.serial : '—';
       // La tirada son 300 (aquí ponía 50, de cuando eran 50). El número no va en
       // la imagen —es la misma para los 300— sino aquí, que sí sabe cuál es el suyo.
-      serialLabel.textContent = `⭐ TITULAR VIP (${serialNum}/300) ⭐`;
+      serialLabel.textContent = `🎭 MEME DE COLECCIÓN (${serialNum}/300) 🎭`;
 
       // La imagen sale del catálogo, para que al subir un arte nuevo cambie también aquí.
       const img = modal.querySelector('img');
@@ -4387,6 +4387,22 @@
       const profileCardName = document.getElementById('profile-card-name');
       if (profileLevelTag) profileLevelTag.textContent = 'NIVEL ' + lvl;
       if (profileCardName) profileCardName.textContent = levelName;
+
+      // Cargar override de Tarjeta Dorada configurada manualmente por el Admin
+      resilientFetch('/api/achievements/featured-card').then(r => r.json()).then(cfg => {
+        if (cfg && cfg.mode && cfg.mode !== 'auto') {
+          let forcedLvl = lvl;
+          let forcedName = levelName;
+          if (cfg.mode.startsWith('level_')) {
+            forcedLvl = parseInt(cfg.mode.replace('level_', ''), 10) || lvl;
+            forcedName = LEVEL_NAMES[forcedLvl] || levelName;
+          } else if (cfg.mode === 'custom' && cfg.title) {
+            forcedName = cfg.title;
+          }
+          if (profileLevelTag) profileLevelTag.textContent = 'NIVEL ' + forcedLvl;
+          if (profileCardName) profileCardName.textContent = forcedName;
+        }
+      }).catch(() => {});
 
       // (Imágenes y textos del nivel movidos al Museo, aquí solo mantenemos lógica base)
 
@@ -10849,11 +10865,11 @@
         </div>
         
         <div style="background:rgba(212, 175, 55, 0.15); padding:6px 14px; border-radius:100px; border:1px solid rgba(212, 175, 55, 0.3); margin-bottom:12px;">
-          <span style="font-size:11px; font-weight:800; color:#d4af37; text-transform:uppercase; letter-spacing:1.5px;">⭐ TITULAR VIP (1/300) ⭐</span>
+          <span style="font-size:11px; font-weight:800; color:#d4af37; text-transform:uppercase; letter-spacing:1.5px;">🎭 MEME DE COLECCIÓN (1/300) 🎭</span>
         </div>
         
         <h2 style="font-family:'Playfair Display',serif; font-size:26px; color:#d4af37; font-weight:900; margin:0 0 6px 0; text-shadow: 0 2px 10px rgba(212,175,55,0.4);">Meme VIP</h2>
-        <p style="font-size:13px; color:rgba(255,255,255,0.7); margin:0 0 20px 0; line-height:1.4;">Acceso exclusivo a experiencias de hotel, eventos privados y privilegios Furancho Sessions.</p>
+        <p style="font-size:13px; color:rgba(255,255,255,0.7); margin:0 0 20px 0; line-height:1.4;">Pieza de coleccionista do Furancho: pura fachenda sin utilidad para lucir en el museo. 🍷</p>
         
         <div style="width:100%; height:1px; background:linear-gradient(90deg, transparent, rgba(212,175,55,0.5), transparent); margin-bottom:20px;"></div>
         
