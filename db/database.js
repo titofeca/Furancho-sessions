@@ -693,11 +693,18 @@ try {
   )`);
 
   const packCount = db.prepare(`SELECT COUNT(*) c FROM corcho_packs`).get().c;
+  const insertPack = db.prepare(`INSERT INTO corcho_packs (id, name, price_eur, coins, badge) VALUES (?, ?, ?, ?, ?)`);
   if (packCount === 0) {
-    const insertPack = db.prepare(`INSERT INTO corcho_packs (id, name, price_eur, coins, badge) VALUES (?, ?, ?, ?, ?)`);
     insertPack.run('pack_5', 'Paquete Cunca', 5, 500, '');
     insertPack.run('pack_10', 'Paquete Garrafa', 10, 1100, '🔥 Más Popular (+100 Bonus)');
     insertPack.run('pack_20', 'Paquete Presidente', 20, 2500, '+500 Bonus');
+    insertPack.run('pack_50', 'Paquete Patrón', 50, 6500, '👑 Mega Pack (+1500 Bonus)');
+  } else {
+    // Asegurar que exista el nuevo escalón de 50€ si la tabla ya existía
+    const hasPack50 = db.prepare(`SELECT id FROM corcho_packs WHERE id = 'pack_50'`).get();
+    if (!hasPack50) {
+      insertPack.run('pack_50', 'Paquete Patrón', 50, 6500, '👑 Mega Pack (+1500 Bonus)');
+    }
   }
 } catch (_) {}
 
