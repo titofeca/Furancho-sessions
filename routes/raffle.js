@@ -364,11 +364,13 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
   });
 
   setTimeout(() => {
-    const resultData = { winnerWallet, verificationCode, prize, raffleId, acceptWindow: 600, type,
+    const winnerMasked = winnerWallet ? `${winnerWallet.slice(0,6)}…${winnerWallet.slice(-4)}` : '';
+    const resultData = { winnerWallet, winnerMasked, verificationCode, prize, raffleId, acceptWindow: 600, type,
       prizeDetails: prizeDetails || null, prizeImage: prizeImage || null, establishment: establishment || null,
       validity: validity || null, people: people || null, hours: hours || null, days: days || null,
       nftAchievementId: nftAchievementId || null };
     broadcastToEligible('raffle_result', resultData, eligibleSet);
+    broadcastToStaff('raffle_winner', resultData);
     // Actualizar estado activo con resultado
     if (activeRaffle?.raffleId === raffleId) {
       activeRaffle = { ...activeRaffle, phase: 'result', winnerWallet, verificationCode, acceptWindow: 600, resultAt: Date.now() };
@@ -446,8 +448,10 @@ router.post('/:id/accept', (req, res) => {
   if (!wallet) return res.status(400).json({ error: 'Falta wallet' });
   try {
     const raffle = acceptRaffle(parseInt(req.params.id), wallet);
-    // Notificar al admin via SSE broadcast
-    broadcast('raffle_accepted', { raffleId: parseInt(req.params.id) });
+    const walletMasked = wallet ? `${wallet.slice(0,6)}…${wallet.slice(-4)}` : '';
+    // Notificar al admin y staff via SSE broadcast
+    broadcast('raffle_accepted', { raffleId: parseInt(req.params.id), wallet, walletMasked, prize: raffle ? raffle.prize : null });
+    broadcastToStaff('raffle_accepted', { raffleId: parseInt(req.params.id), wallet, walletMasked, prize: raffle ? raffle.prize : null });
     if (activeRaffle?.raffleId === parseInt(req.params.id)) activeRaffle = null;
 
     // Si el sorteo tiene configurado un nivel de destino, encolar el minting Polygon
@@ -749,16 +753,18 @@ router.post('/:id/redeem', (req, res) => {
         if (typeof clientSSE.res.flush === 'function') clientSSE.res.flush();
       } catch (_) {}
     }
-    // Notificar al admin en tiempo real (SSE al panel admin)
+    // Notificar al admin y staff en tiempo real (SSE)
     if (!result.alreadyCollected) {
-      broadcastToAdmins('bono_redeemed', {
+      const payload = {
         raffleId: parseInt(req.params.id),
         prize: result.prize,
         wallet: wallet.slice(0, 6) + '…' + wallet.slice(-4),
         walletFull: wallet,
         establishment: result.establishment || null,
         collected_at: result.collected_at
-      });
+      };
+      broadcastToAdmins('bono_redeemed', payload);
+      broadcastToStaff('bono_redeemed', payload);
     }
     res.json({ success: true, ...result });
   } catch (e) { res.status(400).json({ error: e.message }); }

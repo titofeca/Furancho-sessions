@@ -1191,10 +1191,29 @@
       }catch(e){ /* silencioso */ }
     }
 
+    function playNoticeSound(){
+      try{
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.35);
+      }catch(_){}
+    }
+
     function connectStaffSse(){
       if (_staffSse) return;
       try{
         _staffSse = new EventSource('/api/raffle/stream?staff=true');
+
+        // 1. Avisos de $CORCHO (compras y canjes)
         _staffSse.addEventListener('corcho_pending', (e) => {
           try{
             const d = JSON.parse(e.data);
@@ -1202,6 +1221,7 @@
             if (d.kind === 'canje')      msg = `🎁 ${d.walletMasked} canjeó ${d.item}. Entrégalo y valídalo abajo.`;
             else if (d.kind === 'meme')  msg = `🎭 ${d.walletMasked} pide el Meme por ${Number(d.priceCorcho||0).toLocaleString()} $CORCHO. Valida el pago.`;
             else                          msg = `💳 ${d.walletMasked} pide ${Number(d.coins).toLocaleString()} $CORCHO (${d.priceEur}€). Cobra y confirma abajo.`;
+            playNoticeSound();
             staffToast(msg);
             if (typeof Notification !== 'undefined' && Notification.permission === 'granted'){
               new Notification('🪙 $CORCHO por validar', { body: msg, icon: '/assets/corcho_coin_gold.png', tag: 'corcho-' + (d.code || d.requestId) });
@@ -1209,6 +1229,46 @@
             loadStaffCorchoInbox();
           }catch(_){}
         });
+
+        // 2. Avisos de nuevos ganadores de sorteos en la noche
+        _staffSse.addEventListener('raffle_winner', (e) => {
+          try{
+            const d = JSON.parse(e.data);
+            const wMask = d.winnerMasked || (d.winnerWallet ? d.winnerWallet.slice(0,6) + '…' + d.winnerWallet.slice(-4) : 'Socio');
+            const msg = `🏆 ¡NUEVO GANADOR DE LA NOCHE! ${wMask} ha ganado "${d.prize}". Atento cuando venga a la barra.`;
+            playNoticeSound();
+            staffToast(msg);
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted'){
+              new Notification('🏆 Ganador de Sorteo', { body: msg, icon: '/assets/logo.png', tag: 'raffle-' + d.raffleId });
+            }
+          }catch(_){}
+        });
+
+        // 3. Ganador aceptó premio en su móvil
+        _staffSse.addEventListener('raffle_accepted', (e) => {
+          try{
+            const d = JSON.parse(e.data);
+            const wMask = d.walletMasked || (d.wallet ? d.wallet.slice(0,6) + '…' + d.wallet.slice(-4) : 'Socio');
+            const msg = `✅ ¡PREMIO ACEPTADO! ${wMask} ha aceptado "${d.prize || 'su premio'}". Listo para entregar en persona.`;
+            playNoticeSound();
+            staffToast(msg);
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted'){
+              new Notification('✅ Premio Aceptado', { body: msg, icon: '/assets/logo.png', tag: 'acc-' + d.raffleId });
+            }
+          }catch(_){}
+        });
+
+        // 4. Vale/bono canjeado en el local
+        _staffSse.addEventListener('bono_redeemed', (e) => {
+          try{
+            const d = JSON.parse(e.data);
+            const wMask = d.wallet || 'Socio';
+            const msg = `🎟️ ¡VALE PRESENTADO! ${wMask} ha canjeado "${d.prize}". Entregado correctamente.`;
+            playNoticeSound();
+            staffToast(msg);
+          }catch(_){}
+        });
+
       }catch(_){ _staffSse = null; }
     }
 
