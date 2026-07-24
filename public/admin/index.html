@@ -8089,6 +8089,11 @@
       } else {
         showToast(data.error || 'Error al guardar configuración', true);
       }
+    } catch (e) {
+      showToast('Error de conexión al guardar', true);
+    }
+  }
+
   async function grantCorchoPrizeToWeeklyWinner() {
     const addressEl = document.getElementById('weekly-winner-address');
     const wallet = addressEl ? addressEl.textContent.trim() : '';
