@@ -1274,6 +1274,134 @@ router.get('/wallet-detail/:address', requireAuth, (req, res) => {
   }
 });
 
+// GET /api/admin/furancho-health — "Saúde do Furancho": capa de control económico SOLO
+// ADMIN sobre datos que la app ya genera. NO toca fichajes/sorteos/niveles/generación/
+// FIFO/compra/medidor/premios: solo LEE. Calcula el coste real en € del $CORCHO canjeado
+// por evento (últimas 8 sesiones, ponderando las recientes) frente al objetivo (30 €) y
+// da un semáforo 🟢🟡🔴. Muestra también la quema FIFO próxima (freno natural) y el stock.
+router.get('/furancho-health', requireAuth, (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const getS = (k, def) => { try { const r = db.prepare(`SELECT value FROM app_settings WHERE key=?`).get(k); return r ? r.value : def; } catch (_) { return def; } };
+    const greenMax = parseInt(getS('health_green_max_cents', '3000'), 10);   // 30 €
+    const amberMax = parseInt(getS('health_amber_max_cents', '4000'), 10);   // 40 €
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+
+    // Últimos 8 eventos ya celebrados (más reciente primero)
+    const events = db.prepare(`
+      SELECT id, event_date, title FROM events
+      WHERE active = 1 AND event_date <= ?
+      ORDER BY event_date DESC LIMIT 8
+    `).all(todayStr);
+
+    // Coste € de premios canjeados (validados) por fecha de sesión × coste del item.
+    // Fuente: corcho_redemptions (tienda) + su coste real en corcho_items.cost_cents.
+    const costRow = db.prepare(`
+      SELECT COALESCE(r.session_date, date(r.validated_at), date(r.created_at)) AS day,
+             SUM(COALESCE(i.cost_cents, 0)) AS cost_cents,
+             COUNT(*) AS n
+      FROM corcho_redemptions r
+      LEFT JOIN corcho_items i ON i.id = r.item_id
+      WHERE r.status = 'validated'
+      GROUP BY day
+    `).all();
+    const costByDay = {}; costRow.forEach(r => { costByDay[r.day] = { cost: r.cost_cents || 0, n: r.n || 0 }; });
+
+    const fin = {};
+    db.prepare(`SELECT event_id, revenue_cents, covers FROM event_finances`).all()
+      .forEach(f => { fin[f.event_id] = f; });
+
+    const perEvent = events.map(e => {
+      const c = costByDay[e.event_date] || { cost: 0, n: 0 };
+      const f = fin[e.id] || {};
+      return {
+        date: e.event_date, title: e.title,
+        covers: f.covers || null,
+        revenueCents: f.revenue_cents || null,
+        prizeCostCents: c.cost, redemptions: c.n
+      };
+    });
+
+    // Coste medio PONDERADO (las recientes pesan más: pesos 8,7,…). Solo eventos con
+    // algún dato de canje o finanzas — un evento sin nada no ensucia la media.
+    let wsum = 0, w = 0;
+    perEvent.forEach((ev, idx) => {
+      const weight = perEvent.length - idx; // idx 0 = más reciente = mayor peso
+      wsum += ev.prizeCostCents * weight; w += weight;
+    });
+    const weightedCostCents = w ? Math.round(wsum / w) : 0;
+    const verdict = weightedCostCents <= greenMax ? 'green' : (weightedCostCents <= amberMax ? 'amber' : 'red');
+
+    // $CORCHO en circulación (vivo)
+    const circulating = db.prepare(`SELECT COALESCE(SUM(balance),0) s FROM corcho_balances WHERE balance > 0`).get().s;
+
+    // Quema FIFO próxima (≤14 días): $CORCHO ganado sin gastar con antigüedad 76–90 días.
+    // Mismo criterio FIFO que la quema real (netea gastos contra las ganancias más viejas).
+    let fifoSoon = 0;
+    const wallets = db.prepare(`SELECT wallet_address FROM corcho_balances WHERE balance > 0`).all();
+    for (const { wallet_address } of wallets) {
+      const earns = db.prepare(`
+        SELECT amount, julianday('now') - julianday(created_at) AS days_old
+        FROM corcho_transactions
+        WHERE LOWER(wallet_address) = LOWER(?) AND amount > 0 AND type != 'fifo_burn'
+        ORDER BY created_at ASC
+      `).all(wallet_address);
+      const spentRow = db.prepare(`
+        SELECT COALESCE(SUM(-amount),0) s FROM corcho_transactions
+        WHERE LOWER(wallet_address) = LOWER(?) AND amount < 0 AND type != 'fifo_burn'
+      `).get(wallet_address);
+      let spent = spentRow.s;
+      for (const t of earns) {
+        let unspent = t.amount;
+        if (spent > 0) { const used = Math.min(spent, unspent); unspent -= used; spent -= used; }
+        if (unspent > 0 && t.days_old >= 76 && t.days_old < 90) fifoSoon += unspent;
+      }
+    }
+
+    // Emitido / canjeado / quemado en la ventana de los últimos 8 eventos
+    const since = events.length ? events[events.length - 1].event_date : todayStr;
+    const flow = db.prepare(`
+      SELECT
+        COALESCE(SUM(CASE WHEN amount>0 AND type NOT IN ('buy_pack','admin_adjustment') THEN amount END),0) AS issued,
+        COALESCE(SUM(CASE WHEN amount<0 AND type='item_redemption' THEN -amount END),0) AS redeemed,
+        COALESCE(SUM(CASE WHEN type='fifo_burn' THEN amount END),0) AS burned
+      FROM corcho_transactions WHERE date(created_at) >= ?
+    `).get(since);
+
+    // Catálogo de premios con coste y stock (para editar el coste y ver el peso de cada uno)
+    const items = db.prepare(`SELECT id, name, emoji, price_corcho, cost_cents, stock, active FROM corcho_items ORDER BY cost_cents DESC NULLS LAST, price_corcho DESC`).all();
+    const missingCost = items.filter(i => i.active && i.cost_cents == null).map(i => i.name);
+
+    res.json({
+      targetCents: { greenMax, amberMax },
+      weightedCostCents, verdict,
+      perEvent,
+      circulating, fifoSoon,
+      flow,
+      items, missingCost
+    });
+  } catch (e) {
+    console.error('Error en /furancho-health:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/corcho-item-cost — guarda el coste real en € (céntimos) de un premio.
+router.post('/corcho-item-cost', requireAuth, (req, res) => {
+  const { id, costEur } = req.body || {};
+  const itemId = parseInt(id, 10);
+  if (!itemId) return res.status(400).json({ error: 'Premio no válido' });
+  const cents = (costEur === '' || costEur == null) ? null : Math.round(parseFloat(costEur) * 100);
+  if (cents != null && (isNaN(cents) || cents < 0)) return res.status(400).json({ error: 'Coste no válido' });
+  try {
+    const { db } = require('../db/database');
+    db.prepare(`UPDATE corcho_items SET cost_cents = ? WHERE id = ?`).run(cents, itemId);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/admin/corcho/fraud-check — SEMÁFORO antifraude. Por cada cartera reconstruye
 // lo que DEBERÍA haber ganado desde su actividad real (visitas, sesiones cerradas,
 // niveles, referidos, visitas de campaña) y lo compara con lo que realmente se le

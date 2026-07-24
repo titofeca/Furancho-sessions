@@ -664,6 +664,21 @@ try {
     created_at TEXT DEFAULT (datetime('now'))
   )`);
   try { db.exec(`ALTER TABLE corcho_items ADD COLUMN stock INTEGER DEFAULT NULL`); } catch (_) {}
+  // Coste REAL en € (céntimos) que le cuesta a la barra cada premio. Alimenta el
+  // semáforo "Saúde do Furancho" (coste por evento vs objetivo de 30 €). Editable en
+  // el panel. NULL = sin definir (el semáforo lo avisa). Aditivo, no toca precios ni UX.
+  try { db.exec(`ALTER TABLE corcho_items ADD COLUMN cost_cents INTEGER DEFAULT NULL`); } catch (_) {}
+  // Semilla de costes por nombre (solo donde falte), con los valores que dio Tito.
+  try {
+    const seedCost = (like, cents) => db.prepare(`UPDATE corcho_items SET cost_cents = ? WHERE name LIKE ? AND cost_cents IS NULL`).run(cents, like);
+    seedCost('%Cunca%', 40);
+    seedCost('%Tapa%', 300);
+    seedCost('%Camiseta%', 1800);
+    seedCost('%Desayuno%', 600);
+    seedCost('%Cena%', 3000);
+    seedCost('%Iman%', 78);
+    seedCost('%Imán%', 78);
+  } catch (_) {}
 
   const itemCount = db.prepare(`SELECT COUNT(*) c FROM corcho_items`).get().c;
   if (itemCount === 0) {

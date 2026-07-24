@@ -1346,6 +1346,18 @@
         </div>
       </details>
 
+      <!-- 🩺 Saúde do Furancho (control económico, solo admin) -->
+      <details class="glass-card" style="margin-bottom:20px; outline:none; -webkit-tap-highlight-color:transparent;" ontoggle="if(this.open) loadFuranchoHealth()">
+        <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; outline:none; user-select:none; padding:14px 18px; border-bottom:1px solid rgba(42,21,9,0.06);">
+          <span class="card-title" style="font-size:15px; margin:0;">🩺 Saúde do Furancho</span>
+          <span id="health-chip" style="font-size:12px; font-weight:800;">—</span>
+        </summary>
+        <div style="padding:16px 18px;">
+          <div id="health-body"><p style="font-size:12px; color:var(--text-muted); text-align:center; padding:10px 0;">Cargando…</p></div>
+          <button onclick="loadFuranchoHealth(true)" style="width:100%; padding:9px; margin-top:12px; background:rgba(42,21,9,0.05); border:1px solid rgba(42,21,9,0.12); border-radius:10px; font-size:12px; font-weight:800; color:var(--text-muted); cursor:pointer; font-family:'Outfit',sans-serif;">↻ Volver a calcular</button>
+        </div>
+      </details>
+
       <!-- 🚦 Semáforo antifraude $CORCHO -->
       <details class="glass-card" style="margin-bottom:20px; outline:none; -webkit-tap-highlight-color:transparent;" ontoggle="if(this.open) loadCorchoFraudCheck()">
         <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; outline:none; user-select:none; padding:14px 18px; border-bottom:1px solid rgba(42,21,9,0.06);">
@@ -4780,6 +4792,94 @@
     } catch (e) {
       console.error('Error cargando estadísticas del Banco do Corcho:', e);
     }
+  }
+
+  // ── Saúde do Furancho (control económico, solo admin) ───────────────────────
+  let _healthLoaded = false;
+  async function loadFuranchoHealth(force) {
+    if (_healthLoaded && !force) return;
+    _healthLoaded = true;
+    const chip = document.getElementById('health-chip');
+    const body = document.getElementById('health-body');
+    if (body) body.innerHTML = '<p style="font-size:12px; color:var(--text-muted); text-align:center; padding:10px 0;">Calculando…</p>';
+    try {
+      const d = await apiFetch('/api/admin/furancho-health').then(r => r.json());
+      if (d.error) { body.innerHTML = `<p style="color:var(--wine);">${d.error}</p>`; return; }
+
+      const eur = c => (c / 100).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+      const V = { green: { c: '#16a34a', bg: 'rgba(22,163,74,0.10)', bd: 'rgba(22,163,74,0.4)', dot: '🟢', txt: 'Economía sana' },
+                  amber: { c: '#c99700', bg: 'rgba(201,151,0,0.10)', bd: 'rgba(201,151,0,0.45)', dot: '🟡', txt: 'A vigilar' },
+                  red:   { c: '#c0392b', bg: 'rgba(192,57,43,0.09)', bd: 'rgba(192,57,43,0.45)', dot: '🔴', txt: 'Fuera de objetivo' } }[d.verdict];
+      chip.textContent = V.dot;
+
+      // Banner semáforo
+      let html = `<div style="background:${V.bg}; border:1.5px solid ${V.bd}; border-radius:14px; padding:14px 16px; text-align:center; margin-bottom:14px;">
+        <div style="font-size:26px;">${V.dot}</div>
+        <div style="font-size:15px; font-weight:900; color:${V.c}; margin:2px 0;">${V.txt}</div>
+        <div style="font-size:13px; color:var(--text);">Coste medio del $CORCHO canjeado: <strong style="color:${V.c};">${eur(d.weightedCostCents)}</strong> / evento</div>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Objetivo 🟢 ≤${eur(d.targetCents.greenMax)} · 🟡 ≤${eur(d.targetCents.amberMax)} · 🔴 más · media ponderada de las últimas ${d.perEvent.length} sesiones</div>
+      </div>`;
+
+      // Indicadores
+      const tile = (label, val, sub) => `<div style="background:#fff; border:1px solid rgba(42,21,9,0.08); border-radius:12px; padding:10px; text-align:center;">
+        <div style="font-family:'Playfair Display',serif; font-size:17px; font-weight:900; color:var(--wine);">${val}</div>
+        <div style="font-size:9px; font-weight:800; letter-spacing:.5px; text-transform:uppercase; color:var(--text-muted);">${label}</div>
+        ${sub ? `<div style="font-size:9.5px; color:var(--text-muted);">${sub}</div>` : ''}</div>`;
+      html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px;">
+        ${tile('$CORCHO vivos', Number(d.circulating).toLocaleString('es-ES'), 'en circulación')}
+        ${tile('Caducan pronto', Number(d.fifoSoon).toLocaleString('es-ES'), 'FIFO ≤14 días 🔥')}
+        ${tile('Emitido', Number(d.flow.issued).toLocaleString('es-ES'), 'últimas 8 sesiones')}
+        ${tile('Canjeado', Number(d.flow.redeemed).toLocaleString('es-ES'), (d.flow.burned?('quemado '+Number(d.flow.burned).toLocaleString('es-ES')):'últimas 8 sesiones'))}
+      </div>`;
+
+      // FIFO como freno natural
+      if (d.fifoSoon > 0) {
+        html += `<div style="background:rgba(196,151,58,0.08); border:1px solid rgba(196,151,58,0.3); border-radius:10px; padding:9px 12px; font-size:11.5px; color:var(--text-muted); margin-bottom:14px;">🔥 En ≤14 días caducarán <strong style="color:var(--wine);">${Number(d.fifoSoon).toLocaleString('es-ES')} $CORCHO</strong> por FIFO. Eso baja la presión solo — antes de tocar stock o precios, deja que el FIFO haga su trabajo.</div>`;
+      }
+
+      // Coste por evento (últimas 8)
+      const maxCost = Math.max(1, ...d.perEvent.map(e => e.prizeCostCents));
+      html += `<p style="font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--wine); margin:0 0 8px;">💶 Coste por evento (recientes primero)</p>`;
+      html += `<div style="display:flex; flex-direction:column; gap:5px; margin-bottom:16px;">` + d.perEvent.map(e => {
+        const over = e.prizeCostCents > d.targetCents.greenMax;
+        const pct = Math.round(e.prizeCostCents / maxCost * 100);
+        return `<div style="display:flex; align-items:center; gap:8px; font-size:11.5px;">
+          <span style="width:60px; flex-shrink:0; color:var(--text-muted);">${new Date(e.date+'T12:00:00').toLocaleDateString('es-ES',{day:'2-digit',month:'short'})}</span>
+          <div style="flex:1; background:rgba(42,21,9,0.05); border-radius:100px; height:14px; overflow:hidden;"><div style="width:${pct}%; height:100%; background:${over?'#c0392b':'#16a34a'};"></div></div>
+          <span style="width:74px; text-align:right; flex-shrink:0; font-weight:700; color:${over?'#c0392b':'var(--text)'};">${eur(e.prizeCostCents)}</span>
+        </div>`;
+      }).join('') + `</div>`;
+
+      // Editor de coste € por premio (el peso real de cada uno)
+      html += `<p style="font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--wine); margin:0 0 4px;">🏷️ Coste € de cada premio (para la barra)</p>
+        <p style="font-size:10.5px; color:var(--text-muted); margin:0 0 8px;">Lo que te cuesta a TI dar cada premio. Con esto el semáforo es exacto. Los caros son los que hay que vigilar por stock.</p>`;
+      if (d.missingCost.length) html += `<div style="background:rgba(201,151,0,0.1); border:1px solid rgba(201,151,0,0.4); border-radius:8px; padding:7px 10px; font-size:11px; color:#8a6a00; margin-bottom:8px;">⚠️ Sin coste definido: ${d.missingCost.join(', ')} — rellénalo abajo.</div>`;
+      html += `<div style="display:flex; flex-direction:column; gap:6px;">` + d.items.filter(i => i.active).map(i => `
+        <div style="display:flex; align-items:center; gap:8px; background:#fff; border:1px solid rgba(42,21,9,0.08); border-radius:10px; padding:7px 10px;">
+          <span style="flex:1; font-size:12.5px; font-weight:700; color:var(--text);">${i.emoji||''} ${i.name}</span>
+          <span style="font-size:10px; color:var(--text-muted);">${Number(i.price_corcho).toLocaleString('es-ES')} $CORCHO</span>
+          <input type="number" step="0.01" min="0" value="${i.cost_cents!=null?(i.cost_cents/100):''}" placeholder="€" id="hcost-${i.id}" style="width:64px; padding:5px 7px; font-size:12px; border:1.5px solid ${i.cost_cents==null?'#c99700':'rgba(42,21,9,0.15)'}; border-radius:8px; text-align:right;" />
+          <button onclick="saveItemCost(${i.id})" style="padding:5px 9px; background:var(--wine); color:#fff; border:none; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer;">✓</button>
+        </div>`).join('') + `</div>`;
+
+      body.innerHTML = html;
+    } catch (e) {
+      body.innerHTML = '<p style="font-size:12px; color:var(--wine);">Error al calcular.</p>';
+    }
+  }
+
+  async function saveItemCost(id) {
+    const input = document.getElementById('hcost-' + id);
+    if (!input) return;
+    try {
+      const r = await fetch('/api/admin/corcho-item-cost', {
+        method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, costEur: input.value })
+      });
+      const d = await r.json();
+      if (d.success) { input.style.borderColor = '#16a34a'; showToast('✅ Coste guardado'); loadFuranchoHealth(true); }
+      else showToast(d.error || 'Error', true);
+    } catch (e) { showToast('Error de red', true); }
   }
 
   // ── Semáforo antifraude $CORCHO ──────────────────────────────────────────────
