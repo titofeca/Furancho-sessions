@@ -1342,6 +1342,19 @@
         </div>
       </details>
 
+      <!-- 🚦 Semáforo antifraude $CORCHO -->
+      <details class="glass-card" style="margin-bottom:20px; outline:none; -webkit-tap-highlight-color:transparent;" ontoggle="if(this.open) loadCorchoFraudCheck()">
+        <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; outline:none; user-select:none; padding:14px 18px; border-bottom:1px solid rgba(42,21,9,0.06);">
+          <span class="card-title" style="font-size:15px; margin:0;">🚦 Semáforo antifraude $CORCHO</span>
+          <span id="fraud-summary-chips" style="display:flex; gap:5px; align-items:center;"></span>
+        </summary>
+        <div style="padding:16px 18px;">
+          <div id="fraud-legend" style="background:linear-gradient(135deg,rgba(196,151,58,0.08),rgba(139,25,24,0.04)); border:1px solid rgba(196,151,58,0.25); border-radius:12px; padding:12px 14px; margin-bottom:14px; font-size:11.5px; color:var(--text-muted); line-height:1.5;">Cargando…</div>
+          <button onclick="loadCorchoFraudCheck(true)" style="width:100%; padding:9px; margin-bottom:14px; background:rgba(42,21,9,0.05); border:1px solid rgba(42,21,9,0.12); border-radius:10px; font-size:12px; font-weight:800; color:var(--text-muted); cursor:pointer; font-family:'Outfit',sans-serif;">↻ Volver a comprobar</button>
+          <div id="fraud-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
+      </details>
+
 
 
       <!-- Crear logro NFT desde la app -->
@@ -4727,6 +4740,59 @@
       loadCorchoAdminPacks();
     } catch (e) {
       console.error('Error cargando estadísticas del Banco do Corcho:', e);
+    }
+  }
+
+  // ── Semáforo antifraude $CORCHO ──────────────────────────────────────────────
+  let _fraudLoaded = false;
+  async function loadCorchoFraudCheck(force) {
+    if (_fraudLoaded && !force) return;
+    _fraudLoaded = true;
+    const chips = document.getElementById('fraud-summary-chips');
+    const legend = document.getElementById('fraud-legend');
+    const list = document.getElementById('fraud-list');
+    if (list) list.innerHTML = '<p style="font-size:12px; color:var(--text-muted); text-align:center; padding:10px 0;">Comprobando…</p>';
+    try {
+      const d = await apiFetch('/api/admin/corcho/fraud-check').then(r => r.json());
+      if (d.error) { list.innerHTML = `<p style="color:var(--wine);">${d.error}</p>`; return; }
+
+      const pd = d.perDay;
+      legend.innerHTML = `<strong style="color:var(--wine);">¿Cuánto se gana por día?</strong> Fichar entrada <strong>+${pd.checkin}</strong> · fichar salida <strong>+${pd.exit}</strong> = <strong>${pd.maxNormalNight} $CORCHO</strong> por noche normal. Extra ocasional: subir de nivel (+${pd.level1}/${pd.level2}/${pd.level3}/${pd.level4}), referido (+${pd.referral}), visita de campaña (+${pd.campaignVisit}, solo días sin evento). Todo lo demás <strong>no</strong> debería sumar solo.`;
+
+      const s = d.summary;
+      const chip = (bg, txt) => `<span style="font-size:11px; font-weight:800; padding:2px 8px; border-radius:100px; background:${bg}; color:#fff;">${txt}</span>`;
+      chips.innerHTML =
+        (s.red ? chip('#c0392b', `🔴 ${s.red}`) : '') +
+        (s.amber ? chip('#c99700', `🟡 ${s.amber}`) : '') +
+        chip('#16a34a', `🟢 ${s.green}`);
+
+      const flagged = d.wallets.filter(w => w.verdict !== 'green');
+      let html = '';
+      if (!flagged.length) {
+        html = `<div style="text-align:center; padding:16px; background:rgba(22,163,74,0.08); border:1.5px solid rgba(22,163,74,0.3); border-radius:12px;">
+          <div style="font-size:30px;">🟢</div>
+          <p style="font-size:13px; font-weight:800; color:#15803d; margin:6px 0 2px;">Todo en orden</p>
+          <p style="font-size:11.5px; color:var(--text-muted); margin:0;">${s.green} carteras revisadas · ninguna ganó $CORCHO de forma no permitida.</p>
+        </div>`;
+      } else {
+        html = flagged.map(w => {
+          const red = w.verdict === 'red';
+          const bg = red ? 'rgba(192,57,43,0.07)' : 'rgba(201,151,0,0.08)';
+          const bd = red ? 'rgba(192,57,43,0.4)' : 'rgba(201,151,0,0.4)';
+          const dot = red ? '🔴' : '🟡';
+          const items = [...w.reasons, ...w.notes].map(t => `<li style="margin:2px 0;">${t}</li>`).join('');
+          return `<div onclick="openWalletDetail('${w.address}')" title="Ver ficha do socio" style="background:${bg}; border:1.5px solid ${bd}; border-radius:12px; padding:11px 13px; cursor:pointer;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+              <span style="font-weight:800; font-size:13px; color:var(--text);">${dot} <span style="font-family:monospace;">${w.walletMasked}</span></span>
+              <span style="font-family:monospace; font-size:12px; font-weight:800; color:var(--wine);">${Number(w.earned).toLocaleString()} $CORCHO</span>
+            </div>
+            <ul style="margin:6px 0 0; padding-left:18px; font-size:11px; color:${red ? '#a5281f' : '#8a6a00'}; line-height:1.4;">${items}</ul>
+          </div>`;
+        }).join('');
+      }
+      if (list) list.innerHTML = html;
+    } catch (e) {
+      if (list) list.innerHTML = '<p style="font-size:12px; color:var(--wine);">Error al comprobar.</p>';
     }
   }
 

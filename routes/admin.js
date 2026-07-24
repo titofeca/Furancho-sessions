@@ -1274,6 +1274,123 @@ router.get('/wallet-detail/:address', requireAuth, (req, res) => {
   }
 });
 
+// GET /api/admin/corcho/fraud-check — SEMÁFORO antifraude. Por cada cartera reconstruye
+// lo que DEBERÍA haber ganado desde su actividad real (visitas, sesiones cerradas,
+// niveles, referidos, visitas de campaña) y lo compara con lo que realmente se le
+// acreditó. Si le entró de más por algún tipo → 🔴; crédito manual del admin → 🟡;
+// todo cuadra → 🟢. Read-only. Los tipos que suman: checkin/exit/level_award/
+// campaign_visit/referral (automáticos idempotentes), admin_adjustment (manual),
+// buy_pack (compra validada). Cualquier otro tipo positivo = origen desconocido.
+router.get('/corcho/fraud-check', requireAuth, (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const corcho = require('../services/corcho');
+    const rates = corcho.getEconomySettings();
+
+    const mapOf = (rows, kKey = 'w', vKey = 'c') => {
+      const m = {}; rows.forEach(r => { m[r[kKey]] = r[vKey]; }); return m;
+    };
+
+    // Créditos (positivos) por cartera y tipo
+    const credits = db.prepare(`
+      SELECT LOWER(wallet_address) w, type, COUNT(*) c, SUM(amount) amt
+      FROM corcho_transactions WHERE amount > 0
+      GROUP BY LOWER(wallet_address), type
+    `).all();
+
+    // Recargas acreditadas SIN solicitud confirmada (monedas gratis)
+    const buyPackOrphans = mapOf(db.prepare(`
+      SELECT LOWER(t.wallet_address) w, COUNT(*) c FROM corcho_transactions t
+      WHERE t.type = 'buy_pack'
+        AND NOT EXISTS (SELECT 1 FROM corcho_pack_requests r WHERE 'packreq_' || r.id = t.reference_id AND r.status = 'confirmed')
+      GROUP BY LOWER(t.wallet_address)
+    `).all());
+
+    // Verdad de campo (actividad real). Las visitas viven en DOS tablas según el flujo
+    // (histórico en `visits`, actual en `sessions`), así que se unen las dos para no
+    // marcar en rojo una visita legítima que solo esté en una de ellas.
+    const visitDays = mapOf(db.prepare(`
+      SELECT w, COUNT(DISTINCT day) c FROM (
+        SELECT LOWER(wallet_address) w, date(entry_time) day FROM sessions WHERE counted_as_visit = 1
+        UNION
+        SELECT LOWER(wallet_address) w, COALESCE(event_date, date(visited_at)) day FROM visits
+      ) GROUP BY w
+    `).all());
+    const closedSessions = mapOf(db.prepare(`SELECT LOWER(wallet_address) w, COUNT(*) c FROM sessions WHERE counted_as_visit = 1 AND exit_time IS NOT NULL GROUP BY LOWER(wallet_address)`).all());
+    const levelMints = mapOf(db.prepare(`SELECT LOWER(wallet_address) w, COUNT(DISTINCT level) c FROM mints WHERE status = 'success' GROUP BY LOWER(wallet_address)`).all());
+    const asReferrer = mapOf(db.prepare(`SELECT LOWER(referrer_wallet) w, COUNT(*) c FROM referrals GROUP BY LOWER(referrer_wallet)`).all());
+    const referredSet = new Set(db.prepare(`SELECT DISTINCT LOWER(referred_wallet) w FROM referrals`).all().map(r => r.w));
+    let campaignVisits = {};
+    try { campaignVisits = mapOf(db.prepare(`SELECT LOWER(wallet_address) w, COUNT(*) c FROM campaign_visits GROUP BY LOWER(wallet_address)`).all()); } catch (_) {}
+
+    const KNOWN = new Set(['checkin', 'exit', 'level_award', 'campaign_visit', 'referral', 'admin_adjustment', 'buy_pack']);
+
+    // Agrupar créditos por cartera
+    const wallets = {};
+    credits.forEach(r => {
+      if (!wallets[r.w]) wallets[r.w] = { w: r.w, earned: 0, byType: {} };
+      wallets[r.w].byType[r.type] = { c: r.c, amt: r.amt };
+      wallets[r.w].earned += r.amt;
+    });
+
+    const out = [];
+    Object.values(wallets).forEach(x => {
+      const bt = x.byType;
+      const cnt = (t) => (bt[t] ? bt[t].c : 0);
+      const reasons = [];   // 🔴
+      const notes = [];     // 🟡
+
+      const checkinC = cnt('checkin'), exitC = cnt('exit'), levelC = cnt('level_award'), refC = cnt('referral'), campC = cnt('campaign_visit');
+      const vDays = visitDays[x.w] || 0, closed = closedSessions[x.w] || 0, lvls = levelMints[x.w] || 0;
+      const refCap = (asReferrer[x.w] || 0) + (referredSet.has(x.w) ? 1 : 0);
+      const campReal = campaignVisits[x.w] || 0;
+
+      if (checkinC > vDays) reasons.push(`${checkinC - vDays} fichaje(s) de entrada sin visita real (${checkinC} cobrados · ${vDays} visitas)`);
+      if (exitC > closed) reasons.push(`${exitC - closed} fichaje(s) de salida de más (${exitC} cobrados · ${closed} sesiones cerradas)`);
+      if (levelC > lvls) reasons.push(`${levelC - lvls} subida(s) de nivel cobradas sin lograrlas`);
+      if (refC > refCap) reasons.push(`${refC - refCap} recompensa(s) de referido sin referido real`);
+      if (campC > campReal) reasons.push(`${campC - campReal} visita(s) de campaña de más`);
+      if (buyPackOrphans[x.w]) reasons.push(`${buyPackOrphans[x.w]} recarga(s) acreditada(s) sin pago confirmado`);
+
+      Object.keys(bt).forEach(t => {
+        if (!KNOWN.has(t)) reasons.push(`crédito de origen desconocido: tipo "${t}" (${bt[t].c}×, +${bt[t].amt})`);
+      });
+
+      if (bt.admin_adjustment) notes.push(`Ajuste manual del admin: +${bt.admin_adjustment.amt} $CORCHO (${bt.admin_adjustment.c}×) — recuerda si lo hiciste tú`);
+
+      const verdict = reasons.length ? 'red' : (notes.length ? 'amber' : 'green');
+      out.push({
+        address: x.w,
+        walletMasked: `${x.w.slice(0, 6)}…${x.w.slice(-4)}`,
+        earned: x.earned,
+        verdict, reasons, notes
+      });
+    });
+
+    const order = { red: 0, amber: 1, green: 2 };
+    out.sort((a, b) => order[a.verdict] - order[b.verdict] || b.earned - a.earned);
+
+    res.json({
+      perDay: {
+        checkin: rates.checkin, exit: rates.exit,
+        level1: rates.level1, level2: rates.level2, level3: rates.level3, level4: rates.level4,
+        referral: rates.referral, campaignVisit: rates.campaignVisit,
+        maxNormalNight: (rates.checkin || 0) + (rates.exit || 0)
+      },
+      summary: {
+        total: out.length,
+        green: out.filter(w => w.verdict === 'green').length,
+        amber: out.filter(w => w.verdict === 'amber').length,
+        red: out.filter(w => w.verdict === 'red').length
+      },
+      wallets: out
+    });
+  } catch (e) {
+    console.error('Error en /corcho/fraud-check:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/admin/polygon-balance — saldo de la billetera que paga el gas de los mints
 router.get('/polygon-balance', requireAuth, async (_req, res) => {
   try {
