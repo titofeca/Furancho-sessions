@@ -1126,22 +1126,6 @@
         </div>
       </details>
 
-      <!-- Logros NFT especiales (Plegable) -->
-      <details class="glass-card" style="margin-bottom:20px; outline:none; -webkit-tap-highlight-color:transparent;">
-        <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; outline:none; user-select:none; padding:14px 18px; border-bottom:1px solid rgba(42,21,9,0.06);">
-          <span class="card-title" style="display:flex; align-items:center; gap:6px;">
-            🎟️ Logros NFT especiales 
-            <span id="summary-achievements-total" style="font-size:11px; font-weight:normal; color:var(--text-muted); margin-left:8px;">—</span>
-          </span>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <button class="btn-download" onclick="loadAchievementStats(); event.stopPropagation();" style="font-size:11px; padding:6px 12px;">↻</button>
-            <span style="font-size:12px; color:var(--text-muted); transition: transform 0.2s;" class="chevron">▼</span>
-          </div>
-        </summary>
-        <div id="achievement-stats-list" style="display:flex; flex-direction:column; gap:8px; padding:14px 18px;">
-          <p style="font-size:12px; color:var(--text-muted);">Cargando…</p>
-        </div>
-      </details>
 
       <!-- En el local ahora (Tal cual está, sin cambios) -->
       <div class="glass-card" style="margin-bottom:20px;">
@@ -1157,151 +1141,8 @@
         </div>
       </div>
 
-      <!-- Reto de los 5 — Campaña de verano -->
-      <div class="glass-card" id="campaign-admin-card" style="margin-bottom:20px;">
 
-        <div class="card-header" style="margin-bottom:12px;">
-          <span class="card-title">👑 Reto de los 5 — Campaña Verano</span>
-          <button class="btn-download" onclick="loadCampaignAdmin()" style="font-size:11px; padding:6px 12px;">↻</button>
-        </div>
-        <div id="campaign-admin-status" style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">Cargando…</div>
 
-        <!-- Stats -->
-        <div style="display:flex; gap:10px; margin-bottom:16px;">
-          <div style="flex:1; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px; padding:12px; text-align:center;">
-            <div style="font-family:'Playfair Display',serif; font-size:26px; font-weight:900; color:var(--wine);" id="camp-stat-participants">—</div>
-            <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">Participantes</div>
-          </div>
-          <div style="flex:1; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px; padding:12px; text-align:center;">
-            <div style="font-family:'Playfair Display',serif; font-size:26px; font-weight:900; color:var(--gold);" id="camp-stat-completed">—</div>
-            <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">Leyendas (5/5)</div>
-          </div>
-          <div style="flex:1; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px; padding:12px; text-align:center;">
-            <div style="font-family:'Playfair Display',serif; font-size:26px; font-weight:900; color:#f59e0b;" id="camp-stat-pending">—</div>
-            <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">Por aprobar</div>
-          </div>
-        </div>
-
-        <!-- Imagen del NFT Furancho Legend -->
-        <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
-          <div class="card-title" style="font-size:14px; margin-bottom:10px;">🎨 Imagen del NFT "Furancho Legend 2026"</div>
-          <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
-            <img id="campaign-nft-thumb" src="" alt="NFT Legend" style="width:80px; height:80px; border-radius:12px; object-fit:cover; border:1.5px solid rgba(42,21,9,0.15); background:#fff;" />
-            <div style="flex:1; min-width:200px;">
-              <label for="campaign-nft-input" style="display:inline-block; padding:10px 16px; background:rgba(196,151,58,0.14); border:1.5px solid var(--gold); border-radius:12px; color:#8B6914; font-weight:700; font-size:12px; cursor:pointer;">📁 Cambiar imagen del NFT</label>
-              <input type="file" id="campaign-nft-input" accept="image/*" style="display:none;" onchange="uploadCampaignNftImage(this)" />
-              <p style="font-size:11px; color:var(--text-muted); margin-top:6px; line-height:1.4;">JPG o PNG. La imagen se guarda en el volumen persistente y sobrevive a los deploys.</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Pendientes de aprobar (NFT) -->
-        <div style="margin-bottom:16px;">
-          <div class="card-title" style="font-size:14px; margin-bottom:8px;">🏅 NFTs pendientes de confirmar</div>
-          <div id="campaign-pending-list"><p style="font-size:12px; color:var(--text-muted);">—</p></div>
-        </div>
-
-        <!-- Editar Privilegios de Septiembre (+5 y +10 visitas) -->
-        <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
-          <div class="card-title" style="font-size:14px; margin-bottom:6px;">🎁 Privilegios al regresar en Septiembre (+5 y +10 visitas)</div>
-          <p style="font-size:11px; color:var(--text-muted); margin-bottom:12px; line-height:1.4;">Edita los beneficios que recibirán los clientes en septiembre (escribe 1 beneficio por línea):</p>
-          
-          <!-- +5 visitas -->
-          <div style="margin-bottom:10px;">
-            <label style="display:block; font-size:12px; font-weight:700; color:var(--wine); margin-bottom:4px;">🏅 Rango 5+ visitas (Veterano da Terraza):</label>
-            <textarea id="camp-perks-5" rows="3" class="input-field" style="width:100%; font-size:12px; resize:vertical; font-family:'Outfit',sans-serif; padding:8px 10px;" placeholder="Ej: NFT Furancho Legend 2026&#10;Descuento en la primera consumición"></textarea>
-          </div>
-
-          <!-- +10 visitas -->
-          <div style="margin-bottom:12px;">
-            <label style="display:block; font-size:12px; font-weight:700; color:var(--gold); margin-bottom:4px;">👑 Rango 10+ visitas (Presidente da Terraza):</label>
-            <textarea id="camp-perks-10" rows="3" class="input-field" style="width:100%; font-size:12px; resize:vertical; font-family:'Outfit',sans-serif; padding:8px 10px;" placeholder="Ej: Mesa VIP garantizada en el 1er Furancho&#10;Botella de albariño de bienvenida&#10;Mención especial en el tablón"></textarea>
-          </div>
-
-          <button onclick="saveCampaignPrivileges()" style="background:var(--wine); color:#fff; border:none; border-radius:10px; padding:9px 18px; font-size:12px; font-weight:700; cursor:pointer;">💾 Guardar Privilegios de Septiembre</button>
-        </div>
-
-        <!-- Ranking -->
-        <div>
-          <div class="card-title" style="font-size:14px; margin-bottom:8px;">📊 Ranking de visitas</div>
-          <div id="campaign-rank-list"><p style="font-size:12px; color:var(--text-muted);">—</p></div>
-        </div>
-      </div>
-
-      <!-- Crear logro NFT desde la app -->
-      <!-- Crear logro NFT desde la app (Plegable) -->
-      <details class="glass-card" style="margin-bottom:20px; outline:none; -webkit-tap-highlight-color:transparent;">
-        <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; outline:none; user-select:none; padding:14px 18px; border-bottom:1px solid rgba(42,21,9,0.06);">
-          <span class="card-title">✨ Crear logro NFT</span>
-          <span style="font-size:12px; color:var(--text-muted); transition: transform 0.2s;" class="chevron">▼</span>
-        </summary>
-        <div style="padding:14px 18px;">
-          <p style="font-size:11px; color:var(--text-muted); margin:0 0 12px; line-height:1.5;">Ediciones especiales (San Xoán, María Pita…) o premios de sorteo (Chave Dourada). Crearlas NO gasta gas.</p>
-          <p style="font-size:11px; color:var(--text-muted); margin:0 0 16px; padding:11px; background:var(--bg); border:1px solid rgba(42,21,9,0.08); border-radius:10px; line-height:1.5;">👁 En cada logro de abajo decides si los clientes lo ven <strong>sombreado antes de conseguirlo</strong>. Desmárcalo para ocultarlo hasta que lo consigan.</p>
-
-          <input type="text" class="input-field" id="ach-name" placeholder="Nombre (ej: Furancheiro de María Pita)" style="margin-bottom:8px; font-size:14px;" />
-          <textarea class="input-field" id="ach-description" placeholder="Descripción (ej: Edición especial por asistir a la sesión de María Pita)" rows="2" style="font-size:13px; resize:vertical; font-family:'Outfit',sans-serif; margin-bottom:8px;"></textarea>
-
-          <div style="margin-bottom:10px; padding:10px; background:var(--bg); border:1px solid rgba(42,21,9,0.08); border-radius:10px;">
-            <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:6px;">🔓 Cómo se otorga</label>
-            <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; margin-bottom:6px; cursor:pointer;">
-              <input type="radio" name="ach-rule-type" value="visit_on_date" checked onchange="toggleAchRuleType()" />
-              <span><strong>Asistencia a fecha</strong> · el cliente lo reclama desde su museo si fichó ese día</span>
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; margin-bottom:6px; cursor:pointer;">
-              <input type="radio" name="ach-rule-type" value="raffle_only" onchange="toggleAchRuleType()" />
-              <span><strong>Solo premio de sorteo</strong> · lo entrega el camarero en persona (Chave Dourada, etc.)</span>
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; margin-bottom:6px; cursor:pointer;">
-              <input type="radio" name="ach-rule-type" value="campaign_visits" onchange="toggleAchRuleType()" />
-              <span><strong>Campaña (Reto de los 5)</strong> · requiere acumular N visitas de campaña</span>
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; margin-bottom:6px; cursor:pointer;">
-              <input type="radio" name="ach-rule-type" value="vip_bookings" onchange="toggleAchRuleType()" />
-              <span><strong>Reservas VIP</strong> · requiere acumular N reservas VIP confirmadas</span>
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer;">
-              <input type="radio" name="ach-rule-type" value="referrals" onchange="toggleAchRuleType()" />
-              <span><strong>Recomendaciones (Plan Amigo)</strong> · requiere que N amigos recomendados asistan</span>
-            </label>
-          </div>
-
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
-            <div>
-              <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">🏷️ Edición</label>
-              <input type="text" class="input-field" id="ach-edition" placeholder="Ej: María Pita 2026" style="margin:0; font-size:13px;" />
-            </div>
-            <div id="ach-rule-date-wrap">
-              <label id="ach-rule-date-label" style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">📅 Fecha de desbloqueo</label>
-              <input type="date" class="input-field" id="ach-rule-date" style="margin:0; font-size:13px;" />
-            </div>
-          </div>
-          <p id="ach-rule-hint" style="font-size:10px; color:var(--text-muted); margin:0 0 8px; line-height:1.4;">Quien haya fichado entrada ESE día podrá reclamar el logro desde su museo.</p>
-
-          <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:5px;">🖼️ Imagen del logro (el propio NFT)</label>
-          <label for="ach-image-input" style="display:block; background:var(--surface); border:1.5px dashed var(--border); border-radius:12px; padding:9px 16px; font-size:12px; color:var(--text-muted); cursor:pointer; text-align:center;">📁 Seleccionar imagen (JPG, PNG o webp)</label>
-          <input type="file" id="ach-image-input" accept="image/*" style="display:none;" onchange="uploadAchievementImage(this)" />
-          <input type="hidden" id="ach-image-url" />
-          <div id="ach-image-preview" style="display:none; margin-top:6px; text-align:center;"><img id="ach-image-thumb" style="max-height:80px; border-radius:10px; border:1px solid var(--border);" /></div>
-
-          <button id="ach-submit-btn" onclick="createAchievement(this)" style="width:100%; margin-top:12px; padding:12px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:12px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer;">✨ Crear logro</button>
-          <button id="ach-cancel-edit-btn" onclick="clearAchievementForm()" style="display:none; width:100%; margin-top:8px; padding:9px; background:transparent; color:var(--text-muted); border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; font-family:'Outfit',sans-serif; font-size:12px; font-weight:700; cursor:pointer;">Cancelar edición</button>
-        </div>
-      </details>
-
-      <!-- Logros existentes (Plegable) -->
-      <details class="glass-card" style="margin-bottom:20px; outline:none; -webkit-tap-highlight-color:transparent;">
-        <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; outline:none; user-select:none; padding:14px 18px; border-bottom:1px solid rgba(42,21,9,0.06);">
-          <span class="card-title">📦 Logros existentes</span>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <button class="btn-download" onclick="loadAchievementManager(); event.stopPropagation();" style="font-size:11px; padding:6px 12px;">↻</button>
-            <span style="font-size:12px; color:var(--text-muted); transition: transform 0.2s;" class="chevron">▼</span>
-          </div>
-        </summary>
-        <div style="padding:14px 18px;">
-          <div id="ach-manager-list"><p style="font-size:12px; color:var(--text-muted);">Cargando…</p></div>
-        </div>
-      </details>
 
       <!-- Gráfica de entradas por hora (tiempo real) -->
       <div class="glass-card" style="margin-bottom:20px;" id="hourly-chart-card">
@@ -1388,21 +1229,6 @@
         </div>
       </div>
 
-      <!-- Por fecha -->
-      <div class="glass-card">
-        <div class="card-header">
-          <span class="card-title">NFTs por fecha de evento</span>
-        </div>
-        <div style="overflow-x: auto;">
-          <table>
-            <thead>
-              <tr><th>Fecha</th><th>NFTs minteados</th></tr>
-            </thead>
-            <tbody id="bydate-tbody"></tbody>
-          </table>
-        </div>
-      </div>
-
       <!-- TEST SORTEO (temporal — borrar tras el jueves) -->
     </div>
 
@@ -1422,7 +1248,6 @@
       <div class="subpage-tabs" style="margin-bottom: 20px;">
         <button class="subpage-tab active" id="subtab-metrics" onclick="switchSubPage('metrics', this)">📊 Métricas y Afluencia</button>
         <button class="subpage-tab" id="subtab-clients" onclick="switchSubPage('clients', this)">👥 Listado y Segmentos</button>
-        <button class="subpage-tab" id="subtab-nfts" onclick="switchSubPage('nfts', this)">🏅 NFTs Polygon</button>
         <button class="subpage-tab" id="subtab-referrals" onclick="switchSubPage('referrals', this)">🔗 Recomendados</button>
         <button class="subpage-tab" id="subtab-report" onclick="switchSubPage('report', this)">🖨️ Informes</button>
       </div>
@@ -1679,144 +1504,6 @@
 
       </div>
 
-      <!-- SUBPÁGINA 3: NFTs POLYGON -->
-      <div id="subpage-nfts" class="subpage-panel">
-
-        <!-- Acceso a gestión de mints: aprobar pendientes + minteo manual -->
-        <button onclick="showPage('nfts')" style="width:100%; margin-bottom:16px; background:linear-gradient(135deg,var(--wine),var(--wine-dark,#6e1413)); color:#fff; border:none; border-radius:14px; padding:14px 16px; font-size:14px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; display:flex; align-items:center; justify-content:center; gap:8px;">
-          🎖️ Aprobar NFTs y Minteo manual →
-        </button>
-
-        <!-- Resumen NFTs -->
-        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:16px;">
-          <div style="background:var(--surface); border-radius:14px; padding:14px; text-align:center; border:1px solid var(--border);">
-            <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700; margin-bottom:4px;">NFTs minteados</div>
-            <div id="nft-total-count" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:var(--wine);">—</div>
-          </div>
-          <div style="background:var(--surface); border-radius:14px; padding:14px; text-align:center; border:1px solid var(--border);">
-            <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700; margin-bottom:4px;">En blockchain real</div>
-            <div id="nft-real-count" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:#4ade80;">—</div>
-          </div>
-          <div style="background:var(--surface); border-radius:14px; padding:14px; text-align:center; border:1px solid var(--border); grid-column:span 2;">
-            <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700; margin-bottom:4px;">💸 Gasto total en minteo</div>
-            <div id="nft-cost-total" style="font-size:22px; font-weight:900; font-family:'Playfair Display',serif; color:var(--gold);">—</div>
-          </div>
-        </div>
-
-        <!-- Info del contrato -->
-        <div class="glass-card" style="margin-bottom:16px;">
-          <div class="card-title" style="margin-bottom:12px;">📄 Contrato en Polygon</div>
-          <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">Dirección del contrato:</div>
-          <div style="font-size:11px; font-family:monospace; background:rgba(42,21,9,0.05); padding:10px 12px; border-radius:10px; word-break:break-all; margin-bottom:10px;" id="nft-contract-addr">—</div>
-          <a id="nft-polygonscan-link" href="#" target="_blank" style="display:inline-block; font-size:12px; color:var(--wine); font-weight:600; text-decoration:none;">🔍 Ver en PolygonScan →</a>
-        </div>
-
-        <!-- ─── TIENDA DEL MEME (token 50) ───────────────────────────────── -->
-        <!-- El meme es el ÚNICO NFT que se vende. Las 300 unidades NO se editan
-             desde aquí a propósito: el número vive en services/memeShop.js y lo
-             blinda un trigger de la base de datos. -->
-        <div class="glass-card" style="margin-bottom:16px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <div class="card-title">🎭 Tienda do Meme</div>
-            <div id="meme-vip-counter" style="font-size:12px; font-weight:700; color:var(--wine); background:rgba(139,25,24,0.1); padding:4px 8px; border-radius:8px;">— / 300</div>
-          </div>
-          <div style="display:flex; gap:8px; margin-bottom:12px;">
-            <div style="flex:1; background:rgba(42,21,9,0.04); border-radius:12px; padding:10px; text-align:center;">
-              <div id="meme-left" style="font-size:20px; font-weight:900; color:var(--wine);">—</div>
-              <div style="font-size:10px; color:var(--text-muted);">sin vender</div>
-            </div>
-            <div style="flex:1; background:rgba(42,21,9,0.04); border-radius:12px; padding:10px; text-align:center;">
-              <div id="meme-revenue" style="font-size:20px; font-weight:900; color:var(--wine);">—</div>
-              <div style="font-size:10px; color:var(--text-muted);">recaudado</div>
-            </div>
-            <div style="flex:1; background:rgba(42,21,9,0.04); border-radius:12px; padding:10px; text-align:center;">
-              <div id="meme-pending-count" style="font-size:20px; font-weight:900; color:var(--wine);">—</div>
-              <div style="font-size:10px; color:var(--text-muted);">por entregar</div>
-            </div>
-          </div>
-          <div style="font-size:11px; color:var(--text-muted); background:rgba(212,175,55,0.10); border:1px solid rgba(212,175,55,0.35); border-radius:10px; padding:9px 11px; line-height:1.5; margin-bottom:14px;">
-            🔒 <strong>300 memes y ni uno más.</strong> Es una decisión cerrada: no hay ningún sitio —tampoco aquí— donde cambiar ese número. La escasez es lo que le da valor.
-          </div>
-
-          <!-- Precio -->
-          <div style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">💶 Precio y Pago</div>
-          <div style="display:flex; gap:8px; margin-bottom:8px;">
-            <div style="flex:1;">
-              <label style="font-size:10px; color:var(--text-muted);">Precio (€)</label>
-              <input type="text" inputmode="decimal" id="meme-price" placeholder="25" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); box-sizing:border-box;" />
-            </div>
-            <div style="flex:1;">
-              <label style="font-size:10px; color:var(--wine); font-weight:700;">Precio ($CORCHO)</label>
-              <input type="text" inputmode="numeric" id="meme-price-corcho" placeholder="500" style="width:100%; padding:10px; border-radius:10px; border:1.5px solid var(--gold); box-sizing:border-box;" />
-            </div>
-            <div style="flex:1;">
-              <label style="font-size:10px; color:var(--text-muted);">× por meme extra</label>
-              <input type="text" inputmode="decimal" id="meme-mult" placeholder="2" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); box-sizing:border-box;" />
-            </div>
-          </div>
-
-          <div id="meme-price-preview" style="font-size:11px; color:var(--text-muted); margin-bottom:8px;"></div>
-          <input type="text" id="meme-note" placeholder="Nota para el cliente (opcional): 'pregunta en la barra'…" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); margin-bottom:8px; font-size:12px; box-sizing:border-box;" />
-          <label style="display:flex; align-items:center; gap:8px; font-size:12px; margin-bottom:10px; cursor:pointer;">
-            <input type="checkbox" id="meme-open" /> <span>Venta abierta (el cliente ve el botón de comprar)</span>
-          </label>
-          <button onclick="saveMemeConfig()" style="width:100%; padding:11px; background:var(--wine); color:#fff; border:none; border-radius:12px; font-weight:700; cursor:pointer; margin-bottom:16px;">Guardar precio y venta</button>
-
-          <!-- Qué incluye -->
-          <div style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:4px;">🎁 Qué incluye el meme</div>
-          <p style="font-size:11px; color:var(--text-muted); margin-bottom:8px; line-height:1.4;">Lo que añadas aquí se le da al cliente al comprar. Cambiarlo <strong>no afecta a los memes ya vendidos</strong> (cada venta guarda su foto fija).</p>
-          <div id="meme-perks-list" style="margin-bottom:8px;"></div>
-          <div style="display:flex; gap:6px; margin-bottom:6px;">
-            <input type="text" id="perk-emoji" placeholder="👕" maxlength="4" style="width:52px; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); text-align:center; box-sizing:border-box;" />
-            <input type="text" id="perk-label" placeholder="Camiseta do Furancho" style="flex:3; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); font-size:12px; box-sizing:border-box;" />
-            <input type="number" id="perk-qty" value="1" min="1" style="width:60px; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); text-align:center; box-sizing:border-box;" />
-          </div>
-          <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px;">
-            <select id="perk-kind" style="flex:1 1 180px; min-width:0; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); font-size:12px; box-sizing:border-box;">
-              <option value="consumible">Se consume en el local (tapas, viño…)</option>
-              <option value="entrega">Artículo físico (camiseta…) — puede quedar pendiente</option>
-            </select>
-            <button onclick="addMemePerk()" style="flex:0 0 auto; padding:10px 16px; background:var(--wine); color:#fff; border:none; border-radius:10px; font-weight:700; cursor:pointer; white-space:nowrap;">+ Añadir</button>
-          </div>
-
-          <!-- Solicitudes del cliente -->
-          <div style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">🙋 Quieren comprarlo <span id="meme-req-badge" style="background:var(--wine); color:#fff; border-radius:8px; padding:1px 7px; font-size:11px; display:none;">0</span></div>
-          <div id="meme-requests" style="margin-bottom:16px;"></div>
-
-          <!-- Venta directa -->
-          <div style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">🤝 Vender ahora (ya cobrado)</div>
-          <input type="text" id="meme-vip-wallet" placeholder="0x… (ID de socio del cliente)" style="width:100%; padding:12px; border-radius:12px; border:1px solid rgba(42,21,9,0.15); margin-bottom:8px; font-family:monospace; font-size:12px; box-sizing:border-box;" />
-          <div id="meme-wallet-hint" style="font-size:11px; color:var(--text-muted); margin-bottom:8px;"></div>
-          <div style="display:flex; gap:8px; margin-bottom:8px;">
-            <button onclick="startMemeVipScan()" style="flex:1; padding:12px; background:rgba(42,21,9,0.06); border:1px solid rgba(42,21,9,0.12); border-radius:12px; cursor:pointer; font-size:18px;">📷</button>
-            <button onclick="submitMintMemeVip()" style="flex:4; padding:12px; background:linear-gradient(135deg,var(--gold),#a47d2c); color:#fff; border:none; border-radius:12px; font-weight:700; cursor:pointer;">Vender meme</button>
-          </div>
-          <button onclick="submitMintMemeVip(true)" style="width:100%; padding:10px; background:transparent; border:1px dashed rgba(42,21,9,0.25); border-radius:12px; font-size:12px; cursor:pointer; color:var(--text-muted);">🎁 Regalar meme (sin cobrar, sin extras)</button>
-          <div id="meme-vip-scanner-container" style="display:none; margin-top:10px; border-radius:12px; overflow:hidden; border:2px solid var(--gold);"></div>
-        </div>
-
-        <!-- PENDIENTES DE ENTREGA -->
-        <div class="glass-card" style="margin-bottom:16px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-            <div class="card-title">📦 Pendiente de dar</div>
-            <button onclick="loadMemeShop()" style="background:transparent; border:none; cursor:pointer; font-size:16px;">🔄</button>
-          </div>
-          <p style="font-size:11px; color:var(--text-muted); margin-bottom:12px; line-height:1.4;">Lo que incluye cada meme vendido y aún no se ha dado. Pulsa ✓ cada vez que entregues una unidad; si te equivocas, ↺ lo deshace. Cuando se agota todo, al cliente le queda el meme y ya está.</p>
-          <div id="meme-pending-list"></div>
-        </div>
-
-
-        <!-- Historial de mints -->
-        <div class="glass-card">
-          <div class="card-header" style="margin-bottom:12px;">
-            <span class="card-title">📋 Historial de NFTs minteados</span>
-          </div>
-          <p style="font-size:13px; color:var(--text-muted); margin:0 0 14px;">Todos los NFTs entregados a clientes en la blockchain de Polygon. Los mints son automáticos al alcanzar el nivel.</p>
-          <div id="nfts-history-list" style="display:flex; flex-direction:column; gap:8px;">
-            <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Cargando...</div>
-          </div>
-        </div>
-      </div>
 
       <!-- SUBPÁGINA 5: RECOMENDADOS (REFERIDOS) -->
       <div id="subpage-referrals" class="subpage-panel">
@@ -3110,13 +2797,204 @@
 
     </div>
 
-    <!-- ==================== NFTs ==================== -->
+    <!-- ==================== NFTs & LOGROS ==================== -->
     <div class="page" id="page-nfts">
       <div class="page-header">
-        <button onclick="showPage('dashboard')" style="background:none; border:none; color:var(--wine); font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; padding:0; margin-bottom:8px;">← Volver al panel</button>
-        <h1 class="page-title">🏅 NFTs</h1>
-        <p class="page-subtitle">Gestiona los mints de Polygon — aprueba o rechaza antes de que vayan a blockchain</p>
+        <h1 class="page-title">🏅 NFTs & Logros</h1>
+        <p class="page-subtitle">Logros, minteo Polygon, campaña y tienda del meme</p>
       </div>
+
+      <!-- Logros NFT especiales (Plegable) -->
+      <details class="glass-card" style="margin-bottom:20px; outline:none; -webkit-tap-highlight-color:transparent;">
+        <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; outline:none; user-select:none; padding:14px 18px; border-bottom:1px solid rgba(42,21,9,0.06);">
+          <span class="card-title" style="display:flex; align-items:center; gap:6px;">
+            🎟️ Logros NFT especiales 
+            <span id="summary-achievements-total" style="font-size:11px; font-weight:normal; color:var(--text-muted); margin-left:8px;">—</span>
+          </span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="btn-download" onclick="loadAchievementStats(); event.stopPropagation();" style="font-size:11px; padding:6px 12px;">↻</button>
+            <span style="font-size:12px; color:var(--text-muted); transition: transform 0.2s;" class="chevron">▼</span>
+          </div>
+        </summary>
+        <div id="achievement-stats-list" style="display:flex; flex-direction:column; gap:8px; padding:14px 18px;">
+          <p style="font-size:12px; color:var(--text-muted);">Cargando…</p>
+        </div>
+      </details>
+
+
+      <!-- Reto de los 5 — Campaña de verano -->
+      <div class="glass-card" id="campaign-admin-card" style="margin-bottom:20px;">
+
+        <div class="card-header" style="margin-bottom:12px;">
+          <span class="card-title">👑 Reto de los 5 — Campaña Verano</span>
+          <button class="btn-download" onclick="loadCampaignAdmin()" style="font-size:11px; padding:6px 12px;">↻</button>
+        </div>
+        <div id="campaign-admin-status" style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">Cargando…</div>
+
+        <!-- Stats -->
+        <div style="display:flex; gap:10px; margin-bottom:16px;">
+          <div style="flex:1; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px; padding:12px; text-align:center;">
+            <div style="font-family:'Playfair Display',serif; font-size:26px; font-weight:900; color:var(--wine);" id="camp-stat-participants">—</div>
+            <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">Participantes</div>
+          </div>
+          <div style="flex:1; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px; padding:12px; text-align:center;">
+            <div style="font-family:'Playfair Display',serif; font-size:26px; font-weight:900; color:var(--gold);" id="camp-stat-completed">—</div>
+            <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">Leyendas (5/5)</div>
+          </div>
+          <div style="flex:1; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px; padding:12px; text-align:center;">
+            <div style="font-family:'Playfair Display',serif; font-size:26px; font-weight:900; color:#f59e0b;" id="camp-stat-pending">—</div>
+            <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">Por aprobar</div>
+          </div>
+        </div>
+
+        <!-- Imagen del NFT Furancho Legend -->
+        <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
+          <div class="card-title" style="font-size:14px; margin-bottom:10px;">🎨 Imagen del NFT "Furancho Legend 2026"</div>
+          <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+            <img id="campaign-nft-thumb" src="" alt="NFT Legend" style="width:80px; height:80px; border-radius:12px; object-fit:cover; border:1.5px solid rgba(42,21,9,0.15); background:#fff;" />
+            <div style="flex:1; min-width:200px;">
+              <label for="campaign-nft-input" style="display:inline-block; padding:10px 16px; background:rgba(196,151,58,0.14); border:1.5px solid var(--gold); border-radius:12px; color:#8B6914; font-weight:700; font-size:12px; cursor:pointer;">📁 Cambiar imagen del NFT</label>
+              <input type="file" id="campaign-nft-input" accept="image/*" style="display:none;" onchange="uploadCampaignNftImage(this)" />
+              <p style="font-size:11px; color:var(--text-muted); margin-top:6px; line-height:1.4;">JPG o PNG. La imagen se guarda en el volumen persistente y sobrevive a los deploys.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pendientes de aprobar (NFT) -->
+        <div style="margin-bottom:16px;">
+          <div class="card-title" style="font-size:14px; margin-bottom:8px;">🏅 NFTs pendientes de confirmar</div>
+          <div id="campaign-pending-list"><p style="font-size:12px; color:var(--text-muted);">—</p></div>
+        </div>
+
+        <!-- Editar Privilegios de Septiembre (+5 y +10 visitas) -->
+        <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
+          <div class="card-title" style="font-size:14px; margin-bottom:6px;">🎁 Privilegios al regresar en Septiembre (+5 y +10 visitas)</div>
+          <p style="font-size:11px; color:var(--text-muted); margin-bottom:12px; line-height:1.4;">Edita los beneficios que recibirán los clientes en septiembre (escribe 1 beneficio por línea):</p>
+          
+          <!-- +5 visitas -->
+          <div style="margin-bottom:10px;">
+            <label style="display:block; font-size:12px; font-weight:700; color:var(--wine); margin-bottom:4px;">🏅 Rango 5+ visitas (Veterano da Terraza):</label>
+            <textarea id="camp-perks-5" rows="3" class="input-field" style="width:100%; font-size:12px; resize:vertical; font-family:'Outfit',sans-serif; padding:8px 10px;" placeholder="Ej: NFT Furancho Legend 2026&#10;Descuento en la primera consumición"></textarea>
+          </div>
+
+          <!-- +10 visitas -->
+          <div style="margin-bottom:12px;">
+            <label style="display:block; font-size:12px; font-weight:700; color:var(--gold); margin-bottom:4px;">👑 Rango 10+ visitas (Presidente da Terraza):</label>
+            <textarea id="camp-perks-10" rows="3" class="input-field" style="width:100%; font-size:12px; resize:vertical; font-family:'Outfit',sans-serif; padding:8px 10px;" placeholder="Ej: Mesa VIP garantizada en el 1er Furancho&#10;Botella de albariño de bienvenida&#10;Mención especial en el tablón"></textarea>
+          </div>
+
+          <button onclick="saveCampaignPrivileges()" style="background:var(--wine); color:#fff; border:none; border-radius:10px; padding:9px 18px; font-size:12px; font-weight:700; cursor:pointer;">💾 Guardar Privilegios de Septiembre</button>
+        </div>
+
+        <!-- Ranking -->
+        <div>
+          <div class="card-title" style="font-size:14px; margin-bottom:8px;">📊 Ranking de visitas</div>
+          <div id="campaign-rank-list"><p style="font-size:12px; color:var(--text-muted);">—</p></div>
+        </div>
+      </div>
+
+
+      <!-- Crear logro NFT desde la app -->
+      <!-- Crear logro NFT desde la app (Plegable) -->
+      <details class="glass-card" style="margin-bottom:20px; outline:none; -webkit-tap-highlight-color:transparent;">
+        <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; outline:none; user-select:none; padding:14px 18px; border-bottom:1px solid rgba(42,21,9,0.06);">
+          <span class="card-title">✨ Crear logro NFT</span>
+          <span style="font-size:12px; color:var(--text-muted); transition: transform 0.2s;" class="chevron">▼</span>
+        </summary>
+        <div style="padding:14px 18px;">
+          <p style="font-size:11px; color:var(--text-muted); margin:0 0 12px; line-height:1.5;">Ediciones especiales (San Xoán, María Pita…) o premios de sorteo (Chave Dourada). Crearlas NO gasta gas.</p>
+          <p style="font-size:11px; color:var(--text-muted); margin:0 0 16px; padding:11px; background:var(--bg); border:1px solid rgba(42,21,9,0.08); border-radius:10px; line-height:1.5;">👁 En cada logro de abajo decides si los clientes lo ven <strong>sombreado antes de conseguirlo</strong>. Desmárcalo para ocultarlo hasta que lo consigan.</p>
+
+          <input type="text" class="input-field" id="ach-name" placeholder="Nombre (ej: Furancheiro de María Pita)" style="margin-bottom:8px; font-size:14px;" />
+          <textarea class="input-field" id="ach-description" placeholder="Descripción (ej: Edición especial por asistir a la sesión de María Pita)" rows="2" style="font-size:13px; resize:vertical; font-family:'Outfit',sans-serif; margin-bottom:8px;"></textarea>
+
+          <div style="margin-bottom:10px; padding:10px; background:var(--bg); border:1px solid rgba(42,21,9,0.08); border-radius:10px;">
+            <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:6px;">🔓 Cómo se otorga</label>
+            <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; margin-bottom:6px; cursor:pointer;">
+              <input type="radio" name="ach-rule-type" value="visit_on_date" checked onchange="toggleAchRuleType()" />
+              <span><strong>Asistencia a fecha</strong> · el cliente lo reclama desde su museo si fichó ese día</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; margin-bottom:6px; cursor:pointer;">
+              <input type="radio" name="ach-rule-type" value="raffle_only" onchange="toggleAchRuleType()" />
+              <span><strong>Solo premio de sorteo</strong> · lo entrega el camarero en persona (Chave Dourada, etc.)</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; margin-bottom:6px; cursor:pointer;">
+              <input type="radio" name="ach-rule-type" value="campaign_visits" onchange="toggleAchRuleType()" />
+              <span><strong>Campaña (Reto de los 5)</strong> · requiere acumular N visitas de campaña</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; margin-bottom:6px; cursor:pointer;">
+              <input type="radio" name="ach-rule-type" value="vip_bookings" onchange="toggleAchRuleType()" />
+              <span><strong>Reservas VIP</strong> · requiere acumular N reservas VIP confirmadas</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer;">
+              <input type="radio" name="ach-rule-type" value="referrals" onchange="toggleAchRuleType()" />
+              <span><strong>Recomendaciones (Plan Amigo)</strong> · requiere que N amigos recomendados asistan</span>
+            </label>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
+            <div>
+              <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">🏷️ Edición</label>
+              <input type="text" class="input-field" id="ach-edition" placeholder="Ej: María Pita 2026" style="margin:0; font-size:13px;" />
+            </div>
+            <div id="ach-rule-date-wrap">
+              <label id="ach-rule-date-label" style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">📅 Fecha de desbloqueo</label>
+              <input type="date" class="input-field" id="ach-rule-date" style="margin:0; font-size:13px;" />
+            </div>
+          </div>
+          <p id="ach-rule-hint" style="font-size:10px; color:var(--text-muted); margin:0 0 8px; line-height:1.4;">Quien haya fichado entrada ESE día podrá reclamar el logro desde su museo.</p>
+
+          <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:5px;">🖼️ Imagen del logro (el propio NFT)</label>
+          <label for="ach-image-input" style="display:block; background:var(--surface); border:1.5px dashed var(--border); border-radius:12px; padding:9px 16px; font-size:12px; color:var(--text-muted); cursor:pointer; text-align:center;">📁 Seleccionar imagen (JPG, PNG o webp)</label>
+          <input type="file" id="ach-image-input" accept="image/*" style="display:none;" onchange="uploadAchievementImage(this)" />
+          <input type="hidden" id="ach-image-url" />
+          <div id="ach-image-preview" style="display:none; margin-top:6px; text-align:center;"><img id="ach-image-thumb" style="max-height:80px; border-radius:10px; border:1px solid var(--border);" /></div>
+
+          <button id="ach-submit-btn" onclick="createAchievement(this)" style="width:100%; margin-top:12px; padding:12px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:12px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer;">✨ Crear logro</button>
+          <button id="ach-cancel-edit-btn" onclick="clearAchievementForm()" style="display:none; width:100%; margin-top:8px; padding:9px; background:transparent; color:var(--text-muted); border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; font-family:'Outfit',sans-serif; font-size:12px; font-weight:700; cursor:pointer;">Cancelar edición</button>
+        </div>
+      </details>
+
+
+      <!-- Logros existentes (Plegable) -->
+      <details class="glass-card" style="margin-bottom:20px; outline:none; -webkit-tap-highlight-color:transparent;">
+        <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; outline:none; user-select:none; padding:14px 18px; border-bottom:1px solid rgba(42,21,9,0.06);">
+          <span class="card-title">📦 Logros existentes</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="btn-download" onclick="loadAchievementManager(); event.stopPropagation();" style="font-size:11px; padding:6px 12px;">↻</button>
+            <span style="font-size:12px; color:var(--text-muted); transition: transform 0.2s;" class="chevron">▼</span>
+          </div>
+        </summary>
+        <div style="padding:14px 18px;">
+          <div id="ach-manager-list"><p style="font-size:12px; color:var(--text-muted);">Cargando…</p></div>
+        </div>
+      </details>
+
+
+      <!-- ─── POLYGON: resumen, gas, operaciones ─── -->
+      <!-- Resumen NFTs -->
+        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:16px;">
+          <div style="background:var(--surface); border-radius:14px; padding:14px; text-align:center; border:1px solid var(--border);">
+            <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700; margin-bottom:4px;">NFTs minteados</div>
+            <div id="nft-total-count" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:var(--wine);">—</div>
+          </div>
+          <div style="background:var(--surface); border-radius:14px; padding:14px; text-align:center; border:1px solid var(--border);">
+            <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700; margin-bottom:4px;">En blockchain real</div>
+            <div id="nft-real-count" style="font-size:28px; font-weight:900; font-family:'Playfair Display',serif; color:#4ade80;">—</div>
+          </div>
+          <div style="background:var(--surface); border-radius:14px; padding:14px; text-align:center; border:1px solid var(--border); grid-column:span 2;">
+            <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700; margin-bottom:4px;">💸 Gasto total en minteo</div>
+            <div id="nft-cost-total" style="font-size:22px; font-weight:900; font-family:'Playfair Display',serif; color:var(--gold);">—</div>
+          </div>
+        </div>
+
+      <!-- Info del contrato -->
+        <div class="glass-card" style="margin-bottom:16px;">
+          <div class="card-title" style="margin-bottom:12px;">📄 Contrato en Polygon</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">Dirección del contrato:</div>
+          <div style="font-size:11px; font-family:monospace; background:rgba(42,21,9,0.05); padding:10px 12px; border-radius:10px; word-break:break-all; margin-bottom:10px;" id="nft-contract-addr">—</div>
+          <a id="nft-polygonscan-link" href="#" target="_blank" style="display:inline-block; font-size:12px; color:var(--wine); font-weight:600; text-decoration:none;">🔍 Ver en PolygonScan →</a>
+        </div>
 
       <!-- Saldo de la billetera de minteo (gas Polygon) -->
       <div class="glass-card" style="margin-bottom:16px;">
@@ -3165,8 +3043,25 @@
         <div id="manual-mint-result" style="display:none; background:rgba(196,151,58,0.12); border:1.5px solid #C4973A; border-radius:12px; padding:12px; font-size:13px; color:#7A5A00; font-weight:600;"></div>
       </div>
 
-      <!-- Historial de mints -->
+
+      <!-- Por fecha -->
       <div class="glass-card">
+        <div class="card-header">
+          <span class="card-title">NFTs por fecha de evento</span>
+        </div>
+        <div style="overflow-x: auto;">
+          <table>
+            <thead>
+              <tr><th>Fecha</th><th>NFTs minteados</th></tr>
+            </thead>
+            <tbody id="bydate-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+
+      <!-- Historial de mints -->
+      <div class="glass-card" style="margin-bottom:16px;">
         <div class="card-header" style="margin-bottom:12px;">
           <span class="card-title">📋 Historial de mints</span>
         </div>
@@ -3174,6 +3069,102 @@
           <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Cargando...</div>
         </div>
       </div>
+
+      <!-- ─── TIENDA DEL MEME (temporal — paso 4 la mueve a Banco) ─── -->
+      <!-- ─── TIENDA DEL MEME (token 50) ───────────────────────────────── -->
+        <!-- El meme es el ÚNICO NFT que se vende. Las 300 unidades NO se editan
+             desde aquí a propósito: el número vive en services/memeShop.js y lo
+             blinda un trigger de la base de datos. -->
+        <div class="glass-card" style="margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <div class="card-title">🎭 Tienda do Meme</div>
+            <div id="meme-vip-counter" style="font-size:12px; font-weight:700; color:var(--wine); background:rgba(139,25,24,0.1); padding:4px 8px; border-radius:8px;">— / 300</div>
+          </div>
+          <div style="display:flex; gap:8px; margin-bottom:12px;">
+            <div style="flex:1; background:rgba(42,21,9,0.04); border-radius:12px; padding:10px; text-align:center;">
+              <div id="meme-left" style="font-size:20px; font-weight:900; color:var(--wine);">—</div>
+              <div style="font-size:10px; color:var(--text-muted);">sin vender</div>
+            </div>
+            <div style="flex:1; background:rgba(42,21,9,0.04); border-radius:12px; padding:10px; text-align:center;">
+              <div id="meme-revenue" style="font-size:20px; font-weight:900; color:var(--wine);">—</div>
+              <div style="font-size:10px; color:var(--text-muted);">recaudado</div>
+            </div>
+            <div style="flex:1; background:rgba(42,21,9,0.04); border-radius:12px; padding:10px; text-align:center;">
+              <div id="meme-pending-count" style="font-size:20px; font-weight:900; color:var(--wine);">—</div>
+              <div style="font-size:10px; color:var(--text-muted);">por entregar</div>
+            </div>
+          </div>
+          <div style="font-size:11px; color:var(--text-muted); background:rgba(212,175,55,0.10); border:1px solid rgba(212,175,55,0.35); border-radius:10px; padding:9px 11px; line-height:1.5; margin-bottom:14px;">
+            🔒 <strong>300 memes y ni uno más.</strong> Es una decisión cerrada: no hay ningún sitio —tampoco aquí— donde cambiar ese número. La escasez es lo que le da valor.
+          </div>
+
+          <!-- Precio -->
+          <div style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">💶 Precio y Pago</div>
+          <div style="display:flex; gap:8px; margin-bottom:8px;">
+            <div style="flex:1;">
+              <label style="font-size:10px; color:var(--text-muted);">Precio (€)</label>
+              <input type="text" inputmode="decimal" id="meme-price" placeholder="25" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); box-sizing:border-box;" />
+            </div>
+            <div style="flex:1;">
+              <label style="font-size:10px; color:var(--wine); font-weight:700;">Precio ($CORCHO)</label>
+              <input type="text" inputmode="numeric" id="meme-price-corcho" placeholder="500" style="width:100%; padding:10px; border-radius:10px; border:1.5px solid var(--gold); box-sizing:border-box;" />
+            </div>
+            <div style="flex:1;">
+              <label style="font-size:10px; color:var(--text-muted);">× por meme extra</label>
+              <input type="text" inputmode="decimal" id="meme-mult" placeholder="2" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); box-sizing:border-box;" />
+            </div>
+          </div>
+
+          <div id="meme-price-preview" style="font-size:11px; color:var(--text-muted); margin-bottom:8px;"></div>
+          <input type="text" id="meme-note" placeholder="Nota para el cliente (opcional): 'pregunta en la barra'…" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); margin-bottom:8px; font-size:12px; box-sizing:border-box;" />
+          <label style="display:flex; align-items:center; gap:8px; font-size:12px; margin-bottom:10px; cursor:pointer;">
+            <input type="checkbox" id="meme-open" /> <span>Venta abierta (el cliente ve el botón de comprar)</span>
+          </label>
+          <button onclick="saveMemeConfig()" style="width:100%; padding:11px; background:var(--wine); color:#fff; border:none; border-radius:12px; font-weight:700; cursor:pointer; margin-bottom:16px;">Guardar precio y venta</button>
+
+          <!-- Qué incluye -->
+          <div style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:4px;">🎁 Qué incluye el meme</div>
+          <p style="font-size:11px; color:var(--text-muted); margin-bottom:8px; line-height:1.4;">Lo que añadas aquí se le da al cliente al comprar. Cambiarlo <strong>no afecta a los memes ya vendidos</strong> (cada venta guarda su foto fija).</p>
+          <div id="meme-perks-list" style="margin-bottom:8px;"></div>
+          <div style="display:flex; gap:6px; margin-bottom:6px;">
+            <input type="text" id="perk-emoji" placeholder="👕" maxlength="4" style="width:52px; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); text-align:center; box-sizing:border-box;" />
+            <input type="text" id="perk-label" placeholder="Camiseta do Furancho" style="flex:3; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); font-size:12px; box-sizing:border-box;" />
+            <input type="number" id="perk-qty" value="1" min="1" style="width:60px; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); text-align:center; box-sizing:border-box;" />
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px;">
+            <select id="perk-kind" style="flex:1 1 180px; min-width:0; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); font-size:12px; box-sizing:border-box;">
+              <option value="consumible">Se consume en el local (tapas, viño…)</option>
+              <option value="entrega">Artículo físico (camiseta…) — puede quedar pendiente</option>
+            </select>
+            <button onclick="addMemePerk()" style="flex:0 0 auto; padding:10px 16px; background:var(--wine); color:#fff; border:none; border-radius:10px; font-weight:700; cursor:pointer; white-space:nowrap;">+ Añadir</button>
+          </div>
+
+          <!-- Solicitudes del cliente -->
+          <div style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">🙋 Quieren comprarlo <span id="meme-req-badge" style="background:var(--wine); color:#fff; border-radius:8px; padding:1px 7px; font-size:11px; display:none;">0</span></div>
+          <div id="meme-requests" style="margin-bottom:16px;"></div>
+
+          <!-- Venta directa -->
+          <div style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">🤝 Vender ahora (ya cobrado)</div>
+          <input type="text" id="meme-vip-wallet" placeholder="0x… (ID de socio del cliente)" style="width:100%; padding:12px; border-radius:12px; border:1px solid rgba(42,21,9,0.15); margin-bottom:8px; font-family:monospace; font-size:12px; box-sizing:border-box;" />
+          <div id="meme-wallet-hint" style="font-size:11px; color:var(--text-muted); margin-bottom:8px;"></div>
+          <div style="display:flex; gap:8px; margin-bottom:8px;">
+            <button onclick="startMemeVipScan()" style="flex:1; padding:12px; background:rgba(42,21,9,0.06); border:1px solid rgba(42,21,9,0.12); border-radius:12px; cursor:pointer; font-size:18px;">📷</button>
+            <button onclick="submitMintMemeVip()" style="flex:4; padding:12px; background:linear-gradient(135deg,var(--gold),#a47d2c); color:#fff; border:none; border-radius:12px; font-weight:700; cursor:pointer;">Vender meme</button>
+          </div>
+          <button onclick="submitMintMemeVip(true)" style="width:100%; padding:10px; background:transparent; border:1px dashed rgba(42,21,9,0.25); border-radius:12px; font-size:12px; cursor:pointer; color:var(--text-muted);">🎁 Regalar meme (sin cobrar, sin extras)</button>
+          <div id="meme-vip-scanner-container" style="display:none; margin-top:10px; border-radius:12px; overflow:hidden; border:2px solid var(--gold);"></div>
+        </div>
+
+        <!-- PENDIENTES DE ENTREGA -->
+        <div class="glass-card" style="margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <div class="card-title">📦 Pendiente de dar</div>
+            <button onclick="loadMemeShop()" style="background:transparent; border:none; cursor:pointer; font-size:16px;">🔄</button>
+          </div>
+          <p style="font-size:11px; color:var(--text-muted); margin-bottom:12px; line-height:1.4;">Lo que incluye cada meme vendido y aún no se ha dado. Pulsa ✓ cada vez que entregues una unidad; si te equivocas, ↺ lo deshace. Cuando se agota todo, al cliente le queda el meme y ya está.</p>
+          <div id="meme-pending-list"></div>
+        </div>
+
     </div>
 
     <!-- ==================== ESCÁNER DE BARRA ==================== -->
@@ -3244,7 +3235,11 @@
       <span class="nav-icon">📷</span>
       <span>Escáner</span>
     </button>
-    <button class="nav-item" onclick="showPage('banco')" id="nav-banco">
+    <button class="nav-item" onclick="showPage('nfts')" id="nav-nfts">
+      <span class="nav-icon">🏅</span>
+      <span>NFTs</span>
+    </button>
+        <button class="nav-item" onclick="showPage('banco')" id="nav-banco">
       <span class="nav-icon">🪙</span>
       <span>Banco</span>
     </button>
@@ -3594,10 +3589,7 @@
         loadPeakHours();
         loadVipBadge();
         loadHourlyChart();
-        loadAchievementStats();
-        loadAchievementManager();
         loadPresentByLevel();
-        loadCampaignAdmin();
         loadCorchoAdminStats();
         loadEventFinanceStats();
         connectAdminSse();
@@ -3631,10 +3623,7 @@
       // guardado (PWA del móvil) "Logros NFT especiales" y "En el local ahora" se
       // quedaban en "Cargando…" — el aforo no salía hasta el refresco de los 30s.
       loadHourlyChart();
-      loadAchievementStats();
-      loadAchievementManager();
       loadPresentByLevel();
-      loadCampaignAdmin();
       loadEventFinanceStats();
       connectAdminSse();
     }
@@ -3734,7 +3723,7 @@
     }, 0);
     if (pageId === 'events') loadEventsPage();
     if (pageId === 'messages') { loadMsgRsvpEvents(); loadScheduledMessages(); loadAchievementFilterOptions(); }
-    if (pageId === 'dashboard') { loadStats(); loadHourlyChart(); loadAchievementStats(); loadAchievementManager(); loadPresentByLevel(); loadCampaignAdmin(); loadEventFinanceStats(); }
+    if (pageId === 'dashboard') { loadStats(); loadHourlyChart(); loadPresentByLevel(); loadEventFinanceStats(); }
     if (pageId === 'banco') { loadCorchoAdminStats(); loadCorchoPending(); }
 
     loadVipBadge();
@@ -3744,7 +3733,7 @@
     }
     if (pageId === 'raffles') { loadAchievementFilterOptions(); loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); loadScheduled(); loadWeeklyRaffleAdmin(); loadWeeklyTemplates(); loadChaveAppPolicy(); loadPartnersAdmin(); populateSchedEstablishmentSelect(); }
     if (pageId === 'scanner') { stopScanner(); document.getElementById('scanner-result').style.display='none'; document.getElementById('scanner-status').textContent=''; }
-    if (pageId === 'nfts') loadNftsPage();
+    if (pageId === 'nfts') { loadNftsPage(); loadAchievementStats(); loadAchievementManager(); loadCampaignAdmin(); loadMemeShop(); }
     if (pageId === 'qrcodes') { loadStaffCode(); loadEntryQrDates(); }
   }
 
@@ -10238,7 +10227,6 @@
     document.querySelectorAll('.subpage-panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(`subpage-${subpage}`).classList.add('active');
-    if (subpage === 'nfts') loadNftsPage();
     if (subpage === 'report') initReportDates();
     if (subpage === 'referrals') loadReferralsPage();
   }
