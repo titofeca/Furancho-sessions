@@ -255,6 +255,23 @@
       line-height: 1;
       transition: transform 0.2s;
     }
+    /* Etiqueta: nunca parte el layout aunque la pantalla sea estrecha */
+    .nav-item > span:not(.nav-icon) {
+      max-width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    /* Móvil estrecho / vista reducida: compacta la barra para que quepan los 8 */
+    @media (max-width: 400px) {
+      .bottom-nav { padding: 0 2px; }
+      .nav-item { font-size: 9px; padding: 6px 2px; gap: 2px; letter-spacing: 0; }
+      .nav-item .nav-icon { font-size: 18px; }
+    }
+    @media (max-width: 340px) {
+      .nav-item { font-size: 8px; }
+      .nav-item .nav-icon { font-size: 16px; }
+    }
 
     .nav-item:hover {
       color: var(--text);
@@ -1210,168 +1227,6 @@
           <div id="campaign-rank-list"><p style="font-size:12px; color:var(--text-muted);">—</p></div>
         </div>
       </div>
-
-      <!-- Banco do Corcho — Economía $CORCHO -->
-      <details class="glass-card" id="corcho-admin-card" style="margin-bottom:20px; outline:none;" open>
-        <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; padding:14px 18px; border-bottom:1px solid rgba(42,21,9,0.06);">
-          <span class="card-title" style="display:flex; align-items:center; gap:8px;">
-            <img src="/assets/corcho_coin_gold.png" alt="CorchoCoin" style="width:24px; height:24px; object-fit:contain; border-radius:50%; filter:drop-shadow(0 2px 4px rgba(196,151,58,0.4));" />
-            <span>Banco do Corcho — Economía $CORCHO</span>
-          </span>
-
-          <button class="btn-download" onclick="loadCorchoAdminStats()" style="font-size:11px; padding:6px 12px;">↻</button>
-        </summary>
-        <div style="padding:18px;">
-          <!-- Totales -->
-          <div style="display:flex; gap:10px; margin-bottom:16px;">
-            <div style="flex:1; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px; padding:12px; text-align:center;">
-              <div style="font-family:'Playfair Display',serif; font-size:22px; font-weight:900; color:var(--wine);" id="corcho-stat-circulating">—</div>
-              <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">En Circulación</div>
-            </div>
-            <div style="flex:1; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px; padding:12px; text-align:center;">
-              <div style="font-family:'Playfair Display',serif; font-size:22px; font-weight:900; color:var(--gold);" id="corcho-stat-issued">—</div>
-              <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">Emitidos</div>
-            </div>
-            <div style="flex:1; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px; padding:12px; text-align:center;">
-              <div style="font-family:'Playfair Display',serif; font-size:22px; font-weight:900; color:#ef4444;" id="corcho-stat-burned">—</div>
-              <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">Gastados / Peajes</div>
-            </div>
-          </div>
-
-          <!-- Validaciones pendientes: compras por cobrar + vales por entregar -->
-          <div style="margin-bottom:16px; padding:14px; background:linear-gradient(135deg, rgba(196,151,58,0.12), rgba(139,25,24,0.05)); border:1.5px solid var(--gold); border-radius:12px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-              <div class="card-title" style="font-size:14px;">🧾 Pendiente de validar (staff/admin)</div>
-              <button class="btn-download" onclick="loadCorchoPending()" style="font-size:11px; padding:5px 10px;">↻</button>
-            </div>
-            <p style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">Compras de $CORCHO por <strong>cobrar en €</strong> (solo al confirmar se acreditan) y vales de canje por <strong>entregar</strong>. Es lo mismo que ve el camarero en <em>/staff</em> al fichar.</p>
-            <div id="corcho-pending-list" style="display:flex; flex-direction:column; gap:8px;">Cargando…</div>
-          </div>
-
-          <!-- Ajuste Manual / Recarga a Usuario -->
-          <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
-            <div class="card-title" style="font-size:14px; margin-bottom:8px;">⚡ Ajuste Manual o Recarga de $CORCHO</div>
-            <div style="display:grid; grid-template-columns:2fr 1fr 2fr; gap:8px; margin-bottom:8px;">
-              <div style="display:flex; gap:6px;">
-                <input type="text" id="corcho-grant-wallet" class="input-field" placeholder="Wallet socio (0x...)" style="font-size:12px; flex:1;" />
-                <button type="button" onclick="startCorchoScanForAdmin()" style="padding:7px 10px; background:rgba(196,151,58,0.12); border:1.5px solid rgba(196,151,58,0.35); border-radius:8px; cursor:pointer; font-size:14px;" title="Escanear QR de socio con cámara">📷</button>
-              </div>
-              <input type="number" id="corcho-grant-amount" class="input-field" placeholder="Cantidad (ej: 500)" style="font-size:12px;" />
-              <input type="text" id="corcho-grant-desc" class="input-field" placeholder="Motivo / Justificación" style="font-size:12px;" />
-            </div>
-            <div id="corcho-scanner-container" style="display:none; margin-bottom:10px; border-radius:12px; overflow:hidden; border:2px solid var(--gold); background:#000;"></div>
-            <button onclick="adminGrantCorchoCoins()" style="background:var(--wine); color:#fff; border:none; border-radius:10px; padding:9px 18px; font-size:12px; font-weight:700; cursor:pointer;">
-              Aplicar Ajuste de $CORCHO
-            </button>
-          </div>
-
-          <!-- Tarifas y Recompensas Configurables -->
-          <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
-            <div class="card-title" style="font-size:14px; margin-bottom:10px;">⚙️ Recompensas por Fichaje y Subida de Nivel ($CORCHO)</div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
-              <div>
-                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Recompensa por Fichaje Entrada:</label>
-                <input type="number" id="rate-checkin" class="input-field" style="font-size:12px; padding:6px 10px;" />
-              </div>
-              <div>
-                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Recompensa por Fichaje Salida:</label>
-                <input type="number" id="rate-exit" class="input-field" style="font-size:12px; padding:6px 10px;" />
-              </div>
-              <div>
-                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Recompensa Nivel 1 (Cautivo):</label>
-                <input type="number" id="rate-level1" class="input-field" style="font-size:12px; padding:6px 10px;" />
-              </div>
-              <div>
-                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Recompensa Nivel 2 (Cunqueiro):</label>
-                <input type="number" id="rate-level2" class="input-field" style="font-size:12px; padding:6px 10px;" />
-              </div>
-              <div>
-                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Recompensa Nivel 3 (Larpeiro):</label>
-                <input type="number" id="rate-level3" class="input-field" style="font-size:12px; padding:6px 10px;" />
-              </div>
-              <div>
-                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Recompensa Nivel 4 (Presidente):</label>
-                <input type="number" id="rate-level4" class="input-field" style="font-size:12px; padding:6px 10px;" />
-              </div>
-              <div>
-                <label style="display:block; font-size:11px; font-weight:700; color:var(--wine);">Peaje Global por Traspaso NFT:</label>
-                <input type="number" id="rate-nftTransferFee" class="input-field" style="font-size:12px; padding:6px 10px;" />
-              </div>
-            </div>
-            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-              <button onclick="saveCorchoAdminSettings()" style="background:var(--gold); color:#fff; border:none; border-radius:10px; padding:9px 18px; font-size:12px; font-weight:700; cursor:pointer;">
-                💾 Guardar Recompensas
-              </button>
-              <span style="font-size:11px; color:var(--text-muted);">
-                💡 Para peajes individuales por NFT ve a
-                <button onclick="showPage('transfers')" style="background:none; border:none; color:var(--wine); font-weight:700; font-size:11px; cursor:pointer; text-decoration:underline; padding:0;">Traspasos →</button>
-              </span>
-            </div>
-          </div>
-
-
-          <!-- Configurador de Paquetes de Venta $CORCHO (€) -->
-          <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-              <div class="card-title" style="font-size:14px;">💳 Precios de Venta de $CORCHO en Euros (€)</div>
-              <button onclick="saveCorchoAdminPacks()" style="background:var(--gold); color:#fff; border:none; border-radius:8px; padding:6px 14px; font-size:11px; font-weight:700; cursor:pointer;">💾 Guardar Precios (€)</button>
-            </div>
-            <p style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">Ajusta el precio en Euros (€) y la cantidad de $CORCHO que recibe el cliente al comprar en la app o en la barra.</p>
-            <div id="corcho-packs-admin-list" style="display:flex; flex-direction:column; gap:8px;">Cargando paquetes…</div>
-          </div>
-
-          <!-- Catálogo Dinámico de Canjes -->
-          <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-              <div class="card-title" style="font-size:14px;">🎁 Catálogo de Canjes do Furancho ($CORCHO)</div>
-              <button onclick="addCorchoAdminItem()" style="background:var(--wine); color:#fff; border:none; border-radius:8px; padding:5px 12px; font-size:11px; font-weight:700; cursor:pointer;">+ Añadir Canje</button>
-            </div>
-            <p style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">Configura los artículos, consumiciones o raciones que los socios pueden canjear desde su móvil con sus $CORCHO.</p>
-            <div id="corcho-items-admin-list" style="display:flex; flex-direction:column; gap:8px;">Cargando catálogo…</div>
-          </div>
-
-
-
-          <!-- Top Holders y Últimas Transacciones -->
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-            <div>
-              <div class="card-title" style="font-size:13px; margin-bottom:6px;">🏆 Mayor Saldo en $CORCHO</div>
-              <div id="corcho-holders-list" style="font-size:11.5px; display:flex; flex-direction:column; gap:4px;">—</div>
-            </div>
-            <div>
-              <div class="card-title" style="font-size:13px; margin-bottom:6px;">🕒 Últimas Transacciones</div>
-              <div id="corcho-recent-tx-list" style="font-size:11px; display:flex; flex-direction:column; gap:4px; max-height:220px; overflow-y:auto;">—</div>
-            </div>
-          </div>
-        </div>
-      </details>
-
-      <!-- 🩺 Saúde do Furancho (control económico, solo admin) -->
-      <details class="glass-card" style="margin-bottom:20px; outline:none; -webkit-tap-highlight-color:transparent;" ontoggle="if(this.open) loadFuranchoHealth()">
-        <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; outline:none; user-select:none; padding:14px 18px; border-bottom:1px solid rgba(42,21,9,0.06);">
-          <span class="card-title" style="font-size:15px; margin:0;">🩺 Saúde do Furancho</span>
-          <span id="health-chip" style="font-size:12px; font-weight:800;">—</span>
-        </summary>
-        <div style="padding:16px 18px;">
-          <div id="health-body"><p style="font-size:12px; color:var(--text-muted); text-align:center; padding:10px 0;">Cargando…</p></div>
-          <button onclick="loadFuranchoHealth(true)" style="width:100%; padding:9px; margin-top:12px; background:rgba(42,21,9,0.05); border:1px solid rgba(42,21,9,0.12); border-radius:10px; font-size:12px; font-weight:800; color:var(--text-muted); cursor:pointer; font-family:'Outfit',sans-serif;">↻ Volver a calcular</button>
-        </div>
-      </details>
-
-      <!-- 🚦 Semáforo antifraude $CORCHO -->
-      <details class="glass-card" style="margin-bottom:20px; outline:none; -webkit-tap-highlight-color:transparent;" ontoggle="if(this.open) loadCorchoFraudCheck()">
-        <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; outline:none; user-select:none; padding:14px 18px; border-bottom:1px solid rgba(42,21,9,0.06);">
-          <span class="card-title" style="font-size:15px; margin:0;">🚦 Semáforo antifraude $CORCHO</span>
-          <span id="fraud-summary-chips" style="display:flex; gap:5px; align-items:center;"></span>
-        </summary>
-        <div style="padding:16px 18px;">
-          <div id="fraud-legend" style="background:linear-gradient(135deg,rgba(196,151,58,0.08),rgba(139,25,24,0.04)); border:1px solid rgba(196,151,58,0.25); border-radius:12px; padding:12px 14px; margin-bottom:14px; font-size:11.5px; color:var(--text-muted); line-height:1.5;">Cargando…</div>
-          <button onclick="loadCorchoFraudCheck(true)" style="width:100%; padding:9px; margin-bottom:14px; background:rgba(42,21,9,0.05); border:1px solid rgba(42,21,9,0.12); border-radius:10px; font-size:12px; font-weight:800; color:var(--text-muted); cursor:pointer; font-family:'Outfit',sans-serif;">↻ Volver a comprobar</button>
-          <div id="fraud-list" style="display:flex; flex-direction:column; gap:8px;"></div>
-        </div>
-      </details>
-
-
 
       <!-- Crear logro NFT desde la app -->
       <!-- Crear logro NFT desde la app (Plegable) -->
@@ -2847,10 +2702,178 @@
     </div>
 
     <!-- ==================== PÁGINA: VISITAS ==================== -->
-    <div class="page" id="page-transfers">
+    <div class="page" id="page-banco">
       <div class="page-header">
-        <h1 class="page-title">🤝 Traspasos de NFTs</h1>
-        <div class="page-subtitle">Peajes por NFT y mercado secundario entre socios</div>
+        <h1 class="page-title">🪙 Banco do Corcho</h1>
+        <div class="page-subtitle">Economía $CORCHO · validaciones · saúde · traspasos</div>
+      </div>
+
+      <!-- Banco do Corcho — Economía $CORCHO -->
+      <details class="glass-card" id="corcho-admin-card" style="margin-bottom:20px; outline:none;" open>
+        <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; padding:14px 18px; border-bottom:1px solid rgba(42,21,9,0.06);">
+          <span class="card-title" style="display:flex; align-items:center; gap:8px;">
+            <img src="/assets/corcho_coin_gold.png" alt="CorchoCoin" style="width:24px; height:24px; object-fit:contain; border-radius:50%; filter:drop-shadow(0 2px 4px rgba(196,151,58,0.4));" />
+            <span>Banco do Corcho — Economía $CORCHO</span>
+          </span>
+
+          <button class="btn-download" onclick="loadCorchoAdminStats()" style="font-size:11px; padding:6px 12px;">↻</button>
+        </summary>
+        <div style="padding:18px;">
+          <!-- Totales -->
+          <div style="display:flex; gap:10px; margin-bottom:16px;">
+            <div style="flex:1; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px; padding:12px; text-align:center;">
+              <div style="font-family:'Playfair Display',serif; font-size:22px; font-weight:900; color:var(--wine);" id="corcho-stat-circulating">—</div>
+              <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">En Circulación</div>
+            </div>
+            <div style="flex:1; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px; padding:12px; text-align:center;">
+              <div style="font-family:'Playfair Display',serif; font-size:22px; font-weight:900; color:var(--gold);" id="corcho-stat-issued">—</div>
+              <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">Emitidos</div>
+            </div>
+            <div style="flex:1; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px; padding:12px; text-align:center;">
+              <div style="font-family:'Playfair Display',serif; font-size:22px; font-weight:900; color:#ef4444;" id="corcho-stat-burned">—</div>
+              <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">Gastados / Peajes</div>
+            </div>
+          </div>
+
+          <!-- Validaciones pendientes: compras por cobrar + vales por entregar -->
+          <div style="margin-bottom:16px; padding:14px; background:linear-gradient(135deg, rgba(196,151,58,0.12), rgba(139,25,24,0.05)); border:1.5px solid var(--gold); border-radius:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <div class="card-title" style="font-size:14px;">🧾 Pendiente de validar (staff/admin)</div>
+              <button class="btn-download" onclick="loadCorchoPending()" style="font-size:11px; padding:5px 10px;">↻</button>
+            </div>
+            <p style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">Compras de $CORCHO por <strong>cobrar en €</strong> (solo al confirmar se acreditan) y vales de canje por <strong>entregar</strong>. Es lo mismo que ve el camarero en <em>/staff</em> al fichar.</p>
+            <div id="corcho-pending-list" style="display:flex; flex-direction:column; gap:8px;">Cargando…</div>
+          </div>
+
+          <!-- Ajuste Manual / Recarga a Usuario -->
+          <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
+            <div class="card-title" style="font-size:14px; margin-bottom:8px;">⚡ Ajuste Manual o Recarga de $CORCHO</div>
+            <div style="display:grid; grid-template-columns:2fr 1fr 2fr; gap:8px; margin-bottom:8px;">
+              <div style="display:flex; gap:6px;">
+                <input type="text" id="corcho-grant-wallet" class="input-field" placeholder="Wallet socio (0x...)" style="font-size:12px; flex:1;" />
+                <button type="button" onclick="startCorchoScanForAdmin()" style="padding:7px 10px; background:rgba(196,151,58,0.12); border:1.5px solid rgba(196,151,58,0.35); border-radius:8px; cursor:pointer; font-size:14px;" title="Escanear QR de socio con cámara">📷</button>
+              </div>
+              <input type="number" id="corcho-grant-amount" class="input-field" placeholder="Cantidad (ej: 500)" style="font-size:12px;" />
+              <input type="text" id="corcho-grant-desc" class="input-field" placeholder="Motivo / Justificación" style="font-size:12px;" />
+            </div>
+            <div id="corcho-scanner-container" style="display:none; margin-bottom:10px; border-radius:12px; overflow:hidden; border:2px solid var(--gold); background:#000;"></div>
+            <button onclick="adminGrantCorchoCoins()" style="background:var(--wine); color:#fff; border:none; border-radius:10px; padding:9px 18px; font-size:12px; font-weight:700; cursor:pointer;">
+              Aplicar Ajuste de $CORCHO
+            </button>
+          </div>
+
+          <!-- Tarifas y Recompensas Configurables -->
+          <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
+            <div class="card-title" style="font-size:14px; margin-bottom:10px;">⚙️ Recompensas por Fichaje y Subida de Nivel ($CORCHO)</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Recompensa por Fichaje Entrada:</label>
+                <input type="number" id="rate-checkin" class="input-field" style="font-size:12px; padding:6px 10px;" />
+              </div>
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Recompensa por Fichaje Salida:</label>
+                <input type="number" id="rate-exit" class="input-field" style="font-size:12px; padding:6px 10px;" />
+              </div>
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Recompensa Nivel 1 (Cautivo):</label>
+                <input type="number" id="rate-level1" class="input-field" style="font-size:12px; padding:6px 10px;" />
+              </div>
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Recompensa Nivel 2 (Cunqueiro):</label>
+                <input type="number" id="rate-level2" class="input-field" style="font-size:12px; padding:6px 10px;" />
+              </div>
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Recompensa Nivel 3 (Larpeiro):</label>
+                <input type="number" id="rate-level3" class="input-field" style="font-size:12px; padding:6px 10px;" />
+              </div>
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Recompensa Nivel 4 (Presidente):</label>
+                <input type="number" id="rate-level4" class="input-field" style="font-size:12px; padding:6px 10px;" />
+              </div>
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--wine);">Peaje Global por Traspaso NFT:</label>
+                <input type="number" id="rate-nftTransferFee" class="input-field" style="font-size:12px; padding:6px 10px;" />
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <button onclick="saveCorchoAdminSettings()" style="background:var(--gold); color:#fff; border:none; border-radius:10px; padding:9px 18px; font-size:12px; font-weight:700; cursor:pointer;">
+                💾 Guardar Recompensas
+              </button>
+              <span style="font-size:11px; color:var(--text-muted);">
+                💡 Para peajes individuales por NFT ve a
+                <button onclick="showPage('banco')" style="background:none; border:none; color:var(--wine); font-weight:700; font-size:11px; cursor:pointer; text-decoration:underline; padding:0;">Traspasos →</button>
+              </span>
+            </div>
+          </div>
+
+
+          <!-- Configurador de Paquetes de Venta $CORCHO (€) -->
+          <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <div class="card-title" style="font-size:14px;">💳 Precios de Venta de $CORCHO en Euros (€)</div>
+              <button onclick="saveCorchoAdminPacks()" style="background:var(--gold); color:#fff; border:none; border-radius:8px; padding:6px 14px; font-size:11px; font-weight:700; cursor:pointer;">💾 Guardar Precios (€)</button>
+            </div>
+            <p style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">Ajusta el precio en Euros (€) y la cantidad de $CORCHO que recibe el cliente al comprar en la app o en la barra.</p>
+            <div id="corcho-packs-admin-list" style="display:flex; flex-direction:column; gap:8px;">Cargando paquetes…</div>
+          </div>
+
+          <!-- Catálogo Dinámico de Canjes -->
+          <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <div class="card-title" style="font-size:14px;">🎁 Catálogo de Canjes do Furancho ($CORCHO)</div>
+              <button onclick="addCorchoAdminItem()" style="background:var(--wine); color:#fff; border:none; border-radius:8px; padding:5px 12px; font-size:11px; font-weight:700; cursor:pointer;">+ Añadir Canje</button>
+            </div>
+            <p style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">Configura los artículos, consumiciones o raciones que los socios pueden canjear desde su móvil con sus $CORCHO.</p>
+            <div id="corcho-items-admin-list" style="display:flex; flex-direction:column; gap:8px;">Cargando catálogo…</div>
+          </div>
+
+
+
+          <!-- Top Holders y Últimas Transacciones -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div>
+              <div class="card-title" style="font-size:13px; margin-bottom:6px;">🏆 Mayor Saldo en $CORCHO</div>
+              <div id="corcho-holders-list" style="font-size:11.5px; display:flex; flex-direction:column; gap:4px;">—</div>
+            </div>
+            <div>
+              <div class="card-title" style="font-size:13px; margin-bottom:6px;">🕒 Últimas Transacciones</div>
+              <div id="corcho-recent-tx-list" style="font-size:11px; display:flex; flex-direction:column; gap:4px; max-height:220px; overflow-y:auto;">—</div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- 🩺 Saúde do Furancho (control económico, solo admin) -->
+      <details class="glass-card" style="margin-bottom:20px; outline:none; -webkit-tap-highlight-color:transparent;" ontoggle="if(this.open) loadFuranchoHealth()">
+        <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; outline:none; user-select:none; padding:14px 18px; border-bottom:1px solid rgba(42,21,9,0.06);">
+          <span class="card-title" style="font-size:15px; margin:0;">🩺 Saúde do Furancho</span>
+          <span id="health-chip" style="font-size:12px; font-weight:800;">—</span>
+        </summary>
+        <div style="padding:16px 18px;">
+          <div id="health-body"><p style="font-size:12px; color:var(--text-muted); text-align:center; padding:10px 0;">Cargando…</p></div>
+          <button onclick="loadFuranchoHealth(true)" style="width:100%; padding:9px; margin-top:12px; background:rgba(42,21,9,0.05); border:1px solid rgba(42,21,9,0.12); border-radius:10px; font-size:12px; font-weight:800; color:var(--text-muted); cursor:pointer; font-family:'Outfit',sans-serif;">↻ Volver a calcular</button>
+        </div>
+      </details>
+
+      <!-- 🚦 Semáforo antifraude $CORCHO -->
+      <details class="glass-card" style="margin-bottom:20px; outline:none; -webkit-tap-highlight-color:transparent;" ontoggle="if(this.open) loadCorchoFraudCheck()">
+        <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; outline:none; user-select:none; padding:14px 18px; border-bottom:1px solid rgba(42,21,9,0.06);">
+          <span class="card-title" style="font-size:15px; margin:0;">🚦 Semáforo antifraude $CORCHO</span>
+          <span id="fraud-summary-chips" style="display:flex; gap:5px; align-items:center;"></span>
+        </summary>
+        <div style="padding:16px 18px;">
+          <div id="fraud-legend" style="background:linear-gradient(135deg,rgba(196,151,58,0.08),rgba(139,25,24,0.04)); border:1px solid rgba(196,151,58,0.25); border-radius:12px; padding:12px 14px; margin-bottom:14px; font-size:11.5px; color:var(--text-muted); line-height:1.5;">Cargando…</div>
+          <button onclick="loadCorchoFraudCheck(true)" style="width:100%; padding:9px; margin-bottom:14px; background:rgba(42,21,9,0.05); border:1px solid rgba(42,21,9,0.12); border-radius:10px; font-size:12px; font-weight:800; color:var(--text-muted); cursor:pointer; font-family:'Outfit',sans-serif;">↻ Volver a comprobar</button>
+          <div id="fraud-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
+      </details>
+
+
+
+
+      <div class="page-header" style="border-top:1px solid rgba(42,21,9,0.1); padding-top:22px; margin-top:8px;">
+        <h1 class="page-title" style="font-size:20px;">🤝 Traspasos de NFTs</h1>
+        <div class="page-subtitle">Peaje en $CORCHO por traspasar un NFT entre socios</div>
       </div>
 
       <!-- Info box -->
@@ -2858,7 +2881,7 @@
         <strong style="color:var(--wine);">ℹ️ ¿Cómo funciona el traspaso?</strong><br>
         Cuando un socio traspasa un NFT (pase de nivel o logro) a otro socio, se le cobra un <strong>peaje en $CORCHO</strong>. 
         Aquí configuras cuánto cuesta cada traspaso según el tipo de NFT. El peaje global se configura en 
-        <button onclick="showPage('dashboard')" style="background:none; border:none; color:var(--wine); font-weight:700; font-size:12px; cursor:pointer; text-decoration:underline; padding:0;">Dashboard → Banco do Corcho</button>.
+        <button onclick="showPage('dashboard')" style="background:none; border:none; color:var(--wine); font-weight:700; font-size:12px; cursor:pointer; text-decoration:underline; padding:0;">la sección de arriba</button>.
         Aquí puedes ajustar tarifas <strong>individualmente por nivel o logro</strong> y ver el historial de traspasos.
       </div>
 
@@ -3221,9 +3244,9 @@
       <span class="nav-icon">📷</span>
       <span>Escáner</span>
     </button>
-    <button class="nav-item" onclick="showPage('transfers')" id="nav-transfers">
-      <span class="nav-icon">🤝</span>
-      <span>Traspasos</span>
+    <button class="nav-item" onclick="showPage('banco')" id="nav-banco">
+      <span class="nav-icon">🪙</span>
+      <span>Banco</span>
     </button>
     <button class="nav-item" onclick="showPage('events')" id="nav-events" style="position:relative;">
       <span class="nav-icon">📅</span>
@@ -3711,7 +3734,8 @@
     }, 0);
     if (pageId === 'events') loadEventsPage();
     if (pageId === 'messages') { loadMsgRsvpEvents(); loadScheduledMessages(); loadAchievementFilterOptions(); }
-    if (pageId === 'dashboard') { loadStats(); loadHourlyChart(); loadAchievementStats(); loadAchievementManager(); loadPresentByLevel(); loadCampaignAdmin(); loadCorchoAdminStats(); loadEventFinanceStats(); }
+    if (pageId === 'dashboard') { loadStats(); loadHourlyChart(); loadAchievementStats(); loadAchievementManager(); loadPresentByLevel(); loadCampaignAdmin(); loadEventFinanceStats(); }
+    if (pageId === 'banco') { loadCorchoAdminStats(); loadCorchoPending(); }
 
     loadVipBadge();
     if (pageId === 'holders') {
@@ -11333,7 +11357,7 @@
   const originalShowPage = showPage;
   window.showPage = function(pageId) {
     originalShowPage(pageId);
-    if (pageId === 'transfers') {
+    if (pageId === 'banco') {
       loadPendingTransfers();
     }
   };
