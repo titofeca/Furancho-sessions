@@ -3817,7 +3817,7 @@ function addCorchoCoins(walletAddress, amount, type, description, referenceId = 
   const w = walletAddress.toLowerCase();
   
   // Idempotencia para recompensas con referenceId (checkin, exit, level_award, etc.)
-  if (referenceId && ['checkin', 'exit', 'level_award', 'campaign_visit', 'referral'].includes(type)) {
+  if (referenceId && ['checkin', 'exit', 'level_award', 'campaign_visit', 'referral', 'raffle_prize'].includes(type)) {
     const existing = db.prepare(
       `SELECT id FROM corcho_transactions WHERE LOWER(wallet_address) = ? AND type = ? AND reference_id = ? LIMIT 1`
     ).get(w, type, String(referenceId));
@@ -3870,44 +3870,39 @@ function spendCorchoCoins(walletAddress, amount, type, description, referenceId 
 }
 
 
+// ¿Hay un EVENTO en la AGENDA (tabla events, activo) esta semana? Regla pedida por Tito:
+// SIN evento en agenda NO se sortea la Chave Semanal ("no podemos liarla"). Antes esto
+// miraba scheduled_raffles y "cualquier sorteo de los últimos 7 días" y fallaba en ABIERTO
+// (ante error, permitía sortear), lo que podía disparar un sorteo sin evento real. Ahora
+// se ata a la agenda de verdad y ante la duda NO sortea.
 function isCorchoStoreEventScheduledThisWeek() {
   try {
+    // Evento en marcha ahora mismo (alguien fichado) → hay evento.
     const activeSession = db.prepare(`SELECT id FROM sessions WHERE exit_time IS NULL LIMIT 1`).get();
     if (activeSession) return true;
 
+    // Semana en curso (lunes–domingo).
     const now = new Date();
     const day = now.getDay();
     const diffToMonday = (day === 0 ? -6 : 1 - day);
     const monday = new Date(now);
     monday.setDate(now.getDate() + diffToMonday);
     monday.setHours(0, 0, 0, 0);
-
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
     sunday.setHours(23, 59, 59, 999);
-
     const monStr = monday.toISOString().slice(0, 10);
     const sunStr = sunday.toISOString().slice(0, 10);
 
-    const sched = db.prepare(`
-      SELECT id FROM scheduled_raffles 
-      WHERE (event_date BETWEEN ? AND ?) OR status = 'launched'
+    // ¿Hay un evento activo en la agenda dentro de esta semana?
+    const ev = db.prepare(`
+      SELECT id FROM events
+      WHERE active = 1 AND event_date BETWEEN ? AND ?
       LIMIT 1
     `).get(monStr, sunStr);
-
-    if (sched) return true;
-
-    const recentRaffle = db.prepare(`
-      SELECT id FROM raffles
-      WHERE created_at >= datetime('now', '-7 days')
-      LIMIT 1
-    `).get();
-
-    if (recentRaffle) return true;
-
-    return false;
+    return !!ev;
   } catch (_) {
-    return true;
+    return false; // ante la duda, NO sortear (no liarla)
   }
 }
 

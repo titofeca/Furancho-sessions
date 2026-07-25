@@ -837,6 +837,8 @@
             <p style="margin:4px 0 8px; font-size:11px; color:var(--text-muted);">Entrégale el premio y ciérralo aquí.${p.validityEndDate ? ' Caduca el ' + p.validityEndDate + '.' : ''}</p>
             <button type="button" onclick="staffRedeemPrize(this, ${p.raffleId}, '${esc(wallet)}')"
               style="width:100%; padding:11px; background:linear-gradient(135deg,#16a34a,#0f7a37); color:#fff; border:none; border-radius:12px; font-size:13px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif;">✓ Entregar premio</button>
+            <button type="button" onclick="staffGrantCorcho(this, ${p.raffleId}, '${esc(wallet)}')"
+              style="width:100%; margin-top:6px; padding:11px; background:linear-gradient(135deg,var(--gold),#a97b1f); color:#2A1509; border:none; border-radius:12px; font-size:13px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif;">🪙 Dar $CORCHO (si el premio son monedas)</button>
           </div>`;
         }
         return `
@@ -1046,6 +1048,35 @@
         } else {
           btn.disabled = false; btn.textContent = original;
           alert('⚠️ ' + (d.error || 'No se pudo entregar'));
+        }
+      } catch(e){
+        btn.disabled = false; btn.textContent = original;
+        alert('⚠️ Error de red.');
+      }
+    }
+
+    // El camarero acredita el $CORCHO ganado en un sorteo (si el premio eran monedas).
+    // Pregunta el importe; el servidor notifica al ganador y es idempotente por sorteo.
+    async function staffGrantCorcho(btn, raffleId, wallet){
+      const amountStr = prompt('¿Cuántos $CORCHO le doy al ganador?', '500');
+      if (!amountStr) return;
+      const amount = parseInt(amountStr, 10);
+      if (!amount || amount <= 0) { alert('Cantidad no válida'); return; }
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = 'Acreditando…';
+      try {
+        const r = await fetch('/api/staff/raffle-corcho-prize', {
+          method:'POST', headers: staffHeaders({ 'Content-Type':'application/json' }),
+          body: JSON.stringify({ walletAddress: wallet, amount, raffleId: raffleId || undefined, prizeName: 'Sorteo do Furancho' })
+        });
+        const d = await r.json().catch(()=>({}));
+        if (r.ok && d.success){
+          btn.style.background = 'rgba(22,163,74,0.9)'; btn.style.color = '#fff';
+          btn.textContent = d.already ? '✅ Xa estaba' : `✅ ${amount.toLocaleString()} $CORCHO dados`;
+        } else {
+          btn.disabled = false; btn.textContent = original;
+          alert('⚠️ ' + (d.error || 'No se pudo acreditar'));
         }
       } catch(e){
         btn.disabled = false; btn.textContent = original;

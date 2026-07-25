@@ -306,6 +306,19 @@ router.post('/claim-daily-tapa', staffLimiter, requireStaff, (req, res) => {
   }
 });
 
+// POST /api/staff/raffle-corcho-prize — el camarero acredita el $CORCHO ganado en un
+// sorteo al ganador (evento o Chave). Misma lógica e idempotencia que el admin
+// (grantCorchoPrizeHandler en routes/raffle.js): notifica al ganador (push) y avisa a
+// admin+staff (SSE). Anti doble-crédito por raffleId/week.
+router.post('/raffle-corcho-prize', staffLimiter, requireStaff, (req, res) => {
+  try {
+    return require('./raffle').grantCorchoPrizeHandler(req, res, getStaffName(req));
+  } catch (e) {
+    console.error('Error en /staff/raffle-corcho-prize:', e.message);
+    res.status(500).json({ error: 'Error acreditando el premio' });
+  }
+});
+
 // GET /api/staff/corcho/pending — TODAS las compras, canjes de $CORCHO y solicitudes de Meme VIP por validar
 router.get('/corcho/pending', requireStaff, (req, res) => {
   try {

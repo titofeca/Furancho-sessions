@@ -1451,7 +1451,7 @@ router.get('/corcho/fraud-check', requireAuth, (req, res) => {
     let campaignVisits = {};
     try { campaignVisits = mapOf(db.prepare(`SELECT LOWER(wallet_address) w, COUNT(*) c FROM campaign_visits GROUP BY LOWER(wallet_address)`).all()); } catch (_) {}
 
-    const KNOWN = new Set(['checkin', 'exit', 'level_award', 'campaign_visit', 'referral', 'admin_adjustment', 'buy_pack']);
+    const KNOWN = new Set(['checkin', 'exit', 'level_award', 'campaign_visit', 'referral', 'admin_adjustment', 'buy_pack', 'raffle_prize']);
 
     // Agrupar créditos por cartera
     const wallets = {};
@@ -1485,6 +1485,7 @@ router.get('/corcho/fraud-check', requireAuth, (req, res) => {
       });
 
       if (bt.admin_adjustment) notes.push(`Ajuste manual del admin: +${bt.admin_adjustment.amt} $CORCHO (${bt.admin_adjustment.c}×) — recuerda si lo hiciste tú`);
+      if (bt.raffle_prize) notes.push(`Premio de sorteo en $CORCHO: +${bt.raffle_prize.amt} $CORCHO (${bt.raffle_prize.c}×) — dado por admin/staff`);
 
       const verdict = reasons.length ? 'red' : (notes.length ? 'amber' : 'green');
       out.push({

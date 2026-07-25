@@ -6436,6 +6436,10 @@
             style="margin-top:8px; width:100%; padding:10px; background:linear-gradient(135deg,#16a34a,#0f7a37); border:none; border-radius:10px; font-size:12.5px; font-weight:800; color:#fff; cursor:pointer; font-family:'Outfit',sans-serif;">✓ Entregar premio</button>`;
       }
     }
+    // Premio en $CORCHO: si el sorteo incluía CorchoCoins, acredítaselas al ganador
+    // (rápido, con importe a mano). Disponible siempre que haya ganador. Idempotente.
+    const corchoBtn = res.winnerWallet ? `<button onclick="grantCorchoToRaffleWinner(${res.raffleId || 'null'}, '${res.winnerWallet}')"
+      style="margin-top:8px; width:100%; padding:9px; background:linear-gradient(135deg,var(--gold),#a47d2c); border:none; border-radius:10px; font-size:12px; font-weight:800; color:#2A1509; cursor:pointer; font-family:'Outfit',sans-serif;">🪙 Dar $CORCHO al ganador</button>` : '';
     return `<div style="margin-top:8px; padding:7px 10px; background:rgba(42,21,9,0.03); border:1px solid rgba(42,21,9,0.08); border-radius:10px;">
       <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
         <span style="font-size:11px; font-weight:800; color:var(--wine);">🏆 Ganador:</span>
@@ -6443,7 +6447,26 @@
         ${chips.join(' ')}
       </div>
       ${deliverHtml}
+      ${corchoBtn}
     </div>`;
+  }
+
+  // Acredita $CORCHO de premio a un ganador de sorteo (evento o agenda). Pregunta el
+  // importe, llama al endpoint idempotente y notifica al ganador (push). Admin.
+  async function grantCorchoToRaffleWinner(raffleId, wallet) {
+    const amountStr = prompt(`¿Cuántos $CORCHO le doy al ganador (${wallet.slice(0,6)}…${wallet.slice(-4)})?`, '500');
+    if (!amountStr) return;
+    const amount = parseInt(amountStr, 10);
+    if (!amount || amount <= 0) { showToast('Cantidad no válida', true); return; }
+    try {
+      const r = await fetch('/api/raffle/grant-corcho-prize', {
+        method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: wallet, amount, raffleId: raffleId || undefined, prizeName: 'Sorteo do Furancho' })
+      });
+      const d = await r.json();
+      if (d.success) showToast(d.already ? 'Ese premio ya estaba acreditado' : `✅ ${amount.toLocaleString()} $CORCHO al ganador`);
+      else showToast(d.error || 'Error', true);
+    } catch (e) { showToast('Error de red', true); }
   }
 
   // Marca un premio de la AGENDA como entregado (mismo endpoint admin que el Historial),
@@ -8228,12 +8251,14 @@
     if (!amountStr || isNaN(parseInt(amountStr, 10))) return;
     const amount = parseInt(amountStr, 10);
     const prizeName = prompt('Nombre/Concepto del sorteo (ej: Premio Sorteo Chave Semanal):', 'Premio Sorteo Chave') || 'Premio Sorteo Chave';
+    // week para que el crédito sea idempotente (no se dobla si se pulsa dos veces)
+    const week = (document.getElementById('weekly-admin-week-select') || {}).value || undefined;
 
     try {
       const res = await fetch('/api/raffle/grant-corcho-prize', {
         method: 'POST',
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress: wallet, amount, prizeName })
+        body: JSON.stringify({ walletAddress: wallet, amount, prizeName, week })
       }).then(r => r.json());
 
       if (res.success) {

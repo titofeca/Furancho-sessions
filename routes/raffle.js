@@ -1521,7 +1521,14 @@ router.post('/admin/weekly/forfeit', requireAuth, (req, res) => {
 
 // POST /api/raffle/grant-corcho-prize (ADMIN/STAFF) — Acreditar $CORCHO ganado en un sorteo
 router.post('/grant-corcho-prize', requireAuth, (req, res) => {
-  const { walletAddress, amount, prizeName, raffleId } = req.body || {};
+  return grantCorchoPrizeHandler(req, res);
+});
+
+// Lógica compartida admin/staff: acredita $CORCHO de premio, notifica al ganador (push)
+// y avisa a admin+staff (SSE). Idempotente por raffleId/week (una vez por sorteo) → si
+// admin y staff pulsan, no se dobla. type 'raffle_prize' está en la guarda de idempotencia.
+function grantCorchoPrizeHandler(req, res, grantedBy) {
+  const { walletAddress, amount, prizeName, raffleId, week } = req.body || {};
   if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
     return res.status(400).json({ error: 'Wallet no válida' });
   }
@@ -1533,8 +1540,12 @@ router.post('/grant-corcho-prize', requireAuth, (req, res) => {
   try {
     const { addCorchoCoins } = require('../db/database');
     const title = prizeName ? `🎉 Premio de sorteo: ${prizeName}` : '🎉 Premio de sorteo do Furancho';
-    const ref = raffleId ? `raffle_prize_${raffleId}` : `raffle_grant_${Date.now()}`;
+    const ref = raffleId ? `raffle_prize_${raffleId}`
+              : (week ? `raffle_prize_week_${week}` : `raffle_grant_${Date.now()}`);
     const result = addCorchoCoins(walletAddress, qty, 'raffle_prize', title, ref);
+    if (result && result.alreadyGranted) {
+      return res.json({ success: true, already: true, message: `Este premio en $CORCHO ya se había acreditado.` });
+    }
 
     try {
       sendPushToWallet(
@@ -1558,7 +1569,8 @@ router.post('/grant-corcho-prize', requireAuth, (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
-});
+}
+module.exports.grantCorchoPrizeHandler = grantCorchoPrizeHandler;
 
 // GET /api/admin/weekly/app-policy (ADMIN) — política de "abrir La Chave a los de solo-app"
 router.get('/admin/weekly/app-policy', requireAuth, (req, res) => {
