@@ -2635,6 +2635,100 @@
           </table>
         </div>
       </div>
+
+      <!-- ─── TIENDA DEL MEME (token 50) ───────────────────────────────── -->
+      <!-- El meme es el ÚNICO NFT que se vende. Las 300 unidades NO se editan
+           desde aquí a propósito: el número vive en services/memeShop.js y lo
+           blinda un trigger de la base de datos. -->
+      <div class="glass-card" style="margin-bottom:16px; margin-top:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <div class="card-title">🎭 Tienda do Meme</div>
+          <div id="meme-vip-counter" style="font-size:12px; font-weight:700; color:var(--wine); background:rgba(139,25,24,0.1); padding:4px 8px; border-radius:8px;">— / 300</div>
+        </div>
+        <div style="display:flex; gap:8px; margin-bottom:12px;">
+          <div style="flex:1; background:rgba(42,21,9,0.04); border-radius:12px; padding:10px; text-align:center;">
+            <div id="meme-left" style="font-size:20px; font-weight:900; color:var(--wine);">—</div>
+            <div style="font-size:10px; color:var(--text-muted);">sin vender</div>
+          </div>
+          <div style="flex:1; background:rgba(42,21,9,0.04); border-radius:12px; padding:10px; text-align:center;">
+            <div id="meme-revenue" style="font-size:20px; font-weight:900; color:var(--wine);">—</div>
+            <div style="font-size:10px; color:var(--text-muted);">recaudado</div>
+          </div>
+          <div style="flex:1; background:rgba(42,21,9,0.04); border-radius:12px; padding:10px; text-align:center;">
+            <div id="meme-pending-count" style="font-size:20px; font-weight:900; color:var(--wine);">—</div>
+            <div style="font-size:10px; color:var(--text-muted);">por entregar</div>
+          </div>
+        </div>
+        <div style="font-size:11px; color:var(--text-muted); background:rgba(212,175,55,0.10); border:1px solid rgba(212,175,55,0.35); border-radius:10px; padding:9px 11px; line-height:1.5; margin-bottom:14px;">
+          🔒 <strong>300 memes y ni uno más.</strong> Es una decisión cerrada: no hay ningún sitio —tampoco aquí— donde cambiar ese número. La escasez es lo que le da valor.
+        </div>
+
+        <!-- Precio -->
+        <div style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">💶 Precio y Pago</div>
+        <div style="display:flex; gap:8px; margin-bottom:8px;">
+          <div style="flex:1;">
+            <label style="font-size:10px; color:var(--text-muted);">Precio (€)</label>
+            <input type="text" inputmode="decimal" id="meme-price" placeholder="25" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); box-sizing:border-box;" />
+          </div>
+          <div style="flex:1;">
+            <label style="font-size:10px; color:var(--wine); font-weight:700;">Precio ($CORCHO)</label>
+            <input type="text" inputmode="numeric" id="meme-price-corcho" placeholder="500" style="width:100%; padding:10px; border-radius:10px; border:1.5px solid var(--gold); box-sizing:border-box;" />
+          </div>
+          <div style="flex:1;">
+            <label style="font-size:10px; color:var(--text-muted);">× por meme extra</label>
+            <input type="text" inputmode="decimal" id="meme-mult" placeholder="2" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); box-sizing:border-box;" />
+          </div>
+        </div>
+
+        <div id="meme-price-preview" style="font-size:11px; color:var(--text-muted); margin-bottom:8px;"></div>
+        <input type="text" id="meme-note" placeholder="Nota para el cliente (opcional): 'pregunta en la barra'…" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); margin-bottom:8px; font-size:12px; box-sizing:border-box;" />
+        <label style="display:flex; align-items:center; gap:8px; font-size:12px; margin-bottom:10px; cursor:pointer;">
+          <input type="checkbox" id="meme-open" /> <span>Venta abierta (el cliente ve el botón de comprar)</span>
+        </label>
+        <button onclick="saveMemeConfig()" style="width:100%; padding:11px; background:var(--wine); color:#fff; border:none; border-radius:12px; font-weight:700; cursor:pointer; margin-bottom:16px;">Guardar precio y venta</button>
+
+        <!-- Qué incluye -->
+        <div style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:4px;">🎁 Qué incluye el meme</div>
+        <p style="font-size:11px; color:var(--text-muted); margin-bottom:8px; line-height:1.4;">Lo que añadas aquí se le da al cliente al comprar. Cambiarlo <strong>no afecta a los memes ya vendidos</strong> (cada venta guarda su foto fija).</p>
+        <div id="meme-perks-list" style="margin-bottom:8px;"></div>
+        <div style="display:flex; gap:6px; margin-bottom:6px;">
+          <input type="text" id="perk-emoji" placeholder="👕" maxlength="4" style="width:52px; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); text-align:center; box-sizing:border-box;" />
+          <input type="text" id="perk-label" placeholder="Camiseta do Furancho" style="flex:3; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); font-size:12px; box-sizing:border-box;" />
+          <input type="number" id="perk-qty" value="1" min="1" style="width:60px; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); text-align:center; box-sizing:border-box;" />
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px;">
+          <select id="perk-kind" style="flex:1 1 180px; min-width:0; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); font-size:12px; box-sizing:border-box;">
+            <option value="consumible">Se consume en el local (tapas, viño…)</option>
+            <option value="entrega">Artículo físico (camiseta…) — puede quedar pendiente</option>
+          </select>
+          <button onclick="addMemePerk()" style="flex:0 0 auto; padding:10px 16px; background:var(--wine); color:#fff; border:none; border-radius:10px; font-weight:700; cursor:pointer; white-space:nowrap;">+ Añadir</button>
+        </div>
+
+        <!-- Solicitudes del cliente -->
+        <div style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">🙋 Quieren comprarlo <span id="meme-req-badge" style="background:var(--wine); color:#fff; border-radius:8px; padding:1px 7px; font-size:11px; display:none;">0</span></div>
+        <div id="meme-requests" style="margin-bottom:16px;"></div>
+
+        <!-- Venta directa -->
+        <div style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">🤝 Vender ahora (ya cobrado)</div>
+        <input type="text" id="meme-vip-wallet" placeholder="0x… (ID de socio del cliente)" style="width:100%; padding:12px; border-radius:12px; border:1px solid rgba(42,21,9,0.15); margin-bottom:8px; font-family:monospace; font-size:12px; box-sizing:border-box;" />
+        <div id="meme-wallet-hint" style="font-size:11px; color:var(--text-muted); margin-bottom:8px;"></div>
+        <div style="display:flex; gap:8px; margin-bottom:8px;">
+          <button onclick="startMemeVipScan()" style="flex:1; padding:12px; background:rgba(42,21,9,0.06); border:1px solid rgba(42,21,9,0.12); border-radius:12px; cursor:pointer; font-size:18px;">📷</button>
+          <button onclick="submitMintMemeVip()" style="flex:4; padding:12px; background:linear-gradient(135deg,var(--gold),#a47d2c); color:#fff; border:none; border-radius:12px; font-weight:700; cursor:pointer;">Vender meme</button>
+        </div>
+        <button onclick="submitMintMemeVip(true)" style="width:100%; padding:10px; background:transparent; border:1px dashed rgba(42,21,9,0.25); border-radius:12px; font-size:12px; cursor:pointer; color:var(--text-muted);">🎁 Regalar meme (sin cobrar, sin extras)</button>
+        <div id="meme-vip-scanner-container" style="display:none; margin-top:10px; border-radius:12px; overflow:hidden; border:2px solid var(--gold);"></div>
+      </div>
+
+      <!-- PENDIENTES DE ENTREGA (meme) -->
+      <div class="glass-card" style="margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <div class="card-title">📦 Pendiente de dar</div>
+          <button onclick="loadMemeShop()" style="background:transparent; border:none; cursor:pointer; font-size:16px;">🔄</button>
+        </div>
+        <p style="font-size:11px; color:var(--text-muted); margin-bottom:12px; line-height:1.4;">Lo que incluye cada meme vendido y aún no se ha dado. Pulsa ✓ cada vez que entregues una unidad; si te equivocas, ↺ lo deshace. Cuando se agota todo, al cliente le queda el meme y ya está.</p>
+        <div id="meme-pending-list"></div>
+      </div>
     </div>
 
     <!-- ==================== PÁGINA: EVENTOS ==================== -->
@@ -3069,101 +3163,6 @@
           <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Cargando...</div>
         </div>
       </div>
-
-      <!-- ─── TIENDA DEL MEME (temporal — paso 4 la mueve a Banco) ─── -->
-      <!-- ─── TIENDA DEL MEME (token 50) ───────────────────────────────── -->
-        <!-- El meme es el ÚNICO NFT que se vende. Las 300 unidades NO se editan
-             desde aquí a propósito: el número vive en services/memeShop.js y lo
-             blinda un trigger de la base de datos. -->
-        <div class="glass-card" style="margin-bottom:16px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <div class="card-title">🎭 Tienda do Meme</div>
-            <div id="meme-vip-counter" style="font-size:12px; font-weight:700; color:var(--wine); background:rgba(139,25,24,0.1); padding:4px 8px; border-radius:8px;">— / 300</div>
-          </div>
-          <div style="display:flex; gap:8px; margin-bottom:12px;">
-            <div style="flex:1; background:rgba(42,21,9,0.04); border-radius:12px; padding:10px; text-align:center;">
-              <div id="meme-left" style="font-size:20px; font-weight:900; color:var(--wine);">—</div>
-              <div style="font-size:10px; color:var(--text-muted);">sin vender</div>
-            </div>
-            <div style="flex:1; background:rgba(42,21,9,0.04); border-radius:12px; padding:10px; text-align:center;">
-              <div id="meme-revenue" style="font-size:20px; font-weight:900; color:var(--wine);">—</div>
-              <div style="font-size:10px; color:var(--text-muted);">recaudado</div>
-            </div>
-            <div style="flex:1; background:rgba(42,21,9,0.04); border-radius:12px; padding:10px; text-align:center;">
-              <div id="meme-pending-count" style="font-size:20px; font-weight:900; color:var(--wine);">—</div>
-              <div style="font-size:10px; color:var(--text-muted);">por entregar</div>
-            </div>
-          </div>
-          <div style="font-size:11px; color:var(--text-muted); background:rgba(212,175,55,0.10); border:1px solid rgba(212,175,55,0.35); border-radius:10px; padding:9px 11px; line-height:1.5; margin-bottom:14px;">
-            🔒 <strong>300 memes y ni uno más.</strong> Es una decisión cerrada: no hay ningún sitio —tampoco aquí— donde cambiar ese número. La escasez es lo que le da valor.
-          </div>
-
-          <!-- Precio -->
-          <div style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">💶 Precio y Pago</div>
-          <div style="display:flex; gap:8px; margin-bottom:8px;">
-            <div style="flex:1;">
-              <label style="font-size:10px; color:var(--text-muted);">Precio (€)</label>
-              <input type="text" inputmode="decimal" id="meme-price" placeholder="25" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); box-sizing:border-box;" />
-            </div>
-            <div style="flex:1;">
-              <label style="font-size:10px; color:var(--wine); font-weight:700;">Precio ($CORCHO)</label>
-              <input type="text" inputmode="numeric" id="meme-price-corcho" placeholder="500" style="width:100%; padding:10px; border-radius:10px; border:1.5px solid var(--gold); box-sizing:border-box;" />
-            </div>
-            <div style="flex:1;">
-              <label style="font-size:10px; color:var(--text-muted);">× por meme extra</label>
-              <input type="text" inputmode="decimal" id="meme-mult" placeholder="2" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); box-sizing:border-box;" />
-            </div>
-          </div>
-
-          <div id="meme-price-preview" style="font-size:11px; color:var(--text-muted); margin-bottom:8px;"></div>
-          <input type="text" id="meme-note" placeholder="Nota para el cliente (opcional): 'pregunta en la barra'…" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); margin-bottom:8px; font-size:12px; box-sizing:border-box;" />
-          <label style="display:flex; align-items:center; gap:8px; font-size:12px; margin-bottom:10px; cursor:pointer;">
-            <input type="checkbox" id="meme-open" /> <span>Venta abierta (el cliente ve el botón de comprar)</span>
-          </label>
-          <button onclick="saveMemeConfig()" style="width:100%; padding:11px; background:var(--wine); color:#fff; border:none; border-radius:12px; font-weight:700; cursor:pointer; margin-bottom:16px;">Guardar precio y venta</button>
-
-          <!-- Qué incluye -->
-          <div style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:4px;">🎁 Qué incluye el meme</div>
-          <p style="font-size:11px; color:var(--text-muted); margin-bottom:8px; line-height:1.4;">Lo que añadas aquí se le da al cliente al comprar. Cambiarlo <strong>no afecta a los memes ya vendidos</strong> (cada venta guarda su foto fija).</p>
-          <div id="meme-perks-list" style="margin-bottom:8px;"></div>
-          <div style="display:flex; gap:6px; margin-bottom:6px;">
-            <input type="text" id="perk-emoji" placeholder="👕" maxlength="4" style="width:52px; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); text-align:center; box-sizing:border-box;" />
-            <input type="text" id="perk-label" placeholder="Camiseta do Furancho" style="flex:3; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); font-size:12px; box-sizing:border-box;" />
-            <input type="number" id="perk-qty" value="1" min="1" style="width:60px; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); text-align:center; box-sizing:border-box;" />
-          </div>
-          <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px;">
-            <select id="perk-kind" style="flex:1 1 180px; min-width:0; padding:10px; border-radius:10px; border:1px solid rgba(42,21,9,0.15); font-size:12px; box-sizing:border-box;">
-              <option value="consumible">Se consume en el local (tapas, viño…)</option>
-              <option value="entrega">Artículo físico (camiseta…) — puede quedar pendiente</option>
-            </select>
-            <button onclick="addMemePerk()" style="flex:0 0 auto; padding:10px 16px; background:var(--wine); color:#fff; border:none; border-radius:10px; font-weight:700; cursor:pointer; white-space:nowrap;">+ Añadir</button>
-          </div>
-
-          <!-- Solicitudes del cliente -->
-          <div style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">🙋 Quieren comprarlo <span id="meme-req-badge" style="background:var(--wine); color:#fff; border-radius:8px; padding:1px 7px; font-size:11px; display:none;">0</span></div>
-          <div id="meme-requests" style="margin-bottom:16px;"></div>
-
-          <!-- Venta directa -->
-          <div style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">🤝 Vender ahora (ya cobrado)</div>
-          <input type="text" id="meme-vip-wallet" placeholder="0x… (ID de socio del cliente)" style="width:100%; padding:12px; border-radius:12px; border:1px solid rgba(42,21,9,0.15); margin-bottom:8px; font-family:monospace; font-size:12px; box-sizing:border-box;" />
-          <div id="meme-wallet-hint" style="font-size:11px; color:var(--text-muted); margin-bottom:8px;"></div>
-          <div style="display:flex; gap:8px; margin-bottom:8px;">
-            <button onclick="startMemeVipScan()" style="flex:1; padding:12px; background:rgba(42,21,9,0.06); border:1px solid rgba(42,21,9,0.12); border-radius:12px; cursor:pointer; font-size:18px;">📷</button>
-            <button onclick="submitMintMemeVip()" style="flex:4; padding:12px; background:linear-gradient(135deg,var(--gold),#a47d2c); color:#fff; border:none; border-radius:12px; font-weight:700; cursor:pointer;">Vender meme</button>
-          </div>
-          <button onclick="submitMintMemeVip(true)" style="width:100%; padding:10px; background:transparent; border:1px dashed rgba(42,21,9,0.25); border-radius:12px; font-size:12px; cursor:pointer; color:var(--text-muted);">🎁 Regalar meme (sin cobrar, sin extras)</button>
-          <div id="meme-vip-scanner-container" style="display:none; margin-top:10px; border-radius:12px; overflow:hidden; border:2px solid var(--gold);"></div>
-        </div>
-
-        <!-- PENDIENTES DE ENTREGA -->
-        <div class="glass-card" style="margin-bottom:16px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-            <div class="card-title">📦 Pendiente de dar</div>
-            <button onclick="loadMemeShop()" style="background:transparent; border:none; cursor:pointer; font-size:16px;">🔄</button>
-          </div>
-          <p style="font-size:11px; color:var(--text-muted); margin-bottom:12px; line-height:1.4;">Lo que incluye cada meme vendido y aún no se ha dado. Pulsa ✓ cada vez que entregues una unidad; si te equivocas, ↺ lo deshace. Cuando se agota todo, al cliente le queda el meme y ya está.</p>
-          <div id="meme-pending-list"></div>
-        </div>
 
     </div>
 
@@ -3722,7 +3721,7 @@
     if (pageId === 'events') loadEventsPage();
     if (pageId === 'messages') { loadMsgRsvpEvents(); loadScheduledMessages(); loadAchievementFilterOptions(); }
     if (pageId === 'dashboard') { loadStats(); loadHourlyChart(); loadPresentByLevel(); }
-    if (pageId === 'banco') { loadCorchoAdminStats(); loadCorchoPending(); }
+    if (pageId === 'banco') { loadCorchoAdminStats(); loadCorchoPending(); loadMemeShop(); }
 
     loadVipBadge();
     if (pageId === 'holders') {
@@ -3732,7 +3731,7 @@
     }
     if (pageId === 'raffles') { loadAchievementFilterOptions(); loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); loadScheduled(); loadWeeklyRaffleAdmin(); loadWeeklyTemplates(); loadChaveAppPolicy(); loadPartnersAdmin(); populateSchedEstablishmentSelect(); }
     if (pageId === 'scanner') { stopScanner(); document.getElementById('scanner-result').style.display='none'; document.getElementById('scanner-status').textContent=''; }
-    if (pageId === 'nfts') { loadNftsPage(); loadAchievementStats(); loadAchievementManager(); loadCampaignAdmin(); loadMemeShop(); }
+    if (pageId === 'nfts') { loadNftsPage(); loadAchievementStats(); loadAchievementManager(); loadCampaignAdmin(); }
     if (pageId === 'qrcodes') { loadStaffCode(); loadEntryQrDates(); }
   }
 
