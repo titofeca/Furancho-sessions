@@ -1641,9 +1641,40 @@
     <!-- ==================== QR CODES ==================== -->
     <div class="page" id="page-qrcodes">
       <div class="page-header">
-        <h1 class="page-title">QR Codes</h1>
-        <p class="page-subtitle">QR de entrada y salida. Imprímelos y colócalos en el local.</p>
+        <h1 class="page-title">📷 Escáner & QR</h1>
+        <p class="page-subtitle">Escanea IDs de socio y gestiona los QR del local.</p>
       </div>
+
+      <!-- ─── ESCÁNER DE BARRA ─── -->
+      <div class="card" style="margin-bottom:16px; text-align:center;">
+        <p style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:var(--wine); margin-bottom:12px;">📷 Escáner de Barra</p>
+        <div id="scanner-reader" style="width:100%; max-width:360px; margin:0 auto; border-radius:16px; overflow:hidden; background:#1C0E06;"></div>
+        <div style="display:flex; gap:10px; justify-content:center; margin-top:14px; flex-wrap:wrap;">
+          <button id="scanner-start-btn" onclick="startScanner()" style="background:var(--wine); color:#fff; border:none; border-radius:12px; padding:12px 26px; font-size:15px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; display:flex; align-items:center; gap:8px;">
+            📷 Activar Cámara
+          </button>
+          <button id="scanner-stop-btn" onclick="stopScanner()" style="display:none; background:rgba(42,21,9,0.08); color:var(--text); border:none; border-radius:12px; padding:12px 26px; font-size:15px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">
+            ⛔ Detener
+          </button>
+        </div>
+        <div id="scanner-status" style="margin-top:10px; font-size:13px; color:var(--text-muted); min-height:18px;"></div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <p style="font-size:12px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">🔍 O buscar wallet</p>
+        <div style="display:flex; gap:8px;">
+          <input id="scanner-manual-input" type="text" placeholder="Pega aquí la wallet del furancheiro (0x...)"
+            style="flex:1; background:rgba(42,21,9,0.05); border:1.5px solid rgba(42,21,9,0.1); border-radius:12px; padding:12px 14px; font-size:14px; color:var(--text); font-family:'Outfit',sans-serif; outline:none;"
+            onkeydown="if(event.key==='Enter') inspectWallet(this.value.trim())"
+          />
+          <button onclick="inspectWallet(document.getElementById('scanner-manual-input').value.trim())"
+            style="background:var(--wine); color:#fff; border:none; border-radius:12px; padding:12px 18px; font-size:20px; cursor:pointer;">
+            →
+          </button>
+        </div>
+      </div>
+
+      <div id="scanner-result" style="display:none;"></div>
 
       <!-- ===== Acceso camareros (fichaje asistido desde sus móviles) ===== -->
       <div style="background:linear-gradient(135deg,rgba(139,25,24,0.07),rgba(196,151,58,0.05)); border:1.5px solid rgba(139,25,24,0.25); border-radius:20px; padding:20px; margin-bottom:28px;">
@@ -2895,7 +2926,7 @@
     <div class="page" id="page-nfts">
       <div class="page-header">
         <h1 class="page-title">🏅 NFTs & Logros</h1>
-        <p class="page-subtitle">Logros, minteo Polygon, campaña y tienda del meme</p>
+        <p class="page-subtitle">Logros, minteo Polygon, campaña y privilegios</p>
       </div>
 
       <!-- Logros NFT especiales (Plegable) -->
@@ -3167,45 +3198,6 @@
     </div>
 
     <!-- ==================== ESCÁNER DE BARRA ==================== -->
-    <div class="page" id="page-scanner">
-      <div class="page-header">
-        <h1 class="page-title">📷 Escáner de Barra</h1>
-        <p class="page-subtitle">Escanea el QR del furancheiro para ver su ficha al instante</p>
-      </div>
-
-      <!-- Cámara -->
-      <div class="card" style="margin-bottom:16px; text-align:center;">
-        <div id="scanner-reader" style="width:100%; max-width:360px; margin:0 auto; border-radius:16px; overflow:hidden; background:#1C0E06;"></div>
-        <div style="display:flex; gap:10px; justify-content:center; margin-top:14px; flex-wrap:wrap;">
-          <button id="scanner-start-btn" onclick="startScanner()" style="background:var(--wine); color:#fff; border:none; border-radius:12px; padding:12px 26px; font-size:15px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; display:flex; align-items:center; gap:8px;">
-            📷 Activar Cámara
-          </button>
-          <button id="scanner-stop-btn" onclick="stopScanner()" style="display:none; background:rgba(42,21,9,0.08); color:var(--text); border:none; border-radius:12px; padding:12px 26px; font-size:15px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">
-            ⛔ Detener
-          </button>
-        </div>
-        <div id="scanner-status" style="margin-top:10px; font-size:13px; color:var(--text-muted); min-height:18px;"></div>
-      </div>
-
-      <!-- También buscar por wallet manual -->
-      <div class="card" style="margin-bottom:16px;">
-        <p style="font-size:12px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">🔍 O buscar wallet</p>
-        <div style="display:flex; gap:8px;">
-          <input id="scanner-manual-input" type="text" placeholder="Pega aquí la wallet del furancheiro (0x...)"
-            style="flex:1; background:rgba(42,21,9,0.05); border:1.5px solid rgba(42,21,9,0.1); border-radius:12px; padding:12px 14px; font-size:14px; color:var(--text); font-family:'Outfit',sans-serif; outline:none;"
-            onkeydown="if(event.key==='Enter') inspectWallet(this.value.trim())"
-          />
-          <button onclick="inspectWallet(document.getElementById('scanner-manual-input').value.trim())"
-            style="background:var(--wine); color:#fff; border:none; border-radius:12px; padding:12px 18px; font-size:20px; cursor:pointer;">
-            →
-          </button>
-        </div>
-      </div>
-
-      <!-- Resultado de inspección -->
-      <div id="scanner-result" style="display:none;"></div>
-    </div>
-
   </main>
 
   <!-- ==================== BOTTOM NAV ==================== -->
@@ -3223,16 +3215,12 @@
       <span>Mensajes</span>
     </button>
     <button class="nav-item" onclick="showPage('qrcodes')" id="nav-qrcodes">
-      <span class="nav-icon">📱</span>
-      <span>QR Codes</span>
+      <span class="nav-icon">📷</span>
+      <span>Escáner</span>
     </button>
     <button class="nav-item" onclick="showPage('raffles')" id="nav-raffles">
       <span class="nav-icon">🎰</span>
       <span>Rifa</span>
-    </button>
-    <button class="nav-item" onclick="showPage('scanner')" id="nav-scanner">
-      <span class="nav-icon">📷</span>
-      <span>Escáner</span>
     </button>
     <button class="nav-item" onclick="showPage('nfts')" id="nav-nfts">
       <span class="nav-icon">🏅</span>
@@ -3730,9 +3718,9 @@
       loadEventFinanceStats();
     }
     if (pageId === 'raffles') { loadAchievementFilterOptions(); loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); loadScheduled(); loadWeeklyRaffleAdmin(); loadWeeklyTemplates(); loadChaveAppPolicy(); loadPartnersAdmin(); populateSchedEstablishmentSelect(); }
-    if (pageId === 'scanner') { stopScanner(); document.getElementById('scanner-result').style.display='none'; document.getElementById('scanner-status').textContent=''; }
     if (pageId === 'nfts') { loadNftsPage(); loadAchievementStats(); loadAchievementManager(); loadCampaignAdmin(); }
-    if (pageId === 'qrcodes') { loadStaffCode(); loadEntryQrDates(); }
+    if (pageId === 'qrcodes') { stopScanner(); document.getElementById('scanner-result').style.display='none'; document.getElementById('scanner-status').textContent=''; loadStaffCode(); loadEntryQrDates(); }
+    if (pageId !== 'qrcodes') { try { stopScanner(); } catch(e){} }
   }
 
   // ===== Acceso camareros: código + enlace para compartir =====
