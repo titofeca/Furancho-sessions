@@ -580,6 +580,9 @@ try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN auto_launch INTEGER DEFA
 // para espaciar reintentos (p.ej. si aún no hay elegibles no se martillea cada 20s).
 try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN last_auto_attempt_at TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN nft_granted_by TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN cost_cents INTEGER`); } catch (_) {}
+try { db.exec(`ALTER TABLE weekly_raffles ADD COLUMN cost_cents INTEGER`); } catch (_) {}
+try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN cost_cents INTEGER`); } catch (_) {}
 // Logros NFT creados desde el panel (se fusionan con los del código en services/achievements.js).
 // NO toca los logros hardcodeados (token 100, etc.): esto es puramente aditivo.
 try {

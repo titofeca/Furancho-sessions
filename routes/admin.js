@@ -1307,20 +1307,52 @@ router.get('/furancho-health', requireAuth, (req, res) => {
     `).all();
     const costByDay = {}; costRow.forEach(r => { costByDay[r.day] = { cost: r.cost_cents || 0, n: r.n || 0 }; });
 
+    // Coste de sorteos (noche/local/vip) por fecha del evento.
+    const raffleCostRows = db.prepare(`
+      SELECT date(created_at) AS day,
+             SUM(COALESCE(cost_cents, 0)) AS cost_cents,
+             COUNT(*) AS n
+      FROM raffles WHERE status != 'rejected' AND cost_cents IS NOT NULL
+      GROUP BY day
+    `).all();
+    const raffleCostByDay = {};
+    raffleCostRows.forEach(r => { raffleCostByDay[r.day] = { cost: r.cost_cents || 0, n: r.n || 0 }; });
+
+    // Coste de sorteos Chave Semanal — se imputa al evento más cercano de esa semana.
+    const weeklyCostRows = db.prepare(`
+      SELECT claimed_week, cost_cents, drawn_at FROM weekly_raffles
+      WHERE status IN ('completed','forfeited') AND cost_cents IS NOT NULL
+    `).all();
+
     const fin = {};
     db.prepare(`SELECT event_id, revenue_cents, covers FROM event_finances`).all()
       .forEach(f => { fin[f.event_id] = f; });
 
     const perEvent = events.map(e => {
       const c = costByDay[e.event_date] || { cost: 0, n: 0 };
+      const rc = raffleCostByDay[e.event_date] || { cost: 0, n: 0 };
       const f = fin[e.id] || {};
       return {
         date: e.event_date, title: e.title,
         covers: f.covers || null,
         revenueCents: f.revenue_cents || null,
-        prizeCostCents: c.cost, redemptions: c.n
+        prizeCostCents: c.cost + rc.cost,
+        redemptions: c.n, raffleCostCents: rc.cost, raffleCount: rc.n,
+        shopCostCents: c.cost
       };
     });
+
+    // Imputar costes de Chave semanal al evento cuya fecha coincida con drawn_at
+    for (const wc of weeklyCostRows) {
+      if (!wc.drawn_at || !wc.cost_cents) continue;
+      const drawDay = wc.drawn_at.slice(0, 10);
+      const ev = perEvent.find(e => e.date === drawDay);
+      if (ev) {
+        ev.prizeCostCents += wc.cost_cents;
+        ev.raffleCostCents = (ev.raffleCostCents || 0) + wc.cost_cents;
+        ev.raffleCount = (ev.raffleCount || 0) + 1;
+      }
+    }
 
     // Coste medio PONDERADO (las recientes pesan más: pesos 8,7,…). Solo eventos con
     // algún dato de canje o finanzas — un evento sin nada no ensucia la media.
@@ -1372,13 +1404,28 @@ router.get('/furancho-health', requireAuth, (req, res) => {
     const items = db.prepare(`SELECT id, name, emoji, price_corcho, cost_cents, stock, active FROM corcho_items ORDER BY cost_cents DESC NULLS LAST, price_corcho DESC`).all();
     const missingCost = items.filter(i => i.active && i.cost_cents == null).map(i => i.name);
 
+    // Sorteos recientes (últimas 8 sesiones) para editar coste
+    const recentRaffles = db.prepare(`
+      SELECT id, prize, date(created_at) AS day, status, cost_cents, type
+      FROM raffles WHERE status != 'rejected' AND date(created_at) >= ?
+      ORDER BY created_at DESC
+    `).all(since);
+    const recentWeekly = db.prepare(`
+      SELECT claimed_week, prize, date(drawn_at) AS day, status, cost_cents
+      FROM weekly_raffles WHERE drawn_at IS NOT NULL AND date(drawn_at) >= ?
+      ORDER BY drawn_at DESC
+    `).all(since);
+    const missingRaffleCost = recentRaffles.filter(r => r.cost_cents == null).length
+      + recentWeekly.filter(r => r.cost_cents == null).length;
+
     res.json({
       targetCents: { greenMax, amberMax },
       weightedCostCents, verdict,
       perEvent,
       circulating, fifoSoon,
       flow,
-      items, missingCost
+      items, missingCost,
+      recentRaffles, recentWeekly, missingRaffleCost
     });
   } catch (e) {
     console.error('Error en /furancho-health:', e.message);
@@ -1400,6 +1447,24 @@ router.post('/corcho-item-cost', requireAuth, (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// POST /api/admin/raffle-cost — guarda el coste real en € (céntimos) de un sorteo.
+// Body: { raffleId, costEur, weekly } — weekly:true → weekly_raffles (raffleId = claimed_week)
+router.post('/raffle-cost', requireAuth, (req, res) => {
+  const { raffleId, costEur, weekly } = req.body || {};
+  if (!raffleId) return res.status(400).json({ error: 'Sorteo no válido' });
+  const cents = (costEur === '' || costEur == null) ? null : Math.round(parseFloat(costEur) * 100);
+  if (cents != null && (isNaN(cents) || cents < 0)) return res.status(400).json({ error: 'Coste no válido' });
+  try {
+    const { db } = require('../db/database');
+    if (weekly) {
+      db.prepare(`UPDATE weekly_raffles SET cost_cents = ? WHERE claimed_week = ?`).run(cents, raffleId);
+    } else {
+      db.prepare(`UPDATE raffles SET cost_cents = ? WHERE id = ?`).run(cents, parseInt(raffleId, 10));
+    }
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // GET /api/admin/corcho/fraud-check — SEMÁFORO antifraude. Por cada cartera reconstruye

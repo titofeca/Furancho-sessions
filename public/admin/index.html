@@ -4840,20 +4840,32 @@
         html += `<div style="background:rgba(196,151,58,0.08); border:1px solid rgba(196,151,58,0.3); border-radius:10px; padding:9px 12px; font-size:11.5px; color:var(--text-muted); margin-bottom:14px;">🔥 En ≤14 días caducarán <strong style="color:var(--wine);">${Number(d.fifoSoon).toLocaleString('es-ES')} $CORCHO</strong> por FIFO. Eso baja la presión solo — antes de tocar stock o precios, deja que el FIFO haga su trabajo.</div>`;
       }
 
-      // Coste por evento (últimas 8)
+      // Coste por evento (últimas 8) — desglosado tienda + sorteos
       const maxCost = Math.max(1, ...d.perEvent.map(e => e.prizeCostCents));
       html += `<p style="font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--wine); margin:0 0 8px;">💶 Coste por evento (recientes primero)</p>`;
       html += `<div style="display:flex; flex-direction:column; gap:5px; margin-bottom:16px;">` + d.perEvent.map(e => {
         const over = e.prizeCostCents > d.targetCents.greenMax;
         const pct = Math.round(e.prizeCostCents / maxCost * 100);
+        const shopPct = e.prizeCostCents ? Math.round((e.shopCostCents || 0) / e.prizeCostCents * pct) : 0;
+        const rafPct = pct - shopPct;
+        const detail = [];
+        if (e.shopCostCents) detail.push(`🛒 ${eur(e.shopCostCents)}`);
+        if (e.raffleCostCents) detail.push(`🎰 ${eur(e.raffleCostCents)}`);
         return `<div style="display:flex; align-items:center; gap:8px; font-size:11.5px;">
           <span style="width:60px; flex-shrink:0; color:var(--text-muted);">${new Date(e.date+'T12:00:00').toLocaleDateString('es-ES',{day:'2-digit',month:'short'})}</span>
-          <div style="flex:1; background:rgba(42,21,9,0.05); border-radius:100px; height:14px; overflow:hidden;"><div style="width:${pct}%; height:100%; background:${over?'#c0392b':'#16a34a'};"></div></div>
-          <span style="width:74px; text-align:right; flex-shrink:0; font-weight:700; color:${over?'#c0392b':'var(--text)'};">${eur(e.prizeCostCents)}</span>
+          <div style="flex:1; background:rgba(42,21,9,0.05); border-radius:100px; height:14px; overflow:hidden; display:flex;">
+            <div style="width:${shopPct}%; height:100%; background:${over?'#c0392b':'#16a34a'};"></div>
+            <div style="width:${rafPct}%; height:100%; background:${over?'rgba(192,57,43,0.5)':'rgba(196,151,58,0.7)'};"></div>
+          </div>
+          <span style="width:74px; text-align:right; flex-shrink:0; font-weight:700; color:${over?'#c0392b':'var(--text)'};" title="${detail.join(' + ')}">${eur(e.prizeCostCents)}</span>
         </div>`;
       }).join('') + `</div>`;
+      html += `<div style="display:flex; gap:12px; font-size:10px; color:var(--text-muted); margin:-10px 0 14px 68px;">
+        <span><span style="display:inline-block; width:10px; height:10px; border-radius:3px; background:#16a34a; vertical-align:middle;"></span> Tienda</span>
+        <span><span style="display:inline-block; width:10px; height:10px; border-radius:3px; background:rgba(196,151,58,0.7); vertical-align:middle;"></span> Sorteos</span>
+      </div>`;
 
-      // Editor de coste € por premio (el peso real de cada uno)
+      // Editor de coste € por premio de tienda
       html += `<p style="font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--wine); margin:0 0 4px;">🏷️ Coste € de cada premio (para la barra)</p>
         <p style="font-size:10.5px; color:var(--text-muted); margin:0 0 8px;">Lo que te cuesta a TI dar cada premio. Con esto el semáforo es exacto. Los caros son los que hay que vigilar por stock.</p>`;
       if (d.missingCost.length) html += `<div style="background:rgba(201,151,0,0.1); border:1px solid rgba(201,151,0,0.4); border-radius:8px; padding:7px 10px; font-size:11px; color:#8a6a00; margin-bottom:8px;">⚠️ Sin coste definido: ${d.missingCost.join(', ')} — rellénalo abajo.</div>`;
@@ -4864,6 +4876,28 @@
           <input type="number" step="0.01" min="0" value="${i.cost_cents!=null?(i.cost_cents/100):''}" placeholder="€" id="hcost-${i.id}" style="width:64px; padding:5px 7px; font-size:12px; border:1.5px solid ${i.cost_cents==null?'#c99700':'rgba(42,21,9,0.15)'}; border-radius:8px; text-align:right;" />
           <button onclick="saveItemCost(${i.id})" style="padding:5px 9px; background:var(--wine); color:#fff; border:none; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer;">✓</button>
         </div>`).join('') + `</div>`;
+
+      // Editor de coste € de sorteos recientes
+      const allRaffles = [...(d.recentRaffles||[]).map(r => ({...r, weekly: false})), ...(d.recentWeekly||[]).map(r => ({...r, id: r.claimed_week, weekly: true}))];
+      if (allRaffles.length) {
+        html += `<p style="font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--wine); margin:16px 0 4px;">🎰 Coste € de cada sorteo</p>
+          <p style="font-size:10.5px; color:var(--text-muted); margin:0 0 8px;">Lo que te costó el premio que sorteaste (compra, valor del vale, etc.).</p>`;
+        if (d.missingRaffleCost > 0) html += `<div style="background:rgba(201,151,0,0.1); border:1px solid rgba(201,151,0,0.4); border-radius:8px; padding:7px 10px; font-size:11px; color:#8a6a00; margin-bottom:8px;">⚠️ ${d.missingRaffleCost} sorteo(s) sin coste — rellénalo para que el semáforo sea exacto.</div>`;
+        const typeIco = { night:'🎁', local:'🏪', vip:'⭐' };
+        html += `<div style="display:flex; flex-direction:column; gap:6px;">` + allRaffles.map(r => {
+          const ico = r.weekly ? '🔑' : (typeIco[r.type] || '🎁');
+          const when = r.day ? new Date(r.day+'T12:00:00').toLocaleDateString('es-ES',{day:'2-digit',month:'short'}) : (r.claimed_week||'');
+          return `<div style="display:flex; align-items:center; gap:8px; background:#fff; border:1px solid rgba(42,21,9,0.08); border-radius:10px; padding:7px 10px;">
+            <span style="font-size:14px; flex-shrink:0;">${ico}</span>
+            <div style="flex:1; min-width:0;">
+              <span style="font-size:12px; font-weight:700; color:var(--text); display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${r.prize}</span>
+              <span style="font-size:10px; color:var(--text-muted);">${when}</span>
+            </div>
+            <input type="number" step="0.01" min="0" value="${r.cost_cents!=null?(r.cost_cents/100):''}" placeholder="€" id="rcost-${r.weekly?'w':'r'}-${r.id}" style="width:64px; padding:5px 7px; font-size:12px; border:1.5px solid ${r.cost_cents==null?'#c99700':'rgba(42,21,9,0.15)'}; border-radius:8px; text-align:right;" />
+            <button onclick="saveRaffleCost('${r.id}', ${r.weekly})" style="padding:5px 9px; background:var(--wine); color:#fff; border:none; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer;">✓</button>
+          </div>`;
+        }).join('') + `</div>`;
+      }
 
       body.innerHTML = html;
     } catch (e) {
@@ -4878,6 +4912,21 @@
       const r = await fetch('/api/admin/corcho-item-cost', {
         method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, costEur: input.value })
+      });
+      const d = await r.json();
+      if (d.success) { input.style.borderColor = '#16a34a'; showToast('✅ Coste guardado'); loadFuranchoHealth(true); }
+      else showToast(d.error || 'Error', true);
+    } catch (e) { showToast('Error de red', true); }
+  }
+
+  async function saveRaffleCost(id, weekly) {
+    const prefix = weekly ? 'rcost-w-' : 'rcost-r-';
+    const input = document.getElementById(prefix + id);
+    if (!input) return;
+    try {
+      const r = await fetch('/api/admin/raffle-cost', {
+        method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raffleId: id, costEur: input.value, weekly })
       });
       const d = await r.json();
       if (d.success) { input.style.borderColor = '#16a34a'; showToast('✅ Coste guardado'); loadFuranchoHealth(true); }
