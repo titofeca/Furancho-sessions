@@ -2159,6 +2159,10 @@
                 style="width:100%; padding:14px; background:linear-gradient(135deg,#4ade80,#16a34a); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer;">
                 ✅ Confirmar entrega del premio
               </button>
+              <button onclick="grantCorchoFromRaffle(document.getElementById('collect-raffle-id').value, this)"
+                style="width:100%; margin-top:8px; padding:12px; background:rgba(196,151,58,0.10); border:1.5px solid rgba(196,151,58,0.3); border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; color:var(--gold); cursor:pointer;">
+                🪙 Dar $CORCHO al ganador
+              </button>
             </div>
 
             <!-- Botón rechazar -->
@@ -7595,6 +7599,37 @@
     } catch(e) { showToast('Error', true); }
   }
 
+  async function grantCorchoFromRaffle(raffleId, btn) {
+    const amount = prompt('¿Cuántos $CORCHO dar al ganador?', '100');
+    if (!amount) return;
+    const qty = parseInt(amount, 10);
+    if (!qty || qty <= 0) return showToast('Cantidad no válida', true);
+    btn.disabled = true;
+    const orig = btn.textContent;
+    btn.textContent = 'Acreditando…';
+    try {
+      const hist = await fetch('/api/raffle/history', { headers: authHeaders() }).then(r => r.json());
+      const raffle = hist.find(r => r.id === parseInt(raffleId));
+      if (!raffle || !raffle.winner_wallet) { showToast('No se encontró la wallet del ganador', true); btn.disabled = false; btn.textContent = orig; return; }
+      const res = await fetch('/api/raffle/grant-corcho-prize', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: raffle.winner_wallet, amount: qty, prizeName: raffle.prize, raffleId: parseInt(raffleId) })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast(data.message || `🪙 +${qty} $CORCHO acreditados`);
+        btn.textContent = `✅ +${qty}`;
+        btn.style.background = 'rgba(21,128,61,0.12)';
+        btn.style.color = '#15803d';
+        btn.style.borderColor = '#15803d';
+      } else {
+        showToast(data.error || 'Error', true);
+        btn.disabled = false; btn.textContent = orig;
+      }
+    } catch(e) { showToast('Error de red', true); btn.disabled = false; btn.textContent = orig; }
+  }
+
   async function loadRaffleHistory() {
     const container = document.getElementById('raffle-history-list');
     if (!container) return;
@@ -7615,6 +7650,7 @@
         const canCollect = r.status === 'accepted' && !isNft;
         const canGrantNft = isNft && !r.nft_granted_at && (r.status === 'accepted' || r.status === 'pending_acceptance');
         const canPdf = r.status !== 'rejected' && r.verification_code && !isNft;
+        const canCorcho = r.status !== 'rejected' && !r.is_weekly && r.winner_wallet;
         const when = new Date(r.created_at).toLocaleString('es-ES', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
         const t = r.type || 'night';
         const imgHtml = r.prize_image ? `<img src="${r.prize_image}" style="width:36px;height:36px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0;" />` : `<div style="flex-shrink:0; width:36px; height:36px; border-radius:50%; background:rgba(42,21,9,0.05); display:flex; align-items:center; justify-content:center; font-size:15px;">${statusIcon}</div>`;
@@ -7646,6 +7682,10 @@
                 style="padding:5px 10px; background:rgba(196,151,58,0.12); border:1px solid rgba(196,151,58,0.3); border-radius:8px; font-size:11px; font-weight:700; color:var(--gold); cursor:pointer; font-family:'Outfit',sans-serif;"
                 title="Bono con premio, código, caducidad e instrucciones para enviar al local">
                 📄 PDF bono</button>` : ''}
+              ${canCorcho ? `<button onclick="grantCorchoFromRaffle(${r.id}, this)"
+                style="padding:5px 10px; background:rgba(196,151,58,0.08); border:1px solid rgba(196,151,58,0.25); border-radius:8px; font-size:11px; font-weight:700; color:var(--gold); cursor:pointer; font-family:'Outfit',sans-serif;"
+                title="Acreditar $CORCHO al ganador">
+                🪙 +$CORCHO</button>` : ''}
             </div>
           </div>
           ${r.prize_details ? `<p style="font-size:11px; color:var(--text-muted); margin:6px 0 0 46px; font-style:italic;">${r.prize_details}</p>` : ''}
