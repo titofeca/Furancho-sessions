@@ -2167,6 +2167,18 @@
           </div>
         </div>
 
+        <!-- Dress code: auto-declaración (solo visible tras fichar + Chave Semanal activa) -->
+        <div id="dress-code-box" style="display:none; margin-bottom:14px; border-radius:14px; background:linear-gradient(135deg, rgba(232,69,122,0.08), rgba(244,162,89,0.06)); border:1.5px solid rgba(232,120,158,0.35); padding:12px 14px; text-align:center;">
+          <button id="dress-code-btn" onclick="declareDressCode()" style="width:100%; padding:12px; border-radius:50px; font-size:13px; font-weight:800; cursor:pointer; border:1.5px solid #D4508A; background:linear-gradient(135deg,#D4508A,#E8789E); color:#fff; font-family:'Outfit',sans-serif; transition:all 0.2s; outline:none; -webkit-tap-highlight-color:transparent;">
+            🌸 ¡Vine con flores / colorido!
+          </button>
+          <p style="font-size:10.5px; color:var(--text-muted); margin:6px 0 0; line-height:1.4;">Toca para confirmar tu dress code floral y participar en los sorteos de la noche</p>
+        </div>
+        <div id="dress-code-done" style="display:none; margin-bottom:14px; border-radius:14px; background:linear-gradient(135deg, rgba(232,69,122,0.08), rgba(244,162,89,0.06)); border:1.5px solid rgba(34,197,94,0.4); padding:10px 14px; text-align:center;">
+          <p style="font-size:13px; font-weight:700; color:#16a34a; margin:0;">🌸 Dress code confirmado</p>
+          <p style="font-size:10.5px; color:var(--text-muted); margin:4px 0 0;">Ya quedas registrado para los sorteos de esta noche</p>
+        </div>
+
         <!-- Hint siguiente nivel -->
         <p id="profile-progress-hint" style="font-size:12px; color:var(--text-muted); margin:0 0 16px; line-height:1.5;"></p>
 
@@ -4535,6 +4547,7 @@
       loadTonightPrizes();
       loadAgenda();
       loadWeeklyRaffle();
+      checkDressCodeVisibility();
       maybeShowRecoveryNudge();
       startNextRaffleCountdown();
       checkDailyTapaStatus();
@@ -9084,7 +9097,8 @@
           : '';
         prizeText.innerHTML = `Premio: <strong style="color:var(--wine);">${data.prize || 'Sorpresa do Furancho'}</strong>${detailsLine}`;
         if (rulesText) {
-          rulesText.textContent = data.rules || 'Trinca el boleto y a esperar al sorteo. ¡Un regalo de la hostia te puede tocar, rapaz!';
+          rulesText.innerHTML = (data.rules || 'Trinca el boleto y a esperar al sorteo. ¡Un regalo de la hostia te puede tocar, rapaz!')
+            + '<span style="display:block; margin-top:8px; font-size:12px; font-weight:700; color:#D4508A; line-height:1.5;">🌸 Dress code: ven con flores o ropa colorida para participar en los sorteos de la noche</span>';
         }
 
         const tapHint = document.getElementById('weekly-claim-tap-hint');
@@ -9540,8 +9554,63 @@
         }
         showProfileScreen(userVisitCount, userClaimedLevels);
       }
+      checkDressCodeVisibility();
     }, 500);
     return true;
+  }
+
+  async function checkDressCodeVisibility() {
+    const box = document.getElementById('dress-code-box');
+    const done = document.getElementById('dress-code-done');
+    if (!box || !done || !userWalletAddress || !userHasActiveSession) {
+      if (box) box.style.display = 'none';
+      if (done) done.style.display = 'none';
+      return;
+    }
+    try {
+      const weekly = await resilientFetch(`/api/raffle/weekly/status?wallet=${userWalletAddress}`).then(r => r.json());
+      if (!weekly.isConfigured || weekly.status === 'completed') {
+        box.style.display = 'none';
+        done.style.display = 'none';
+        return;
+      }
+      const dc = await resilientFetch(`/api/raffle/dress-code/status?wallet=${userWalletAddress}`).then(r => r.json());
+      if (dc.declared) {
+        box.style.display = 'none';
+        done.style.display = 'block';
+      } else {
+        box.style.display = 'block';
+        done.style.display = 'none';
+      }
+    } catch (_) {
+      box.style.display = 'none';
+      done.style.display = 'none';
+    }
+  }
+
+  async function declareDressCode() {
+    if (!userWalletAddress) return;
+    const btn = document.getElementById('dress-code-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⌛ Registrando...'; }
+    try {
+      const res = await fetch('/api/raffle/dress-code/declare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet: userWalletAddress })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        document.getElementById('dress-code-box').style.display = 'none';
+        document.getElementById('dress-code-done').style.display = 'block';
+        showToast('🌸 ¡Dress code registrado! Estás dentro del bombo, ho.');
+      } else {
+        showToast(data.error || 'Error al registrar', true);
+        if (btn) { btn.disabled = false; btn.textContent = '🌸 ¡Vine con flores / colorido!'; }
+      }
+    } catch (e) {
+      showToast('Error de red', true);
+      if (btn) { btn.disabled = false; btn.textContent = '🌸 ¡Vine con flores / colorido!'; }
+    }
   }
 
   // Respaldo cuando la cámara en vivo NO enfoca (típico en algunos Android): el cliente

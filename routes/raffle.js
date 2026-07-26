@@ -518,6 +518,27 @@ router.get('/eligible-check', (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// POST /api/raffle/dress-code/declare — cliente declara que vino con dress code
+router.post('/dress-code/declare', (req, res) => {
+  const { wallet } = req.body;
+  if (!wallet) return res.status(400).json({ error: 'Falta wallet' });
+  try {
+    const { declareDressCode } = require('../db/database');
+    const result = declareDressCode(wallet);
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/raffle/dress-code/status?wallet=0x... — ¿ya declaró hoy?
+router.get('/dress-code/status', (req, res) => {
+  const { wallet } = req.query;
+  if (!wallet) return res.status(400).json({ error: 'Falta wallet' });
+  try {
+    const { hasDressCodeToday } = require('../db/database');
+    res.json({ declared: hasDressCodeToday(wallet) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // GET /api/raffle/my-wins?wallet=0x...
 router.get('/my-wins', (req, res) => {
   const { wallet } = req.query;
@@ -788,8 +809,15 @@ router.get('/eligible', requireAuth, (req, res) => {
     sseRequired = db.prepare(`SELECT value FROM app_settings WHERE key = 'raffle_require_active_sse'`).get()?.value === '1';
   } catch (e) {}
 
+  let dressCodeCount = 0;
+  try {
+    const { getDressCodeWalletsToday } = require('../db/database');
+    const dcWallets = new Set(getDressCodeWalletsToday().map(w => w.toLowerCase()));
+    dressCodeCount = sessions.filter(w => dcWallets.has(w.toLowerCase())).length;
+  } catch (_) {}
+
   // count = todos los que ficharon (participan aunque no tengan app abierta)
-  res.json({ count: sessions.length, withApp, checkedIn: sessions.length, tonight, sseRequired });
+  res.json({ count: sessions.length, withApp, checkedIn: sessions.length, tonight, sseRequired, dressCodeCount });
 });
 
 // GET /api/raffle/active?wallet=0x... — estado del sorteo en curso (para clientes que cargan la app tarde)

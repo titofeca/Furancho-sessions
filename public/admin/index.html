@@ -2062,6 +2062,10 @@
               <button class="btn-download" onclick="loadEligibleParticipants()" style="font-size:10px; padding:4px 8px;">↻</button>
             </div>
           </div>
+          <div style="text-align:center;">
+            <p style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:#D4508A; font-weight:700; margin:0 0 2px;">🌸 Dress code</p>
+            <span id="raffle-dresscode-count" style="font-size:22px; font-weight:700; color:#D4508A;">—</span>
+          </div>
           <div style="text-align:right;">
             <p style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700; margin:0 0 2px;">Esta noche</p>
             <p style="font-size:18px; font-weight:700; color:var(--text); margin:0;"><span id="raffle-count-tonight">—</span> / 2</p>
@@ -7405,6 +7409,8 @@
       if (topEl) topEl.textContent = data.count ?? '—';
       const tonight = document.getElementById('raffle-count-tonight');
       if (tonight) tonight.textContent = data.tonight ?? '—';
+      const dcEl = document.getElementById('raffle-dresscode-count');
+      if (dcEl) dcEl.textContent = data.dressCodeCount ?? '—';
     } catch (e) {
       const el = document.getElementById('raffle-eligible-count');
       if (el) el.textContent = '—';

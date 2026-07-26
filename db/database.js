@@ -747,6 +747,17 @@ try {
   try { db.exec(`ALTER TABLE corcho_redemptions ADD COLUMN session_date TEXT`); } catch (_) {}
 } catch (_) {}
 
+// Dress code: auto-declaración del cliente ("vine con flores / colorido")
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS dress_code_declarations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_address TEXT NOT NULL,
+    event_date TEXT NOT NULL,
+    declared_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(wallet_address, event_date)
+  )`);
+} catch (_) {}
+
 // Compra de $CORCHO (recarga en €): solicitud PENDIENTE que staff/admin confirma
 // solo cuando el socio ha PAGADO en la barra. Sin esto, comprar acreditaría monedas
 // gratis. Mismo patrón que vales de canje, meme y premios NFT: nada de dinero se
@@ -3261,7 +3272,10 @@ module.exports = {
   getPendingCorchoPackRequests,
   getCorchoPackRequest,
   confirmCorchoPackRequest,
-  cancelCorchoPackRequest
+  cancelCorchoPackRequest,
+  declareDressCode,
+  hasDressCodeToday,
+  getDressCodeWalletsToday
 };
 
 
@@ -4469,4 +4483,26 @@ function cancelCorchoPackRequest(id, by) {
   return { ok: true };
 }
 
+function _todayMadrid() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+}
 
+function declareDressCode(wallet) {
+  const date = _todayMadrid();
+  try {
+    db.prepare(`INSERT OR IGNORE INTO dress_code_declarations (wallet_address, event_date) VALUES (?, ?)`).run(wallet, date);
+    return { ok: true, date };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+function hasDressCodeToday(wallet) {
+  const date = _todayMadrid();
+  return !!db.prepare(`SELECT 1 FROM dress_code_declarations WHERE LOWER(wallet_address) = LOWER(?) AND event_date = ?`).get(wallet, date);
+}
+
+function getDressCodeWalletsToday() {
+  const date = _todayMadrid();
+  return db.prepare(`SELECT wallet_address FROM dress_code_declarations WHERE event_date = ?`).all(date).map(r => r.wallet_address);
+}
