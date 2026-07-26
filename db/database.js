@@ -4353,6 +4353,9 @@ function cancelRedemptionVoucher(code, by, refund = true) {
       `↩️ Reembolso canje anulado: ${v.item_emoji} ${v.item_name}`, `refund_voucher_${v.id}`);
     refunded = true;
   }
+  if (v.item_id) {
+    db.prepare(`UPDATE corcho_items SET stock = stock + 1 WHERE id = ? AND stock IS NOT NULL`).run(v.item_id);
+  }
   return { ok: true, refunded };
 }
 

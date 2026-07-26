@@ -2575,6 +2575,21 @@ router.get('/corcho/stats', requireAuth, (req, res) => {
   }
 });
 
+// GET/POST /api/admin/settings/:key — leer/escribir un valor de app_settings (peajes de traspaso, etc.)
+router.get('/settings/:key', requireAuth, (req, res) => {
+  try {
+    const { getAppSetting } = require('../db/transfers');
+    res.json({ value: getAppSetting(req.params.key) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.post('/settings/:key', requireAuth, (req, res) => {
+  try {
+    const { setAppSetting } = require('../db/transfers');
+    setAppSetting(req.params.key, String(req.body.value));
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // POST /api/admin/corcho/settings — actualizar tarifas y recompensas de $CORCHO
 router.post('/corcho/settings', requireAuth, (req, res) => {
   try {
