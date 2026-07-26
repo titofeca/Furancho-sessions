@@ -5438,12 +5438,16 @@
         ]);
       } catch(e) {}
 
-      if (mintHistory) {
-        userVisits = mintHistory.visits || [];
+      if (mintHistory && !mintHistory.error) {
+        userVisits = Array.isArray(mintHistory.visits) ? mintHistory.visits : [];
         userVisitCount = mintHistory.visitCount || userVisitCount;
-        userClaimedLevels = mintHistory.levels || userClaimedLevels;
+        userClaimedLevels = Array.isArray(mintHistory.levels) ? mintHistory.levels : userClaimedLevels;
         userReferralData = mintHistory.referral || userReferralData; // Plan Amigo
+      } else {
+        userVisits = [];
       }
+      
+      if (!Array.isArray(history)) history = [];
 
       // El museo (logros/insignias) se pinta SIEMPRE, por ASISTENCIA — antes quedaba
       // detrás de los returns tempranos y solo aparecía si el cliente tenía historial
