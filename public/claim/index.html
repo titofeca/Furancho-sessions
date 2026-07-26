@@ -2320,17 +2320,17 @@
         <p id="campaign-state-msg" style="text-align:center; font-size:12.5px; color:var(--text-muted); line-height:1.5; margin:10px 0 0;"></p>
 
         <!-- CTA: enseñar QR en vivo -->
-        <button id="campaign-show-qr" onclick="openIdModal()" style="width:100%; margin-top:14px; padding:14px; background:linear-gradient(135deg,var(--gold),#a97b1f); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 4px 14px rgba(196,151,58,.35);">
+        <button id="campaign-show-qr" onclick="openIdModal()" style="width:100%; margin-top:14px; padding:14px; background:linear-gradient(135deg,var(--gold),#a97b1f); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:800; cursor:pointer; box-shadow:0 4px 14px rgba(196,151,58,.35);">
           🪪 Enseñar mi QR al camarero
         </button>
-        <p style="text-align:center; font-size:11px; color:var(--text-muted); margin:8px 0 0; line-height:1.45;">Enséñalo <strong>en vivo</strong> desde la app. Las capturas caducan solas.</p>
+        <p style="text-align:center; font-size:13px; color:#2A1509; margin:8px 0 0; line-height:1.45; font-weight:500;">Enséñalo <strong>en vivo</strong> desde la app. Las capturas caducan solas.</p>
 
         <!-- Tabla de privilegios desplegable -->
         <details style="margin-top:16px;">
-          <summary style="font-size:12px; font-weight:700; color:var(--gold); cursor:pointer; list-style:none; display:flex; align-items:center; gap:5px; justify-content:center;">
+          <summary style="font-size:14.5px; font-weight:800; color:var(--wine); cursor:pointer; list-style:none; display:flex; align-items:center; gap:6px; justify-content:center; padding:6px;">
             🏆 Ver rangos y privilegios de septiembre ▾
           </summary>
-          <div id="campaign-tiers-list" style="margin-top:10px; display:flex; flex-direction:column; gap:6px;"></div>
+          <div id="campaign-tiers-list" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;"></div>
         </details>
       </div>
 
@@ -2400,9 +2400,9 @@
 
           <!-- ESTADO C: MODO VACACIONES (A partir de agosto) -->
           <div id="vacation-mode-state" style="display:none; text-align:center;">
-            <span style="font-size:30px;">🏖️</span>
-            <h3 style="font-family:'Playfair Display',serif; font-size:19px; font-weight:900; color:var(--wine); margin:6px 0 4px;">¡Gracias por estas 9 sesiones, ho!</h3>
-            <p style="font-size:12.5px; color:var(--text-muted); line-height:1.55; margin:0;">Gracias por venir y darnos la oportunidad de compartir noches de viño, tapas y boa xente. Fueron 9 sesiones que no olvidaremos. <strong>En septiembre volvemos con ideas nuevas</strong> y muchas ganas. ¡Cuidaos este verano! 🍷</p>
+            <span style="font-size:36px;">🏖️</span>
+            <h3 style="font-family:'Playfair Display',serif; font-size:21px; font-weight:900; color:var(--wine); margin:8px 0 6px;">¡Gracias por estas 9 sesiones, ho!</h3>
+            <p style="font-size:15px; color:#2A1509; line-height:1.6; margin:0; font-weight:500;">Gracias por venir y darnos la oportunidad de compartir noches de viño, tapas y boa xente. Fueron 9 sesiones que no olvidaremos. <strong>En septiembre volvemos con ideas nuevas</strong> y muchas ganas. ¡Cuidaos este verano! 🍷</p>
           </div>
 
           <!-- EL TERMÓMETRO (Común para todos) -->
@@ -8207,8 +8207,8 @@
           const isActive = p.visits >= tier.minVisits;
           const isCurrent = p.privilege && p.privilege.label === tier.label;
           const row = document.createElement('div');
-          row.style.cssText = `padding:10px 12px;border-radius:12px;border:1.5px solid ${isCurrent?'rgba(196,151,58,.5)':'rgba(42,21,9,.1)'};background:${isCurrent?'rgba(196,151,58,.1)':isActive?'rgba(42,21,9,.03)':'#fff'};opacity:${isActive?1:.55};`;
-          row.innerHTML = `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="font-size:18px;">${tier.emoji}</span><strong style="font-size:12px;color:var(--wine);">${tier.label}</strong><span style="margin-left:auto;font-size:10px;font-weight:700;color:var(--text-muted);">${tier.minVisits}+ visitas</span></div><ul style="margin:0;padding-left:16px;font-size:11px;color:var(--text-muted);line-height:1.6;">${tier.perks.map(p=>`<li>${p}</li>`).join('')}</ul>`;
+          row.style.cssText = `padding:14px 16px;border-radius:14px;border:1.5px solid ${isCurrent?'rgba(196,151,58,.6)':'rgba(42,21,9,.15)'};background:${isCurrent?'rgba(196,151,58,.12)':isActive?'#fff':'#faf8f5'};opacity:${isActive?1:.85};box-shadow:0 2px 8px rgba(0,0,0,0.03);`;
+          row.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span style="font-size:22px;">${tier.emoji}</span><strong style="font-size:15.5px;color:var(--wine);font-weight:800;">${tier.label}</strong><span style="margin-left:auto;font-size:12.5px;font-weight:800;color:var(--wine);background:rgba(196,151,58,0.15);padding:3px 8px;border-radius:6px;">${tier.minVisits}+ visitas</span></div><ul style="margin:4px 0 0;padding-left:18px;font-size:14px;color:#2A1509;line-height:1.55;font-weight:500;">${tier.perks.map(p=>`<li style="margin-bottom:4px;">${p}</li>`).join('')}</ul>`;
           tiersList.appendChild(row);
         }
       }
