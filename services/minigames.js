@@ -3,12 +3,12 @@ const corcho = require('./corcho');
 
 // ==================== O ENXEBRE (WORDLE) ====================
 
-// Diccionario reducido de 5 letras relacionadas con Galicia / Furancho
+// Diccionario reducido de 5 letras relacionadas exclusivamente con gastronomía gallega y furancho
 const DICT = [
-  'CUNCA', 'VIÑOS', 'ZORZA', 'FESTA', 'CARNE', 
-  'BRIND', 'QUEIX', 'PANES', 'LURPI', 'TAPAS',
-  'POLBO', 'VERDE', 'BLANC', 'TINTO', 'CALDO',
-  'LURPA', 'XAMON', 'PORCO', 'MUXIA', 'MEIGA'
+  'CUNCA', 'VIÑOS', 'ZORZA', 'CARNE', 'TAPAS', 
+  'POLBO', 'CALDO', 'XAMON', 'PORCO', 'LURAS',
+  'XOUBA', 'TAZAS', 'TARTA', 'FOGON', 'PRATO',
+  'LICOR', 'MILLO', 'BROAS', 'CHOCA', 'MORRO'
 ];
 
 function getEnxebreWordForToday() {
