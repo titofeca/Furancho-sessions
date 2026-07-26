@@ -46,6 +46,16 @@ const ACHIEVEMENTS = [
     rule: { type: 'campaign_visits', campaignId: 'reto_5_verano_2026', requiredVisits: 5 }
   },
   {
+    // NFT extra por llegar a las 10 visitas (Reto de los 5).
+    id: 'furancho_legend_oro_2026',
+    name: 'Furancho Legend Oro',
+    description: 'Leyenda de Oro · Verano 2026. NFT exclusivo de máximo prestigio por alcanzar 10 visitas durante la campaña de verano.',
+    image: 'furanchotorre_oro.jpg',
+    tokenId: 104,
+    edition: 'Verano 2026 Oro',
+    rule: { type: 'campaign_visits', campaignId: 'reto_5_verano_2026', requiredVisits: 10 }
+  },
+  {
     id: 'furancheiro_honor',
     name: 'Furancheiro de Honor',
     description: 'Miembro de Honor do Furancho. NFT exclusivo por reservar mesa VIP en la app 2 veces y asistir a las sesiones.',

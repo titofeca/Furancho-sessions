@@ -72,16 +72,52 @@ function isQrFresh(tsSeconds, d = new Date()) {
 
 // Obtener la tabla de privilegios dinámica (leyendo overrides de app_settings para +5 y +10).
 function getPrivilegeTiers() {
-  const { getSetting } = require('../db/database');
+  const { getSetting, getCampaignStats } = require('../db/database');
   
   let perks5 = ['NFT Furancho Legend 2026 (requiere aprobación admin)', 'Descuento en la primera consumición de septiembre'];
   let perks10 = ['Mesa VIP garantizada en el 1er Furancho de septiembre', 'Botella de albariño de bienvenida', 'Mención especial en el tablón del Furancho'];
+
+  // Calcular las plazas restantes para el descuento de las 5 visitas (solo 5 primeros)
+  let discountText = '🎟️ Descuento en tu primera consumición de septiembre';
+  try {
+    const stats5 = getCampaignStats(5, CAMPAIGN.id);
+    const completed5 = stats5 ? stats5.completed : 0;
+    const remaining5 = Math.max(0, 5 - completed5);
+    if (remaining5 > 0) {
+      discountText = `🎟️ Descuento en consumición en septiembre (¡solo quedan ${remaining5} plaza${remaining5 !== 1 ? 's' : ''}!)`;
+    } else {
+      discountText = `🎟️ Descuento de consumición agotado (5/5 reclamados)`;
+    }
+  } catch (e) {}
+
+  // Reemplazar el texto base del descuento
+  const idxDesc = perks5.findIndex(p => p.includes('Descuento en la primera consumición'));
+  if (idxDesc !== -1) perks5[idxDesc] = discountText;
+
+  // Calcular las plazas restantes para la cata en 10 visitas (solo 1º primero)
+  let tastingText = '🍷 Plaza garantizada para la cata exclusiva (¡solo 1 plaza!)';
+  try {
+    const stats10 = getCampaignStats(10, CAMPAIGN.id);
+    const completed10 = stats10 ? stats10.completed : 0;
+    const remaining10 = Math.max(0, 1 - completed10);
+    if (remaining10 > 0) {
+      tastingText = `🍷 Plaza para cata exclusiva (¡solo queda ${remaining10} plaza!)`;
+    } else {
+      tastingText = `🍷 Plazas de cata agotadas (1/1 cubiertas)`;
+    }
+  } catch (e) {}
+
+  perks10.unshift(tastingText);
+  perks10.unshift('NFT Furancho Legend Oro 2026');
 
   try {
     const raw5 = getSetting('campaign_privileges_5');
     if (raw5) {
       const parsed = JSON.parse(raw5);
-      if (Array.isArray(parsed) && parsed.length > 0) perks5 = parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Mantenemos la lógica viva
+        perks5 = [discountText, ...parsed.filter(p => !p.includes('Descuento en la primera consumición'))];
+      }
     }
   } catch (_) {}
 
@@ -89,12 +125,15 @@ function getPrivilegeTiers() {
     const raw10 = getSetting('campaign_privileges_10');
     if (raw10) {
       const parsed = JSON.parse(raw10);
-      if (Array.isArray(parsed) && parsed.length > 0) perks10 = parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Mantenemos la lógica viva
+        perks10 = [tastingText, ...parsed.filter(p => !p.includes('cata exclusiva'))];
+      }
     }
   } catch (_) {}
 
   return [
-    { minVisits: 10, emoji: '👑', label: 'Presidente da Terraza', perks: perks10 },
+    { minVisits: 10, emoji: '👑', label: 'Presidente da Terraza (Nivel Oro)', perks: perks10 },
     { minVisits: 5,  emoji: '🏅', label: 'Veterano da Terraza',   perks: perks5 },
   ];
 }
@@ -131,15 +170,29 @@ function _doRecordVisit(walletAddress, dateStr) {
   }
 
 
-  if (completed) {
+  // Reclamar NFT de 5 visitas (Furancho Legend base)
+  if (totalVisits >= 5) {
     const a = achievements.getById(CAMPAIGN.achievementId);
     if (a) {
       const existing = getAchievementMint(walletAddress, a.id);
       if (!existing) {
         claimAchievement(walletAddress, a.id, a.tokenId, 'pending_approval');
-        console.log(`[Campaña] ${walletAddress.slice(0,8)}… completó el Reto de los 5 — logro en pending_approval`);
       }
       const m = getAchievementMint(walletAddress, a.id);
+      if (!claimStatus) claimStatus = m ? m.status : 'pending_approval';
+    }
+  }
+
+  // Reclamar NFT de 10 visitas (Furancho Legend Oro)
+  if (totalVisits >= 10) {
+    const aOro = achievements.getById('furancho_legend_oro_2026');
+    if (aOro) {
+      const existing = getAchievementMint(walletAddress, aOro.id);
+      if (!existing) {
+        claimAchievement(walletAddress, aOro.id, aOro.tokenId, 'pending_approval');
+      }
+      const m = getAchievementMint(walletAddress, aOro.id);
+      // Sobre-escribe el claimStatus para el UI para mostrar el progreso de Oro si ya superó el nivel 5
       claimStatus = m ? m.status : 'pending_approval';
     }
   }
@@ -206,7 +259,12 @@ function getProgress(walletAddress) {
   const a = achievements.getById(CAMPAIGN.achievementId);
   if (a) {
     const m = getAchievementMint(walletAddress, a.id);
-    claimStatus = m ? m.status : null;
+    if (m) claimStatus = m.status;
+  }
+  const aOro = achievements.getById('furancho_legend_oro_2026');
+  if (aOro && visits >= 10) {
+    const mOro = getAchievementMint(walletAddress, aOro.id);
+    if (mOro) claimStatus = mOro.status; // Sobre-escribe el claim status si tiene el oro
   }
   return {
     active: isCampaignActive(),

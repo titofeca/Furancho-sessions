@@ -3230,7 +3230,7 @@
                 <span class="guide-arrow">▼</span>
               </summary>
               <p class="guide-text">
-                ¡Qué canelo ni qué caralladas, neno! Cada nivel te da más caché en la barra. En nivel 3 (Larpeiro) y nivel 4 (Presidente) ya eres el puto amo del furancho: entras por duplicado en los sorteos, te invitamos a catas exclusivas y puedes pedir raciones secretas fuera de carta que el staff solo te sacará si les enseñas tu carné digital VIP. ¡Casi nada, ho!
+                ¡Qué canelo ni qué caralladas, neno! Cada nivel te da más caché en la barra. En nivel 3 (Larpeiro) y nivel 4 (Presidente) ya eres el amo del furancho: entras por duplicado en los sorteos, te invitamos a catas exclusivas y puedes pedir raciones secretas fuera de carta que el staff solo te sacará si les enseñas tu carné digital VIP. ¡Casi nada, ho!
             </details>
 
             <!-- Pregunta 5 (Nueva) -->
@@ -4464,7 +4464,7 @@
 
       // Contador de visitas
       document.getElementById('visit-count-display').textContent = visitCount;
-      document.getElementById('visit-total-display').textContent = visitCount >= 12 ? '✓ ¡El puto amo, ho!' : 'visitas';
+      document.getElementById('visit-total-display').textContent = visitCount >= 12 ? '✓ ¡El rey, ho!' : 'visitas';
 
       // Badge VIP si hay reserva activa (confirmed/pending) para un evento futuro
       renderProfileVipBadge();
@@ -8213,30 +8213,39 @@
       const msg = document.getElementById('campaign-state-msg');
       const btn = document.getElementById('campaign-show-qr');
       if (msg) {
-        if (p.claimStatus === 'success') {
-          msg.innerHTML = '✅ <strong>¡Ya eres Leyenda!</strong> Tu NFT Furancho Legend 2026 está en tu wallet.';
-          if (btn) btn.style.display = 'none';
-        } else if (p.claimStatus === 'pending' || p.claimStatus === 'pending_approval') {
-          msg.innerHTML = '🏅 <strong>¡Reto completado!</strong> Tu NFT está en preparación. En breve en tu wallet.';
-          if (btn) btn.style.display = 'none';
-        } else if (p.completed) {
-          msg.innerHTML = '🏅 <strong>¡Reto completado!</strong> Reclama tu NFT en el museo.';
-          if (btn) btn.style.display = 'none';
+        let baseMsg = '';
+        if (p.visits >= 10) {
+          if (p.claimStatus === 'success') baseMsg = '🏆 <strong>¡Nivel ORO Alcanzado!</strong> Eres el rey de la terraza. Tu NFT Legend Oro está en tu wallet.';
+          else baseMsg = '🏆 <strong>¡Nivel ORO Alcanzado!</strong> Tu NFT Legend Oro está en preparación.';
+        } else if (p.visits >= 5) {
+          if (p.claimStatus === 'success') baseMsg = '✅ <strong>¡Ya eres Leyenda!</strong> Tu NFT Furancho Legend 2026 está en tu wallet.';
+          else baseMsg = '🏅 <strong>¡Reto completado!</strong> Tu NFT está en preparación.';
         } else if (p.active) {
-          const falta = p.required - p.visits;
-          msg.textContent = `Te falta${falta !== 1 ? 'n' : ''} ${falta} visita${falta !== 1 ? 's' : ''} para ser Leyenda.`;
-          if (btn) btn.style.display = p.isFuranchoDay ? 'none' : 'block';
+          const falta = 5 - p.visits;
+          baseMsg = `¡Sigue así, ho! Estás a ${falta} visita${falta !== 1 ? 's' : ''} de coronarte Leyenda.`;
         } else {
-          msg.textContent = 'La campaña de verano ya terminó. ¡Gracias por tu constancia, ho!';
-          if (btn) btn.style.display = 'none';
+          baseMsg = 'La campaña de verano ya terminó. ¡Gracias por tu constancia, ho!';
         }
-        // Motivación extra si ya superó el reto
-        if (p.active && p.visits >= p.required) {
+        msg.innerHTML = baseMsg;
+        
+        // El botón solo se muestra si pueden seguir fichando y no es día de Furancho
+        if (btn) btn.style.display = (p.active && !p.isFuranchoDay) ? 'block' : 'none';
+
+        // Motivación extra si ya superó el reto base (5 visitas)
+        if (p.active && p.visits >= 5) {
           const nextTier = p.privilegeTiers ? p.privilegeTiers.find(t => t.minVisits > p.visits) : null;
-          const extra = nextTier
-            ? `<br><span style="font-size:11px;color:var(--gold);font-weight:700;">🍹 ¡${nextTier.minVisits - p.visits} visita${nextTier.minVisits - p.visits !== 1?'s':''} más y subes a ${nextTier.emoji} ${nextTier.label}!</span>`
-            : `<br><span style="font-size:11px;color:var(--gold);font-weight:700;">👑 Eres el máximo rango. ¡Hasta septiembre!</span>`;
-          msg.innerHTML += extra;
+          if (nextTier) {
+            const extraFalta = nextTier.minVisits - p.visits;
+            const tastingPerk = nextTier.perks.find(pk => pk.includes('quedan'));
+            let urge = '';
+            if (tastingPerk) {
+               const slotsMatch = tastingPerk.match(/quedan (\d+)/);
+               if (slotsMatch) urge = ` ¡Ojo que solo quedan ${slotsMatch[1]} plazas para la cata!`;
+            }
+            msg.innerHTML += `<br><span style="font-size:11.5px;color:var(--gold);font-weight:800;">🍹 ¡Haz ${extraFalta} visita${extraFalta !== 1?'s':''} más y subes a ${nextTier.emoji} ${nextTier.label}!${urge}</span>`;
+          } else {
+            msg.innerHTML += `<br><span style="font-size:11.5px;color:var(--gold);font-weight:800;">👑 Eres el máximo rango absoluto. ¡Nos vemos en la cata!</span>`;
+          }
         }
       }
     } catch (e) { /* silencioso: la campaña es opcional */ }
