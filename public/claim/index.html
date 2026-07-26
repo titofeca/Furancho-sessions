@@ -12029,7 +12029,14 @@
         if (data.hasCunca && data.cunca) {
           openCuncaQuenteData(data.cunca);
         } else {
-          document.getElementById('btn-open-minigames').style.display = 'none';
+          // Si no hay cunca, mostrar el botón genérico de minijuegos si están activos en general
+          const enxebreEnabled = _corchoData?.rates?.enxebreEnabled;
+          const cuncaEnabled = _corchoData?.rates?.cuncaEnabled;
+          if (enxebreEnabled || cuncaEnabled) {
+            document.getElementById('btn-open-minigames').style.display = 'flex';
+          } else {
+            document.getElementById('btn-open-minigames').style.display = 'none';
+          }
         }
       } catch (e) {}
     }
@@ -12077,7 +12084,7 @@
           corchoAlert({icon: '😋', title: '¡Cunca Pa Dentro!', body: `Te acabas de beber ${data.amount} $CORCHO.`});
           closeCuncaQuente();
           loadCorchoBalance();
-          document.getElementById('btn-open-minigames').style.display = 'none';
+          loadCorchoBalance();
         } else {
           showToast(data.error || 'Error', true);
         }
@@ -12101,7 +12108,7 @@
           corchoAlert({icon: '🔥', title: '¡Pasada!', body: `Has pasado la Cunca. El bote ahora es de ${data.newPot} $CORCHO.`});
           closeCuncaQuente();
           loadCorchoBalance();
-          document.getElementById('btn-open-minigames').style.display = 'none';
+          loadCorchoBalance();
         } else {
           showToast(data.error || 'Error', true);
         }
