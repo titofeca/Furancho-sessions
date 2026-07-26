@@ -2782,6 +2782,14 @@
         <div id="agenda-list" style="display:flex; flex-direction:column; gap:10px;">Cargando...</div>
       </div>
 
+      <!-- Ranking de Tapas -->
+      <div class="card" style="margin-bottom:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h2 style="font-family:'Playfair Display',serif; font-size:18px; font-weight:700; color:var(--text); margin:0;">🏆 Ranking de Tapas</h2>
+          <button onclick="openTapasRankingModal()" style="background:linear-gradient(135deg, rgba(196,151,58,0.1), rgba(196,151,58,0.2)); color:var(--gold); border:1px solid rgba(196,151,58,0.3); border-radius:50px; padding:8px 16px; font-size:12px; font-weight:700; cursor:pointer;">Ver ranking</button>
+        </div>
+      </div>
+
       <!-- Analytics de sesiones -->
       <div class="card" style="margin-bottom:20px;">
         <h2 style="font-family:'Playfair Display',serif; font-size:18px; font-weight:700; color:var(--text); margin-bottom:16px;">📊 Analytics de Sesiones</h2>
@@ -3504,6 +3512,20 @@
     <div style="display:flex; gap:8px; padding:12px 14px; border-top:1px solid var(--border);">
       <input id="weekly-chat-modal-input" maxlength="500" placeholder="Responder al ganador..." style="flex:1; padding:9px 14px; border-radius:50px; border:1.5px solid var(--border); background:var(--bg); color:var(--text); font-size:13px; font-family:'Outfit',sans-serif; outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault(); sendAdminWeeklyChatMsg();}" />
       <button onclick="sendAdminWeeklyChatMsg()" style="background:var(--wine); color:#fff; border:none; border-radius:50%; width:38px; height:38px; flex-shrink:0; font-size:14px; cursor:pointer;">➤</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Ranking de Tapas -->
+<div id="tapas-ranking-modal" class="modal-backdrop">
+  <div class="modal-content" style="max-height:85vh; overflow-y:auto; padding-bottom:30px;">
+    <div class="modal-header">
+      <h2 style="font-family:'Playfair Display',serif; font-size:24px; color:var(--text);">Ranking de Tapas</h2>
+      <button class="close-btn" onclick="document.getElementById('tapas-ranking-modal').style.display='none'">×</button>
+    </div>
+    <p style="font-size:13px; color:var(--text-muted); margin-bottom:20px;">Descubre cuáles son las tapas más valoradas por los clientes en toda la historia del Furancho.</p>
+    <div id="tapas-ranking-list" style="display:flex; flex-direction:column; gap:10px;">
+      <!-- Loaded via JS -->
     </div>
   </div>
 </div>
@@ -9666,6 +9688,52 @@
     } catch(e) { showToast('Error reordenando', true); }
   }
   // ─────────────────────────────────────────────────────────────────────
+
+  async function openTapasRankingModal() {
+    const modal = document.getElementById('tapas-ranking-modal');
+    const list = document.getElementById('tapas-ranking-list');
+    list.innerHTML = `<p style="font-size:13px; color:var(--text-muted); text-align:center; padding:20px;">Cargando ranking...</p>`;
+    modal.style.display = 'flex';
+    
+    try {
+      const res = await fetch(`/api/events/tapas/ranking`, { headers: authHeaders() });
+      if (!res.ok) throw new Error('Error al cargar');
+      const ranking = await res.json();
+      
+      if (!ranking.length) {
+        list.innerHTML = `<p style="font-size:13px; color:var(--text-muted); text-align:center; padding:20px;">Aún no hay valoraciones de tapas.</p>`;
+        return;
+      }
+      
+      list.innerHTML = ranking.map((r, i) => {
+        let badge = '';
+        if (i === 0) badge = '🥇';
+        else if (i === 1) badge = '🥈';
+        else if (i === 2) badge = '🥉';
+        else badge = `<span style="font-size:13px; font-weight:800; color:var(--text-muted); display:inline-block; width:20px; text-align:center;">${i+1}</span>`;
+        
+        return `
+          <div style="display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1.5px solid var(--border); border-radius:12px; padding:12px 14px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="font-size:24px;">${badge}</div>
+              <div>
+                <p style="font-size:15px; font-weight:700; color:var(--text); margin:0;">${r.display_name}</p>
+                <p style="font-size:12px; color:var(--text-muted); margin:2px 0 0;">👥 ${r.total_votes} votos</p>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; align-items:flex-end;">
+              <div style="display:flex; align-items:center; gap:4px;">
+                <span style="font-size:16px; font-weight:800; color:var(--wine);">${r.avg_rating}</span>
+                <span style="font-size:12px; color:var(--gold);">★</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch(e) {
+      list.innerHTML = `<p style="font-size:13px; color:#cc3333; text-align:center; padding:20px;">Error al cargar el ranking.</p>`;
+    }
+  }
 
   async function loadAnalytics() {
     try {

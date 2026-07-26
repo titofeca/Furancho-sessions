@@ -348,6 +348,40 @@ router.patch('/tapas/:tapaid', requireAuth, (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// POST /api/events/tapas/:tapaid/rate — valorar tapa (público)
+router.post('/tapas/:tapaid/rate', (req, res) => {
+  const tapaId = parseInt(req.params.tapaid);
+  const { wallet, rating } = req.body;
+  if (!wallet || rating < 1 || rating > 5) return res.status(400).json({ error: 'Faltan datos o rating inválido' });
+  try {
+    const { db } = require('../db/database');
+    db.prepare(`
+      INSERT INTO tapas_ratings (tapa_id, wallet_address, rating) 
+      VALUES (?, ?, ?)
+      ON CONFLICT(tapa_id, wallet_address) DO UPDATE SET rating=excluded.rating
+    `).run(tapaId, wallet, rating);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/events/tapas/ranking — ranking de tapas (admin)
+router.get('/tapas/ranking', requireAuth, (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const rows = db.prepare(`
+      SELECT 
+        LOWER(TRIM(t.name)) as key_name,
+        MAX(t.name) as display_name,
+        COUNT(r.id) as total_votes,
+        ROUND(AVG(r.rating), 1) as avg_rating
+      FROM tapas_ratings r
+      JOIN tapas t ON r.tapa_id = t.id
+      GROUP BY LOWER(TRIM(t.name))
+      ORDER BY avg_rating DESC, total_votes DESC
+    `).all();
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 
 // DELETE /api/events/tapas/:tapaid — eliminar tapa (admin)

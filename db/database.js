@@ -201,6 +201,19 @@ try {
 } catch (_) {}
 try { db.exec(`ALTER TABLE tapas ADD COLUMN allergens TEXT DEFAULT ''`); } catch (_) {}
 
+// Valoraciones de tapas por parte de los clientes
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS tapas_ratings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tapa_id INTEGER NOT NULL,
+    wallet_address TEXT NOT NULL,
+    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(tapa_id, wallet_address),
+    FOREIGN KEY (tapa_id) REFERENCES tapas(id) ON DELETE CASCADE
+  )`);
+} catch (_) {}
+
 // Mints de LOGROS (ediciones especiales NFT, token >= 100). Separado de `mints`, que
 // está limitado a niveles 1-4 por CHECK. Un logro por wallet (UNIQUE).
 try {

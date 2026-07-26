@@ -4671,6 +4671,32 @@
       const seed = (eventId * 37) % 5;
       return base + seed;
     }
+    window.tapasRatingsCache = window.tapasRatingsCache || {};
+
+    async function rateTapa(tapaId, rating) {
+      if (!userWalletAddress) {
+        showToast('Debes estar conectado para valorar');
+        return;
+      }
+      try {
+        await resilientFetch(`/api/events/tapas/${tapaId}/rate`, {
+          method: 'POST',
+          body: JSON.stringify({ wallet: userWalletAddress, rating })
+        });
+        window.tapasRatingsCache[tapaId] = rating;
+        const container = document.getElementById(`tapa-rating-${tapaId}`);
+        if (container) {
+          const stars = container.querySelectorAll('span');
+          stars.forEach((s, i) => {
+            s.style.color = i < rating ? 'var(--gold)' : 'rgba(42,21,9,0.15)';
+            s.style.textShadow = i < rating ? '0 0 8px rgba(196,151,58,0.4)' : 'none';
+          });
+        }
+        showToast('¡Valoración guardada! 🤤');
+      } catch (e) {
+        showToast('Error al valorar');
+      }
+    }
 
     async function loadAgenda() {
       try {
@@ -4769,6 +4795,9 @@
                             <p style="font-size:15px; font-weight:700; color:var(--text); margin:0; line-height:1.3;">${t.name}</p>
                             ${t.description ? `<p style="font-size:12px; color:var(--text-muted); margin:3px 0 0; font-style:italic;">${t.description}</p>` : ''}
                             ${allergenBadges}
+                            <div style="margin-top:8px; display:flex; align-items:center; gap:2px;" id="tapa-rating-${t.id}">
+                              ${[1,2,3,4,5].map(star => `<span onclick="event.stopPropagation(); rateTapa(${t.id}, ${star})" style="cursor:pointer; font-size:18px; color:rgba(42,21,9,0.15); transition:transform 0.1s; user-select:none; line-height:1;" ontouchstart="this.style.transform='scale(1.2)'" ontouchend="this.style.transform='scale(1)'">★</span>`).join('')}
+                            </div>
                           </div>
                         </div>`;
                       }).join('')}
