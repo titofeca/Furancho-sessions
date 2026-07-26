@@ -6411,17 +6411,34 @@
       if (!banner) return;
       banner.style.display = 'block';
 
+      // Comprobar si hay evento hoy usando la variable global de la agenda
+      const today = new Date().toISOString().slice(0, 10);
+      const hasEventToday = _globalEvents && _globalEvents.some(ev => ev.event_date === today);
+
       if (connected) {
         if (userHasActiveSession) {
           banner.style.background = 'rgba(34,197,94,0.10)';
           banner.style.border = '1.5px solid rgba(34,197,94,0.35)';
           banner.style.color = '#15803d';
-          banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,0.25);display:inline-block;flex-shrink:0;"></span>Estás dentro del bombo — participa en los sorteos de hoy</span>';
+          if (hasEventToday) {
+            banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,0.25);display:inline-block;flex-shrink:0;"></span>Estás dentro del bombo — participa en los sorteos de hoy</span>';
+          } else {
+            banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,0.25);display:inline-block;flex-shrink:0;"></span>Fichado — esta visita cuenta para el Reto de Verano</span>';
+          }
         } else {
           banner.style.background = 'rgba(249,115,22,0.08)';
           banner.style.border = '1.5px solid rgba(249,115,22,0.35)';
           banner.style.color = '#c2410c';
-          banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#f97316;display:inline-block;flex-shrink:0;"></span>Hay evento — ficha entrada para que el punto sea verde y entrar en el sorteo</span>';
+          if (hasEventToday) {
+            banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#f97316;display:inline-block;flex-shrink:0;"></span>¡Hoy hay Furancho! Ficha entrada para entrar en el sorteo</span>';
+          } else if (window._terrazaOpenToday !== false) {
+            banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#f97316;display:inline-block;flex-shrink:0;"></span>Terraza abierta — ficha entrada para sumar al Reto de Verano</span>';
+          } else {
+            banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#a8a29e;display:inline-block;flex-shrink:0;"></span>Terraza cerrada hoy — descansa, rapaz</span>';
+            banner.style.background = 'rgba(168,162,158,0.1)';
+            banner.style.border = '1.5px solid rgba(168,162,158,0.3)';
+            banner.style.color = '#78716c';
+          }
         }
       } else {
         // Desconectado
@@ -6436,13 +6453,22 @@
             banner.style.background = 'rgba(34,197,94,0.10)';
             banner.style.border = '1.5px solid rgba(34,197,94,0.35)';
             banner.style.color = '#15803d';
-            banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;flex-shrink:0;"></span>Fichado — estás en el bombo aunque cierres la app</span>';
+            banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;flex-shrink:0;"></span>Fichado — estás a salvo aunque cierres la app</span>';
           }
         } else {
           banner.style.background = 'rgba(239,68,68,0.08)';
           banner.style.border = '1.5px solid rgba(239,68,68,0.3)';
           banner.style.color = '#b91c1c';
-          banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0;"></span>Ficha entrada hoy para entrar en el sorteo</span>';
+          if (hasEventToday) {
+            banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0;"></span>¡Hoy hay Furancho! Ficha entrada para participar en el sorteo</span>';
+          } else if (window._terrazaOpenToday !== false) {
+            banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0;"></span>Ficha entrada hoy para sumar al Reto de Verano</span>';
+          } else {
+            banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#a8a29e;display:inline-block;flex-shrink:0;"></span>Terraza cerrada hoy — descansa, rapaz</span>';
+            banner.style.background = 'rgba(168,162,158,0.1)';
+            banner.style.border = '1.5px solid rgba(168,162,158,0.3)';
+            banner.style.color = '#78716c';
+          }
         }
       }
     }
@@ -8495,6 +8521,7 @@
         return t > f ? (nowMin >= f && nowMin < t) : nowMin >= f; // normal o abre hoy y cierra de madrugada
       };
       const openNow = inRange(effToday, false) || inRange(effYesterday, true);
+      window._terrazaOpenToday = !!effToday.open; // Export to global scope
       const badge = document.getElementById('terraza-now-badge');
       if (badge) badge.style.display = openNow ? 'inline-block' : 'none';
       const noteEl = document.getElementById('terraza-note-view');
