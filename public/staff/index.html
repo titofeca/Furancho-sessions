@@ -612,7 +612,7 @@
 
     async function grantNftPrize(btn, wallet, queueKey){
       const p = (window._nftPrizeQueue || {})[queueKey];
-      if (!p){ alert('No encuentro el premio, refresca y escanea de nuevo.'); return; }
+      if (!p){ corchoAlert('No encuentro el premio, refresca y escanea de nuevo.'); return; }
       btn.disabled = true;
       const original = btn.textContent;
       btn.textContent = 'Entregando…';
@@ -629,12 +629,12 @@
         } else {
           btn.disabled = false;
           btn.textContent = original;
-          alert(d.error || 'No se pudo entregar');
+          corchoAlert(d.error || 'No se pudo entregar');
         }
       } catch(e){
         btn.disabled = false;
         btn.textContent = original;
-        alert('Error de red');
+        corchoAlert('Error de red');
       }
     }
 
@@ -698,12 +698,12 @@
         } else {
           btn.disabled = false;
           btn.textContent = original;
-          alert(d.error || 'No se pudo confirmar');
+          corchoAlert(d.error || 'No se pudo confirmar');
         }
       }catch(e){
         btn.disabled = false;
         btn.textContent = original;
-        alert('Error de red');
+        corchoAlert('Error de red');
       }
     }
 
@@ -794,7 +794,7 @@
     async function claimDailyTapa(btn, wallet, key){
       // Compat: si llega sin key (versión antigua), usa la primera de la cola del wallet
       const nft = (window._tapaQueue || {})[key || (wallet + ':0')];
-      if (!nft){ alert('No encuentro el privilexio, escanea de nuevo.'); return; }
+      if (!nft){ corchoAlert('No encuentro el privilexio, escanea de nuevo.'); return; }
       btn.disabled = true;
       const original = btn.textContent;
       btn.textContent = 'Consumiendo…';
@@ -811,12 +811,12 @@
         } else {
           btn.disabled = false;
           btn.textContent = original;
-          alert(d.error || 'No se pudo consumir');
+          corchoAlert(d.error || 'No se pudo consumir');
         }
       } catch(e){
         btn.disabled = false;
         btn.textContent = original;
-        alert('Error de red');
+        corchoAlert('Error de red');
       }
     }
 
@@ -895,12 +895,12 @@
         } else {
           btn.disabled = false;
           btn.textContent = original;
-          alert('⚠️ ' + (d.error || 'No se pudo entregar'));
+          corchoAlert('⚠️ ' + (d.error || 'No se pudo entregar'));
         }
       } catch(e){
         btn.disabled = false;
         btn.textContent = original;
-        alert('⚠️ Error de red.');
+        corchoAlert('⚠️ Error de red.');
       }
     }
 
@@ -976,10 +976,10 @@
 
     async function staffQuickGrantCorcho(wallet, amount, desc) {
       if (!wallet || !/^0x[a-fA-F0-9]{40}$/i.test(wallet)) {
-        alert('⚠️ Wallet no válida');
+        corchoAlert('⚠️ Wallet no válida');
         return;
       }
-      if (!confirm(`¿Confirmar recarga de ${amount.toLocaleString()} $CORCHO para el cliente (${desc})?\n\nWallet: ${wallet.slice(0,6)}…${wallet.slice(-4)}`)) {
+      if (!(await corchoConfirm(`¿Confirmar recarga de ${amount.toLocaleString()} $CORCHO para el cliente (${desc})?\n\nWallet: ${wallet.slice(0,6)}…${wallet.slice(-4)}`))) {
         return;
       }
       try {
@@ -991,11 +991,11 @@
         const d = await r.json();
         if (r.ok && d.success) {
           playNoticeSound();
-          alert(`✅ ¡Recarga realizada! ${amount.toLocaleString()} $CORCHO acreditadas a ${wallet.slice(0,6)}…${wallet.slice(-4)}`);
+          corchoAlert(`✅ ¡Recarga realizada! ${amount.toLocaleString()} $CORCHO acreditadas a ${wallet.slice(0,6)}…${wallet.slice(-4)}`);
         } else {
-          alert('⚠️ ' + (d.error || 'No se pudo realizar la recarga'));
+          corchoAlert('⚠️ ' + (d.error || 'No se pudo realizar la recarga'));
         }
-      } catch (e) { alert('⚠️ Error de conexión'); }
+      } catch (e) { corchoAlert('⚠️ Error de conexión'); }
     }
 
     async function staffCustomGrantCorcho(wallet) {
@@ -1021,11 +1021,11 @@
           if (typeof loadStaffCorchoInbox === 'function') setTimeout(() => loadStaffCorchoInbox(), 900);
         } else {
           btn.disabled = false; btn.textContent = original;
-          alert('⚠️ ' + (d.error || 'No se pudo confirmar'));
+          corchoAlert('⚠️ ' + (d.error || 'No se pudo confirmar'));
         }
       } catch(e){
         btn.disabled = false; btn.textContent = original;
-        alert('⚠️ Error de red.');
+        corchoAlert('⚠️ Error de red.');
       }
     }
 
@@ -1047,11 +1047,11 @@
           btn.textContent = d.alreadyCollected ? '✅ Xa estaba' : '✅ Entregado';
         } else {
           btn.disabled = false; btn.textContent = original;
-          alert('⚠️ ' + (d.error || 'No se pudo entregar'));
+          corchoAlert('⚠️ ' + (d.error || 'No se pudo entregar'));
         }
       } catch(e){
         btn.disabled = false; btn.textContent = original;
-        alert('⚠️ Error de red.');
+        corchoAlert('⚠️ Error de red.');
       }
     }
 
@@ -1061,7 +1061,7 @@
       const amountStr = prompt('¿Cuántos $CORCHO le doy al ganador?', '500');
       if (!amountStr) return;
       const amount = parseInt(amountStr, 10);
-      if (!amount || amount <= 0) { alert('Cantidad no válida'); return; }
+      if (!amount || amount <= 0) { corchoAlert('Cantidad no válida'); return; }
       btn.disabled = true;
       const original = btn.textContent;
       btn.textContent = 'Acreditando…';
@@ -1076,11 +1076,11 @@
           btn.textContent = d.already ? '✅ Xa estaba' : `✅ ${amount.toLocaleString()} $CORCHO dados`;
         } else {
           btn.disabled = false; btn.textContent = original;
-          alert('⚠️ ' + (d.error || 'No se pudo acreditar'));
+          corchoAlert('⚠️ ' + (d.error || 'No se pudo acreditar'));
         }
       } catch(e){
         btn.disabled = false; btn.textContent = original;
-        alert('⚠️ Error de red.');
+        corchoAlert('⚠️ Error de red.');
       }
     }
 
@@ -1099,11 +1099,11 @@
           if (typeof loadStaffCorchoInbox === 'function') setTimeout(() => loadStaffCorchoInbox(), 900);
         } else {
           btn.disabled = false; btn.textContent = original;
-          alert('⚠️ ' + (d.error || 'No se pudo validar'));
+          corchoAlert('⚠️ ' + (d.error || 'No se pudo validar'));
         }
       } catch(e){
         btn.disabled = false; btn.textContent = original;
-        alert('⚠️ Error de red.');
+        corchoAlert('⚠️ Error de red.');
       }
     }
 
@@ -1119,11 +1119,11 @@
           if (typeof loadStaffCorchoInbox === 'function') setTimeout(() => loadStaffCorchoInbox(), 900);
         } else {
           if (btn) { btn.disabled = false; btn.textContent = '✓ Cobrado'; }
-          alert('⚠️ ' + (d.error || 'No se pudo confirmar'));
+          corchoAlert('⚠️ ' + (d.error || 'No se pudo confirmar'));
         }
       } catch (e) {
         if (btn) { btn.disabled = false; btn.textContent = '✓ Cobrado'; }
-        alert('⚠️ Error de red.');
+        corchoAlert('⚠️ Error de red.');
       }
     }
 
@@ -1435,5 +1435,66 @@
       }
     }
   </script>
+
+  <!-- CORPORATE MODALS -->
+  <div id="corcho-modal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.7); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:16px; opacity:0; transition:opacity 0.2s;">
+    <div style="background:var(--cream,#fbf9f6); width:100%; max-width:340px; border-radius:24px; padding:24px 20px; text-align:center; box-shadow:0 20px 40px rgba(0,0,0,0.3); border:2px solid var(--gold,#c4973a);">
+      <div id="cm-icon" style="font-size:36px; margin-bottom:12px;">🪙</div>
+      <h3 id="cm-title" style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:var(--wine,#5a1c1d); margin:0 0 10px;">Aviso</h3>
+      <div id="cm-body" style="font-family:'Outfit',sans-serif; font-size:14.5px; color:#2A1509; line-height:1.5; margin-bottom:20px; font-weight:500; white-space:pre-wrap;"></div>
+      <div style="display:flex; gap:10px;">
+        <button id="cm-cancel" style="flex:1; padding:12px; border-radius:50px; background:rgba(42,21,9,0.06); border:none; color:var(--text-muted,#777); font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer;">Cancelar</button>
+        <button id="cm-ok" style="flex:1; padding:12px; border-radius:50px; background:linear-gradient(135deg,var(--gold,#c4973a),#a97b1f); border:none; color:#fff; font-family:'Outfit',sans-serif; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 4px 12px rgba(196,151,58,0.3);">Confirmar</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    function corchoConfirm(body, title = 'Staff Furancho', icon = '🪙') {
+      return new Promise(resolve => {
+        const ov = document.getElementById('corcho-modal');
+        document.getElementById('cm-icon').textContent = icon;
+        document.getElementById('cm-title').textContent = title;
+        document.getElementById('cm-body').textContent = body;
+        const cancelBtn = document.getElementById('cm-cancel');
+        cancelBtn.style.display = 'block';
+        
+        const cleanup = () => {
+          ov.style.opacity = '0';
+          setTimeout(() => ov.style.display = 'none', 200);
+          cancelBtn.onclick = null;
+          document.getElementById('cm-ok').onclick = null;
+        };
+        
+        cancelBtn.onclick = () => { cleanup(); resolve(false); };
+        document.getElementById('cm-ok').onclick = () => { cleanup(); resolve(true); };
+        
+        ov.style.display = 'flex';
+        requestAnimationFrame(() => ov.style.opacity = '1');
+      });
+    }
+    
+    function corchoAlert(body, title = 'Aviso', icon = '⚠️') {
+      return new Promise(resolve => {
+        const ov = document.getElementById('corcho-modal');
+        document.getElementById('cm-icon').textContent = icon;
+        document.getElementById('cm-title').textContent = title;
+        document.getElementById('cm-body').textContent = body;
+        const cancelBtn = document.getElementById('cm-cancel');
+        cancelBtn.style.display = 'none';
+        
+        const cleanup = () => {
+          ov.style.opacity = '0';
+          setTimeout(() => ov.style.display = 'none', 200);
+          document.getElementById('cm-ok').onclick = null;
+        };
+        
+        document.getElementById('cm-ok').onclick = () => { cleanup(); resolve(true); };
+        
+        ov.style.display = 'flex';
+        requestAnimationFrame(() => ov.style.opacity = '1');
+      });
+    }
+  </script>
+
 </body>
 </html>

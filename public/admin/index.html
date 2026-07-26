@@ -4504,10 +4504,10 @@
     try {
       const res = await fetch(`/api/admin/mints/${id}/approve?type=${type}`, { method: 'POST', headers: authHeaders() });
       const data = await res.json();
-      alert(data.message || '¡Aprobado, neno!');
+      corchoAlert(data.message || '¡Aprobado, neno!');
       loadNftsPage();
       loadPendingMints(); // También recargamos pendientes para estar al día
-    } catch (e) { alert('Error al aprobar'); }
+    } catch (e) { corchoAlert('Error al aprobar'); }
   }
 
   async function rejectPendingMint(id, type = 'level') {
@@ -4515,10 +4515,10 @@
     try {
       const res = await fetch(`/api/admin/mints/${id}/reject?type=${type}`, { method: 'POST', headers: authHeaders() });
       const data = await res.json();
-      alert(data.message || 'Rechazado correctamente.');
+      corchoAlert(data.message || 'Rechazado correctamente.');
       loadNftsPage();
       loadPendingMints(); // También recargamos pendientes para estar al día
-    } catch (e) { alert('Error al rechazar'); }
+    } catch (e) { corchoAlert('Error al rechazar'); }
   }
 
   // ==================== CAMPAÑA "RETO DE LOS 5" ====================
@@ -4620,9 +4620,9 @@
     try {
       const res = await fetch(`/api/admin/campaign/${id}/approve`, { method: 'POST', headers: authHeaders() });
       const data = await res.json();
-      alert(data.message || '¡Aprobado!');
+      corchoAlert(data.message || '¡Aprobado!');
       loadCampaignAdmin();
-    } catch (e) { alert('Error al aprobar'); }
+    } catch (e) { corchoAlert('Error al aprobar'); }
   }
 
   async function rejectCampaign(id) {
@@ -4630,9 +4630,9 @@
     try {
       const res = await fetch(`/api/admin/campaign/${id}/reject`, { method: 'POST', headers: authHeaders() });
       const data = await res.json();
-      alert(data.message || 'Rechazado.');
+      corchoAlert(data.message || 'Rechazado.');
       loadCampaignAdmin();
-    } catch (e) { alert('Error al rechazar'); }
+    } catch (e) { corchoAlert('Error al rechazar'); }
   }
 
   // Sube una imagen para el NFT Furancho Legend 2026. Reutiliza el endpoint de upload
@@ -4716,7 +4716,7 @@
   }
 
   async function _corchoAction(btn, url, okText, confirmMsg) {
-    if (confirmMsg && !confirm(confirmMsg)) return;
+    if (confirmMsg && !(await corchoConfirm(confirmMsg))) return;
     btn.disabled = true;
     const original = btn.textContent;
     btn.textContent = '…';
@@ -4728,11 +4728,11 @@
         loadCorchoAdminStats();
       } else {
         btn.disabled = false; btn.textContent = original;
-        alert('⚠️ ' + (d.error || 'No se pudo completar'));
+        corchoAlert('⚠️ ' + (d.error || 'No se pudo completar'));
       }
     } catch (e) {
       btn.disabled = false; btn.textContent = original;
-      alert('⚠️ Error de red.');
+      corchoAlert('⚠️ Error de red.');
     }
   }
 
@@ -5217,7 +5217,7 @@
     if (!name) return;
     const emoji = prompt('Emoji (ej: 🍷, 🧀, 🍖, 👕):', '🎁') || '🎁';
     const priceStr = prompt('Precio en $CORCHO (ej: 400, 700, 1200, 4000):', '400');
-    if (!priceStr || isNaN(parseInt(priceStr, 10))) return alert('Precio en $CORCHO no válido.');
+    if (!priceStr || isNaN(parseInt(priceStr, 10))) return corchoAlert('Precio en $CORCHO no válido.');
     const description = prompt('Descripción / detalles opcionales:');
     const stockStr = prompt('Stock / unidades disponibles (ej: 10, o dejar vacío / cancelar para ilimitado):', '10');
     const stock = stockStr !== null && stockStr.trim() !== '' && !isNaN(parseInt(stockStr, 10)) ? parseInt(stockStr, 10) : null;
@@ -5591,13 +5591,13 @@
       });
       const data = await res.json();
       if (!res.ok) {
-        alert('⚠️ ' + (data.error || 'Error al enviar respuesta.'));
+        corchoAlert('⚠️ ' + (data.error || 'Error al enviar respuesta.'));
         return;
       }
-      alert('✅ Respuesta enviada correctamente al tablón privado del cliente.');
+      corchoAlert('✅ Respuesta enviada correctamente al tablón privado del cliente.');
       input.value = '';
     } catch (e) {
-      alert('Error de conexión.');
+      corchoAlert('Error de conexión.');
     }
   }
 
@@ -5978,11 +5978,11 @@
         }
         loadScheduledMessages();
       } else {
-        alert(data.error || 'Error al eliminar');
+        corchoAlert(data.error || 'Error al eliminar');
       }
     } catch (e) {
       console.error(e);
-      alert('Error de conexión');
+      corchoAlert('Error de conexión');
     }
   }
 
@@ -6308,12 +6308,12 @@
           loadAgenda();
         }
       } else {
-        alert('Error: ' + (data.error || 'no se pudo actualizar'));
+        corchoAlert('Error: ' + (data.error || 'no se pudo actualizar'));
         card.querySelectorAll('button').forEach(b => b.disabled = false);
         btn.textContent = status === 'confirmed' ? 'Aceptar ✓' : 'Rechazar ✗';
       }
     } catch(err) {
-      alert('Error de red al procesar reserva');
+      corchoAlert('Error de red al procesar reserva');
       card.querySelectorAll('button').forEach(b => b.disabled = false);
       btn.textContent = status === 'confirmed' ? 'Aceptar ✓' : 'Rechazar ✗';
     }
@@ -10398,7 +10398,68 @@
       body { margin:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
       .biz-report tr { page-break-inside: avoid; }
       .biz-report h2 { page-break-after: avoid; }
-    </style></head><body>${html}</body></html>`);
+    </style></head><body>${html}
+  <!-- CORPORATE MODALS -->
+  <div id="corcho-modal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.7); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:16px; opacity:0; transition:opacity 0.2s;">
+    <div style="background:var(--cream,#fbf9f6); width:100%; max-width:340px; border-radius:24px; padding:24px 20px; text-align:center; box-shadow:0 20px 40px rgba(0,0,0,0.3); border:2px solid var(--gold,#c4973a);">
+      <div id="cm-icon" style="font-size:36px; margin-bottom:12px;">🪙</div>
+      <h3 id="cm-title" style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:var(--wine,#5a1c1d); margin:0 0 10px;">Aviso</h3>
+      <div id="cm-body" style="font-family:'Outfit',sans-serif; font-size:14.5px; color:#2A1509; line-height:1.5; margin-bottom:20px; font-weight:500;"></div>
+      <div style="display:flex; gap:10px;">
+        <button id="cm-cancel" style="flex:1; padding:12px; border-radius:50px; background:rgba(42,21,9,0.06); border:none; color:var(--text-muted,#777); font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer;">Cancelar</button>
+        <button id="cm-ok" style="flex:1; padding:12px; border-radius:50px; background:linear-gradient(135deg,var(--gold,#c4973a),#a97b1f); border:none; color:#fff; font-family:'Outfit',sans-serif; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 4px 12px rgba(196,151,58,0.3);">Confirmar</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    function corchoConfirm(body, title = 'Banco do Corcho', icon = '🪙') {
+      return new Promise(resolve => {
+        const ov = document.getElementById('corcho-modal');
+        document.getElementById('cm-icon').textContent = icon;
+        document.getElementById('cm-title').textContent = title;
+        document.getElementById('cm-body').innerHTML = body;
+        const cancelBtn = document.getElementById('cm-cancel');
+        cancelBtn.style.display = 'block';
+        
+        const cleanup = () => {
+          ov.style.opacity = '0';
+          setTimeout(() => ov.style.display = 'none', 200);
+          cancelBtn.onclick = null;
+          document.getElementById('cm-ok').onclick = null;
+        };
+        
+        cancelBtn.onclick = () => { cleanup(); resolve(false); };
+        document.getElementById('cm-ok').onclick = () => { cleanup(); resolve(true); };
+        
+        ov.style.display = 'flex';
+        requestAnimationFrame(() => ov.style.opacity = '1');
+      });
+    }
+    
+    function corchoAlert(body, title = 'Aviso', icon = '⚠️') {
+      return new Promise(resolve => {
+        const ov = document.getElementById('corcho-modal');
+        document.getElementById('cm-icon').textContent = icon;
+        document.getElementById('cm-title').textContent = title;
+        document.getElementById('cm-body').innerHTML = body;
+        const cancelBtn = document.getElementById('cm-cancel');
+        cancelBtn.style.display = 'none'; // Hide cancel for alerts
+        
+        const cleanup = () => {
+          ov.style.opacity = '0';
+          setTimeout(() => ov.style.display = 'none', 200);
+          document.getElementById('cm-ok').onclick = null;
+        };
+        
+        document.getElementById('cm-ok').onclick = () => { cleanup(); resolve(true); };
+        
+        ov.style.display = 'flex';
+        requestAnimationFrame(() => ov.style.opacity = '1');
+      });
+    }
+  </script>
+
+</body></html>`);
     doc.close();
     setTimeout(() => {
       frame.contentWindow.focus();
@@ -11507,7 +11568,7 @@
       },
       (error) => {}
     ).catch(err => {
-      alert("Error al abrir cámara");
+      corchoAlert("Error al abrir cámara");
     });
   }
   
@@ -11595,8 +11656,8 @@
     const precio = numeroEs(document.getElementById('meme-price').value);
     const priceCorcho = parseInt(document.getElementById('meme-price-corcho').value, 10) || 0;
     const mult = numeroEs(document.getElementById('meme-mult').value);
-    if (precio === null || precio < 0) return alert('Pon un precio válido en euros (p. ej. 25 o 25,50).');
-    if (mult === null || mult < 1 || mult > 10) return alert('El multiplicador va de 1 (precio plano) a 10. Normalmente 2.');
+    if (precio === null || precio < 0) return corchoAlert('Pon un precio válido en euros (p. ej. 25 o 25,50).');
+    if (mult === null || mult < 1 || mult > 10) return corchoAlert('El multiplicador va de 1 (precio plano) a 10. Normalmente 2.');
     try {
       await memeApi('/admin/config', {
         method: 'PUT',
@@ -11610,8 +11671,8 @@
       });
       _memeCfgTocado = false;
       await loadMemeShop();
-      alert(`Guardado ✅\nEl meme cuesta ${eur(Math.round(precio * 100))} o ${priceCorcho} $CORCHO${mult > 1 ? ` (y cada siguiente ×${mult})` : ''}.`);
-    } catch (e) { alert('Error: ' + e.message); }
+      corchoAlert(`Guardado ✅\nEl meme cuesta ${eur(Math.round(precio * 100))} o ${priceCorcho} $CORCHO${mult > 1 ? ` (y cada siguiente ×${mult})` : ''}.`);
+    } catch (e) { corchoAlert('Error: ' + e.message); }
   }
 
 
@@ -11635,7 +11696,7 @@
 
   async function addMemePerk() {
     const label = document.getElementById('perk-label').value.trim();
-    if (!label) return alert('Escribe qué incluye (p. ej. "Camiseta do Furancho").');
+    if (!label) return corchoAlert('Escribe qué incluye (p. ej. "Camiseta do Furancho").');
     try {
       await memeApi('/admin/perks', {
         method: 'POST',
@@ -11650,18 +11711,18 @@
       document.getElementById('perk-emoji').value = '';
       document.getElementById('perk-qty').value = 1;
       loadMemeShop();
-    } catch (e) { alert('Error: ' + e.message); }
+    } catch (e) { corchoAlert('Error: ' + e.message); }
   }
 
   async function toggleMemePerk(id, active) {
     try { await memeApi('/admin/perks/' + id, { method: 'PATCH', body: JSON.stringify({ active }) }); loadMemeShop(); }
-    catch (e) { alert('Error: ' + e.message); }
+    catch (e) { corchoAlert('Error: ' + e.message); }
   }
 
   async function deleteMemePerk(id) {
     if (!confirm('¿Quitarlo de lo que incluye el meme? Los memes ya vendidos lo conservan.')) return;
     try { await memeApi('/admin/perks/' + id, { method: 'DELETE' }); loadMemeShop(); }
-    catch (e) { alert('Error: ' + e.message); }
+    catch (e) { corchoAlert('Error: ' + e.message); }
   }
 
   function renderMemeRequests(reqs) {
@@ -11695,7 +11756,7 @@
 
   async function rejectMemeRequest(id) {
     try { await memeApi('/admin/requests/' + id + '/reject', { method: 'POST' }); loadMemeShop(); }
-    catch (e) { alert('Error: ' + e.message); }
+    catch (e) { corchoAlert('Error: ' + e.message); }
   }
 
   // Confirma la venta de una solicitud. En efectivo/tarjeta: el dinero ya está
@@ -11708,11 +11769,11 @@
     if (!confirm(msg)) return;
     try {
       const d = await memeApi('/admin/sell', { method: 'POST', body: JSON.stringify({ walletAddress: wallet, purchaseId, priceCents }) });
-      alert(`Meme nº ${d.serial} vendido ✅\nQuedan ${d.supply.left} de ${d.supply.max}.` +
+      corchoAlert(`Meme nº ${d.serial} vendido ✅\nQuedan ${d.supply.left} de ${d.supply.max}.` +
         (d.perks.length ? `\n\nLe tienes que dar:\n` + d.perks.map(p => `· ${p.qty_total}× ${p.label}`).join('\n') : ''));
       loadMemeShop();
     } catch (e) {
-      alert('Error: ' + e.message);
+      corchoAlert('Error: ' + e.message);
       loadMemeShop();   // si se anuló por falta de saldo, refresca para quitarla de la lista
     }
   }
@@ -11720,7 +11781,7 @@
   // Venta directa (sin solicitud previa) o regalo.
   async function submitMintMemeVip(regalo = false) {
     const wallet = document.getElementById('meme-vip-wallet').value.trim();
-    if (!/^0x[a-fA-F0-9]{40}$/i.test(wallet)) return alert('ID de socio inválido.');
+    if (!/^0x[a-fA-F0-9]{40}$/i.test(wallet)) return corchoAlert('ID de socio inválido.');
     let priceCents = null;
     if (!regalo) {
       const info = await memeApi('/admin/wallet/' + wallet).catch(() => null);
@@ -11738,12 +11799,12 @@
         method: 'POST',
         body: JSON.stringify({ walletAddress: wallet, priceCents: regalo ? 0 : priceCents, source: regalo ? 'regalo' : 'venta', withPerks: !regalo })
       });
-      alert(`Meme nº ${d.serial} entregado ✅\nQuedan ${d.supply.left} de ${d.supply.max}.` +
+      corchoAlert(`Meme nº ${d.serial} entregado ✅\nQuedan ${d.supply.left} de ${d.supply.max}.` +
         (d.perks.length ? `\n\nLe tienes que dar:\n` + d.perks.map(p => `· ${p.qty_total}× ${p.label}`).join('\n') : ''));
       document.getElementById('meme-vip-wallet').value = '';
       document.getElementById('meme-wallet-hint').innerText = '';
       loadMemeShop();
-    } catch (e) { alert('Error: ' + e.message); }
+    } catch (e) { corchoAlert('Error: ' + e.message); }
   }
 
   // Pendientes de dar: tapas por consumir, camisetas sin stock, etc.
@@ -11772,12 +11833,12 @@
   async function useMemePerk(id, label) {
     if (!confirm(`¿Le entregas 1× ${label} ahora?`)) return;
     try { await memeApi('/admin/entitlement/' + id + '/use', { method: 'POST', body: JSON.stringify({ qty: 1 }) }); loadMemeShop(); }
-    catch (e) { alert('Error: ' + e.message); }
+    catch (e) { corchoAlert('Error: ' + e.message); }
   }
 
   async function undoMemePerk(id) {
     try { await memeApi('/admin/entitlement/' + id + '/undo', { method: 'POST' }); loadMemeShop(); }
-    catch (e) { alert('Error: ' + e.message); }
+    catch (e) { corchoAlert('Error: ' + e.message); }
   }
 
   // Compatibilidad: el resto del panel llama a updateMemeVipCounter().
@@ -11799,7 +11860,7 @@
   async function handleTapaClaimScan(decodedText) {
     const parts = decodedText.split(':');
     if (parts.length < 7 || !parts[6]) {
-      alert("⚠️ Formato de QR de Tapa inválido o no firmado");
+      corchoAlert("⚠️ Formato de QR de Tapa inválido o no firmado");
       return;
     }
 
