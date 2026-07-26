@@ -475,6 +475,7 @@ try { db.exec(`ALTER TABLE events ADD COLUMN vip_max INTEGER DEFAULT 15`); } cat
 // Ventana horaria del evento (hora Madrid) — define cuándo un fichaje cuenta como elegible para sorteos en vivo
 try { db.exec(`ALTER TABLE events ADD COLUMN start_time TEXT DEFAULT '19:00'`); } catch (_) {}
 try { db.exec(`ALTER TABLE events ADD COLUMN end_time TEXT DEFAULT '23:59'`); } catch (_) {}
+try { db.exec(`ALTER TABLE events ADD COLUMN dress_code TEXT`); } catch (_) {}
 // Alias gracioso y anónimo de la reserva VIP (se genera al confirmar; hace de "nombre de la mesa")
 try { db.exec(`ALTER TABLE vip_reservations ADD COLUMN alias TEXT`); } catch (_) {}
 // ── FACTURACIÓN POR EVENTO (PRIVADO — solo panel admin) ──────────────────────
@@ -1708,15 +1709,15 @@ function setRsvpAllergens(eventId, walletAddress, allergens) {
   return db.prepare(`UPDATE rsvps SET allergens=? WHERE LOWER(wallet_address)=LOWER(?) AND event_id=?`).run(allergens, walletAddress, eventId).changes;
 }
 
-function createEvent({ date, title, description, startTime, endTime }) {
+function createEvent({ date, title, description, startTime, endTime, dressCode }) {
   return db.prepare(`
-    INSERT INTO events (event_date, title, description, start_time, end_time)
-    VALUES (?, ?, ?, ?, ?)
-    ON CONFLICT(event_date) DO UPDATE SET title=excluded.title, description=excluded.description, start_time=excluded.start_time, end_time=excluded.end_time
-  `).run(date, title || 'Furancho Sessions', description || null, startTime || '19:00', endTime || '23:59').lastInsertRowid;
+    INSERT INTO events (event_date, title, description, start_time, end_time, dress_code)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(event_date) DO UPDATE SET title=excluded.title, description=excluded.description, start_time=excluded.start_time, end_time=excluded.end_time, dress_code=excluded.dress_code
+  `).run(date, title || 'Furancho Sessions', description || null, startTime || '19:00', endTime || '23:59', dressCode || null).lastInsertRowid;
 }
 
-function updateEvent(id, { title, description, date, active, startTime, endTime }) {
+function updateEvent(id, { title, description, date, active, startTime, endTime, dressCode }) {
   const fields = [];
   const vals = [];
   if (title !== undefined)       { fields.push('title = ?');       vals.push(title); }
@@ -1725,6 +1726,7 @@ function updateEvent(id, { title, description, date, active, startTime, endTime 
   if (active !== undefined)      { fields.push('active = ?');      vals.push(active ? 1 : 0); }
   if (startTime !== undefined)   { fields.push('start_time = ?');  vals.push(startTime); }
   if (endTime !== undefined)     { fields.push('end_time = ?');    vals.push(endTime); }
+  if (dressCode !== undefined)   { fields.push('dress_code = ?');  vals.push(dressCode || null); }
   if (!fields.length) return;
   vals.push(id);
   db.prepare(`UPDATE events SET ${fields.join(', ')} WHERE id = ?`).run(...vals);
@@ -3273,6 +3275,7 @@ module.exports = {
   getCorchoPackRequest,
   confirmCorchoPackRequest,
   cancelCorchoPackRequest,
+  getTodayDressCode,
   declareDressCode,
   hasDressCodeToday,
   getDressCodeWalletsToday
@@ -4485,6 +4488,12 @@ function cancelCorchoPackRequest(id, by) {
 
 function _todayMadrid() {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+}
+
+function getTodayDressCode() {
+  const date = _todayMadrid();
+  const ev = db.prepare(`SELECT dress_code FROM events WHERE event_date = ? AND active = 1`).get(date);
+  return ev?.dress_code || null;
 }
 
 function declareDressCode(wallet) {

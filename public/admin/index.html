@@ -3283,6 +3283,11 @@
         <label style="font-size:11px; color:#8B1918; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; display:block; margin-bottom:8px;">Descripción</label>
         <textarea id="event-desc" rows="4" placeholder="Ej: Una noche de vino, buena compañía y sorteos en el Furancho. Entrada con ficha QR. ¡Ven con ganas, neno!" style="width:100%; background:#fff; color:#2A1509; border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; padding:13px 14px; font-size:15px; font-family:'Outfit',sans-serif; resize:none; box-sizing:border-box; line-height:1.6;"></textarea>
       </div>
+      <div>
+        <label style="font-size:11px; color:#D4508A; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; display:block; margin-bottom:8px;">🌸 Dress code / Petición especial</label>
+        <input id="event-dress-code" type="text" placeholder="Ej: Ven con flores o ropa colorida" style="width:100%; background:#fff; color:#2A1509; border:1.5px solid rgba(212,80,138,0.25); border-radius:12px; padding:13px 14px; font-size:15px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+        <p style="font-size:11px; color:#7A6A5A; margin:6px 0 0; line-height:1.4;">Si lo rellenas, al fichar aparece al cliente un botón para confirmar que cumple. Déjalo vacío si no hay petición especial.</p>
+      </div>
       <div id="event-active-row" style="display:none; align-items:center; justify-content:space-between; background:#fff; border:1.5px solid rgba(42,21,9,0.15); border-radius:12px; padding:14px 16px;">
         <div>
           <p style="font-size:14px; color:#2A1509; font-weight:600; margin:0 0 2px;">Visible para clientes</p>
@@ -9193,6 +9198,7 @@
     document.getElementById('event-date').value = '';
     document.getElementById('event-title').value = '';
     document.getElementById('event-desc').value = '';
+    document.getElementById('event-dress-code').value = '';
     document.getElementById('event-start-time').value = '19:00';
     document.getElementById('event-end-time').value = '23:59';
     document.getElementById('event-active').checked = true;
@@ -9210,6 +9216,7 @@
           document.getElementById('event-date').value = ev.event_date;
           document.getElementById('event-title').value = ev.title || '';
           document.getElementById('event-desc').value = ev.description || '';
+          document.getElementById('event-dress-code').value = ev.dress_code || '';
           document.getElementById('event-start-time').value = (ev.start_time || '19:00').slice(0,5);
           document.getElementById('event-end-time').value = (ev.end_time || '23:59').slice(0,5);
           document.getElementById('event-active').checked = ev.active === 1;
@@ -9239,6 +9246,7 @@
     const date = document.getElementById('event-date').value;
     const title = document.getElementById('event-title').value.trim();
     const description = document.getElementById('event-desc').value.trim();
+    const dressCode = document.getElementById('event-dress-code').value.trim();
     const startTime = document.getElementById('event-start-time').value || '19:00';
     const endTime = document.getElementById('event-end-time').value || '23:59';
     const active = document.getElementById('event-active').checked;
@@ -9250,7 +9258,7 @@
         const res = await fetch(`/api/events/${currentEventId}`, {
           method: 'PATCH',
           headers: authHeaders(),
-          body: JSON.stringify({ date, title, description, active, startTime, endTime })
+          body: JSON.stringify({ date, title, description, active, startTime, endTime, dressCode })
         });
         if (!res.ok) { const d = await res.json().catch(() => ({})); return showToast(d.error || 'Error al guardar', true); }
         showToast('✅ Evento guardado');
@@ -9258,7 +9266,7 @@
         const res = await fetch('/api/events', {
           method: 'POST',
           headers: authHeaders(),
-          body: JSON.stringify({ date, title, description, startTime, endTime })
+          body: JSON.stringify({ date, title, description, startTime, endTime, dressCode })
         });
         if (!res.ok) { const d = await res.json().catch(() => ({})); return showToast(d.error || 'Error al crear', true); }
         showToast('✅ Evento creado');

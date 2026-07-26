@@ -2167,16 +2167,19 @@
           </div>
         </div>
 
-        <!-- Dress code: auto-declaración (solo visible tras fichar + Chave Semanal activa) -->
-        <div id="dress-code-box" style="display:none; margin-bottom:14px; border-radius:14px; background:linear-gradient(135deg, rgba(232,69,122,0.08), rgba(244,162,89,0.06)); border:1.5px solid rgba(232,120,158,0.35); padding:12px 14px; text-align:center;">
-          <button id="dress-code-btn" onclick="declareDressCode()" style="width:100%; padding:12px; border-radius:50px; font-size:13px; font-weight:800; cursor:pointer; border:1.5px solid #D4508A; background:linear-gradient(135deg,#D4508A,#E8789E); color:#fff; font-family:'Outfit',sans-serif; transition:all 0.2s; outline:none; -webkit-tap-highlight-color:transparent;">
-            🌸 ¡Vine con flores / colorido!
+        <!-- Dress code: auto-declaración (visible tras fichar si admin configuró dress code en el evento) -->
+        <div id="dress-code-box" style="display:none; margin-bottom:14px; border-radius:16px; background:linear-gradient(135deg, rgba(232,69,122,0.10), rgba(244,162,89,0.07)); border:1.5px solid rgba(232,120,158,0.4); padding:14px; text-align:center; position:relative; overflow:hidden;">
+          <div style="position:absolute; top:-4px; right:-4px; font-size:22px; opacity:0.15; transform:rotate(15deg);">🌸</div>
+          <div style="position:absolute; bottom:-4px; left:-4px; font-size:18px; opacity:0.12; transform:rotate(-20deg);">🌺</div>
+          <p id="dress-code-label" style="font-size:12px; font-weight:700; color:#D4508A; margin:0 0 8px; line-height:1.4;"></p>
+          <button id="dress-code-btn" onclick="declareDressCode()" style="width:100%; padding:13px; border-radius:50px; font-size:14px; font-weight:800; cursor:pointer; border:none; background:linear-gradient(135deg,#D4508A,#E8789E); color:#fff; font-family:'Outfit',sans-serif; transition:all 0.2s; outline:none; -webkit-tap-highlight-color:transparent; box-shadow:0 4px 14px rgba(212,80,138,0.3);">
+            ✅ ¡Cumplo, ho!
           </button>
-          <p style="font-size:10.5px; color:var(--text-muted); margin:6px 0 0; line-height:1.4;">Toca para confirmar tu dress code floral y participar en los sorteos de la noche</p>
+          <button id="dress-code-nope" onclick="document.getElementById('dress-code-box').style.display='none'" style="margin-top:6px; background:none; border:none; font-size:11px; color:var(--text-muted); cursor:pointer; font-family:'Outfit',sans-serif; padding:4px 8px;">Hoy paso, carallo 😅</button>
         </div>
-        <div id="dress-code-done" style="display:none; margin-bottom:14px; border-radius:14px; background:linear-gradient(135deg, rgba(232,69,122,0.08), rgba(244,162,89,0.06)); border:1.5px solid rgba(34,197,94,0.4); padding:10px 14px; text-align:center;">
-          <p style="font-size:13px; font-weight:700; color:#16a34a; margin:0;">🌸 Dress code confirmado</p>
-          <p style="font-size:10.5px; color:var(--text-muted); margin:4px 0 0;">Ya quedas registrado para los sorteos de esta noche</p>
+        <div id="dress-code-done" style="display:none; margin-bottom:14px; border-radius:16px; background:linear-gradient(135deg, rgba(34,197,94,0.08), rgba(232,69,122,0.05)); border:1.5px solid rgba(34,197,94,0.4); padding:12px 14px; text-align:center;">
+          <p style="font-size:14px; font-weight:700; color:#16a34a; margin:0;">✅ Requisito confirmado</p>
+          <p id="dress-code-done-text" style="font-size:11px; color:var(--text-muted); margin:4px 0 0; line-height:1.4;">El staff lo sabe, disfruta la noche ho</p>
         </div>
 
         <!-- Hint siguiente nivel -->
@@ -6547,6 +6550,7 @@
           if (typeof checkUserHistoryAndAdjustLevel === 'function') checkUserHistoryAndAdjustLevel();
           if (typeof renderPrizes === 'function') renderPrizes();
           if (typeof loadAgenda === 'function') loadAgenda();
+          if (typeof checkDressCodeVisibility === 'function') checkDressCodeVisibility();
           showToast(d.counted === false && d.hasEventNow === false
             ? '🍷 Entrada registrada — hoy no hay sesión, así que no suma, pero quedas dentro.'
             : '✅ ¡Entrada registrada! Xa estás dentro, ho.');
@@ -9097,8 +9101,7 @@
           : '';
         prizeText.innerHTML = `Premio: <strong style="color:var(--wine);">${data.prize || 'Sorpresa do Furancho'}</strong>${detailsLine}`;
         if (rulesText) {
-          rulesText.innerHTML = (data.rules || 'Trinca el boleto y a esperar al sorteo. ¡Un regalo de la hostia te puede tocar, rapaz!')
-            + '<span style="display:block; margin-top:8px; font-size:12px; font-weight:700; color:#D4508A; line-height:1.5;">🌸 Dress code: ven con flores o ropa colorida para participar en los sorteos de la noche</span>';
+          rulesText.textContent = data.rules || 'Trinca el boleto y a esperar al sorteo. ¡Un regalo de la hostia te puede tocar, rapaz!';
         }
 
         const tapHint = document.getElementById('weekly-claim-tap-hint');
@@ -9568,14 +9571,19 @@
       return;
     }
     try {
-      const weekly = await resilientFetch(`/api/raffle/weekly/status?wallet=${userWalletAddress}`).then(r => r.json());
-      if (!weekly.isConfigured || weekly.status === 'completed') {
+      const dc = await resilientFetch('/api/events/dress-code/today').then(r => r.json());
+      if (!dc.active) {
         box.style.display = 'none';
         done.style.display = 'none';
         return;
       }
-      const dc = await resilientFetch(`/api/raffle/dress-code/status?wallet=${userWalletAddress}`).then(r => r.json());
-      if (dc.declared) {
+      const label = document.getElementById('dress-code-label');
+      if (label) label.textContent = dc.text;
+      const doneText = document.getElementById('dress-code-done-text');
+      if (doneText) doneText.textContent = dc.text + ' — el staff lo sabe, ho';
+
+      const status = await resilientFetch(`/api/raffle/dress-code/status?wallet=${userWalletAddress}`).then(r => r.json());
+      if (status.declared) {
         box.style.display = 'none';
         done.style.display = 'block';
       } else {
@@ -9602,14 +9610,14 @@
       if (data.ok) {
         document.getElementById('dress-code-box').style.display = 'none';
         document.getElementById('dress-code-done').style.display = 'block';
-        showToast('🌸 ¡Dress code registrado! Estás dentro del bombo, ho.');
+        showToast('✅ ¡Requisito confirmado! El staff lo sabe, ho.');
       } else {
         showToast(data.error || 'Error al registrar', true);
-        if (btn) { btn.disabled = false; btn.textContent = '🌸 ¡Vine con flores / colorido!'; }
+        if (btn) { btn.disabled = false; btn.textContent = '✅ ¡Cumplo, ho!'; }
       }
     } catch (e) {
       showToast('Error de red', true);
-      if (btn) { btn.disabled = false; btn.textContent = '🌸 ¡Vine con flores / colorido!'; }
+      if (btn) { btn.disabled = false; btn.textContent = '✅ ¡Cumplo, ho!'; }
     }
   }
 
