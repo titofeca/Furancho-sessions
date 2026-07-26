@@ -214,6 +214,33 @@ try {
   )`);
 } catch (_) {}
 
+// Historial del minijuego "O Enxebre" (Wordle)
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS enxebre_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_address TEXT NOT NULL,
+    play_date TEXT NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    solved INTEGER NOT NULL DEFAULT 0,
+    awarded_corchos INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(wallet_address, play_date)
+  )`);
+} catch (_) {}
+
+// Estado activo del minijuego "A Cunca Quente" (Patata caliente)
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS cunca_quente (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    status TEXT NOT NULL DEFAULT 'active', -- active, claimed, spilled
+    current_holder TEXT NOT NULL,
+    pot_amount INTEGER NOT NULL DEFAULT 0,
+    expires_at TEXT NOT NULL,
+    history TEXT NOT NULL DEFAULT '[]', -- JSON array de pases
+    created_at TEXT DEFAULT (datetime('now'))
+  )`);
+} catch (_) {}
+
 // Mints de LOGROS (ediciones especiales NFT, token >= 100). Separado de `mints`, que
 // está limitado a niveles 1-4 por CHECK. Un logro por wallet (UNIQUE).
 try {
@@ -3107,7 +3134,17 @@ function getAppInstallStats() {
   };
 }
 
+// Perfiles de usuario (alias, nombres ficticios)
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS user_profiles (
+    wallet_address TEXT PRIMARY KEY,
+    alias TEXT,
+    updated_at TEXT DEFAULT (datetime('now'))
+  )`);
+} catch (_) {}
+
 module.exports = {
+  db,
   UPLOADS_DIR,
   registerAppInstall,
   getAppInstallStats,

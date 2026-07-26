@@ -2284,6 +2284,11 @@
           </button>
         </div>
 
+        <button id="btn-open-minigames" onclick="openMinigamesModal()" style="display:none; width:100%; padding:13px; margin-bottom:10px; background:linear-gradient(135deg, #eab308, #d97706); color:#fff; border:none; border-radius:14px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:900; cursor:pointer; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 16px rgba(217,119,6,0.35); position:relative; overflow:hidden;">
+          <div style="position:absolute; top:0; left:0; right:0; bottom:0; background:linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.3) 50%, transparent 60%); background-size:200% 200%; animation:shine 3s infinite;"></div>
+          🎮 Jugar y Ganar $CORCHO
+        </button>
+
         <button onclick="openCorchoInfoModal()" style="width:100%; padding:11px 14px; margin-bottom:10px; background:rgba(196,151,58,0.12); border:1.5px solid rgba(196,151,58,0.35); border-radius:12px; color:var(--wine); font-family:'Outfit',sans-serif; font-size:12.5px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
           ℹ️ Reglas do $CORCHO (Quema FIFO 3 meses &amp; Canjes)
         </button>
@@ -8063,6 +8068,33 @@
     modal.style.display = 'flex';
     modal.offsetHeight;
     if (sheet) sheet.style.transform = 'translateY(0)';
+
+    // Load Alias
+    document.getElementById('id-alias-input').value = '';
+    fetch('/api/mint/profile?walletAddress=' + userWalletAddress)
+      .then(r => r.json())
+      .then(d => { if (d.alias) document.getElementById('id-alias-input').value = d.alias; })
+      .catch(console.error);
+  }
+
+  async function saveFuranchoAlias() {
+    const alias = document.getElementById('id-alias-input').value.trim();
+    if (!userWalletAddress) return;
+    try {
+      const res = await fetch('/api/mint/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: userWalletAddress, alias })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('✅ Alias guardado correctamente');
+      } else {
+        showToast('Error al guardar alias', true);
+      }
+    } catch (e) {
+      showToast('Error de red', true);
+    }
   }
 
   // QR de campaña "en vivo": se pide al servidor (que embebe su hora) y se renueva
@@ -10780,6 +10812,15 @@
         <p id="id-wallet-text" style="font-family:monospace; font-size:12px; color:var(--text); margin:0; word-break:break-all;"></p>
       </div>
 
+      <div style="text-align:left; background:rgba(42,21,9,0.03); border:1px solid rgba(42,21,9,0.06); border-radius:14px; padding:12px 14px; margin-bottom:24px;">
+        <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 4px 0;">Alias Furancheiro</p>
+        <p style="font-size:11px; color:var(--text-muted); margin:0 0 8px 0;">Escoge cómo quieres que te llamemos en rankings y minijuegos (sin usar tu nombre real).</p>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="id-alias-input" placeholder="Ej. El Rei do Viño" style="flex:1; padding:10px; border-radius:8px; border:1px solid rgba(42,21,9,0.15); font-size:13px; font-family:'Outfit',sans-serif; outline:none;" />
+          <button onclick="saveFuranchoAlias()" style="padding:10px 16px; background:var(--wine); color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer;">Guardar</button>
+        </div>
+      </div>
+
       <button onclick="closeIdModal()"
         style="width:100%; padding:16px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:700; cursor:pointer; box-shadow:0 4px 10px rgba(139,25,24,0.3);">
         Cerrar pase
@@ -11184,6 +11225,68 @@
       </div>
       <p style="text-align:center; font-size:11px; color:var(--text-muted); margin:0;">Al pedir un paquete queda una solicitud pendiente: acércate a la taquilla, paga y el staff te lo confirma. Nada se acredita solo.</p>
 
+    </div>
+  </div>
+
+  <!-- ==================== MINIJUEGOS MODALS ==================== -->
+  
+  <!-- MODAL: MINIJUEGOS MENU -->
+  <div id="minigames-menu-modal" style="display:none; position:fixed; inset:0; z-index:2400; background:rgba(0,0,0,0.65); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); align-items:center; justify-content:center; padding:18px;">
+    <div style="background:var(--cream); width:100%; max-width:400px; border-radius:20px; padding:22px; border:1.5px solid var(--gold); box-shadow:0 20px 40px rgba(0,0,0,0.3); position:relative;">
+      <button onclick="closeMinigamesModal()" style="position:absolute; top:16px; right:16px; background:none; border:none; font-size:20px; color:var(--text-muted); cursor:pointer;">✕</button>
+      <h3 style="font-family:'Playfair Display',serif; font-size:20px; color:var(--wine); margin:0 0 16px; text-align:center;">🎮 Juegos del Furancho</h3>
+      
+      <div id="mg-enxebre-card" style="display:none; background:#fff; border-radius:14px; padding:16px; border:1px solid rgba(196,151,58,0.3); margin-bottom:12px; cursor:pointer;" onclick="openEnxebre()">
+        <h4 style="margin:0 0 6px; color:var(--wine); font-size:16px; font-weight:900;">O Enxebre (Wordle)</h4>
+        <p style="margin:0; font-size:12px; color:var(--text-muted);">Adivina la palabra del día en 6 intentos y llévate hasta 50 $CORCHO.</p>
+      </div>
+
+      <div id="mg-cunca-card" style="display:none; background:#fff; border-radius:14px; padding:16px; border:1px solid rgba(196,151,58,0.3); cursor:pointer;" onclick="openCuncaQuente()">
+        <h4 style="margin:0 0 6px; color:#d97706; font-size:16px; font-weight:900;">🔥 A Cunca Quente</h4>
+        <p style="margin:0; font-size:12px; color:var(--text-muted);">Comprueba si tienes la Cunca Quente. Si es así, bébetela o pásala a un amigo engordando el bote.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: O ENXEBRE (WORDLE) -->
+  <div id="enxebre-modal" style="display:none; position:fixed; inset:0; z-index:2500; background:rgba(255,255,255,0.95); align-items:center; justify-content:flex-start; flex-direction:column; padding:18px;">
+    <button onclick="closeEnxebre()" style="position:absolute; top:16px; right:16px; background:none; border:none; font-size:24px; color:var(--wine); cursor:pointer; font-weight:900;">✕</button>
+    <h3 style="font-family:'Playfair Display',serif; font-size:24px; color:var(--wine); margin:20px 0 10px;">O Enxebre</h3>
+    <p style="font-size:12px; color:var(--text-muted); text-align:center; margin-bottom:20px; max-width:300px;">Adivina la palabra en gallego de 5 letras.</p>
+    
+    <div id="enxebre-grid" style="display:grid; grid-template-columns:repeat(5, 1fr); gap:6px; margin-bottom:30px;">
+      <!-- Grid generada por JS (6 filas x 5 cols) -->
+    </div>
+
+    <div id="enxebre-keyboard" style="display:flex; flex-direction:column; gap:6px; width:100%; max-width:350px;">
+      <!-- Teclado generado por JS -->
+    </div>
+  </div>
+
+  <!-- MODAL: A CUNCA QUENTE -->
+  <div id="cunca-modal" style="display:none; position:fixed; inset:0; z-index:2500; background:rgba(0,0,0,0.85); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:18px;">
+    <div style="background:linear-gradient(135deg, #7f1d1d, #450a0a); width:100%; max-width:360px; border-radius:24px; padding:24px; border:2px solid #ef4444; box-shadow:0 0 50px rgba(239, 68, 68, 0.4); text-align:center; position:relative;">
+      <button onclick="closeCuncaQuente()" style="position:absolute; top:16px; right:16px; background:rgba(255,255,255,0.1); border:none; border-radius:50%; width:32px; height:32px; color:#fff; cursor:pointer;">✕</button>
+      
+      <div style="font-size:50px; animation:bounce 1s infinite; margin-bottom:10px;">🍷🔥</div>
+      <h3 style="font-family:'Playfair Display',serif; font-size:24px; font-weight:900; color:#fff; margin:0 0 6px;">¡TIENES LA CUNCA!</h3>
+      <p style="font-size:14px; color:rgba(255,255,255,0.8); margin-bottom:10px;">El bote actual es de:</p>
+      <div id="cunca-pot" style="font-size:40px; font-weight:900; color:#facc15; margin-bottom:10px;">0 $CORCHO</div>
+      
+      <p style="font-size:12px; color:#fca5a5; margin-bottom:20px;">Si el contador llega a cero, se derrama y lo pierdes todo.</p>
+      <div id="cunca-timer" style="font-size:24px; font-weight:900; color:#fff; background:rgba(0,0,0,0.5); padding:10px; border-radius:10px; margin-bottom:20px;">00:00</div>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <button onclick="drinkCunca()" style="padding:14px; background:#facc15; color:#450a0a; border:none; border-radius:14px; font-weight:900; font-size:16px; cursor:pointer;">
+          😋 BEBER Y COBRAR
+        </button>
+        <div style="display:flex; gap:6px;">
+          <input type="text" id="cunca-target" placeholder="Wallet de un amigo..." style="flex:1; padding:12px; border-radius:12px; border:none; outline:none; font-size:12px;" />
+          <button onclick="passCunca()" style="padding:12px 16px; background:#ef4444; color:#fff; border:none; border-radius:12px; font-weight:800; cursor:pointer;">
+            PASAR (-5)
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -11735,7 +11838,276 @@
     // Auto-cargar saldo al iniciar wallet
     document.addEventListener('DOMContentLoaded', () => {
       setTimeout(loadCorchoBalance, 1200);
+      setTimeout(checkCuncaStatus, 3000); // Check Cunca on start
     });
+
+    // ==================== LÓGICA MINIJUEGOS ====================
+    let enxebreCurrentRow = 0;
+    let enxebreCurrentCol = 0;
+    let enxebreGrid = Array(6).fill().map(() => Array(5).fill(''));
+
+    function openMinigamesModal() {
+      document.getElementById('minigames-menu-modal').style.display = 'flex';
+      // Load availability
+      fetch('/api/minigames/enxebre/status', {
+        headers: { 'wallet-address': userWalletAddress }
+      }).then(r => r.json()).then(data => {
+        if (!data.playedToday) {
+          document.getElementById('mg-enxebre-card').style.display = 'block';
+        }
+      }).catch(console.error);
+
+      fetch('/api/minigames/cunca/status', {
+        headers: { 'wallet-address': userWalletAddress }
+      }).then(r => r.json()).then(data => {
+        if (data.hasCunca) {
+          document.getElementById('mg-cunca-card').style.display = 'block';
+        }
+      }).catch(console.error);
+    }
+    
+    function closeMinigamesModal() {
+      document.getElementById('minigames-menu-modal').style.display = 'none';
+    }
+
+    function openEnxebre() {
+      closeMinigamesModal();
+      document.getElementById('enxebre-modal').style.display = 'flex';
+      renderEnxebreGrid();
+      renderEnxebreKeyboard();
+      document.addEventListener('keydown', handleEnxebreKeydown);
+    }
+
+    function closeEnxebre() {
+      document.getElementById('enxebre-modal').style.display = 'none';
+      document.removeEventListener('keydown', handleEnxebreKeydown);
+    }
+
+    function renderEnxebreGrid() {
+      const container = document.getElementById('enxebre-grid');
+      container.innerHTML = '';
+      for (let r = 0; r < 6; r++) {
+        for (let c = 0; c < 5; c++) {
+          const cell = document.createElement('div');
+          cell.id = `enx-cell-${r}-${c}`;
+          cell.style.width = '100%';
+          cell.style.aspectRatio = '1';
+          cell.style.border = '2px solid rgba(196,151,58,0.2)';
+          cell.style.borderRadius = '8px';
+          cell.style.display = 'flex';
+          cell.style.alignItems = 'center';
+          cell.style.justifyContent = 'center';
+          cell.style.fontSize = '28px';
+          cell.style.fontWeight = '900';
+          cell.style.textTransform = 'uppercase';
+          cell.style.color = 'var(--wine)';
+          cell.innerText = enxebreGrid[r][c];
+          container.appendChild(cell);
+        }
+      }
+    }
+
+    function renderEnxebreKeyboard() {
+      const container = document.getElementById('enxebre-keyboard');
+      container.innerHTML = '';
+      const rows = [
+        ['Q','W','E','R','T','Y','U','I','O','P'],
+        ['A','S','D','F','G','H','J','K','L','Ñ'],
+        ['ENTER','Z','X','C','V','B','N','M','DEL']
+      ];
+      rows.forEach(row => {
+        const rowDiv = document.createElement('div');
+        rowDiv.style.display = 'flex';
+        rowDiv.style.gap = '4px';
+        rowDiv.style.justifyContent = 'center';
+        row.forEach(key => {
+          const btn = document.createElement('button');
+          btn.innerText = key;
+          btn.id = `enx-key-${key}`;
+          btn.style.flex = key.length > 1 ? '1.5' : '1';
+          btn.style.padding = '12px 0';
+          btn.style.border = 'none';
+          btn.style.borderRadius = '6px';
+          btn.style.background = 'rgba(196,151,58,0.1)';
+          btn.style.color = 'var(--wine)';
+          btn.style.fontWeight = '800';
+          btn.style.cursor = 'pointer';
+          btn.onclick = () => handleEnxebreInput(key);
+          rowDiv.appendChild(btn);
+        });
+        container.appendChild(rowDiv);
+      });
+    }
+
+    function handleEnxebreKeydown(e) {
+      if (e.key === 'Enter') handleEnxebreInput('ENTER');
+      else if (e.key === 'Backspace') handleEnxebreInput('DEL');
+      else if (/^[a-zA-ZñÑ]$/.test(e.key)) handleEnxebreInput(e.key.toUpperCase());
+    }
+
+    function handleEnxebreInput(key) {
+      if (key === 'DEL') {
+        if (enxebreCurrentCol > 0) {
+          enxebreCurrentCol--;
+          enxebreGrid[enxebreCurrentRow][enxebreCurrentCol] = '';
+        }
+      } else if (key === 'ENTER') {
+        if (enxebreCurrentCol === 5) {
+          submitEnxebreGuess();
+        } else {
+          showToast('Faltan letras', true);
+        }
+      } else {
+        if (enxebreCurrentCol < 5) {
+          enxebreGrid[enxebreCurrentRow][enxebreCurrentCol] = key;
+          enxebreCurrentCol++;
+        }
+      }
+      renderEnxebreGrid(); // Just update text
+    }
+
+    async function submitEnxebreGuess() {
+      const guess = enxebreGrid[enxebreCurrentRow].join('');
+      try {
+        const r = await fetch('/api/minigames/enxebre/guess', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'wallet-address': userWalletAddress },
+          body: JSON.stringify({ guess, attemptCount: enxebreCurrentRow + 1 })
+        });
+        const data = await r.json();
+        if (!r.ok) {
+          showToast(data.error || 'Error', true);
+          return;
+        }
+
+        // Animate row colors
+        data.result.forEach((status, i) => {
+          const cell = document.getElementById(`enx-cell-${enxebreCurrentRow}-${i}`);
+          const keyBtn = document.getElementById(`enx-key-${guess[i]}`);
+          setTimeout(() => {
+            cell.style.color = '#fff';
+            cell.style.border = 'none';
+            if (status === 'correct') { cell.style.background = '#16a34a'; if(keyBtn) keyBtn.style.background = '#16a34a'; keyBtn.style.color='#fff'; }
+            else if (status === 'present') { cell.style.background = '#eab308'; if(keyBtn && keyBtn.style.background !== 'rgb(22, 163, 74)') { keyBtn.style.background = '#eab308'; keyBtn.style.color='#fff'; } }
+            else { cell.style.background = '#9ca3af'; if(keyBtn && keyBtn.style.background !== 'rgb(22, 163, 74)' && keyBtn.style.background !== 'rgb(234, 179, 8)') { keyBtn.style.background = '#9ca3af'; keyBtn.style.color='#fff'; } }
+          }, i * 300);
+        });
+
+        setTimeout(() => {
+          if (data.solved) {
+            corchoAlert({icon: '🎉', title: '¡Acertaste!', body: `Te llevas ${data.awarded} $CORCHO. ¡Vuelve mañana!`});
+            closeEnxebre();
+            loadCorchoBalance();
+            document.getElementById('mg-enxebre-card').style.display = 'none';
+          } else {
+            if (enxebreCurrentRow < 5) {
+              enxebreCurrentRow++;
+              enxebreCurrentCol = 0;
+            } else {
+              corchoAlert({icon: '❌', title: '¡Oh no!', body: 'Has agotado tus intentos. ¡Vuelve mañana!'});
+              closeEnxebre();
+              document.getElementById('mg-enxebre-card').style.display = 'none';
+            }
+          }
+        }, 1800);
+
+      } catch (e) {
+        showToast('Error de red', true);
+      }
+    }
+
+    // --- CUNCA QUENTE ---
+    let cuncaTimerInterval = null;
+
+    async function checkCuncaStatus() {
+      if (!userWalletAddress) return;
+      try {
+        const r = await fetch('/api/minigames/cunca/status', {
+          headers: { 'wallet-address': userWalletAddress }
+        });
+        const data = await r.json();
+        if (data.hasCunca && data.cunca) {
+          openCuncaQuenteData(data.cunca);
+        } else {
+          document.getElementById('btn-open-minigames').style.display = 'none';
+        }
+      } catch (e) {}
+    }
+
+    function openCuncaQuente() {
+      checkCuncaStatus();
+      closeMinigamesModal();
+    }
+
+    function openCuncaQuenteData(cunca) {
+      document.getElementById('btn-open-minigames').style.display = 'flex';
+      document.getElementById('cunca-modal').style.display = 'flex';
+      document.getElementById('cunca-pot').textContent = `${cunca.pot_amount} $CORCHO`;
+      
+      const expMs = new Date(cunca.expires_at.replace(' ', 'T') + 'Z').getTime();
+      
+      if (cuncaTimerInterval) clearInterval(cuncaTimerInterval);
+      cuncaTimerInterval = setInterval(() => {
+        const diff = Math.round((expMs - Date.now()) / 1000);
+        if (diff <= 0) {
+          document.getElementById('cunca-timer').textContent = 'DERRAMADA 😭';
+          clearInterval(cuncaTimerInterval);
+          setTimeout(() => { document.getElementById('cunca-modal').style.display = 'none'; checkCuncaStatus(); }, 2000);
+        } else {
+          const m = Math.floor(diff / 60);
+          const s = diff % 60;
+          document.getElementById('cunca-timer').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        }
+      }, 1000);
+    }
+
+    function closeCuncaQuente() {
+      document.getElementById('cunca-modal').style.display = 'none';
+      if (cuncaTimerInterval) clearInterval(cuncaTimerInterval);
+    }
+
+    async function drinkCunca() {
+      try {
+        const r = await fetch('/api/minigames/cunca/drink', {
+          method: 'POST',
+          headers: { 'wallet-address': userWalletAddress }
+        });
+        const data = await r.json();
+        if (data.success) {
+          corchoAlert({icon: '😋', title: '¡Cunca Pa Dentro!', body: `Te acabas de beber ${data.amount} $CORCHO.`});
+          closeCuncaQuente();
+          loadCorchoBalance();
+          document.getElementById('btn-open-minigames').style.display = 'none';
+        } else {
+          showToast(data.error || 'Error', true);
+        }
+      } catch (e) { showToast('Error de red', true); }
+    }
+
+    async function passCunca() {
+      const toWallet = document.getElementById('cunca-target').value.trim();
+      if (!toWallet) {
+        showToast('Indica la wallet destino', true);
+        return;
+      }
+      try {
+        const r = await fetch('/api/minigames/cunca/pass', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'wallet-address': userWalletAddress },
+          body: JSON.stringify({ toWallet })
+        });
+        const data = await r.json();
+        if (data.success) {
+          corchoAlert({icon: '🔥', title: '¡Pasada!', body: `Has pasado la Cunca. El bote ahora es de ${data.newPot} $CORCHO.`});
+          closeCuncaQuente();
+          loadCorchoBalance();
+          document.getElementById('btn-open-minigames').style.display = 'none';
+        } else {
+          showToast(data.error || 'Error', true);
+        }
+      } catch (e) { showToast('Error de red', true); }
+    }
+
   </script>
 
   <script src="/claim/app.js"></script>

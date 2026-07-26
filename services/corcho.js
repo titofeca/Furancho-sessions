@@ -20,7 +20,20 @@ const DEFAULT_RATES = {
   campaignCompleted: 300,  // Recompensa por completar el Reto de los 5
   nftTransferFee: 150,     // Peaje en $CORCHO por traspasar un NFT entre wallets
   rsvpShowup: 15,          // Recompensa por cumplir RSVP ("Me apetece") y asistir
-  vipShowup: 50            // Recompensa por tener reserva VIP y asistir
+  vipShowup: 50,           // Recompensa por tener reserva VIP y asistir
+  
+  // Minijuegos
+  enxebreEnabled: 1,       // 1 = activado, 0 = desactivado
+  enxebrePrize1: 50,
+  enxebrePrize2: 40,
+  enxebrePrize3: 30,
+  enxebrePrize4: 20,
+  enxebrePrize5: 10,
+  enxebrePrize6: 5,
+  cuncaEnabled: 1,         // 1 = activado, 0 = desactivado
+  cuncaBasePot: 50,
+  cuncaPassCost: 5,
+  cuncaTimeoutMins: 60
 };
 
 function getRate(key) {
@@ -44,7 +57,18 @@ function getEconomySettings() {
     campaignCompleted: getRate('campaignCompleted'),
     nftTransferFee: getRate('nftTransferFee'),
     rsvpShowup: getRate('rsvpShowup'),
-    vipShowup: getRate('vipShowup')
+    vipShowup: getRate('vipShowup'),
+    enxebreEnabled: getRate('enxebreEnabled'),
+    enxebrePrize1: getRate('enxebrePrize1'),
+    enxebrePrize2: getRate('enxebrePrize2'),
+    enxebrePrize3: getRate('enxebrePrize3'),
+    enxebrePrize4: getRate('enxebrePrize4'),
+    enxebrePrize5: getRate('enxebrePrize5'),
+    enxebrePrize6: getRate('enxebrePrize6'),
+    cuncaEnabled: getRate('cuncaEnabled'),
+    cuncaBasePot: getRate('cuncaBasePot'),
+    cuncaPassCost: getRate('cuncaPassCost'),
+    cuncaTimeoutMins: getRate('cuncaTimeoutMins')
   };
 }
 

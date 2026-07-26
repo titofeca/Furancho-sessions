@@ -2540,8 +2540,66 @@
             </div>
           </div>
 
+          <!-- Minijuegos Configurables -->
+          <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
+            <div class="card-title" style="font-size:14px; margin-bottom:10px;">🎮 Minijuegos de Comunidad</div>
+            
+            <div style="margin-bottom:16px; border-bottom:1px dashed rgba(42,21,9,0.1); padding-bottom:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h4 style="margin:0; font-size:13px; font-weight:800; color:var(--wine);">O Enxebre (Wordle)</h4>
+                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                  <input type="checkbox" id="minigame-enxebre-enabled" style="width:16px; height:16px;" />
+                  <span style="font-size:12px; font-weight:700; color:var(--text);">Activar</span>
+                </label>
+              </div>
+              <p style="font-size:11px; color:var(--text-muted); margin:0 0 10px;">Premios por número de intentos (1 a 6):</p>
+              <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
+                <div><label style="display:block; font-size:10px; font-weight:700;">Intento 1:</label><input type="number" id="mg-enx-1" class="input-field" style="font-size:12px; padding:4px 8px;"/></div>
+                <div><label style="display:block; font-size:10px; font-weight:700;">Intento 2:</label><input type="number" id="mg-enx-2" class="input-field" style="font-size:12px; padding:4px 8px;"/></div>
+                <div><label style="display:block; font-size:10px; font-weight:700;">Intento 3:</label><input type="number" id="mg-enx-3" class="input-field" style="font-size:12px; padding:4px 8px;"/></div>
+                <div><label style="display:block; font-size:10px; font-weight:700;">Intento 4:</label><input type="number" id="mg-enx-4" class="input-field" style="font-size:12px; padding:4px 8px;"/></div>
+                <div><label style="display:block; font-size:10px; font-weight:700;">Intento 5:</label><input type="number" id="mg-enx-5" class="input-field" style="font-size:12px; padding:4px 8px;"/></div>
+                <div><label style="display:block; font-size:10px; font-weight:700;">Intento 6:</label><input type="number" id="mg-enx-6" class="input-field" style="font-size:12px; padding:4px 8px;"/></div>
+              </div>
+            </div>
 
-          <!-- Configurador de Paquetes de Venta $CORCHO (€) -->
+            <div style="margin-bottom:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h4 style="margin:0; font-size:13px; font-weight:800; color:var(--wine);">A Cunca Quente</h4>
+                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                  <input type="checkbox" id="minigame-cunca-enabled" style="width:16px; height:16px;" />
+                  <span style="font-size:12px; font-weight:700; color:var(--text);">Activar</span>
+                </label>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+                <div>
+                  <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Bote Base ($CORCHO):</label>
+                  <input type="number" id="mg-cun-base" class="input-field" style="font-size:12px; padding:6px 10px;" />
+                </div>
+                <div>
+                  <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Coste por pasarla:</label>
+                  <input type="number" id="mg-cun-cost" class="input-field" style="font-size:12px; padding:6px 10px;" />
+                </div>
+                <div>
+                  <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Tiempo Límite (mins):</label>
+                  <input type="number" id="mg-cun-time" class="input-field" style="font-size:12px; padding:6px 10px;" />
+                </div>
+              </div>
+              
+              <div style="display:flex; gap:8px; align-items:center; background:rgba(22,163,74,0.05); border:1px solid rgba(22,163,74,0.2); padding:10px; border-radius:10px;">
+                <input type="text" id="admin-cunca-target" placeholder="Wallet 0x..." class="input-field" style="flex:1; font-size:12px; padding:6px 10px;" />
+                <button onclick="spawnCuncaQuenteAdmin()" style="background:var(--wine); color:#fff; border:none; border-radius:8px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer;">
+                  🔥 Soltar Cunca
+                </button>
+              </div>
+            </div>
+
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:12px;">
+              <button onclick="saveCorchoAdminSettings()" style="background:var(--gold); color:#fff; border:none; border-radius:10px; padding:9px 18px; font-size:12px; font-weight:700; cursor:pointer;">
+                💾 Guardar Config Juegos
+              </button>
+            </div>
+          </div>
           <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
               <div class="card-title" style="font-size:14px;">💳 Precios de Venta de $CORCHO en Euros (€)</div>
@@ -4816,6 +4874,20 @@
         setVal('rate-level2', data.settings.level2);
         setVal('rate-level3', data.settings.level3);
         setVal('rate-level4', data.settings.level4);
+        
+        // Minijuegos
+        const setCheck = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+        setCheck('minigame-enxebre-enabled', data.settings.enxebreEnabled);
+        setVal('mg-enx-1', data.settings.enxebrePrize1);
+        setVal('mg-enx-2', data.settings.enxebrePrize2);
+        setVal('mg-enx-3', data.settings.enxebrePrize3);
+        setVal('mg-enx-4', data.settings.enxebrePrize4);
+        setVal('mg-enx-5', data.settings.enxebrePrize5);
+        setVal('mg-enx-6', data.settings.enxebrePrize6);
+        setCheck('minigame-cunca-enabled', data.settings.cuncaEnabled);
+        setVal('mg-cun-base', data.settings.cuncaBasePot);
+        setVal('mg-cun-cost', data.settings.cuncaPassCost);
+        setVal('mg-cun-time', data.settings.cuncaTimeoutMins);
       }
 
       // Top Holders
@@ -4825,9 +4897,10 @@
           holdersEl.innerHTML = '<p style="font-size:11px; color:var(--text-muted);">Sin movimientos registrados.</p>';
         } else {
           holdersEl.innerHTML = data.holders.map((h, i) => {
-            const w = `${h.wallet_address.slice(0,6)}…${h.wallet_address.slice(-4)}`;
+            const shortW = `${h.wallet_address.slice(0,6)}…${h.wallet_address.slice(-4)}`;
+            const displayName = h.alias ? `${h.alias} (${shortW})` : `Socio Anónimo (${shortW})`;
             return `<div onclick="openWalletDetail('${h.wallet_address}')" title="Ver ficha do socio" style="display:flex; justify-content:space-between; padding:6px; background:var(--bg); border-radius:6px; border:1px solid rgba(42,21,9,0.06); cursor:pointer;">
-              <span style="font-family:monospace;">${i+1}. ${w} <span style="color:var(--text-muted);">›</span></span>
+              <span style="font-family:monospace; font-size:11px;">${i+1}. ${displayName} <span style="color:var(--text-muted);">›</span></span>
               <strong style="color:var(--wine);">${Number(h.balance).toLocaleString()} $CORCHO</strong>
             </div>`;
           }).join('');
@@ -4842,10 +4915,11 @@
         } else {
           recentTxEl.innerHTML = data.recentTx.map(tx => {
             const isPlus = tx.amount > 0;
-            const w = `${tx.wallet_address.slice(0,6)}…${tx.wallet_address.slice(-4)}`;
+            const shortW = `${tx.wallet_address.slice(0,6)}…${tx.wallet_address.slice(-4)}`;
+            const displayName = tx.alias ? `${tx.alias} (${shortW})` : shortW;
             return `<div onclick="openWalletDetail('${tx.wallet_address}')" title="Ver ficha do socio" style="display:flex; justify-content:space-between; align-items:center; padding:5px 6px; background:var(--bg); border-radius:6px; border:1px solid rgba(42,21,9,0.06); cursor:pointer;">
               <div style="flex:1; padding-right:6px; line-height:1.2;">
-                <div style="font-family:monospace; font-size:10px; color:var(--text-muted);">${w}</div>
+                <div style="font-family:monospace; font-size:10px; color:var(--text-muted);">${displayName}</div>
                 <div style="font-size:10.5px; color:var(--text);">${tx.description}</div>
               </div>
               <span style="font-family:monospace; font-weight:800; color:${isPlus ? '#16a34a' : '#ef4444'}; white-space:nowrap;">
@@ -5063,13 +5137,20 @@
     const modal = document.getElementById('wallet-detail-modal');
     const body = document.getElementById('wallet-detail-body');
     const chips = document.getElementById('wd-chips');
-    document.getElementById('wd-wallet').textContent = `${address.slice(0,6)}…${address.slice(-4)}`;
+    const walletText = `${address.slice(0,6)}…${address.slice(-4)}`;
+    document.getElementById('wd-wallet').textContent = walletText;
     chips.innerHTML = '';
     body.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:13px;">Cargando…</p>';
     modal.style.display = 'flex';
     try {
       const d = await apiFetch(`/api/admin/wallet-detail/${address}`).then(r => r.json());
       if (d.error) { body.innerHTML = `<p style="color:var(--wine); text-align:center;">${d.error}</p>`; return; }
+
+      if (d.alias) {
+        document.getElementById('wd-wallet').textContent = `${d.alias} (${walletText})`;
+      } else {
+        document.getElementById('wd-wallet').textContent = `Socio Anónimo (${walletText})`;
+      }
 
       const chip = (bg, col, txt) => `<span style="font-size:10.5px; font-weight:800; padding:3px 9px; border-radius:100px; background:${bg}; color:${col};">${txt}</span>`;
       chips.innerHTML =
@@ -5177,6 +5258,31 @@
       `).join('');
     } catch (e) {
       container.innerHTML = '<p style="font-size:11px; color:var(--text-muted);">Error cargando paquetes.</p>';
+    }
+  }
+
+  async function spawnCuncaQuenteAdmin() {
+    const targetEl = document.getElementById('admin-cunca-target');
+    const targetWallet = targetEl ? targetEl.value.trim() : '';
+    if (!targetWallet) {
+      showToast('Introduce una wallet válida', true);
+      return;
+    }
+    try {
+      const res = await fetch('/api/minigames/admin/cunca/start', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ targetWallet })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('🔥 Cunca Quente soltada con éxito');
+        if (targetEl) targetEl.value = '';
+      } else {
+        showToast(data.error || 'Error al soltar Cunca', true);
+      }
+    } catch (e) {
+      showToast('Error de red', true);
     }
   }
 
@@ -5335,7 +5441,18 @@
       level1: getVal('rate-level1'),
       level2: getVal('rate-level2'),
       level3: getVal('rate-level3'),
-      level4: getVal('rate-level4')
+      level4: getVal('rate-level4'),
+      enxebreEnabled: document.getElementById('minigame-enxebre-enabled').checked ? 1 : 0,
+      enxebrePrize1: getVal('mg-enx-1'),
+      enxebrePrize2: getVal('mg-enx-2'),
+      enxebrePrize3: getVal('mg-enx-3'),
+      enxebrePrize4: getVal('mg-enx-4'),
+      enxebrePrize5: getVal('mg-enx-5'),
+      enxebrePrize6: getVal('mg-enx-6'),
+      cuncaEnabled: document.getElementById('minigame-cunca-enabled').checked ? 1 : 0,
+      cuncaBasePot: getVal('mg-cun-base'),
+      cuncaPassCost: getVal('mg-cun-cost'),
+      cuncaTimeoutMins: getVal('mg-cun-time')
     };
 
     try {

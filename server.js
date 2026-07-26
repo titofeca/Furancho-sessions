@@ -36,6 +36,7 @@ app.use('/api/inbox', require('./routes/inbox'));
 app.use('/api/meme', require('./routes/meme'));
 app.use('/api/eclipse', require('./routes/eclipse'));
 app.use('/api/corcho', require('./routes/corcho'));
+app.use('/api/minigames', require('./routes/minigames'));
 
 
 

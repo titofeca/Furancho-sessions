@@ -1227,6 +1227,8 @@ router.get('/wallet-detail/:address', requireAuth, (req, res) => {
       ORDER BY level DESC LIMIT 1
     `).get(address);
 
+    const profile = db.prepare(`SELECT alias FROM user_profiles WHERE LOWER(wallet_address) = LOWER(?)`).get(address);
+
     const bal = getCorchoBalance(address);
 
     // Sesiones: fecha, hora de entrada/salida y evento de ese día (si lo hubo).
@@ -1257,6 +1259,7 @@ router.get('/wallet-detail/:address', requireAuth, (req, res) => {
     res.json({
       address,
       walletMasked: `${address.slice(0, 6)}…${address.slice(-4)}`,
+      alias: profile ? profile.alias : null,
       level: holder ? holder.level : 1,
       levelName: holder ? holder.level_name : 'Cautivo',
       visitCount: getVisitCount(address),
@@ -2555,15 +2558,17 @@ router.get('/corcho/stats', requireAuth, (req, res) => {
     `).get();
 
     const holders = db.prepare(`
-      SELECT wallet_address, balance, total_earned, total_spent
-      FROM corcho_balances
-      ORDER BY balance DESC LIMIT 15
+      SELECT b.wallet_address, b.balance, b.total_earned, b.total_spent, p.alias
+      FROM corcho_balances b
+      LEFT JOIN user_profiles p ON LOWER(b.wallet_address) = LOWER(p.wallet_address)
+      ORDER BY b.balance DESC LIMIT 15
     `).all();
 
     const recentTx = db.prepare(`
-      SELECT id, wallet_address, amount, type, description, created_at
-      FROM corcho_transactions
-      ORDER BY id DESC LIMIT 20
+      SELECT t.id, t.wallet_address, t.amount, t.type, t.description, t.created_at, p.alias
+      FROM corcho_transactions t
+      LEFT JOIN user_profiles p ON LOWER(t.wallet_address) = LOWER(p.wallet_address)
+      ORDER BY t.id DESC LIMIT 20
     `).all();
 
     res.json({

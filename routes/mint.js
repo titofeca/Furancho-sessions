@@ -1015,6 +1015,32 @@ router.get('/daily-tapa-status', (req, res) => {
   }
 });
 
+// Profile endpoints
+router.get('/profile', (req, res) => {
+  try {
+    const { walletAddress } = req.query;
+    if (!walletAddress) return res.json({ alias: '' });
+    const profile = db.prepare(`SELECT alias FROM user_profiles WHERE LOWER(wallet_address) = LOWER(?)`).get(walletAddress);
+    res.json({ alias: profile ? profile.alias : '' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/profile', (req, res) => {
+  try {
+    const { walletAddress, alias } = req.body;
+    if (!walletAddress) return res.status(400).json({ error: 'Falta wallet' });
+    
+    // Upsert alias
+    db.prepare(`
+      INSERT INTO user_profiles (wallet_address, alias) 
+      VALUES (?, ?) 
+      ON CONFLICT(wallet_address) DO UPDATE SET alias=excluded.alias, updated_at=datetime('now')
+    `).run(walletAddress, alias || '');
+    
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;
 module.exports.performCheckin = performCheckin;
 module.exports.computeDailyTapaStatus = computeDailyTapaStatus;
