@@ -288,6 +288,26 @@ function performCheckin(walletAddress, ipAddress) {
       // (100 en vivo + 100 en el backfill). Con la misma clave se deduplica → 1 vez.
       const refId = `event_${new Date().toISOString().slice(0, 10)}`;
       corchoReward = corcho.rewardCheckin(walletAddress, refId);
+
+      // Recompensas por compromiso: RSVP y VIP Show-up
+      const { getActiveEventWindow, db } = require('../db/database');
+      const win = getActiveEventWindow();
+      if (win && win.event) {
+        const eventId = win.event.id;
+        
+        // Check RSVP
+        const hasRsvp = db.prepare(`SELECT 1 FROM event_rsvps WHERE event_id = ? AND LOWER(wallet_address) = LOWER(?)`).get(eventId, walletAddress);
+        if (hasRsvp) {
+          corcho.rewardRsvpShowup(walletAddress, eventId);
+        }
+        
+        // Check VIP (si tenía estado 'confirmed' antes de que completeVipReservationOnCheckin lo pase a 'completed')
+        // Aquí miramos si está confirmed O completed en este evento, porque si ya lo completó este checkin es idempotente.
+        const hasVip = db.prepare(`SELECT 1 FROM vip_reservations WHERE event_id = ? AND LOWER(wallet_address) = LOWER(?) AND status IN ('confirmed', 'completed')`).get(eventId, walletAddress);
+        if (hasVip) {
+          corcho.rewardVipShowup(walletAddress, eventId);
+        }
+      }
     } catch (e) { console.error('Error recompensando CorchoCoins en check-in:', e.message); }
   }
 

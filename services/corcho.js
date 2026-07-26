@@ -18,7 +18,9 @@ const DEFAULT_RATES = {
   referral: 75,            // Recompensa para ambos por Plan Amigo
   campaignVisit: 30,       // Recompensa por visita a la Terraza de verano
   campaignCompleted: 300,  // Recompensa por completar el Reto de los 5
-  nftTransferFee: 150      // Peaje en $CORCHO por traspasar un NFT entre wallets
+  nftTransferFee: 150,     // Peaje en $CORCHO por traspasar un NFT entre wallets
+  rsvpShowup: 15,          // Recompensa por cumplir RSVP ("Me apetece") y asistir
+  vipShowup: 50            // Recompensa por tener reserva VIP y asistir
 };
 
 function getRate(key) {
@@ -40,7 +42,9 @@ function getEconomySettings() {
     referral: getRate('referral'),
     campaignVisit: getRate('campaignVisit'),
     campaignCompleted: getRate('campaignCompleted'),
-    nftTransferFee: getRate('nftTransferFee')
+    nftTransferFee: getRate('nftTransferFee'),
+    rsvpShowup: getRate('rsvpShowup'),
+    vipShowup: getRate('vipShowup')
   };
 }
 
@@ -76,6 +80,32 @@ function rewardExit(walletAddress, sessionId) {
     'exit',
     `🚪 Fichaje de salida (+${amount} $CORCHO)`,
     `exit_session_${sessionId}`
+  );
+}
+
+// Recompensa por cumplir RSVP ("Me apetece") y asistir
+function rewardRsvpShowup(walletAddress, eventId) {
+  const amount = getRate('rsvpShowup');
+  if (!amount || amount <= 0) return { added: false };
+  return addCorchoCoins(
+    walletAddress,
+    amount,
+    'rsvp_showup',
+    `📅 Fichaje tras avisar "Me apetece" (+${amount} $CORCHO)`,
+    `rsvp_showup_${eventId}`
+  );
+}
+
+// Recompensa por tener reserva VIP y asistir
+function rewardVipShowup(walletAddress, eventId) {
+  const amount = getRate('vipShowup');
+  if (!amount || amount <= 0) return { added: false };
+  return addCorchoCoins(
+    walletAddress,
+    amount,
+    'vip_showup',
+    `⭐ Fichaje con Reserva VIP (+${amount} $CORCHO)`,
+    `vip_showup_${eventId}`
   );
 }
 
@@ -189,6 +219,8 @@ module.exports = {
   saveEconomySettings,
   rewardCheckin,
   rewardExit,
+  rewardRsvpShowup,
+  rewardVipShowup,
   rewardLevelAward,
   rewardCampaignVisit,
   rewardReferral,

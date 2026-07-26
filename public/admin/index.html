@@ -2501,6 +2501,14 @@
                 <input type="number" id="rate-exit" class="input-field" style="font-size:12px; padding:6px 10px;" />
               </div>
               <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Recompensa por cumplir RSVP ("Me apetece"):</label>
+                <input type="number" id="rate-rsvp" class="input-field" style="font-size:12px; padding:6px 10px;" />
+              </div>
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Recompensa por cumplir VIP:</label>
+                <input type="number" id="rate-vip" class="input-field" style="font-size:12px; padding:6px 10px;" />
+              </div>
+              <div>
                 <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Recompensa Nivel 1 (Cautivo):</label>
                 <input type="number" id="rate-level1" class="input-field" style="font-size:12px; padding:6px 10px;" />
               </div>
@@ -4801,6 +4809,8 @@
         const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
         setVal('rate-checkin', data.settings.checkin);
         setVal('rate-exit', data.settings.exit);
+        setVal('rate-rsvp', data.settings.rsvpShowup);
+        setVal('rate-vip', data.settings.vipShowup);
         setVal('rate-nftTransferFee', data.settings.nftTransferFee);
         setVal('rate-level1', data.settings.level1);
         setVal('rate-level2', data.settings.level2);
@@ -5319,6 +5329,8 @@
     const body = {
       checkin: getVal('rate-checkin'),
       exit: getVal('rate-exit'),
+      rsvpShowup: getVal('rate-rsvp'),
+      vipShowup: getVal('rate-vip'),
       nftTransferFee: getVal('rate-nftTransferFee'),
       level1: getVal('rate-level1'),
       level2: getVal('rate-level2'),
