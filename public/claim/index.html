@@ -2323,7 +2323,7 @@
         <button id="campaign-show-qr" onclick="openIdModal()" style="width:100%; margin-top:14px; padding:14px; background:linear-gradient(135deg,var(--gold),#a97b1f); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:800; cursor:pointer; box-shadow:0 4px 14px rgba(196,151,58,.35);">
           🪪 Enseñar mi QR al camarero
         </button>
-        <p style="text-align:center; font-size:13px; color:#2A1509; margin:8px 0 0; line-height:1.45; font-weight:500;">Enséñalo <strong>en vivo</strong> desde la app. Las capturas caducan solas.</p>
+        <p id="campaign-show-qr-subtext" style="text-align:center; font-size:13px; color:#2A1509; margin:8px 0 0; line-height:1.45; font-weight:500;">Enséñalo <strong>en vivo</strong> desde la app. Las capturas caducan solas.</p>
 
         <!-- Tabla de privilegios desplegable -->
         <details style="margin-top:16px;">
@@ -9386,6 +9386,12 @@
   let clientHtml5QrScanner = null;
 
   function updateFicharButtons() {
+    const container = document.getElementById('fichar-container');
+    if (Date.now() > new Date('2026-07-30T23:59:59+02:00').getTime()) {
+      if (container) container.style.display = 'none';
+      return;
+    }
+
     const entryBtn = document.getElementById('fichar-btn-entry');
     const exitBtn = document.getElementById('fichar-btn-exit');
     const activeBadge = document.getElementById('session-active-badge');
@@ -9565,7 +9571,15 @@
   async function checkDressCodeVisibility() {
     const box = document.getElementById('dress-code-box');
     const done = document.getElementById('dress-code-done');
-    if (!box || !done || !userWalletAddress || !userHasActiveSession) {
+    
+    // Ocultar permanentemente tras fin de temporada (30 Julio)
+    if (Date.now() > new Date('2026-07-30T23:59:59+02:00').getTime()) {
+      if (box) box.style.display = 'none';
+      if (done) done.style.display = 'none';
+      return;
+    }
+
+    if (!box || !done || !userWalletAddress) {
       if (box) box.style.display = 'none';
       if (done) done.style.display = 'none';
       return;

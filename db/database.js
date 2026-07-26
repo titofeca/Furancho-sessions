@@ -4490,28 +4490,54 @@ function _todayMadrid() {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
 }
 
-function getTodayDressCode() {
+function _getCurrentDressCodeEvent() {
   const date = _todayMadrid();
-  const ev = db.prepare(`SELECT dress_code FROM events WHERE event_date = ? AND active = 1`).get(date);
+  let ev = db.prepare(`SELECT event_date, dress_code FROM events WHERE event_date = ? AND active = 1 AND dress_code IS NOT NULL AND dress_code != ''`).get(date);
+  if (ev) return ev;
+
+  const madNow = new Date(new Date().toLocaleString("en-US", {timeZone: "Europe/Madrid"}));
+  const madDay = madNow.getDay(); // 0 = Domingo, 1 = Lunes, ..., 4 = Jueves
+  const madHours = madNow.getHours();
+
+  // Desde el Domingo a las 21:00 (apertura de Chave) hasta el día del evento (jueves)
+  const isAfterRaffleOpen = (madDay === 0 && madHours >= 21) || (madDay >= 1 && madDay <= 4);
+
+  if (isAfterRaffleOpen) {
+    for (let i = 1; i <= 6; i++) {
+      const future = new Date(madNow);
+      future.setDate(future.getDate() + i);
+      const futureStr = future.toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+      ev = db.prepare(`SELECT event_date, dress_code FROM events WHERE event_date = ? AND active = 1 AND dress_code IS NOT NULL AND dress_code != ''`).get(futureStr);
+      if (ev) return ev;
+    }
+  }
+  return null;
+}
+
+function getTodayDressCode() {
+  const ev = _getCurrentDressCodeEvent();
   return ev?.dress_code || null;
 }
 
 function declareDressCode(wallet) {
-  const date = _todayMadrid();
+  const ev = _getCurrentDressCodeEvent();
+  if (!ev) return { ok: false, error: 'No hay evento activo' };
   try {
-    db.prepare(`INSERT OR IGNORE INTO dress_code_declarations (wallet_address, event_date) VALUES (?, ?)`).run(wallet, date);
-    return { ok: true, date };
+    db.prepare(`INSERT OR IGNORE INTO dress_code_declarations (wallet_address, event_date) VALUES (?, ?)`).run(wallet, ev.event_date);
+    return { ok: true, date: ev.event_date };
   } catch (e) {
     return { ok: false, error: e.message };
   }
 }
 
 function hasDressCodeToday(wallet) {
-  const date = _todayMadrid();
-  return !!db.prepare(`SELECT 1 FROM dress_code_declarations WHERE LOWER(wallet_address) = LOWER(?) AND event_date = ?`).get(wallet, date);
+  const ev = _getCurrentDressCodeEvent();
+  if (!ev) return false;
+  return !!db.prepare(`SELECT 1 FROM dress_code_declarations WHERE LOWER(wallet_address) = LOWER(?) AND event_date = ?`).get(wallet, ev.event_date);
 }
 
 function getDressCodeWalletsToday() {
-  const date = _todayMadrid();
-  return db.prepare(`SELECT wallet_address FROM dress_code_declarations WHERE event_date = ?`).all(date).map(r => r.wallet_address);
+  const ev = _getCurrentDressCodeEvent();
+  if (!ev) return [];
+  return db.prepare(`SELECT wallet_address FROM dress_code_declarations WHERE event_date = ?`).all(ev.event_date).map(r => r.wallet_address);
 }
