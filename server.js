@@ -217,6 +217,15 @@ function scheduleAutoCheckout() {
 }
 scheduleAutoCheckout();
 
+// Auto-reembolsa vales de canje ($CORCHO) que caducaron sin entregarse — cada 30s.
+setInterval(() => {
+  try {
+    const { sweepExpiredRedemptions } = require('./db/database');
+    const n = sweepExpiredRedemptions();
+    if (n) console.log(`[Sweep] ${n} vale(s) expirado(s) → $CORCHO reembolsados + stock repuesto`);
+  } catch (_) {}
+}, 30 * 1000);
+
 // ─── SORTEO SEMANAL AUTOMÁTICO (Miércoles 21:00 hora Madrid) ──────────────────
 // Lógica: cada minuto, miércoles entre las 21:00 y las 21:04 (ventana robusta):
 //   - Si hay un premio configurado para la semana objetivo → lanza el sorteo.

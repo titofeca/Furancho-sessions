@@ -3236,6 +3236,7 @@ module.exports = {
   validateRedemptionVoucher,
   getRedemptionByCode,
   cancelRedemptionVoucher,
+  sweepExpiredRedemptions,
   corchoItemCategory,
   sessionCanjeCount,
   getSessionCanjeCounts,
@@ -4296,8 +4297,28 @@ function getRedemptionByCode(code) {
   return db.prepare(`SELECT * FROM corcho_redemptions WHERE code = ?`).get(String(code).trim().toUpperCase());
 }
 
+// Auto-reembolsa vales pendientes que caducaron sin entregarse.
+function sweepExpiredRedemptions() {
+  const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const expired = db.prepare(`
+    SELECT * FROM corcho_redemptions WHERE status = 'pending' AND expires_at <= ?
+  `).all(nowStr);
+  let count = 0;
+  for (const v of expired) {
+    db.prepare(`UPDATE corcho_redemptions SET status = 'expired', validated_by = 'auto', validated_at = datetime('now') WHERE id = ? AND status = 'pending'`).run(v.id);
+    addCorchoCoins(v.wallet_address, v.price_corcho, 'admin_adjustment',
+      `↩️ Reembolso automático: vale ${v.item_emoji} ${v.item_name} caducó sin entregar`, `refund_voucher_${v.id}`);
+    if (v.item_id) {
+      db.prepare(`UPDATE corcho_items SET stock = stock + 1 WHERE id = ? AND stock IS NOT NULL`).run(v.item_id);
+    }
+    count++;
+  }
+  return count;
+}
+
 // Vales PENDIENTES y sin caducar. Con wallet, solo los de ese socio.
 function getPendingRedemptions(walletAddress = null) {
+  sweepExpiredRedemptions();
   const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
   if (walletAddress) {
     return db.prepare(`
