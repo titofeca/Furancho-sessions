@@ -32,7 +32,8 @@ router.get('/featured-card', (req, res) => {
       level: parseInt(getSetting('featured_card_level', '4'), 10) || 4,
       title: getSetting('featured_card_title', ''),
       image: getSetting('featured_card_image', ''),
-      desc: getSetting('featured_card_desc', '')
+      desc: getSetting('featured_card_desc', ''),
+      buttonNftId: getSetting('featured_nft_button', 'meme_vip')
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

@@ -2925,6 +2925,15 @@
           <textarea id="featured-card-desc" rows="2" placeholder="ej: Pase exclusivo con privilegios Furancho Sessions..." style="width:100%; background:#fff; color:var(--text); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:11px 13px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box; margin-bottom:14px;"></textarea>
         </div>
 
+        
+        <div style="border-top:1px solid rgba(42,21,9,0.1); margin:16px 0; padding-top:16px;">
+          <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Botón Dorado Principal (Acceso directo a NFT)</label>
+          <p style="font-size:10.5px; color:var(--text-muted); margin:0 0 10px;">Si eliges un NFT, los clientes que lo posean verán un botón dorado gigante en su inicio para abrirlo directamente.</p>
+          <select id="featured-nft-button" style="width:100%; background:#fff; color:var(--text); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:11px 13px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box; margin-bottom:16px;">
+            <option value="none">🚫 Ocultar botón dorado</option>
+          </select>
+        </div>
+
         <button onclick="saveFeaturedCardConfig()" style="width:100%; background:var(--wine); color:#fff; border:none; border-radius:50px; padding:12px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">Guardar Tarjeta Dorada</button>
       </div>
 
@@ -9101,6 +9110,21 @@
       document.getElementById('featured-card-title').value = d.title || '';
       document.getElementById('featured-card-image').value = d.image || '';
       document.getElementById('featured-card-desc').value = d.desc || '';
+      
+      const nftSel = document.getElementById('featured-nft-button');
+      if (nftSel) {
+        // Cargar opciones del catálogo primero si está vacío
+        if (nftSel.options.length <= 1 && window.achievementsCatalog) {
+          window.achievementsCatalog.forEach(ach => {
+            const opt = document.createElement('option');
+            opt.value = ach.id;
+            opt.textContent = `🎟️ Botón para: ${ach.name}`;
+            nftSel.appendChild(opt);
+          });
+        }
+        nftSel.value = d.buttonNftId || 'none';
+      }
+
       toggleFeaturedCardFields();
       const pill = document.getElementById('featured-card-pill');
       if (pill) { pill.textContent = d.mode === 'auto' ? '● Automático' : '★ Destacada'; pill.style.color = d.mode === 'auto' ? '#16a34a' : 'var(--gold)'; }
@@ -9114,7 +9138,8 @@
       level: mode.startsWith('level_') ? parseInt(mode.replace('level_', ''), 10) : undefined,
       title: document.getElementById('featured-card-title').value,
       image: document.getElementById('featured-card-image').value,
-      desc: document.getElementById('featured-card-desc').value
+      desc: document.getElementById('featured-card-desc').value,
+      buttonNftId: document.getElementById('featured-nft-button').value
     };
     try {
       const r = await fetch('/api/admin/featured-card', {

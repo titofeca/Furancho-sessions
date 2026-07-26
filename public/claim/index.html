@@ -3667,11 +3667,11 @@
       const modal = document.getElementById('meme-vip-modal');
       const serialLabel = modal.querySelector('span'); // The first span is the serial tag
       
-      const memeVip = window._achMap && window._achMap['meme_vip'];
+      const targetId = window._featuredNftButtonId || 'meme_vip';
+      const memeVip = window._achMap && window._achMap[targetId];
       const serialNum = (memeVip && memeVip.serial) ? memeVip.serial : '—';
-      // La tirada son 300 (aquí ponía 50, de cuando eran 50). El número no va en
-      // la imagen —es la misma para los 300— sino aquí, que sí sabe cuál es el suyo.
-      serialLabel.textContent = `🎭 MEME DE COLECCIÓN (${serialNum}/300) 🎭`;
+      const name = (memeVip && memeVip.name) ? memeVip.name.toUpperCase() : 'COLECCIÓN';
+      serialLabel.textContent = `🎭 ${name} (${serialNum}/300) 🎭`;
 
       // La imagen sale del catálogo, para que al subir un arte nuevo cambie también aquí.
       const img = modal.querySelector('img');
@@ -4453,6 +4453,10 @@
           }
           if (profileLevelTag) profileLevelTag.textContent = 'NIVEL ' + forcedLvl;
           if (profileCardName) profileCardName.textContent = forcedName;
+        }
+        if (cfg && cfg.buttonNftId) {
+          window._featuredNftButtonId = cfg.buttonNftId;
+          renderFeaturedNftButton();
         }
       }).catch(() => {});
 
@@ -5452,15 +5456,7 @@
       if (_achStatus && _achStatus.achievements) {
         _achStatus.achievements.forEach(a => { window._achMap[a.id] = a; });
         
-        const memeVip = window._achMap['meme_vip'];
-        const btnMeme = document.getElementById('btn-meme-vip');
-        if (btnMeme) {
-          if (memeVip && memeVip.claimStatus === 'success') {
-             btnMeme.style.display = 'inline-flex';
-          } else {
-             btnMeme.style.display = 'none';
-          }
-        }
+        renderFeaturedNftButton();
 
         // Si el logro de San Juan ya fue reclamado, lo quitamos del perfil principal
         const sanJuanClaimed = window._achMap['furancheiro_fiesteiro'] && window._achMap['furancheiro_fiesteiro'].claimStatus;

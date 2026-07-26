@@ -2069,7 +2069,8 @@ router.get('/featured-card', requireAuth, (req, res) => {
       level: parseInt(getAppSetting('featured_card_level', '4'), 10) || 4,
       title: getAppSetting('featured_card_title', ''),
       image: getAppSetting('featured_card_image', ''),
-      desc: getAppSetting('featured_card_desc', '')
+      desc: getAppSetting('featured_card_desc', ''),
+      buttonNftId: getAppSetting('featured_nft_button', 'meme_vip')
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -2077,12 +2078,13 @@ router.get('/featured-card', requireAuth, (req, res) => {
 // POST /api/admin/featured-card — guardar configuración de la Tarjeta Dorada
 router.post('/featured-card', requireAuth, (req, res) => {
   try {
-    const { mode, level, title, image, desc } = req.body || {};
+    const { mode, level, title, image, desc, buttonNftId } = req.body || {};
     setAppSetting('featured_card_mode', mode || 'auto');
     if (level !== undefined) setAppSetting('featured_card_level', String(level));
     if (title !== undefined) setAppSetting('featured_card_title', String(title || ''));
     if (image !== undefined) setAppSetting('featured_card_image', String(image || ''));
     if (desc !== undefined) setAppSetting('featured_card_desc', String(desc || ''));
+    if (buttonNftId !== undefined) setAppSetting('featured_nft_button', String(buttonNftId));
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
