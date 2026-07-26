@@ -11251,6 +11251,8 @@
   <!-- MODAL: O ENXEBRE (WORDLE) -->
   <div id="enxebre-modal" style="display:none; position:fixed; inset:0; z-index:2500; background:rgba(255,255,255,0.95); align-items:center; justify-content:flex-start; flex-direction:column; padding:18px;">
     <button onclick="closeEnxebre()" style="position:absolute; top:16px; right:16px; background:none; border:none; font-size:24px; color:var(--wine); cursor:pointer; font-weight:900;">✕</button>
+    <button onclick="document.getElementById('enxebre-help-modal').style.display='flex'" style="position:absolute; top:16px; left:16px; background:none; border:none; font-size:22px; cursor:pointer;">❓</button>
+    
     <h3 style="font-family:'Playfair Display',serif; font-size:24px; color:var(--wine); margin:20px 0 10px;">O Enxebre</h3>
     <p style="font-size:12px; color:var(--text-muted); text-align:center; margin-bottom:20px; max-width:300px;">Adivina la palabra en gallego de 5 letras.</p>
     
@@ -11267,6 +11269,7 @@
   <div id="cunca-modal" style="display:none; position:fixed; inset:0; z-index:2500; background:rgba(0,0,0,0.85); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:18px;">
     <div style="background:linear-gradient(135deg, #7f1d1d, #450a0a); width:100%; max-width:360px; border-radius:24px; padding:24px; border:2px solid #ef4444; box-shadow:0 0 50px rgba(239, 68, 68, 0.4); text-align:center; position:relative;">
       <button onclick="closeCuncaQuente()" style="position:absolute; top:16px; right:16px; background:rgba(255,255,255,0.1); border:none; border-radius:50%; width:32px; height:32px; color:#fff; cursor:pointer;">✕</button>
+      <button onclick="document.getElementById('cunca-help-modal').style.display='flex'" style="position:absolute; top:16px; left:16px; background:none; border:none; font-size:22px; cursor:pointer;">❓</button>
       
       <div style="font-size:50px; animation:bounce 1s infinite; margin-bottom:10px;">🍷🔥</div>
       <h3 style="font-family:'Playfair Display',serif; font-size:24px; font-weight:900; color:#fff; margin:0 0 6px;">¡TIENES LA CUNCA!</h3>
@@ -11287,6 +11290,37 @@
           </button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL HELP ENXEBRE -->
+  <div id="enxebre-help-modal" style="display:none; position:fixed; inset:0; z-index:2600; background:rgba(0,0,0,0.65); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); align-items:center; justify-content:center; padding:18px;">
+    <div style="background:var(--cream); width:100%; max-width:400px; border-radius:20px; padding:24px; border:1.5px solid var(--gold); box-shadow:0 20px 40px rgba(0,0,0,0.3); position:relative;">
+      <button onclick="document.getElementById('enxebre-help-modal').style.display='none'" style="position:absolute; top:16px; right:16px; background:none; border:none; font-size:20px; color:var(--text-muted); cursor:pointer;">✕</button>
+      <h3 style="font-family:'Playfair Display',serif; font-size:20px; color:var(--wine); margin:0 0 16px; text-align:center;">📖 Cómo jugar a O Enxebre</h3>
+      <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin-bottom:12px;">Adivina la palabra en gallego de 5 letras en un máximo de 6 intentos.</p>
+      <ul style="font-size:13px; color:var(--text); padding-left:20px; margin-bottom:16px; line-height:1.5;">
+        <li>🟩 <b>VERDE:</b> La letra está en la palabra y en la posición correcta.</li>
+        <li>🟨 <b>AMARILLO:</b> La letra está en la palabra, pero en otro sitio.</li>
+        <li>⬜ <b>GRIS:</b> La letra no está en la palabra.</li>
+      </ul>
+      <p style="font-size:13px; color:var(--wine); font-weight:bold; margin-bottom:0;">Premios (en $CORCHO):</p>
+      <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin-top:4px;">Cuantos menos intentos necesites para acertar, mayor será tu premio en monedas. Si fallas los 6 intentos, inténtalo de nuevo mañana.</p>
+    </div>
+  </div>
+
+  <!-- MODAL HELP CUNCA -->
+  <div id="cunca-help-modal" style="display:none; position:fixed; inset:0; z-index:2600; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:18px;">
+    <div style="background:linear-gradient(135deg, #7f1d1d, #450a0a); width:100%; max-width:400px; border-radius:24px; padding:24px; border:2px solid #ef4444; box-shadow:0 0 50px rgba(239, 68, 68, 0.4); text-align:center; position:relative; color:#fff;">
+      <button onclick="document.getElementById('cunca-help-modal').style.display='none'" style="position:absolute; top:16px; right:16px; background:rgba(255,255,255,0.1); border:none; border-radius:50%; width:32px; height:32px; color:#fff; cursor:pointer;">✕</button>
+      <h3 style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; margin:0 0 16px;">📖 Reglas de A Cunca Quente</h3>
+      <p style="font-size:13px; color:rgba(255,255,255,0.9); line-height:1.5; margin-bottom:12px; text-align:left;">La Cunca Quente va pasando de móvil en móvil (como la patata caliente). Si te llega a ti, la verás en pantalla y tienes dos opciones:</p>
+      <ul style="font-size:13px; color:#fff; padding-left:20px; margin-bottom:16px; line-height:1.5; text-align:left;">
+        <li style="margin-bottom:8px;"><b>😋 BEBER Y COBRAR:</b> Te llevas de inmediato todo el bote acumulado de $CORCHO a tu saldo, y el juego se acaba.</li>
+        <li><b>🔥 PASAR (-5):</b> Pagas 5 $CORCHO de tu bolsillo, se la pasas a la wallet de un amigo, y el bote engorda.</li>
+      </ul>
+      <p style="font-size:13px; color:#fca5a5; font-weight:bold; margin-bottom:0;">¡CUIDADO!</p>
+      <p style="font-size:12px; color:rgba(255,255,255,0.7); line-height:1.5; margin-top:4px;">Si el tiempo llega a cero mientras la Cunca está en tus manos, se derrama y nadie se lleva el bote. ¡No te quemes!</p>
     </div>
   </div>
 
@@ -11648,6 +11682,8 @@
 
         const feeEl = document.getElementById('transfer-fee-amount');
         if (feeEl) feeEl.textContent = `${_corchoData.transferFee} $CORCHO`;
+        
+        checkCuncaStatus(); // Verificar minijuegos ahora que tenemos los rates
 
         // Renderizar Historial
         const histEl = document.getElementById('corcho-history-list');

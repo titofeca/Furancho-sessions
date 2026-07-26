@@ -6,7 +6,9 @@ const { requireAuth } = require('./events'); // Assuming it's exported or simila
 
 // Middleware simple
 const requireWallet = (req, res, next) => {
-  if (!req.user || !req.user.walletAddress) return res.status(401).json({ error: 'Auth required' });
+  const wallet = req.headers['wallet-address'] || req.query.wallet || (req.body && req.body.walletAddress);
+  if (!wallet) return res.status(401).json({ error: 'Wallet required' });
+  req.walletAddress = wallet;
   next();
 };
 
@@ -16,7 +18,7 @@ const requireWallet = (req, res, next) => {
 router.get('/enxebre/status', requireWallet, (req, res) => {
   try {
     const today = new Date().toISOString().slice(0, 10);
-    const existing = db.prepare(`SELECT * FROM enxebre_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(req.user.walletAddress, today);
+    const existing = db.prepare(`SELECT * FROM enxebre_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(req.walletAddress, today);
     res.json({
       playedToday: !!existing,
       history: existing || null
@@ -54,8 +56,8 @@ router.get('/cunca/status', requireWallet, (req, res) => {
   try {
     const active = minigames.getActiveCunca();
     if (!active) return res.json({ hasCunca: false });
-    
-    const hasCunca = active.current_holder.toLowerCase() === req.user.walletAddress.toLowerCase();
+
+    const hasCunca = active.current_holder.toLowerCase() === req.walletAddress.toLowerCase();
     res.json({ hasCunca, cunca: hasCunca ? active : null });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -63,7 +65,7 @@ router.get('/cunca/status', requireWallet, (req, res) => {
 // POST /api/minigames/cunca/drink
 router.post('/cunca/drink', requireWallet, (req, res) => {
   try {
-    const amount = minigames.drinkCunca(req.user.walletAddress);
+    const amount = minigames.drinkCunca(req.walletAddress);
     res.json({ success: true, amount });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -71,10 +73,11 @@ router.post('/cunca/drink', requireWallet, (req, res) => {
 // POST /api/minigames/cunca/pass
 router.post('/cunca/pass', requireWallet, (req, res) => {
   try {
+    const { passCunca } = require('../services/minigames');
     const { toWallet } = req.body;
     if (!toWallet) return res.status(400).json({ error: 'Destino requerido' });
-    const newPot = minigames.passCunca(req.user.walletAddress, toWallet);
-    res.json({ success: true, newPot });
+    const result = passCunca(req.walletAddress, toWallet);
+    res.json({ success: true, newPot: result });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 

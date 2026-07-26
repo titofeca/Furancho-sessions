@@ -582,7 +582,7 @@ router.get('/campaign/leaderboard', requireStaff, (req, res) => {
   }
 });
 
-// ── HORARIO DE LA TERRAZA ────────────────────────────────────────────────────
+// ── 3. RECLAMO DIARIO (PRIVILEXIO DEL GUARDIÁN Y TAPA VIP) ────────────────────────────────────────────────────
 // Los camareros pueden ver y ACTUALIZAR el horario semanal desde su página, para
 // que no dependa del admin. Solo toca app_settings: aislado de fichajes/sorteos.
 
