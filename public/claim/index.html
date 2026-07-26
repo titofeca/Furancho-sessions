@@ -4456,7 +4456,7 @@
         }
         if (cfg && cfg.buttonNftId) {
           window._featuredNftButtonId = cfg.buttonNftId;
-          renderFeaturedNftButton();
+
         }
       }).catch(() => {});
 
@@ -5460,7 +5460,7 @@
       if (_achStatus && _achStatus.achievements) {
         _achStatus.achievements.forEach(a => { window._achMap[a.id] = a; });
         
-        renderFeaturedNftButton();
+
 
         // Si el logro de San Juan ya fue reclamado, lo quitamos del perfil principal
         const sanJuanClaimed = window._achMap['furancheiro_fiesteiro'] && window._achMap['furancheiro_fiesteiro'].claimStatus;
