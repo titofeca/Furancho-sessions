@@ -4347,21 +4347,36 @@
       const statusColor = { success:'#22c55e', pending:'#f59e0b', failed:'#ef4444', pending_approval:'#a855f7', rejected_admin:'#6b7280' };
       const statusLabel = { success:'✅ Minted', pending:'⏳ En cola', failed:'❌ Fallido', pending_approval:'🔔 Pendiente aprobación', rejected_admin:'🚫 Rechazado' };
       const lvlColor = { 1:'#8B4513', 2:'#2A8A8A', 3:'#f59e0b', 4:'#a855f7' };
+      const CONTRACT = '0x30118E36F1E3681ac5B9D048659Bc22733c78913';
       container.innerHTML = recent.map(m => {
-        const col = lvlColor[m.level] || '#888';
+        const kind = m.kind || 'level';
+        let badge, col, tokenId;
+        if (kind === 'achievement') {
+          col = '#e67e22';
+          badge = `<span style="background:${col}22; color:${col}; border:1px solid ${col}44; border-radius:100px; padding:3px 10px; font-size:10px; font-weight:700; white-space:nowrap; flex-shrink:0;">🏅 ${m.achievement_id || 'Logro'}</span>`;
+          tokenId = m.token_id;
+        } else if (kind === 'meme') {
+          col = '#e91e63';
+          badge = `<span style="background:${col}22; color:${col}; border:1px solid ${col}44; border-radius:100px; padding:3px 10px; font-size:10px; font-weight:700; white-space:nowrap; flex-shrink:0;">🃏 Meme #${m.serial}</span>`;
+          tokenId = 99;
+        } else {
+          col = lvlColor[m.level] || '#888';
+          badge = `<span style="background:${col}22; color:${col}; border:1px solid ${col}44; border-radius:100px; padding:3px 10px; font-size:10px; font-weight:700; white-space:nowrap; flex-shrink:0;">Nv${m.level}</span>`;
+          tokenId = m.level;
+        }
         const sc = statusColor[m.status] || '#888';
         const sl = statusLabel[m.status] || m.status;
-        const CONTRACT = '0x30118E36F1E3681ac5B9D048659Bc22733c78913';
         const costBadge = m.mint_cost_matic ? `<span style="font-size:10px; color:var(--gold); font-weight:600; flex-shrink:0;">💸 ${Number(m.mint_cost_matic).toFixed(4)} MATIC</span>` : '';
         const sourceBadge = m.mint_source === 'admin-manual' ? `<span style="font-size:9px; color:var(--text-muted); background:rgba(42,21,9,0.06); border-radius:6px; padding:2px 6px; flex-shrink:0;">manual</span>` : '';
         const wallet = m.wallet_address || '';
-        const linksHtml = (m.status === 'success' && wallet && !wallet.startsWith('0xTEST') && m.level >= 3) ? `
+        const onChain = m.status === 'success' && wallet && !wallet.startsWith('0xTEST') && (kind !== 'level' || m.level >= 3);
+        const linksHtml = onChain ? `
           <div style="display:flex; gap:8px; flex-basis:100%; padding-left:2px; margin-top:2px;">
-            <a href="https://opensea.io/assets/matic/${CONTRACT}/${m.level}" target="_blank" rel="noopener" style="font-size:10px; color:var(--wine); text-decoration:none; font-weight:600;">🌊 OpenSea</a>
+            <a href="https://opensea.io/assets/matic/${CONTRACT}/${tokenId}" target="_blank" rel="noopener" style="font-size:10px; color:var(--wine); text-decoration:none; font-weight:600;">🌊 OpenSea</a>
             <a href="https://polygonscan.com/token/${CONTRACT}?a=${wallet}" target="_blank" rel="noopener" style="font-size:10px; color:var(--wine); text-decoration:none; font-weight:600;">🔍 PolygonScan</a>
           </div>` : '';
         return `<div style="background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:10px 14px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-          <span style="background:${col}22; color:${col}; border:1px solid ${col}44; border-radius:100px; padding:3px 10px; font-size:10px; font-weight:700; white-space:nowrap; flex-shrink:0;">Nv${m.level}</span>
+          ${badge}
           <span style="font-family:monospace; font-size:11px; color:var(--text-muted); flex:1; min-width:0;">${m.wallet_masked}</span>
           <span style="font-size:11px; color:${sc}; font-weight:600; white-space:nowrap;">${sl}</span>
           ${costBadge}${sourceBadge}

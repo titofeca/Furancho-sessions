@@ -1200,13 +1200,28 @@ function getStats() {
     SELECT COALESCE(SUM(mint_cost_matic), 0) as total FROM mints WHERE status = 'success' AND mint_cost_matic IS NOT NULL
   `).get()?.total || 0;
 
-  // Historial reciente con coste
-  const recentWithCost = db.prepare(`
-    SELECT level, level_name,
+  // Historial reciente con coste — niveles + logros + memes, ordenados por fecha
+  const recentLevels = db.prepare(`
+    SELECT level, level_name, 'level' AS kind,
            substr(wallet_address, 1, 6) || '...' || substr(wallet_address, -6) as wallet_masked,
            wallet_address, minted_at, status, mint_cost_matic, mint_source
     FROM mints ORDER BY minted_at DESC LIMIT 50
   `).all();
+  const recentAch = db.prepare(`
+    SELECT token_id, achievement_id, 'achievement' AS kind,
+           substr(wallet_address, 1, 6) || '...' || substr(wallet_address, -6) as wallet_masked,
+           wallet_address, created_at AS minted_at, status, cost_matic AS mint_cost_matic, tx_hash
+    FROM achievement_mints ORDER BY created_at DESC LIMIT 30
+  `).all();
+  const recentMemes = db.prepare(`
+    SELECT serial, 'meme' AS kind,
+           substr(wallet_address, 1, 6) || '...' || substr(wallet_address, -6) as wallet_masked,
+           wallet_address, created_at AS minted_at, status, cost_matic AS mint_cost_matic, tx_hash
+    FROM meme_units WHERE status != 'cancelled' ORDER BY created_at DESC LIMIT 20
+  `).all();
+  const recentWithCost = [...recentLevels, ...recentAch, ...recentMemes]
+    .sort((a, b) => (b.minted_at || '').localeCompare(a.minted_at || ''))
+    .slice(0, 60);
 
   // Visitas/asistencias canónicas (motor de métricas) — única fuente de verdad.
   // Lazy-require para evitar el ciclo de carga con services/metrics.js.
