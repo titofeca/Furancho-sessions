@@ -1347,28 +1347,63 @@ router.get('/furancho-health', requireAuth, (req, res) => {
       .forEach(f => { fin[f.event_id] = f; });
 
     const perEvent = events.map(e => {
-      const c = costByDay[e.event_date] || { cost: 0, n: 0 };
-      const rc = raffleCostByDay[e.event_date] || { cost: 0, n: 0 };
       const f = fin[e.id] || {};
       return {
         date: e.event_date, title: e.title,
         covers: f.covers || null,
         revenueCents: f.revenue_cents || null,
-        prizeCostCents: c.cost + rc.cost,
-        redemptions: c.n, raffleCostCents: rc.cost, raffleCount: rc.n,
-        shopCostCents: c.cost
+        prizeCostCents: 0,
+        redemptions: 0, raffleCostCents: 0, raffleCount: 0,
+        shopCostCents: 0
       };
     });
 
-    // Imputar costes de Chave semanal al evento cuya fecha coincida con drawn_at
+    function assignToEvent(dayStr, cost, isRaffle) {
+      if (!cost) return;
+      const ev = perEvent.find(e => e.date <= dayStr);
+      if (ev) {
+        ev.prizeCostCents += cost;
+        if (isRaffle) {
+          ev.raffleCostCents += cost;
+          ev.raffleCount += 1;
+        } else {
+          ev.shopCostCents += cost;
+          ev.redemptions += 1;
+        }
+      }
+    }
+
+    for (const [day, data] of Object.entries(costByDay)) {
+      // Repartimos el coste de cada día agrupado a su evento correspondiente
+      // Aunque data.n (cantidad) se asignará como bulto, lo hacemos por cada céntimo.
+      // Wait, let's assign by event.
+      // Actually we grouped by day, so we can just assign the grouped sum.
+      const ev = perEvent.find(e => e.date <= day);
+      if (ev) {
+        ev.prizeCostCents += data.cost;
+        ev.shopCostCents += data.cost;
+        ev.redemptions += data.n;
+      }
+    }
+
+    for (const [day, data] of Object.entries(raffleCostByDay)) {
+      const ev = perEvent.find(e => e.date <= day);
+      if (ev) {
+        ev.prizeCostCents += data.cost;
+        ev.raffleCostCents += data.cost;
+        ev.raffleCount += data.n;
+      }
+    }
+
+    // Imputar costes de Chave semanal al evento de drawn_at (o el más reciente anterior)
     for (const wc of weeklyCostRows) {
       if (!wc.drawn_at || !wc.cost_cents) continue;
       const drawDay = wc.drawn_at.slice(0, 10);
-      const ev = perEvent.find(e => e.date === drawDay);
+      const ev = perEvent.find(e => e.date <= drawDay);
       if (ev) {
         ev.prizeCostCents += wc.cost_cents;
-        ev.raffleCostCents = (ev.raffleCostCents || 0) + wc.cost_cents;
-        ev.raffleCount = (ev.raffleCount || 0) + 1;
+        ev.raffleCostCents += wc.cost_cents;
+        ev.raffleCount += 1;
       }
     }
 
@@ -1456,7 +1491,8 @@ router.post('/corcho-item-cost', requireAuth, (req, res) => {
   const { id, costEur } = req.body || {};
   const itemId = parseInt(id, 10);
   if (!itemId) return res.status(400).json({ error: 'Premio no válido' });
-  const cents = (costEur === '' || costEur == null) ? null : Math.round(parseFloat(costEur) * 100);
+  const costStr = costEur == null ? '' : String(costEur).replace(',', '.');
+  const cents = (costStr === '') ? null : Math.round(parseFloat(costStr) * 100);
   if (cents != null && (isNaN(cents) || cents < 0)) return res.status(400).json({ error: 'Coste no válido' });
   try {
     const { db } = require('../db/database');
@@ -1472,7 +1508,8 @@ router.post('/corcho-item-cost', requireAuth, (req, res) => {
 router.post('/raffle-cost', requireAuth, (req, res) => {
   const { raffleId, costEur, weekly } = req.body || {};
   if (!raffleId) return res.status(400).json({ error: 'Sorteo no válido' });
-  const cents = (costEur === '' || costEur == null) ? null : Math.round(parseFloat(costEur) * 100);
+  const costStr = costEur == null ? '' : String(costEur).replace(',', '.');
+  const cents = (costStr === '') ? null : Math.round(parseFloat(costStr) * 100);
   if (cents != null && (isNaN(cents) || cents < 0)) return res.status(400).json({ error: 'Coste no válido' });
   try {
     const { db } = require('../db/database');
