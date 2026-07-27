@@ -2371,6 +2371,8 @@ router.get('/analytics/usage', requireAuth, (req, res) => {
     console.error('Error fetching analytics:', e);
     res.status(500).json({ error: e.message });
   }
+});
+
 // GET /api/admin/marketing/settings
 router.get('/marketing/settings', requireAuth, (req, res) => {
   try {
