@@ -363,6 +363,50 @@ router.post('/admin-checkin', requireAuth, (req, res) => {
   }
 });
 
+// POST /api/mint/admin-manual-checkin — Fichaje retroactivo (manual por el admin)
+router.post('/admin-manual-checkin', requireAuth, (req, res) => {
+  const { walletAddress, dateStr, timeStr } = req.body;
+  if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
+    return res.status(400).json({ error: 'Dirección de wallet no válida' });
+  }
+  if (!dateStr || !timeStr) {
+    return res.status(400).json({ error: 'Fecha y hora son obligatorias' });
+  }
+
+  try {
+    const { db, getVisitCount } = require('../db/database');
+    
+    // Convertir a UTC básico asumiendo que el admin introduce la hora de España (aprox -2h)
+    // Para simplificar, guardamos directamente el string. La fecha es lo crucial para el refId.
+    const dbTime = `${dateStr} ${timeStr}:00`;
+    
+    // 1. Insertar la visita
+    db.prepare(`INSERT INTO sessions (wallet_address, entry_time, counted_as_visit) VALUES (?, ?, 1)`).run(walletAddress, dbTime);
+
+    // 2. Calcular el nivel por si subió
+    const visitCount = getVisitCount(walletAddress);
+    let levelUp = null;
+    try {
+      levelUp = awardLevelByVisits({ walletAddress, visitCount, ipAddress: req.ip });
+    } catch (e) {
+      console.error('Error otorgando nivel en manual check-in:', e.message);
+    }
+
+    // 3. Dar los corchos correspondientes a ese día retroactivo
+    let corchoReward = null;
+    try {
+      const corcho = require('../services/corcho');
+      const refId = `event_${dateStr}`;
+      corchoReward = corcho.rewardCheckin(walletAddress, refId);
+    } catch (e) {}
+
+    return res.json({ success: true, visitCount, levelUp, corchoReward });
+  } catch (error) {
+    console.error('Error en /admin-manual-checkin:', error.message);
+    res.status(500).json({ error: 'Error procesando entrada manual' });
+  }
+});
+
 // POST /api/mint/admin-checkout — el STAFF ficha la SALIDA de un cliente. Igual que /exit.
 router.post('/admin-checkout', requireAuth, (req, res) => {
   const { walletAddress } = req.body;

@@ -2981,7 +2981,27 @@
         <div id="agenda-list" style="display:flex; flex-direction:column; gap:10px;">Cargando...</div>
       </div>
 
-
+      <!-- Fichaje Manual Retroactivo -->
+      <div class="card" style="margin-bottom:20px; background: rgba(255, 230, 230, 0.4); border: 1.5px solid rgba(139, 25, 24, 0.15);">
+        <h2 style="font-family:'Playfair Display',serif; font-size:18px; font-weight:700; color:var(--text); margin-bottom:10px;">🕰️ Fichaje Manual Retroactivo</h2>
+        <p style="font-size:11px; color:var(--text-muted); margin-bottom:16px;">¿Un cliente se olvidó de fichar? Usa esto para añadirle una visita en el pasado. Se le sumará al kilometraje, subirá de nivel si toca y recibirá los $CORCHO de ese día automáticamente.</p>
+        
+        <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Wallet del cliente</label>
+        <input id="manual-checkin-wallet" type="text" placeholder="0x..." style="width:100%; background:#fff; color:var(--text); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:11px 13px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box; margin-bottom:12px;" />
+        
+        <div style="display:flex; gap:10px; margin-bottom:14px;">
+          <div style="flex:1;">
+            <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Día de la visita</label>
+            <input id="manual-checkin-date" type="date" style="width:100%; background:#fff; color:var(--text); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:10px 12px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+          </div>
+          <div style="flex:1;">
+            <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Hora aprox</label>
+            <input id="manual-checkin-time" type="time" value="20:00" style="width:100%; background:#fff; color:var(--text); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:10px 12px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box;" />
+          </div>
+        </div>
+        
+        <button onclick="submitManualCheckin()" style="width:100%; background:var(--wine); color:#fff; border:none; border-radius:50px; padding:12px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">Fichar Entrada Manualmente</button>
+      </div>
 
       <!-- Analytics de sesiones -->
       <div class="card" style="margin-bottom:20px;">
@@ -3137,16 +3157,17 @@
 
         <button onclick="saveFeaturedCardConfig()" style="width:100%; background:var(--wine); color:#fff; border:none; border-radius:50px; padding:12px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">Guardar Tarjeta Dorada</button>
       </div>
-    </div>
 
-    <!-- Ranking de Tapas (al final de Eventos) -->
-    <div class="card" style="margin-bottom:20px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-        <h2 style="font-family:'Playfair Display',serif; font-size:18px; font-weight:700; color:var(--text); margin:0;">🏆 Ranking de Tapas</h2>
-        <button onclick="loadTapasRanking()" style="background:transparent; border:none; cursor:pointer; font-size:16px;">🔄</button>
+      <!-- Ranking de Tapas (al final de Eventos) -->
+      <div class="card" style="margin-bottom:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <h2 style="font-family:'Playfair Display',serif; font-size:18px; font-weight:700; color:var(--text); margin:0;">🏆 Ranking de Tapas</h2>
+          <button onclick="loadTapasRanking()" style="background:transparent; border:none; cursor:pointer; font-size:16px;">🔄</button>
+        </div>
+        <p style="font-size:11px; color:var(--text-muted); margin-bottom:16px;">Descubre cuáles son las tapas más valoradas por los clientes en toda la historia del Furancho.</p>
+        <div id="tapas-ranking-list" style="display:flex; flex-direction:column; gap:10px;">Cargando ranking...</div>
       </div>
-      <p style="font-size:11px; color:var(--text-muted); margin-bottom:16px;">Descubre cuáles son las tapas más valoradas por los clientes en toda la historia del Furancho.</p>
-      <div id="tapas-ranking-list" style="display:flex; flex-direction:column; gap:10px;">Cargando ranking...</div>
+
     </div>
 
   </div>
@@ -11235,6 +11256,54 @@
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
+  }
+
+  // ========== Fichaje Manual Retroactivo ==========
+  async function submitManualCheckin() {
+    const walletAddress = document.getElementById('manual-checkin-wallet').value.trim();
+    const dateStr = document.getElementById('manual-checkin-date').value;
+    const timeStr = document.getElementById('manual-checkin-time').value;
+
+    if (!walletAddress || !dateStr || !timeStr) {
+      alert('Debes rellenar la wallet, la fecha y la hora.');
+      return;
+    }
+    if (!confirm(`¿Fichar entrada para ${walletAddress.slice(0,6)}... el día ${dateStr} a las ${timeStr}?`)) return;
+
+    try {
+      const btn = document.querySelector('button[onclick="submitManualCheckin()"]');
+      const prevText = btn.textContent;
+      btn.textContent = 'Procesando...';
+      btn.disabled = true;
+
+      const r = await fetch('/api/mint/admin-manual-checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress, dateStr, timeStr })
+      });
+      const data = await r.json();
+      
+      btn.textContent = prevText;
+      btn.disabled = false;
+
+      if (!r.ok) {
+        alert('Error: ' + (data.error || 'Desconocido'));
+        return;
+      }
+
+      let msg = `¡Fichaje manual registrado con éxito!\n\nVisitas totales: ${data.visitCount}\n`;
+      if (data.levelUp) {
+        msg += `🌟 ¡Ha subido al nivel ${data.levelUp.level} (${data.levelUp.name})!\n`;
+      }
+      if (data.corchoReward) {
+        msg += `🍷 Se le han otorgado ${data.corchoReward.amount} $CORCHO.\n`;
+      }
+      
+      alert(msg);
+      document.getElementById('manual-checkin-wallet').value = '';
+    } catch (e) {
+      alert('Error de red: ' + e.message);
+    }
   }
 
 </script>
