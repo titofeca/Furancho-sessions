@@ -67,7 +67,7 @@
               pointer-events: none; /* No bloquean clics */
               z-index: 9000; /* Por encima de las tarjetas, debajo del banner/nav */
               mix-blend-mode: multiply; /* Para que el fondo blanco desaparezca */
-              /* Eliminamos opacity y filter para no romper el mix-blend-mode con el fondo */
+              opacity: 0.55; /* Más translúcidas para dejar ver el fondo */
             }
             .flower-overlay.tl { top: -20px; left: -50px; width: 220px; height: 220px; transform: rotate(15deg); }
             .flower-overlay.br { bottom: 50px; right: -60px; width: 260px; height: 260px; transform: rotate(-165deg); }
@@ -96,16 +96,20 @@
             video.muted = true;
             video.playsInline = true;
             
-            // Hacer el vídeo grande y proporcional, sin tapar el texto
-            video.style.width = '100%';
-            video.style.maxWidth = '300px';
+            // Hacer el vídeo gigante ocupando todo el ancho de la pantalla (edge-to-edge)
+            video.style.width = '100vw';
+            video.style.maxWidth = '100vw';
             video.style.height = 'auto';
             video.style.display = 'block';
-            video.style.margin = '10px auto 20px auto';
-            video.style.objectFit = 'contain';
+            video.style.marginLeft = 'calc(-50vw + 50%)'; // Rompe el padding del contenedor
+            video.style.marginTop = '0px';
+            video.style.marginBottom = '20px';
+            video.style.objectFit = 'cover';
             video.style.pointerEvents = 'none';
-            video.style.borderRadius = '12px';
-            video.style.boxShadow = '0 8px 24px rgba(217, 70, 239, 0.2)';
+            video.style.borderRadius = '0px'; // Sin bordes para que toque los extremos
+            video.style.boxShadow = '0 10px 30px rgba(217, 70, 239, 0.15)';
+            video.style.position = 'relative'; // Para que respete el z-index
+            video.style.zIndex = '10'; // Explicitly behind the flowers (9000)
             
             img.parentNode.insertBefore(video, img);
           });
