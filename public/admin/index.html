@@ -1201,34 +1201,6 @@
     </div>
 
     <!-- ==================== CLIENTES Y MÉTRICAS (unificado) ==================== -->
-    <div class="page" id="page-analytics">
-      <div class="page-header" style="margin-bottom:16px;">
-        <h1 class="page-title">📈 Uso App</h1>
-        <p class="page-subtitle">Analítica de uso de la app por parte de los clientes (últimos 14 días)</p>
-      </div>
-      
-      <!-- DAU y Tiempo Medio -->
-      <div class="glass-card" style="margin-bottom:16px;">
-        <div class="card-header" style="margin-bottom:12px;">
-          <span class="card-title">Usuarios y Tiempos por Día</span>
-          <button onclick="loadAppAnalytics()" style="background:none; border:none; color:var(--text-muted); cursor:pointer;">↻ Actualizar</button>
-        </div>
-        <div id="analytics-dau-chart" style="display:flex; flex-direction:column; gap:8px;">
-          <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Cargando...</div>
-        </div>
-      </div>
-
-      <!-- Pestañas Populares -->
-      <div class="glass-card">
-        <div class="card-header" style="margin-bottom:12px;">
-          <span class="card-title">Pestañas más visitadas</span>
-        </div>
-        <div id="analytics-tabs-chart" style="display:flex; flex-direction:column; gap:8px;">
-          <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Cargando...</div>
-        </div>
-      </div>
-    </div>
-
     <div class="page" id="page-holders">
       <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
         <div>
@@ -1246,6 +1218,7 @@
         <button class="subpage-tab" id="subtab-clients" onclick="switchSubPage('clients', this)">👥 Listado y Segmentos</button>
         <button class="subpage-tab" id="subtab-referrals" onclick="switchSubPage('referrals', this)">🔗 Recomendados</button>
         <button class="subpage-tab" id="subtab-report" onclick="switchSubPage('report', this)">🖨️ Informes</button>
+        <button class="subpage-tab" id="subtab-analytics" onclick="switchSubPage('analytics', this); loadAppAnalytics();">📱 Uso Digital</button>
       </div>
 
       <!-- SUBPÁGINA 1: MÉTRICAS Y AFLUENCIA -->
@@ -1419,6 +1392,34 @@
 
       <!-- SUBPÁGINA 2: LISTADO Y SEGMENTOS -->
       <!-- SUBPÁGINA: INFORMES DEL NEGOCIO (imprimibles, con comparativas) -->
+      <!-- SUBPÁGINA: USO DIGITAL APP -->
+      <div id="subpage-analytics" class="subpage-panel">
+        <div class="glass-card" style="margin-bottom:20px;">
+          <div class="card-title" style="margin-bottom:16px;">📱 Uso App (Últimos 14 días)</div>
+          
+          <div class="analytics-kpi-grid" id="digital-kpi-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px;">
+            <!-- KPIs loaded dynamically -->
+            <div style="text-align:center; color:var(--text-muted); font-size:13px; grid-column:span 4; padding:20px;">Cargando métricas globales...</div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
+            <div>
+              <div class="card-title" style="font-size:13px; margin-bottom:12px;">Usuarios y Tiempos por Día</div>
+              <div id="analytics-dau-chart" style="display:flex; flex-direction:column; gap:8px;">
+                <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Cargando...</div>
+              </div>
+            </div>
+            
+            <div>
+              <div class="card-title" style="font-size:13px; margin-bottom:12px;">Pestañas más visitadas</div>
+              <div id="analytics-tabs-chart" style="display:flex; flex-direction:column; gap:8px;">
+                <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Cargando...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div id="subpage-report" class="subpage-panel">
         <div class="glass-card" style="margin-bottom:20px;">
           <div class="card-title" style="margin-bottom:6px;">🖨️ Informe del negocio</div>
@@ -3419,10 +3420,6 @@
       <span class="nav-icon">🪙</span>
       <span>Banco</span>
     </button>
-    <button class="nav-item" onclick="showPage('analytics')" id="nav-analytics">
-      <span class="nav-icon">📈</span>
-      <span>Uso App</span>
-    </button>
     <button class="nav-item" onclick="showPage('events')" id="nav-events" style="position:relative;">
       <span class="nav-icon">📅</span>
       <span>Eventos</span>
@@ -3955,6 +3952,17 @@
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error || 'Error');
+
+      // Render KPIs
+      const kpiEl = document.getElementById('digital-kpi-grid');
+      if (kpiEl && data.kpis) {
+        kpiEl.innerHTML = `
+          <div class="analytics-kpi"><div class="kpi-value" style="color:var(--text);">${data.kpis.totalActiveUsers}</div><div class="kpi-label">Usuarios Únicos</div></div>
+          <div class="analytics-kpi"><div class="kpi-value" style="color:#16a34a;">${data.kpis.retentionPct}%</div><div class="kpi-label">Retención (vuelven)</div></div>
+          <div class="analytics-kpi"><div class="kpi-value" style="color:var(--gold);">${data.kpis.powerPct}%</div><div class="kpi-label">Habituales (>3d)</div></div>
+          <div class="analytics-kpi"><div class="kpi-value" style="color:var(--wine);">${Math.floor(data.kpis.totalTimeMins/60)}h ${data.kpis.totalTimeMins%60}m</div><div class="kpi-label">Tiempo Total</div></div>
+        `;
+      }
 
       // DAU & Time Chart
       let htmlDau = '<div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-bottom:8px;"><span>Fecha</span><span>Usuarios (Media mins)</span></div>';

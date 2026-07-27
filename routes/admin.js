@@ -2335,7 +2335,38 @@ router.get('/analytics/usage', requireAuth, (req, res) => {
       } catch (e) {}
     });
 
-    res.json({ success: true, chartData, tabAgg, totalTabs });
+    // Métricas Globales
+    const walletsInfo = db.prepare(`
+      SELECT wallet_address, COUNT(DISTINCT session_date) as active_days, SUM(time_spent_seconds) as time_spent
+      FROM app_analytics
+      WHERE session_date >= ?
+      GROUP BY wallet_address
+    `).all(days[0]);
+
+    let totalActiveUsers = walletsInfo.length;
+    let returningUsers = 0;
+    let powerUsers = 0;
+    let totalTimeMins = 0;
+
+    walletsInfo.forEach(w => {
+      totalTimeMins += Math.round(w.time_spent / 60);
+      if (w.active_days >= 2) returningUsers++;
+      if (w.active_days >= 3) powerUsers++;
+    });
+
+    const retentionPct = totalActiveUsers > 0 ? Math.round((returningUsers / totalActiveUsers) * 100) : 0;
+    const powerPct = totalActiveUsers > 0 ? Math.round((powerUsers / totalActiveUsers) * 100) : 0;
+
+    res.json({ 
+      success: true, 
+      chartData, tabAgg, totalTabs,
+      kpis: {
+        totalActiveUsers,
+        retentionPct,
+        powerPct,
+        totalTimeMins
+      }
+    });
   } catch (e) {
     console.error('Error fetching analytics:', e);
     res.status(500).json({ error: e.message });
