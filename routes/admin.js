@@ -1299,27 +1299,42 @@ router.get('/furancho-health', requireAuth, (req, res) => {
 
     // Coste € de premios canjeados (validados) por fecha de sesión × coste del item.
     // Fuente: corcho_redemptions (tienda) + su coste real en corcho_items.cost_cents.
-    const costRow = db.prepare(`
-      SELECT COALESCE(r.session_date, date(r.validated_at), date(r.created_at)) AS day,
-             SUM(COALESCE(i.cost_cents, 0)) AS cost_cents,
-             COUNT(*) AS n
+    const redemptions = db.prepare(`
+      SELECT r.session_date, r.validated_at, r.created_at, i.cost_cents
       FROM corcho_redemptions r
       LEFT JOIN corcho_items i ON i.id = r.item_id
-      WHERE r.status = 'validated'
-      GROUP BY day
+      WHERE r.status = 'validated' AND i.cost_cents IS NOT NULL
     `).all();
-    const costByDay = {}; costRow.forEach(r => { costByDay[r.day] = { cost: r.cost_cents || 0, n: r.n || 0 }; });
+    
+    const costByDay = {};
+    for (const r of redemptions) {
+      let day = r.session_date;
+      if (!day) {
+        const ts = r.validated_at || r.created_at;
+        const d = new Date(ts.replace(' ', 'T') + 'Z');
+        // Restar 6 horas para que la madrugada cuente para el día anterior
+        d.setHours(d.getHours() - 6);
+        day = d.toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+      }
+      if (!costByDay[day]) costByDay[day] = { cost: 0, n: 0 };
+      costByDay[day].cost += r.cost_cents;
+      costByDay[day].n += 1;
+    }
 
     // Coste de sorteos (noche/local/vip) por fecha del evento.
-    const raffleCostRows = db.prepare(`
-      SELECT date(created_at) AS day,
-             SUM(COALESCE(cost_cents, 0)) AS cost_cents,
-             COUNT(*) AS n
+    const allRafflesWithCost = db.prepare(`
+      SELECT created_at, cost_cents
       FROM raffles WHERE status != 'rejected' AND cost_cents IS NOT NULL
-      GROUP BY day
     `).all();
     const raffleCostByDay = {};
-    raffleCostRows.forEach(r => { raffleCostByDay[r.day] = { cost: r.cost_cents || 0, n: r.n || 0 }; });
+    for (const r of allRafflesWithCost) {
+      const d = new Date(r.created_at.replace(' ', 'T') + 'Z');
+      d.setHours(d.getHours() - 6);
+      const day = d.toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+      if (!raffleCostByDay[day]) raffleCostByDay[day] = { cost: 0, n: 0 };
+      raffleCostByDay[day].cost += r.cost_cents;
+      raffleCostByDay[day].n += 1;
+    }
 
     // Coste de sorteos Chave Semanal — se imputa al evento más cercano de esa semana.
     const weeklyCostRows = db.prepare(`
