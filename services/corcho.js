@@ -220,6 +220,25 @@ function rewardReferral(referrerWallet, newWallet) {
     `🤝 Bienvenida Plan Amigo (+${amount} $CORCHO)`,
     `ref_welcome_${referrerWallet.toLowerCase()}`
   );
+
+  // Campaña Colega VIP (Marketing Growth)
+  try {
+    const { db, getAppSetting } = require('../db/database');
+    if (getAppSetting('promo_referral_vip') === '1') {
+      const raffleId = parseInt(getAppSetting('promo_referral_vip_raffle_id'), 10);
+      if (raffleId > 0) {
+        const stmt = db.prepare(`
+          INSERT INTO raffle_participants (raffle_id, wallet_address, is_vip, status)
+          VALUES (?, ?, 0, 'active')
+          ON CONFLICT(raffle_id, wallet_address) DO NOTHING
+        `);
+        stmt.run(raffleId, referrerWallet);
+        stmt.run(raffleId, newWallet);
+      }
+    }
+  } catch(e) {
+    console.error('Error adding to VIP referral raffle:', e);
+  }
 }
 
 // Sincronización retroactiva idempotente de CorchoCoins para clientes existentes

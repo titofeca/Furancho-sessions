@@ -2371,6 +2371,37 @@ router.get('/analytics/usage', requireAuth, (req, res) => {
     console.error('Error fetching analytics:', e);
     res.status(500).json({ error: e.message });
   }
+// GET /api/admin/marketing/settings
+router.get('/marketing/settings', requireAuth, (req, res) => {
+  try {
+    const { getAppSetting } = require('../db/database');
+    res.json({
+      success: true,
+      settings: {
+        promo_easter_egg: getAppSetting('promo_easter_egg') === '1',
+        promo_fomo: getAppSetting('promo_fomo') === '1',
+        promo_referral_vip: getAppSetting('promo_referral_vip') === '1',
+        promo_referral_vip_raffle_id: getAppSetting('promo_referral_vip_raffle_id') || ''
+      }
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/marketing/settings
+router.post('/marketing/settings', requireAuth, (req, res) => {
+  try {
+    const { setAppSetting } = require('../db/database');
+    const b = req.body || {};
+    setAppSetting('promo_easter_egg', b.promo_easter_egg ? '1' : '0');
+    setAppSetting('promo_fomo', b.promo_fomo ? '1' : '0');
+    setAppSetting('promo_referral_vip', b.promo_referral_vip ? '1' : '0');
+    setAppSetting('promo_referral_vip_raffle_id', b.promo_referral_vip_raffle_id || '');
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 module.exports = router;

@@ -1019,9 +1019,16 @@ router.get('/daily-tapa-status', (req, res) => {
 router.get('/profile', (req, res) => {
   try {
     const { walletAddress } = req.query;
-    if (!walletAddress) return res.json({ alias: '' });
+    
+    const { getAppSetting } = require('../db/database');
+    const marketing = {
+      easter_egg: getAppSetting('promo_easter_egg') === '1',
+      fomo: getAppSetting('promo_fomo') === '1'
+    };
+
+    if (!walletAddress) return res.json({ alias: '', marketing });
     const profile = db.prepare(`SELECT alias FROM user_profiles WHERE LOWER(wallet_address) = LOWER(?)`).get(walletAddress);
-    res.json({ alias: profile ? profile.alias : '' });
+    res.json({ alias: profile ? profile.alias : '', marketing });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1039,6 +1046,61 @@ router.post('/profile', (req, res) => {
     
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/mint/easter-egg
+router.post('/easter-egg', (req, res) => {
+  try {
+    const { walletAddress } = req.body;
+    if (!walletAddress) return res.status(400).json({ error: 'Falta wallet' });
+    
+    const { getAppSetting } = require('../db/database');
+    if (getAppSetting('promo_easter_egg') !== '1') {
+      return res.status(403).json({ error: 'El Easter Egg no está activo' });
+    }
+
+    const todayDay = new Date().getDay();
+    if (todayDay !== 2 && todayDay !== 3) {
+      return res.status(403).json({ error: 'Solo aparece los Martes y Miércoles' });
+    }
+
+    // Comprobar si ya reclamó en los últimos 7 días
+    const recent = db.prepare(`
+      SELECT 1 FROM corcho_transactions 
+      WHERE LOWER(wallet_address) = LOWER(?) AND reason = 'easter_egg_valle' AND created_at > datetime('now', '-7 days')
+    `).get(walletAddress);
+
+    if (recent) {
+      return res.status(429).json({ error: 'Ya has encontrado el Furancho oculto esta semana, ¡déjale algo a los demás!' });
+    }
+
+    const { addCorchoTransaction } = require('../services/corcho');
+    addCorchoTransaction(walletAddress, 25, 'easter_egg_valle');
+    
+    res.json({ success: true, message: '¡Has encontrado el Furancho oculto en día valle! Te regalamos +25 $CORCHO.' });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/mint/fomo-stats
+router.get('/fomo-stats', (req, res) => {
+  try {
+    const { getAppSetting } = require('../db/database');
+    if (getAppSetting('promo_fomo') !== '1') {
+      return res.json({ active: false });
+    }
+
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+    const tapas = db.prepare(`SELECT COUNT(*) as c FROM daily_tapa_claims WHERE date(claimed_at) = ?`).get(todayStr);
+    const redemptions = db.prepare(`SELECT COUNT(*) as c FROM corcho_redemptions WHERE date(created_at) = ?`).get(todayStr);
+    
+    const count = (tapas.c || 0) + (redemptions.c || 0);
+    res.json({ active: true, count });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Telemetry endpoint para analíticas de uso de la app

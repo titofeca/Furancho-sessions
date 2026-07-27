@@ -1418,6 +1418,40 @@
             </div>
           </div>
         </div>
+        <div class="glass-card" style="margin-bottom:20px;">
+          <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <div class="card-title" style="margin-bottom:0;">🚀 Panel de Marketing (Growth)</div>
+            <button onclick="saveMarketingSettings()" class="action-btn" style="background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; font-size:12px; padding:6px 12px; border-radius:100px; box-shadow:0 2px 8px rgba(139,25,24,0.3); font-weight:700;">Guardar Cambios</button>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:16px;">
+            <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer;">
+              <div>
+                <div style="font-weight:700; font-size:14px; color:var(--text);">Easter Egg Días Valle</div>
+                <div style="font-size:11px; color:var(--text-muted); line-height:1.3;">Oculta un logro en la pestaña Sorteos los Martes/Miércoles. Da +25 $CORCHO instantáneos al encontrarlo.</div>
+              </div>
+              <input type="checkbox" id="promo_easter_egg" style="width:20px; height:20px; accent-color:var(--wine);">
+            </label>
+            <hr style="border:none; border-top:1px dashed rgba(42,21,9,0.1); margin:0;">
+            <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer;">
+              <div>
+                <div style="font-weight:700; font-size:14px; color:var(--text);">Semáforo FOMO 🔥</div>
+                <div style="font-size:11px; color:var(--text-muted); line-height:1.3;">Muestra a todos los clientes en la app cuántas recompensas se han servido hoy en el Furancho.</div>
+              </div>
+              <input type="checkbox" id="promo_fomo" style="width:20px; height:20px; accent-color:var(--wine);">
+            </label>
+            <hr style="border:none; border-top:1px dashed rgba(42,21,9,0.1); margin:0;">
+            <div>
+              <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; margin-bottom:10px;">
+                <div>
+                  <div style="font-weight:700; font-size:14px; color:var(--text);">Campaña Colega VIP</div>
+                  <div style="font-size:11px; color:var(--text-muted); line-height:1.3;">Al escanear un nuevo amigo, inscribe automáticamente a ambos en el Sorteo que elijas abajo.</div>
+                </div>
+                <input type="checkbox" id="promo_referral_vip" style="width:20px; height:20px; accent-color:var(--wine);">
+              </label>
+              <input type="number" id="promo_referral_vip_raffle_id" placeholder="Introduce el ID del Sorteo VIP (ej. 15)" style="width:100%; padding:12px; border:1px solid rgba(42,21,9,0.2); border-radius:8px; background:rgba(255,255,255,0.7); font-family:'Outfit',sans-serif; color:var(--text); font-weight:600;">
+            </div>
+          </div>
+        </div>
       </div>
 
       <div id="subpage-report" class="subpage-panel">
@@ -3945,6 +3979,21 @@
     try {
       dauEl.innerHTML = '<div style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Cargando...</div>';
       tabsEl.innerHTML = '<div style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Cargando...</div>';
+
+      // Load marketing settings
+      const mktRes = await apiFetch('/api/admin/marketing/settings');
+      const mktData = await mktRes.json();
+      if (mktData.success && mktData.settings) {
+        const s = mktData.settings;
+        const eEgg = document.getElementById('promo_easter_egg');
+        const eFomo = document.getElementById('promo_fomo');
+        const eVip = document.getElementById('promo_referral_vip');
+        const eVipId = document.getElementById('promo_referral_vip_raffle_id');
+        if (eEgg) eEgg.checked = s.promo_easter_egg;
+        if (eFomo) eFomo.checked = s.promo_fomo;
+        if (eVip) eVip.checked = s.promo_referral_vip;
+        if (eVipId) eVipId.value = s.promo_referral_vip_raffle_id;
+      }
 
       const res = await apiFetch('/api/admin/analytics/usage');
       const data = await res.json();
