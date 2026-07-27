@@ -1064,7 +1064,7 @@ router.get('/profile', (req, res) => {
   try {
     const { walletAddress } = req.query;
     
-    const { getAppSetting } = require('../db/database');
+    const { getAppSetting, db } = require('../db/database');
     const marketing = {
       easter_egg: getAppSetting('promo_easter_egg') === '1',
       fomo: getAppSetting('promo_fomo') === '1'
@@ -1080,6 +1080,7 @@ router.post('/profile', (req, res) => {
   try {
     const { walletAddress, alias } = req.body;
     if (!walletAddress) return res.status(400).json({ error: 'Falta wallet' });
+    const { db } = require('../db/database');
     
     // Upsert alias
     db.prepare(`
