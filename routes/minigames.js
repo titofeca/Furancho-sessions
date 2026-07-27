@@ -39,7 +39,7 @@ router.post('/enxebre/guess', requireWallet, (req, res) => {
     // If solved or max attempts (6) reached, record it
     if (solved || attemptCount >= 6) {
       try {
-        awarded = minigames.recordEnxebrePlay(req.user.walletAddress, attemptCount, solved);
+        awarded = minigames.recordEnxebrePlay(req.walletAddress, attemptCount, solved);
       } catch (err) {
         return res.status(400).json({ error: err.message });
       }

@@ -66,13 +66,11 @@
               background-repeat: no-repeat;
               pointer-events: none; /* No bloquean clics */
               z-index: 9000; /* Por encima de las tarjetas, debajo del banner/nav */
-              mix-blend-mode: multiply;
-              opacity: 0.9;
-              filter: drop-shadow(0px 8px 16px rgba(0,0,0,0.2));
+              mix-blend-mode: multiply; /* Para que el fondo blanco desaparezca */
+              /* Eliminamos opacity y filter para no romper el mix-blend-mode con el fondo */
             }
             .flower-overlay.tl { top: -20px; left: -50px; width: 220px; height: 220px; transform: rotate(15deg); }
             .flower-overlay.br { bottom: 50px; right: -60px; width: 260px; height: 260px; transform: rotate(-165deg); }
-            .flower-overlay.tr { top: 25%; right: -80px; width: 160px; height: 160px; transform: rotate(-45deg); opacity: 0.75; }
           </style>
         `);
 
@@ -85,7 +83,7 @@
 
           const f1 = document.createElement('div'); f1.className = 'flower-overlay tl'; document.body.appendChild(f1);
           const f2 = document.createElement('div'); f2.className = 'flower-overlay br'; document.body.appendChild(f2);
-          const f3 = document.createElement('div'); f3.className = 'flower-overlay tr'; document.body.appendChild(f3);
+          // Eliminada la 3a flor
 
           // Cambiar logos estáticos por el vídeo animado de flores
           document.querySelectorAll('.header-logo-row img').forEach(img => {
@@ -97,11 +95,17 @@
             video.loop = true;
             video.muted = true;
             video.playsInline = true;
-            // Copiar los estilos de la imagen original para que encaje perfecto
-            video.style.cssText = img.style.cssText;
+            
+            // Hacer el vídeo grande y proporcional, sin tapar el texto
+            video.style.width = '100%';
+            video.style.maxWidth = '300px';
+            video.style.height = 'auto';
             video.style.display = 'block';
-            video.style.objectFit = 'cover';
+            video.style.margin = '10px auto 20px auto';
+            video.style.objectFit = 'contain';
             video.style.pointerEvents = 'none';
+            video.style.borderRadius = '12px';
+            video.style.boxShadow = '0 8px 24px rgba(217, 70, 239, 0.2)';
             
             img.parentNode.insertBefore(video, img);
           });
