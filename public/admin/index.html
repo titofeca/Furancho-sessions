@@ -1397,25 +1397,28 @@
         <div class="glass-card" style="margin-bottom:20px;">
           <div class="card-title" style="margin-bottom:16px;">📱 Uso App (Últimos 14 días)</div>
           
-          <div class="analytics-kpi-grid" id="digital-kpi-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px;">
+          <div class="analytics-kpi-grid" id="digital-kpi-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:12px; margin-bottom:20px;">
             <!-- KPIs loaded dynamically -->
             <div style="text-align:center; color:var(--text-muted); font-size:13px; grid-column:span 4; padding:20px;">Cargando métricas globales...</div>
           </div>
 
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
-            <div>
+          <div style="display:flex; flex-direction:column; gap:20px;">
+            <div class="glass-card">
               <div class="card-title" style="font-size:13px; margin-bottom:12px;">Usuarios y Tiempos por Día</div>
               <div id="analytics-dau-chart" style="display:flex; flex-direction:column; gap:8px;">
                 <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Cargando...</div>
               </div>
             </div>
             
-            <div>
-              <div class="card-title" style="font-size:13px; margin-bottom:12px;">Pestañas más visitadas</div>
-              <div id="analytics-tabs-chart" style="display:flex; flex-direction:column; gap:8px;">
+            <details class="glass-card">
+              <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; outline:none; user-select:none; font-size:13px; font-weight:700; color:var(--text);">
+                <span>Vistas de Pestañas</span>
+                <span style="font-size:12px; color:var(--text-muted);">▼</span>
+              </summary>
+              <div id="analytics-tabs-chart" style="display:flex; flex-direction:column; margin-top:14px; padding-top:14px; border-top:1px solid rgba(42,21,9,0.08);">
                 <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Cargando...</div>
               </div>
-            </div>
+            </details>
           </div>
         </div>
         <div class="glass-card" style="margin-bottom:20px;">
@@ -4025,23 +4028,24 @@
       }
 
       // DAU & Time Chart
-      let htmlDau = '<div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-bottom:8px;"><span>Fecha</span><span>Usuarios (Media mins)</span></div>';
       const maxDau = Math.max(...data.chartData.map(d => d.dau), 1);
-      
-      data.chartData.slice().reverse().forEach(row => {
+      let htmlDauBars = '<div style="display:flex; align-items:flex-end; gap:4px; height:120px; padding:0 2px;">';
+      let htmlDauLabels = '<div style="display:flex; gap:4px; margin-top:8px;">';
+
+      data.chartData.forEach(row => {
         const pct = (row.dau / maxDau) * 100;
         const color = row.dau > 0 ? '#16a34a' : 'rgba(42,21,9,0.1)';
-        htmlDau += `
-          <div style="display:flex; align-items:center; gap:8px;">
-            <div style="width:70px; font-size:11px; font-family:monospace; color:var(--text-muted);">${row.day.substring(5)}</div>
-            <div style="flex:1; height:18px; background:rgba(42,21,9,0.05); border-radius:4px; position:relative; overflow:hidden;">
-              <div style="position:absolute; top:0; left:0; height:100%; width:${pct}%; background:${color}; border-radius:4px;"></div>
-            </div>
-            <div style="width:60px; font-size:11px; font-weight:700; text-align:right;">${row.dau} <span style="font-weight:400; color:var(--text-muted);">(${row.avgTimeMins}m)</span></div>
+        htmlDauBars += `
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end;" title="${row.day}: ${row.dau} usuarios (${row.avgTimeMins}m media)">
+            <span style="font-size:10px; color:var(--text); margin-bottom:4px; font-weight:700;">${row.dau > 0 ? row.dau : ''}</span>
+            <div style="width:100%; height:${pct}%; background:${color}; border-radius:4px 4px 0 0;"></div>
           </div>
         `;
+        htmlDauLabels += `<div style="flex:1; text-align:center; font-size:9px; color:var(--text-muted); letter-spacing:-0.5px;">${row.day.substring(8)}</div>`;
       });
-      dauEl.innerHTML = htmlDau;
+      htmlDauBars += '</div>';
+      htmlDauLabels += '</div>';
+      dauEl.innerHTML = htmlDauBars + htmlDauLabels;
 
       // Tabs Popularity
       const t = data.tabAgg || {};
