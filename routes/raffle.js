@@ -208,7 +208,7 @@ router.get('/stream', (req, res) => {
 });
 
 // ── FUNCIÓN CENTRAL DE LANZAMIENTO (usada por /start, /launch-scheduled y auto-launcher) ────
-function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel = null, prizeDetails = null, prizeImage = null, establishment = null, hideName = false, scheduledId = null, requiredAchievement = null, validity = null, people = null, hours = null, days = null, validityEndDate = null, nftAchievementId = null }) {
+function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel = null, prizeDetails = null, prizeImage = null, establishment = null, hideName = false, scheduledId = null, requiredAchievement = null, validity = null, people = null, hours = null, days = null, validityEndDate = null, nftAchievementId = null, requireDressCode = false }) {
   const sanitizedTargetLevel = targetLevel ? parseInt(targetLevel) : null;
   if (sanitizedTargetLevel && ![2, 3, 4].includes(sanitizedTargetLevel)) {
     throw new Error('Nivel de destino no válido. Debe ser 2, 3 o 4.');
@@ -238,6 +238,17 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
     );
     eligibleWallets = eligibleWallets.filter(w => vipWallets.has(w));
     if (eligibleWallets.length === 0) throw new Error('No hay furancheiros O Presidente presentes esta noche.');
+  }
+
+  // Filtro por Dress Code
+  if (requireDressCode) {
+    const { db } = require('../db/database');
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+    const declaredWallets = new Set(
+      db.prepare(`SELECT wallet_address FROM dress_code_declarations WHERE event_date = ?`).all(today).map(r => r.wallet_address.toLowerCase())
+    );
+    eligibleWallets = eligibleWallets.filter(w => declaredWallets.has(w.toLowerCase()));
+    if (eligibleWallets.length === 0) throw new Error('No hay nadie en el local que haya declarado cumplir el Dress Code.');
   }
 
   // Filtro por nivel mínimo de participante
@@ -337,7 +348,7 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
   let verificationCode = '';
   for (let i = 0; i < 4; i++) verificationCode += chars.charAt(Math.floor(Math.random() * chars.length));
 
-  const raffleId = insertRaffle(prize, winnerWallet, verificationCode, eligibleWallets, sanitizedTargetLevel, prizeDetails, prizeImage, establishment, type, hideName ? 1 : 0, sanitizedParticipantLevel, validity, people, hours, days, validityEndDate, nftAchievementId || null);
+  const raffleId = insertRaffle(prize, winnerWallet, verificationCode, eligibleWallets, sanitizedTargetLevel, prizeDetails, prizeImage, establishment, type, hideName ? 1 : 0, sanitizedParticipantLevel, validity, people, hours, days, validityEndDate, nftAchievementId || null, requireDressCode ? 1 : 0);
   if (scheduledId) { try { linkScheduledRaffle(parseInt(scheduledId), raffleId); } catch(_) {} }
 
   const displayPrize = hideName ? 'Sorpresa 🎁' : prize;
@@ -410,31 +421,39 @@ router.post('/upload-image', requireAuth, upload.single('image'), (req, res) => 
   res.json({ success: true, url });
 });
 
-// POST /api/raffle/start — admin lanza sorteo manualmente con todos los datos
+// POST /api/raffle/start — admin lanza un sorteo instantáneo (alias legacy de /launch)
 router.post('/start', requireAuth, (req, res) => {
-  const { prize, scheduledId, targetLevel, participantLevel, prizeDetails, prizeImage, establishment, type, hideName, requiredAchievement, validity, people, hours, days, validityEndDate, nftAchievementId } = req.body;
-  if (!prize) return res.status(400).json({ error: 'Falta el nombre del premio' });
+  const { prize, targetLevel, type, hideName, participantLevel, prizeDetails, prizeImage, establishment, requiredAchievement, validity, people, hours, days, validityEndDate, nftAchievementId, requireDressCode } = req.body;
+  if (!prize) return res.status(400).json({ error: 'El premio es obligatorio' });
   try {
-    const result = doLaunch({ prize, type: type || 'night', targetLevel, participantLevel, prizeDetails, prizeImage, establishment, hideName: !!hideName, scheduledId, requiredAchievement: requiredAchievement || null, validity, people, hours, days, validityEndDate, nftAchievementId: nftAchievementId || null });
-    return res.json({ success: true, ...result });
-  } catch(e) {
-    return res.status(400).json({ error: e.message });
-  }
+    const raffle = doLaunch({ prize, type, targetLevel, participantLevel, hideName, prizeDetails, prizeImage, establishment, requiredAchievement, validity, people, hours, days, validityEndDate, nftAchievementId, requireDressCode });
+    res.json({ success: true, ...raffle });
+  } catch(e) { res.status(400).json({ error: e.message }); }
+});
+
+// POST /api/raffle/launch — admin lanza un sorteo instantáneo
+router.post('/launch', requireAuth, (req, res) => {
+  const { prize, targetLevel, type, hideName, participantLevel, prizeDetails, prizeImage, establishment, requiredAchievement, validity, people, hours, days, validityEndDate, nftAchievementId, requireDressCode } = req.body;
+  if (!prize) return res.status(400).json({ error: 'El premio es obligatorio' });
+  try {
+    const raffle = doLaunch({ prize, type, targetLevel, participantLevel, hideName, prizeDetails, prizeImage, establishment, requiredAchievement, validity, people, hours, days, validityEndDate, nftAchievementId, requireDressCode });
+    res.json({ success: true, ...raffle });
+  } catch(e) { res.status(400).json({ error: e.message }); }
 });
 
 // POST /api/raffle/launch-scheduled/:id — lanza un sorteo programado directamente por ID (admin + auto-launcher)
 router.post('/launch-scheduled/:id', requireAuth, (req, res) => {
   try {
     const { db } = require('../db/database');
-    const s = db.prepare(`SELECT * FROM scheduled_raffles WHERE id = ?`).get(parseInt(req.params.id));
-    if (!s) return res.status(404).json({ error: 'Sorteo programado no encontrado' });
-    if (s.status !== 'pending') return res.status(400).json({ error: 'Este sorteo ya fue lanzado o cancelado' });
+    const row = db.prepare(`SELECT * FROM scheduled_raffles WHERE id = ?`).get(parseInt(req.params.id));
+    if (!row) return res.status(404).json({ error: 'Sorteo programado no encontrado' });
+    if (row.status !== 'pending') return res.status(400).json({ error: 'Este sorteo ya fue lanzado o cancelado' });
     const result = doLaunch({
-      prize: s.prize, type: s.type || 'night', targetLevel: s.target_level, participantLevel: s.participant_level,
-      prizeDetails: s.prize_details, prizeImage: s.prize_image, establishment: s.establishment,
-      hideName: s.hide_name ? true : false, scheduledId: s.id, requiredAchievement: s.required_achievement || null,
-      validity: s.validity, people: s.people, hours: s.hours, days: s.days, validityEndDate: s.validity_end_date,
-      nftAchievementId: s.nft_achievement_id || null
+      prize: row.prize, type: row.type || 'night', targetLevel: row.target_level, participantLevel: row.participant_level,
+      hideName: row.hide_name === 1, scheduledId: row.id,
+      prizeDetails: row.prize_details, prizeImage: row.prize_image, establishment: row.establishment, requiredAchievement: row.required_achievement,
+      validity: row.validity, people: row.people, hours: row.hours, days: row.days, validityEndDate: row.validity_end_date, nftAchievementId: row.nft_achievement_id,
+      requireDressCode: row.require_dress_code === 1
     });
     return res.json({ success: true, ...result });
   } catch(e) {
@@ -1013,7 +1032,7 @@ router.get('/scheduled/all', requireAuth, (req, res) => {
 
 // POST /api/raffle/scheduled — admin, crear sorteo programado
 router.post('/scheduled', requireAuth, (req, res) => {
-  const { eventDate, scheduledTime, prize, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment, requiredAchievement, validity, people, hours, days, validityEndDate, nftAchievementId } = req.body;
+  const { eventDate, scheduledTime, prize, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment, requiredAchievement, validity, people, hours, days, validityEndDate, nftAchievementId, requireDressCode } = req.body;
   if (!eventDate || !scheduledTime || !prize)
     return res.status(400).json({ error: 'Faltan campos: eventDate, scheduledTime, prize' });
   try {
@@ -1032,7 +1051,8 @@ router.post('/scheduled', requireAuth, (req, res) => {
       hours: hours || null,
       days: days || null,
       validityEndDate: validityEndDate || null,
-      nftAchievementId: nftAchievementId || null
+      nftAchievementId: nftAchievementId || null,
+      requireDressCode: !!requireDressCode
     });
     res.json({ success: true, id });
   } catch(e) { res.status(400).json({ error: e.message }); }
@@ -1040,7 +1060,7 @@ router.post('/scheduled', requireAuth, (req, res) => {
 
 // PATCH /api/raffle/scheduled/:id — admin, editar
 router.patch('/scheduled/:id', requireAuth, (req, res) => {
-  const { eventDate, scheduledTime, prize, status, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment, requiredAchievement, validity, people, hours, days, validityEndDate, nftAchievementId } = req.body;
+  const { eventDate, scheduledTime, prize, status, targetLevel, participantLevel, type, hideName, prizeDetails, prizeImage, establishment, requiredAchievement, validity, people, hours, days, validityEndDate, nftAchievementId, requireDressCode } = req.body;
   try {
     updateScheduledRaffle(parseInt(req.params.id), {
       eventDate, scheduledTime, prize, status,
@@ -1048,7 +1068,8 @@ router.patch('/scheduled/:id', requireAuth, (req, res) => {
       participantLevel: participantLevel !== undefined ? (participantLevel ? parseInt(participantLevel) : null) : undefined,
       type, hideName, prizeDetails, prizeImage, establishment, requiredAchievement,
       validity, people, hours, days, validityEndDate,
-      nftAchievementId: nftAchievementId !== undefined ? (nftAchievementId || null) : undefined
+      nftAchievementId: nftAchievementId !== undefined ? (nftAchievementId || null) : undefined,
+      requireDressCode: requireDressCode !== undefined ? !!requireDressCode : undefined
     });
     res.json({ success: true });
   } catch(e) { res.status(400).json({ error: e.message }); }

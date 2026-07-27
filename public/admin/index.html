@@ -1937,6 +1937,12 @@
           <label for="sched-hide-name" style="font-size:12px; color:var(--text-muted); cursor:pointer; line-height:1.4;">Ocultar nombre hasta lanzar <span style="color:var(--wine);">(los clientes ven "Sorpresa 🎁")</span></label>
         </div>
 
+        <!-- Toggle Dress Code -->
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; padding:8px 12px; background:rgba(236,72,153,0.1); border-radius:10px; border:1px solid rgba(236,72,153,0.3);">
+          <input type="checkbox" id="sched-require-dress-code" style="width:16px; height:16px; accent-color:#ec4899; cursor:pointer;" />
+          <label for="sched-require-dress-code" style="font-size:12px; color:var(--text-muted); cursor:pointer; line-height:1.4;">Exigir cumplir Dress Code <span style="color:#ec4899; font-weight:700;">(Si no cumplen, no pueden participar)</span></label>
+        </div>
+
         <!-- Campos extra para Local Colaborador -->
         <div id="sched-local-extra" style="display:none; margin-bottom:8px;">
           <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:5px;">🏪 Local de la Ruta Furancheira</label>
@@ -2091,9 +2097,14 @@
 
         <!-- Extras Noche: ocultar nombre -->
         <div id="raffle-night-extras" class="form-group" style="margin-bottom:10px;">
-          <div style="display:flex; align-items:center; gap:8px; padding:9px 12px; background:rgba(42,21,9,0.04); border-radius:10px;">
+          <div style="display:flex; align-items:center; gap:8px; padding:9px 12px; background:rgba(42,21,9,0.04); border-radius:10px; margin-bottom:10px;">
             <input type="checkbox" id="raffle-hide-name" style="width:16px; height:16px; accent-color:var(--wine); cursor:pointer;" />
             <label for="raffle-hide-name" style="font-size:12px; color:var(--text-muted); cursor:pointer; line-height:1.4;">Ocultar nombre en los móviles <span style="color:var(--wine);">(ven "Sorpresa 🎁")</span></label>
+          </div>
+          
+          <div style="display:flex; align-items:center; gap:8px; padding:9px 12px; background:rgba(236,72,153,0.1); border-radius:10px; border:1px solid rgba(236,72,153,0.3);">
+            <input type="checkbox" id="raffle-require-dress-code" style="width:16px; height:16px; accent-color:#ec4899; cursor:pointer;" />
+            <label for="raffle-require-dress-code" style="font-size:12px; color:var(--text-muted); cursor:pointer; line-height:1.4;">Exigir cumplir Dress Code <span style="color:#ec4899; font-weight:700;">(Si no cumplen, no pueden participar)</span></label>
           </div>
         </div>
 
@@ -7086,8 +7097,9 @@
     const date  = document.getElementById('sched-date').value;
     const time  = document.getElementById('sched-time').value;
     const prize = document.getElementById('sched-prize').value.trim();
-    const type  = currentSchedType || 'night';
-    const hideName = (type === 'night' || type === 'vip') && document.getElementById('sched-hide-name')?.checked;
+    const type  = window._schedType || 'night';
+    const hideName = document.getElementById('sched-hide-name')?.checked;
+    const requireDressCode = document.getElementById('sched-require-dress-code')?.checked;
     let establishment = null;
     if (type === 'local') {
       const estSel = document.getElementById('sched-establishment-select');
@@ -7118,7 +7130,7 @@
     try {
       const res = await fetch(url, {
         method, headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventDate: date, scheduledTime: time, prize, type, hideName, establishment, prizeDetails, prizeImage, participantLevel, requiredAchievement, validity, people, hours, days, validityEndDate, nftAchievementId })
+        body: JSON.stringify({ eventDate: date, scheduledTime: time, prize, type, hideName, establishment, prizeDetails, prizeImage, participantLevel, requiredAchievement, validity, people, hours, days, validityEndDate, nftAchievementId, requireDressCode })
       });
       const data = await res.json();
       if (data.success) {
@@ -7139,6 +7151,7 @@
     document.getElementById('sched-time').value = r.scheduled_time || '';
     document.getElementById('sched-prize').value = r.prize || '';
     if (document.getElementById('sched-hide-name')) document.getElementById('sched-hide-name').checked = !!r.hide_name;
+    if (document.getElementById('sched-require-dress-code')) document.getElementById('sched-require-dress-code').checked = !!r.require_dress_code;
     if (document.getElementById('sched-details')) document.getElementById('sched-details').value = r.prize_details || '';
     if (document.getElementById('sched-people')) document.getElementById('sched-people').value = r.people || '';
     if (document.getElementById('sched-validity')) document.getElementById('sched-validity').value = r.validity || '';
@@ -7212,6 +7225,7 @@
     editingScheduledId = null;
     document.getElementById('sched-prize').value = '';
     if (document.getElementById('sched-hide-name')) document.getElementById('sched-hide-name').checked = false;
+    if (document.getElementById('sched-require-dress-code')) document.getElementById('sched-require-dress-code').checked = false;
     if (document.getElementById('sched-establishment')) { document.getElementById('sched-establishment').value = ''; document.getElementById('sched-establishment').style.display = 'none'; }
     if (document.getElementById('sched-establishment-select')) document.getElementById('sched-establishment-select').value = '';
     if (document.getElementById('sched-details')) document.getElementById('sched-details').value = '';
@@ -7611,10 +7625,11 @@
     if (!prize) return showToast('Escribe el nombre del premio primero', true);
     const type = currentRaffleType || 'night';
     const hideName = type === 'night' && (document.getElementById('raffle-hide-name')?.checked || false);
+    const requireDressCode = document.getElementById('raffle-require-dress-code')?.checked || false;
     const establishment = type === 'local' ? (document.getElementById('raffle-establishment')?.value.trim() || '') : '';
     const prizeDetails  = type === 'local' ? (document.getElementById('raffle-prize-details')?.value.trim() || '') : '';
 
-    const confirmMsg = `¿Lanzar sorteo ahora?\nTipo: ${type === 'local' ? '🏪 Local Colaborador' : '🎁 Premio Noche'}\nPremio: ${hideName ? 'Sorpresa' : prize}${establishment ? '\nLocal: '+establishment : ''}`;
+    const confirmMsg = `¿Lanzar sorteo ahora?\nTipo: ${type === 'local' ? '🏪 Local Colaborador' : '🎁 Premio Noche'}\nPremio: ${hideName ? 'Sorpresa' : prize}${establishment ? '\nLocal: '+establishment : ''}${requireDressCode ? '\n\n👗 Requiere Dress Code!' : ''}`;
     if (!confirm(confirmMsg)) return;
 
     // Subir imagen si hay una seleccionada (solo local)
@@ -7667,7 +7682,8 @@
           prizeDetails: prizeDetails || null,
           prizeImage: prizeImageUrl || null,
           establishment: establishment || null,
-          participantLevel: participantLevel || null
+          participantLevel: participantLevel || null,
+          requireDressCode
         })
       });
       const data = await res.json();

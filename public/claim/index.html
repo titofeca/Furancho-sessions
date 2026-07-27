@@ -17,6 +17,29 @@
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <!-- ethers: generación de wallet EN el dispositivo (la clave privada no viaja por la red) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js" defer></script>
+  <script>
+    // Tema Floral hasta el Jueves 30 Julio 2026 23:59
+    (function() {
+      var limitDate = new Date('2026-07-30T23:59:59+02:00').getTime();
+      if (Date.now() <= limitDate) {
+        document.write(`
+          <style>
+            :root {
+              --wine: #d946ef !important; /* Fuchsia */
+              --wine-dark: #a21caf !important;
+              --wine-light: #e879f9 !important;
+              --gold: #f43f5e !important; /* Rose */
+            }
+            body, .screen {
+              background-color: #fdf4ff !important;
+              background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 20c-5-5-10-2-10 3s5 8 10 8 10-3 10-8-5-8-10-3z M30 40c-5 5-10 2-10-3s5-8 10-8 10 3 10 8-5 8-10 3z M20 30c-5-5-2-10 3-10s8 5 8 10-3 10-8 10-8-5-3-10z M40 30c5-5 2-10-3-10s-8 5-8 10 3 10 8 10 8-5 3-10z' fill='%23fbcfe8' fill-opacity='0.4' fill-rule='evenodd'/%3E%3C/svg%3E") !important;
+            }
+            .bottom-nav { background: rgba(253, 244, 255, 0.9) !important; }
+          </style>
+        `);
+      }
+    })();
+  </script>
   <style>
     @keyframes pulse {
       from { opacity: 0.6; }
@@ -2175,7 +2198,7 @@
           <button id="dress-code-btn" onclick="declareDressCode()" style="width:100%; padding:13px; border-radius:50px; font-size:14px; font-weight:800; cursor:pointer; border:none; background:linear-gradient(135deg,#D4508A,#E8789E); color:#fff; font-family:'Outfit',sans-serif; transition:all 0.2s; outline:none; -webkit-tap-highlight-color:transparent; box-shadow:0 4px 14px rgba(212,80,138,0.3);">
             ✅ ¡Cumplo, ho!
           </button>
-          <button id="dress-code-nope" onclick="document.getElementById('dress-code-box').style.display='none'" style="margin-top:6px; background:none; border:none; font-size:11px; color:var(--text-muted); cursor:pointer; font-family:'Outfit',sans-serif; padding:4px 8px;">Hoy paso, carallo 😅</button>
+          <button id="dress-code-nope" onclick="declineDressCode()" style="margin-top:6px; background:none; border:none; font-size:11px; color:var(--text-muted); cursor:pointer; font-family:'Outfit',sans-serif; padding:4px 8px;">Hoy paso, carallo 😅</button>
         </div>
         <div id="dress-code-done" style="display:none; margin-bottom:14px; border-radius:16px; background:linear-gradient(135deg, rgba(34,197,94,0.08), rgba(232,69,122,0.05)); border:1.5px solid rgba(34,197,94,0.4); padding:12px 14px; text-align:center;">
           <p style="font-size:14px; font-weight:700; color:#16a34a; margin:0;">✅ Requisito confirmado</p>
@@ -5387,6 +5410,7 @@
             ${badge}
           </div>
           ${wonActionHtml}
+          ${(!done && s.require_dress_code && window._dressCodeDeclared === false) ? `<button disabled style="width:100%; margin-top:8px; padding:10px; background:#9ca3af; color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:12px; font-weight:700; cursor:not-allowed; box-shadow:none;">👗 Requiere Dress Code</button>` : ''}
         </div>`;
       };
 
@@ -9705,16 +9729,37 @@
       if (doneText) doneText.textContent = dc.text + ' — el staff lo sabe, ho';
 
       const status = await resilientFetch(`/api/raffle/dress-code/status?wallet=${userWalletAddress}`).then(r => r.json());
+      const todayDateStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
       if (status.declared) {
         box.style.display = 'none';
         done.style.display = 'block';
+        window._dressCodeDeclared = true; // store for disabling UI buttons
+      } else if (localStorage.getItem('dc_declined') === todayDateStr) {
+        // The user manually declined today, hide the box!
+        box.style.display = 'none';
+        done.style.display = 'none';
+        window._dressCodeDeclared = false;
       } else {
         box.style.display = 'block';
         done.style.display = 'none';
+        window._dressCodeDeclared = false;
       }
     } catch (_) {
       box.style.display = 'none';
       done.style.display = 'none';
+      window._dressCodeDeclared = false;
+    }
+  }
+
+  function declineDressCode() {
+    const todayDateStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+    localStorage.setItem('dc_declined', todayDateStr);
+    document.getElementById('dress-code-box').style.display = 'none';
+    window._dressCodeDeclared = false;
+    showToast('⚠️ No podrás participar en sorteos que exijan Dress Code hoy.');
+    // Trigger a refresh of the scheduled raffles list to update buttons
+    if (document.getElementById('raffle-tab-content').style.display !== 'none') {
+      loadScheduledRaffles();
     }
   }
 
@@ -9732,7 +9777,12 @@
       if (data.ok) {
         document.getElementById('dress-code-box').style.display = 'none';
         document.getElementById('dress-code-done').style.display = 'block';
+        window._dressCodeDeclared = true;
         showToast('✅ ¡Requisito confirmado! El staff lo sabe, ho.');
+        // Update raffle buttons
+        if (document.getElementById('raffle-tab-content').style.display !== 'none') {
+          loadScheduledRaffles();
+        }
       } else {
         showToast(data.error || 'Error al registrar', true);
         if (btn) { btn.disabled = false; btn.textContent = '✅ ¡Cumplo, ho!'; }
