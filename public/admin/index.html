@@ -11736,6 +11736,8 @@
             msg += ' ⚠️ Reto de los 5: NO suma — ese es el ID Socio. Pídele el QR del reto en su app.';
           } else if (c.error === 'qr_expired') {
             msg += ' ⚠️ Reto de los 5: NO suma — QR caducado. Que lo refresque en su app.';
+          } else if (c.error === 'furancho_day') {
+            msg += ' ⚠️ Reto de los 5: NO suma — los días de evento no cuentan para el reto.';
           } else if (c.counted && c.completed) {
             msg += ` 👑 ¡Reto de los 5 completado (${c.totalVisits}/${c.required})! Su NFT queda pendiente de aprobar.`;
           } else if (c.counted) {
