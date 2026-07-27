@@ -33,7 +33,28 @@ const DEFAULT_RATES = {
   cuncaEnabled: 1,         // 1 = activado, 0 = desactivado
   cuncaBasePot: 50,
   cuncaPassCost: 5,
-  cuncaTimeoutMins: 60
+  cuncaTimeoutMins: 60,
+
+  // A Ruleta do Pulpo
+  ruletaEnabled: 1,
+  ruletaEntryCost: 10,
+  ruletaSlice0: 0,          // Tentáculo seco (nada)
+  ruletaSlice1: 0,          // Pimentón frío (nada)
+  ruletaSlice2: 0,          // Cacheira seca (nada)
+  ruletaSlice3: 0,          // Sal grosa (nada)
+  ruletaSlice4: 5,          // Pimentón bueno (mitad)
+  ruletaSlice5: 10,         // Aceite da casa (empate)
+  ruletaSlice6: 20,         // Feira de Lugo (x2)
+  ruletaSlice7: 40,         // Pulpo de Ouro (x4)
+  ruletaMaxPlays: 3,        // Tiradas al día
+
+  // A Queimada
+  queimadaEnabled: 1,
+  queimadaEntryCost: 15,
+  queimadaMult21: 3,        // Multiplicador queimada perfecta (x3)
+  queimadaMult1820: 2,      // Multiplicador 18-20 (x2)
+  queimadaMult1517: 1,      // Multiplicador 15-17 (x1 = empate)
+  queimadaMaxPlays: 3       // Partidas al día
 };
 
 function getRate(key) {
@@ -68,7 +89,24 @@ function getEconomySettings() {
     cuncaEnabled: getRate('cuncaEnabled'),
     cuncaBasePot: getRate('cuncaBasePot'),
     cuncaPassCost: getRate('cuncaPassCost'),
-    cuncaTimeoutMins: getRate('cuncaTimeoutMins')
+    cuncaTimeoutMins: getRate('cuncaTimeoutMins'),
+    ruletaEnabled: getRate('ruletaEnabled'),
+    ruletaEntryCost: getRate('ruletaEntryCost'),
+    ruletaSlice0: getRate('ruletaSlice0'),
+    ruletaSlice1: getRate('ruletaSlice1'),
+    ruletaSlice2: getRate('ruletaSlice2'),
+    ruletaSlice3: getRate('ruletaSlice3'),
+    ruletaSlice4: getRate('ruletaSlice4'),
+    ruletaSlice5: getRate('ruletaSlice5'),
+    ruletaSlice6: getRate('ruletaSlice6'),
+    ruletaSlice7: getRate('ruletaSlice7'),
+    ruletaMaxPlays: getRate('ruletaMaxPlays'),
+    queimadaEnabled: getRate('queimadaEnabled'),
+    queimadaEntryCost: getRate('queimadaEntryCost'),
+    queimadaMult21: getRate('queimadaMult21'),
+    queimadaMult1820: getRate('queimadaMult1820'),
+    queimadaMult1517: getRate('queimadaMult1517'),
+    queimadaMaxPlays: getRate('queimadaMaxPlays')
   };
 }
 

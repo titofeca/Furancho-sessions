@@ -241,6 +241,35 @@ try {
   )`);
 } catch (_) {}
 
+// Historial del minijuego "A Ruleta do Pulpo"
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS ruleta_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_address TEXT NOT NULL,
+    play_date TEXT NOT NULL,
+    entry_cost INTEGER NOT NULL DEFAULT 0,
+    slice_index INTEGER NOT NULL DEFAULT 0,
+    slice_name TEXT NOT NULL DEFAULT '',
+    awarded_corchos INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`);
+} catch (_) {}
+
+// Historial del minijuego "A Queimada"
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS queimada_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_address TEXT NOT NULL,
+    play_date TEXT NOT NULL,
+    entry_cost INTEGER NOT NULL DEFAULT 0,
+    ingredients TEXT NOT NULL DEFAULT '[]',
+    total_score INTEGER NOT NULL DEFAULT 0,
+    result TEXT NOT NULL DEFAULT 'burned',
+    awarded_corchos INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`);
+} catch (_) {}
+
 // Mints de LOGROS (ediciones especiales NFT, token >= 100). Separado de `mints`, que
 // está limitado a niveles 1-4 por CHECK. Un logro por wallet (UNIQUE).
 try {

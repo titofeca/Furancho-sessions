@@ -164,9 +164,9 @@ function passCunca(wallet, toWallet) {
   const cost = settings.cuncaPassCost || 5;
 
   // Deduct cost
-  const { deductCorchoCoins } = require('./corcho');
-  const deducted = deductCorchoCoins(wallet, cost, 'cunca_pass_cost', `Pasaste A Cunca Quente (-${cost} $CORCHO)`);
-  if (!deducted) {
+  const { spendCorchoCoins } = require('./corcho');
+  const deducted = spendCorchoCoins(wallet, cost, 'cunca_pass_cost', `Pasaste A Cunca Quente (-${cost} $CORCHO)`);
+  if (!deducted.ok) {
     throw new Error(`Necesitas al menos ${cost} $CORCHO para pasarla`);
   }
 
@@ -192,11 +192,166 @@ function passCunca(wallet, toWallet) {
   return newPot;
 }
 
+// ==================== A RULETA DO PULPO ====================
+
+const RULETA_SLICES = [
+  { name: 'Tentáculo seco',  key: 'ruletaSlice0' },
+  { name: 'Pimentón frío',   key: 'ruletaSlice1' },
+  { name: 'Cacheira seca',   key: 'ruletaSlice2' },
+  { name: 'Sal grosa',       key: 'ruletaSlice3' },
+  { name: 'Pimentón bueno',  key: 'ruletaSlice4' },
+  { name: 'Aceite da casa',  key: 'ruletaSlice5' },
+  { name: 'Feira de Lugo',   key: 'ruletaSlice6' },
+  { name: 'Pulpo de Ouro',   key: 'ruletaSlice7' }
+];
+
+function getRuletaStatus(wallet) {
+  const settings = corcho.getEconomySettings();
+  if (!settings.ruletaEnabled) return { enabled: false };
+  const today = new Date().toISOString().slice(0, 10);
+  const plays = db.prepare(`SELECT COUNT(*) as c FROM ruleta_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
+  return {
+    enabled: true,
+    playsToday: plays.c,
+    maxPlays: settings.ruletaMaxPlays,
+    canPlay: plays.c < settings.ruletaMaxPlays,
+    entryCost: settings.ruletaEntryCost,
+    slices: RULETA_SLICES.map((s, i) => ({ name: s.name, index: i, prize: settings[s.key] }))
+  };
+}
+
+function spinRuleta(wallet) {
+  const settings = corcho.getEconomySettings();
+  if (!settings.ruletaEnabled) throw new Error('Minijuego desactivado');
+
+  const today = new Date().toISOString().slice(0, 10);
+  const plays = db.prepare(`SELECT COUNT(*) as c FROM ruleta_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
+  if (plays.c >= settings.ruletaMaxPlays) throw new Error('Ya has agotado tus tiradas de hoy');
+
+  const entryCost = settings.ruletaEntryCost;
+  if (entryCost > 0) {
+    const { spendCorchoCoins } = require('./corcho');
+    const res = spendCorchoCoins(wallet, entryCost, 'minigame_ruleta_entry', `🐙 Ruleta do Pulpo: entrada (-${entryCost} $CORCHO)`);
+    if (!res.ok) throw new Error(`Necesitas al menos ${entryCost} $CORCHO para girar`);
+  }
+
+  const sliceIndex = Math.floor(Math.random() * 8);
+  const slice = RULETA_SLICES[sliceIndex];
+  const prize = settings[slice.key] || 0;
+
+  db.prepare(`
+    INSERT INTO ruleta_history (wallet_address, play_date, entry_cost, slice_index, slice_name, awarded_corchos)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(wallet, today, entryCost, sliceIndex, slice.name, prize);
+
+  if (prize > 0) {
+    const { addCorchoCoins } = require('./corcho');
+    addCorchoCoins(wallet, prize, 'minigame_ruleta', `🐙 Ruleta do Pulpo: ${slice.name} (+${prize} $CORCHO)`, `ruleta_${today}_${plays.c}`);
+  }
+
+  return { sliceIndex, sliceName: slice.name, prize, playsLeft: settings.ruletaMaxPlays - plays.c - 1 };
+}
+
+// ==================== A QUEIMADA ====================
+
+const QUEIMADA_INGREDIENTS = [
+  { name: 'Aguardiente',     icon: '🥃', min: 7, max: 10 },
+  { name: 'Azúcar',          icon: '🍬', min: 3, max: 5 },
+  { name: 'Limón',           icon: '🍋', min: 1, max: 3 },
+  { name: 'Café en grano',   icon: '☕', min: 4, max: 6 },
+  { name: 'Piel de naranja', icon: '🍊', min: 2, max: 4 },
+  { name: 'Orujo de hierbas',icon: '🌿', min: 5, max: 8 },
+  { name: 'Miel',            icon: '🍯', min: 2, max: 4 },
+  { name: 'Canela',          icon: '🪵', min: 1, max: 3 }
+];
+
+function getQueimadaStatus(wallet) {
+  const settings = corcho.getEconomySettings();
+  if (!settings.queimadaEnabled) return { enabled: false };
+  const today = new Date().toISOString().slice(0, 10);
+  const plays = db.prepare(`SELECT COUNT(*) as c FROM queimada_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
+  return {
+    enabled: true,
+    playsToday: plays.c,
+    maxPlays: settings.queimadaMaxPlays,
+    canPlay: plays.c < settings.queimadaMaxPlays,
+    entryCost: settings.queimadaEntryCost
+  };
+}
+
+function startQueimada(wallet) {
+  const settings = corcho.getEconomySettings();
+  if (!settings.queimadaEnabled) throw new Error('Minijuego desactivado');
+
+  const today = new Date().toISOString().slice(0, 10);
+  const plays = db.prepare(`SELECT COUNT(*) as c FROM queimada_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
+  if (plays.c >= settings.queimadaMaxPlays) throw new Error('Ya has agotado tus queimadas de hoy');
+
+  const entryCost = settings.queimadaEntryCost;
+  if (entryCost > 0) {
+    const { spendCorchoCoins } = require('./corcho');
+    const res = spendCorchoCoins(wallet, entryCost, 'minigame_queimada_entry', `🔥 A Queimada: entrada (-${entryCost} $CORCHO)`);
+    if (!res.ok) throw new Error(`Necesitas al menos ${entryCost} $CORCHO para jugar`);
+  }
+
+  return { sessionStarted: true, entryCost };
+}
+
+function drawIngredient() {
+  const ing = QUEIMADA_INGREDIENTS[Math.floor(Math.random() * QUEIMADA_INGREDIENTS.length)];
+  const value = ing.min + Math.floor(Math.random() * (ing.max - ing.min + 1));
+  return { name: ing.name, icon: ing.icon, value };
+}
+
+function resolveQueimada(wallet, ingredients, totalScore) {
+  const settings = corcho.getEconomySettings();
+  const today = new Date().toISOString().slice(0, 10);
+  const entryCost = settings.queimadaEntryCost;
+
+  let result, prize = 0;
+  if (totalScore > 21) {
+    result = 'burned';
+  } else if (totalScore === 21) {
+    result = 'perfect';
+    prize = entryCost * (settings.queimadaMult21 || 3);
+  } else if (totalScore >= 18) {
+    result = 'great';
+    prize = entryCost * (settings.queimadaMult1820 || 2);
+  } else if (totalScore >= 15) {
+    result = 'good';
+    prize = entryCost * (settings.queimadaMult1517 || 1);
+  } else {
+    result = 'weak';
+  }
+
+  db.prepare(`
+    INSERT INTO queimada_history (wallet_address, play_date, entry_cost, ingredients, total_score, result, awarded_corchos)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(wallet, today, entryCost, JSON.stringify(ingredients), totalScore, result, prize);
+
+  if (prize > 0) {
+    const { addCorchoCoins } = require('./corcho');
+    addCorchoCoins(wallet, prize, 'minigame_queimada', `🔥 A Queimada: ${result === 'perfect' ? '¡Perfecta!' : result === 'great' ? 'Casi perfecta' : 'Pasable'} (+${prize} $CORCHO)`, `queimada_${today}_${Date.now()}`);
+  }
+
+  const plays = db.prepare(`SELECT COUNT(*) as c FROM queimada_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
+
+  return { result, prize, totalScore, playsLeft: settings.queimadaMaxPlays - plays.c };
+}
+
 module.exports = {
   checkEnxebreGuess,
   recordEnxebrePlay,
   getActiveCunca,
   spawnCunca,
   drinkCunca,
-  passCunca
+  passCunca,
+  getRuletaStatus,
+  spinRuleta,
+  getQueimadaStatus,
+  startQueimada,
+  drawIngredient,
+  resolveQueimada,
+  RULETA_SLICES,
+  QUEIMADA_INGREDIENTS
 };

@@ -11291,9 +11291,19 @@
         <p style="margin:0; font-size:12px; color:var(--text-muted);">Adivina la palabra del Furancho (gastronomía) en 6 intentos y llévate hasta 50 $CORCHO.</p>
       </div>
 
-      <div id="mg-cunca-card" style="display:none; background:#fff; border-radius:14px; padding:16px; border:1px solid rgba(196,151,58,0.3); cursor:pointer;" onclick="openCuncaQuente()">
+      <div id="mg-cunca-card" style="display:none; background:#fff; border-radius:14px; padding:16px; border:1px solid rgba(196,151,58,0.3); margin-bottom:12px; cursor:pointer;" onclick="openCuncaQuente()">
         <h4 style="margin:0 0 6px; color:#d97706; font-size:16px; font-weight:900;">🔥 A Cunca Quente</h4>
         <p style="margin:0; font-size:12px; color:var(--text-muted);">Comprueba si tienes la Cunca Quente. Si es así, bébetela o pásala a un amigo engordando el bote.</p>
+      </div>
+
+      <div id="mg-ruleta-card" style="display:none; background:#fff; border-radius:14px; padding:16px; border:1px solid rgba(196,151,58,0.3); margin-bottom:12px; cursor:pointer;" onclick="openRuletaModal()">
+        <h4 style="margin:0 0 6px; color:var(--wine); font-size:16px; font-weight:900;">🐙 A Ruleta do Pulpo</h4>
+        <p id="mg-ruleta-desc" style="margin:0; font-size:12px; color:var(--text-muted);">Gira la ruleta y prueba suerte. ¿Te tocará el Pulpo de Ouro?</p>
+      </div>
+
+      <div id="mg-queimada-card" style="display:none; background:#fff; border-radius:14px; padding:16px; border:1px solid rgba(196,151,58,0.3); cursor:pointer;" onclick="openQueimadaModal()">
+        <h4 style="margin:0 0 6px; color:#b45309; font-size:16px; font-weight:900;">🔥 A Queimada</h4>
+        <p id="mg-queimada-desc" style="margin:0; font-size:12px; color:var(--text-muted);">Prepara tu queimada perfecta. Saca ingredientes y acércate a 21 sin pasarte.</p>
       </div>
     </div>
   </div>
@@ -11371,6 +11381,138 @@
       </ul>
       <p style="font-size:13px; color:#fca5a5; font-weight:bold; margin-bottom:0;">¡CUIDADO!</p>
       <p style="font-size:12px; color:rgba(255,255,255,0.7); line-height:1.5; margin-top:4px;">Si el tiempo llega a cero mientras la Cunca está en tus manos, se derrama y nadie se lleva el bote. ¡No te quemes!</p>
+    </div>
+  </div>
+
+  <!-- MODAL: A RULETA DO PULPO -->
+  <div id="ruleta-modal" style="display:none; position:fixed; inset:0; z-index:2500; background:rgba(245,240,230,0.97); align-items:center; justify-content:flex-start; flex-direction:column; padding:18px; overflow-y:auto;">
+    <button onclick="closeRuletaModal()" style="position:absolute; top:16px; right:16px; background:none; border:none; font-size:24px; color:var(--wine); cursor:pointer; font-weight:900; z-index:10;">✕</button>
+    <button onclick="document.getElementById('ruleta-help-modal').style.display='flex'" style="position:absolute; top:16px; left:16px; background:none; border:none; font-size:22px; cursor:pointer; z-index:10;">❓</button>
+
+    <h3 style="font-family:'Playfair Display',serif; font-size:22px; color:var(--wine); margin:20px 0 4px; text-align:center;">A Ruleta do Pulpo</h3>
+    <p id="ruleta-cost-label" style="font-size:12px; color:var(--text-muted); margin:0 0 10px; text-align:center;"></p>
+    <p id="ruleta-plays-label" style="font-size:11px; color:var(--gold); font-weight:700; margin:0 0 14px; text-align:center;"></p>
+
+    <!-- SVG Ruleta estilo Castelao -->
+    <div style="position:relative; width:300px; height:300px; margin:0 auto 16px;">
+      <div style="position:absolute; top:-18px; left:50%; transform:translateX(-50%); font-size:28px; z-index:5; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));">▼</div>
+      <svg id="ruleta-svg" viewBox="0 0 300 300" width="300" height="300" style="transition:transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);">
+        <!-- generado por JS -->
+      </svg>
+    </div>
+
+    <div id="ruleta-result" style="display:none; text-align:center; margin-bottom:16px;">
+      <div id="ruleta-result-icon" style="font-size:48px; margin-bottom:6px;"></div>
+      <div id="ruleta-result-text" style="font-family:'Playfair Display',serif; font-size:18px; font-weight:900; color:var(--wine);"></div>
+      <div id="ruleta-result-prize" style="font-size:14px; color:var(--gold); font-weight:800; margin-top:4px;"></div>
+    </div>
+
+    <button id="ruleta-spin-btn" onclick="spinRuleta()" style="padding:14px 40px; background:linear-gradient(135deg, #7f1d1d, #991b1b); color:#fff; border:none; border-radius:16px; font-family:'Playfair Display',serif; font-size:18px; font-weight:900; cursor:pointer; box-shadow:0 6px 20px rgba(127,29,29,0.4); letter-spacing:1px;">
+      🐙 GIRAR
+    </button>
+  </div>
+
+  <!-- MODAL HELP RULETA -->
+  <div id="ruleta-help-modal" style="display:none; position:fixed; inset:0; z-index:2600; background:rgba(0,0,0,0.65); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); align-items:center; justify-content:center; padding:18px;">
+    <div style="background:var(--cream); width:100%; max-width:400px; border-radius:20px; padding:24px; border:1.5px solid var(--gold); box-shadow:0 20px 40px rgba(0,0,0,0.3); position:relative;">
+      <button onclick="document.getElementById('ruleta-help-modal').style.display='none'" style="position:absolute; top:16px; right:16px; background:none; border:none; font-size:20px; color:var(--text-muted); cursor:pointer;">✕</button>
+      <h3 style="font-family:'Playfair Display',serif; font-size:20px; color:var(--wine); margin:0 0 16px; text-align:center;">📖 A Ruleta do Pulpo</h3>
+      <p style="font-size:13px; color:var(--text-muted); line-height:1.6; margin-bottom:12px;">Cada tirada cuesta $CORCHO. La ruleta tiene 8 rodajas con distintos premios: desde nada hasta el Pulpo de Ouro, que multiplica por 4 lo apostado.</p>
+      <p style="font-size:13px; color:var(--text-muted); line-height:1.6; margin-bottom:12px;">Gira y cruza los dedos. Si la suerte te acompaña, te llevas un buen puñado de $CORCHO al bolsillo.</p>
+      <p style="font-size:12px; color:var(--wine); font-weight:700;">¡Prueba suerte, ho!</p>
+    </div>
+  </div>
+
+  <!-- MODAL: A QUEIMADA -->
+  <div id="queimada-modal" style="display:none; position:fixed; inset:0; z-index:2500; background:rgba(20,10,5,0.96); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); align-items:center; justify-content:flex-start; flex-direction:column; padding:18px; overflow-y:auto;">
+    <button onclick="closeQueimadaModal()" style="position:absolute; top:16px; right:16px; background:rgba(255,255,255,0.1); border:none; border-radius:50%; width:32px; height:32px; color:#fff; cursor:pointer; font-size:18px; z-index:10;">✕</button>
+    <button onclick="document.getElementById('queimada-help-modal').style.display='flex'" style="position:absolute; top:16px; left:16px; background:none; border:none; font-size:22px; cursor:pointer; z-index:10;">❓</button>
+
+    <h3 style="font-family:'Playfair Display',serif; font-size:22px; color:#facc15; margin:20px 0 4px; text-align:center;">A Queimada</h3>
+    <p id="queimada-cost-label" style="font-size:12px; color:rgba(255,255,255,0.6); margin:0 0 6px; text-align:center;"></p>
+    <p id="queimada-plays-label" style="font-size:11px; color:#facc15; font-weight:700; margin:0 0 14px; text-align:center;"></p>
+
+    <!-- Caldero SVG estilo Castelao -->
+    <div style="position:relative; width:220px; height:180px; margin:0 auto 10px;">
+      <svg id="queimada-cauldron-svg" viewBox="0 0 220 180" width="220" height="180">
+        <!-- Caldero trazos tinta Castelao -->
+        <ellipse cx="110" cy="145" rx="85" ry="25" fill="none" stroke="#3d2614" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M25,145 Q20,100 35,60 Q50,30 110,25 Q170,30 185,60 Q200,100 195,145" fill="none" stroke="#3d2614" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M15,140 Q10,138 8,130 Q6,120 15,118" fill="none" stroke="#3d2614" stroke-width="2" stroke-linecap="round"/>
+        <path d="M205,140 Q210,138 212,130 Q214,120 205,118" fill="none" stroke="#3d2614" stroke-width="2" stroke-linecap="round"/>
+        <!-- Llamas -->
+        <g id="queimada-flames" style="animation:flicker 0.8s ease-in-out infinite alternate;">
+          <path d="M60,160 Q55,140 65,130 Q60,145 70,148" fill="#ef4444" opacity="0.7"/>
+          <path d="M100,162 Q95,135 105,120 Q100,140 110,145" fill="#f97316" opacity="0.8"/>
+          <path d="M140,160 Q135,138 145,125 Q140,142 150,147" fill="#ef4444" opacity="0.7"/>
+          <path d="M80,158 Q78,142 85,132 Q80,144 90,147" fill="#facc15" opacity="0.6"/>
+          <path d="M160,158 Q155,140 162,130 Q158,143 168,146" fill="#facc15" opacity="0.6"/>
+        </g>
+      </svg>
+    </div>
+
+    <!-- Puntuación -->
+    <div style="text-align:center; margin-bottom:12px;">
+      <div style="font-size:11px; color:rgba(255,255,255,0.5); text-transform:uppercase; letter-spacing:2px; margin-bottom:4px;">Puntos en el caldero</div>
+      <div id="queimada-score" style="font-size:48px; font-weight:900; color:#facc15; font-family:'Playfair Display',serif;">0</div>
+      <div style="font-size:12px; color:rgba(255,255,255,0.4);">Objetivo: 21 · Si te pasas, se quema</div>
+    </div>
+
+    <!-- Barra de progreso -->
+    <div style="width:100%; max-width:280px; height:12px; background:rgba(255,255,255,0.1); border-radius:6px; margin:0 auto 14px; overflow:hidden; position:relative;">
+      <div id="queimada-bar" style="height:100%; width:0%; border-radius:6px; transition:width 0.5s ease; background:linear-gradient(90deg, #16a34a, #facc15);"></div>
+      <div style="position:absolute; left:71.4%; top:0; bottom:0; width:2px; background:rgba(255,255,255,0.3);" title="15"></div>
+      <div style="position:absolute; left:85.7%; top:0; bottom:0; width:2px; background:rgba(255,255,255,0.3);" title="18"></div>
+      <div style="position:absolute; left:100%; top:0; bottom:0; width:2px; background:#ef4444;" title="21"></div>
+    </div>
+
+    <!-- Ingredientes sacados -->
+    <div id="queimada-ingredients" style="display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:16px; min-height:36px;">
+    </div>
+
+    <!-- Último ingrediente sacado -->
+    <div id="queimada-last-ingredient" style="display:none; text-align:center; margin-bottom:14px;">
+      <div id="queimada-last-icon" style="font-size:40px;"></div>
+      <div id="queimada-last-name" style="font-size:14px; color:#fff; font-weight:700;"></div>
+      <div id="queimada-last-value" style="font-size:20px; color:#facc15; font-weight:900;"></div>
+    </div>
+
+    <!-- Resultado -->
+    <div id="queimada-result" style="display:none; text-align:center; margin-bottom:16px;">
+      <div id="queimada-result-icon" style="font-size:56px; margin-bottom:8px;"></div>
+      <div id="queimada-result-text" style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:#fff;"></div>
+      <div id="queimada-result-prize" style="font-size:16px; color:#facc15; font-weight:800; margin-top:6px;"></div>
+    </div>
+
+    <!-- Botones -->
+    <div id="queimada-actions" style="display:none; flex-direction:column; gap:10px; width:100%; max-width:280px;">
+      <button id="queimada-draw-btn" onclick="drawQueimadaIngredient()" style="padding:14px; background:linear-gradient(135deg, #b45309, #92400e); color:#fff; border:none; border-radius:14px; font-family:'Playfair Display',serif; font-size:16px; font-weight:900; cursor:pointer; box-shadow:0 4px 16px rgba(180,83,9,0.4);">
+        🥄 SACAR INGREDIENTE
+      </button>
+      <button id="queimada-stand-btn" onclick="standQueimada()" style="padding:14px; background:linear-gradient(135deg, #16a34a, #15803d); color:#fff; border:none; border-radius:14px; font-family:'Playfair Display',serif; font-size:16px; font-weight:900; cursor:pointer; box-shadow:0 4px 16px rgba(22,163,74,0.4);">
+        🔥 PLANTARSE
+      </button>
+    </div>
+
+    <button id="queimada-start-btn" onclick="startQueimadaGame()" style="padding:14px 40px; background:linear-gradient(135deg, #b45309, #92400e); color:#fff; border:none; border-radius:16px; font-family:'Playfair Display',serif; font-size:18px; font-weight:900; cursor:pointer; box-shadow:0 6px 20px rgba(180,83,9,0.4); letter-spacing:1px;">
+      🔥 EMPEZAR QUEIMADA
+    </button>
+  </div>
+
+  <!-- MODAL HELP QUEIMADA -->
+  <div id="queimada-help-modal" style="display:none; position:fixed; inset:0; z-index:2600; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:18px;">
+    <div style="background:linear-gradient(135deg, #451a03, #1c0a00); width:100%; max-width:400px; border-radius:24px; padding:24px; border:2px solid #b45309; box-shadow:0 0 50px rgba(180,83,9,0.4); position:relative; color:#fff;">
+      <button onclick="document.getElementById('queimada-help-modal').style.display='none'" style="position:absolute; top:16px; right:16px; background:rgba(255,255,255,0.1); border:none; border-radius:50%; width:32px; height:32px; color:#fff; cursor:pointer;">✕</button>
+      <h3 style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; margin:0 0 16px; text-align:center;">📖 Reglas de A Queimada</h3>
+      <p style="font-size:13px; color:rgba(255,255,255,0.9); line-height:1.6; margin-bottom:12px;">Prepara la queimada perfecta sacando ingredientes del caldero. Cada ingrediente suma puntos.</p>
+      <ul style="font-size:13px; padding-left:20px; margin-bottom:16px; line-height:1.6;">
+        <li style="margin-bottom:6px;"><b>🎯 21 puntos exactos:</b> ¡Queimada perfecta! Premio máximo.</li>
+        <li style="margin-bottom:6px;"><b>👍 18-20 puntos:</b> Casi perfecta, buen premio.</li>
+        <li style="margin-bottom:6px;"><b>👌 15-17 puntos:</b> Pasable, recuperas lo apostado.</li>
+        <li style="margin-bottom:6px;"><b>💨 Menos de 15:</b> Floja, pierdes.</li>
+        <li><b>💀 Más de 21:</b> ¡Se quemó! Pierdes todo.</li>
+      </ul>
+      <p style="font-size:12px; color:#facc15; font-weight:700; text-align:center;">Puedes plantarte cuando quieras. ¡No te pases!</p>
     </div>
   </div>
 
@@ -11934,22 +12076,39 @@
 
     function openMinigamesModal() {
       document.getElementById('minigames-menu-modal').style.display = 'flex';
-      // Load availability
-      fetch('/api/minigames/enxebre/status', {
-        headers: { 'wallet-address': userWalletAddress }
-      }).then(r => r.json()).then(data => {
-        if (!data.playedToday) {
-          document.getElementById('mg-enxebre-card').style.display = 'block';
-        }
-      }).catch(console.error);
+      // Reset visibility
+      document.getElementById('mg-enxebre-card').style.display = 'none';
+      document.getElementById('mg-cunca-card').style.display = 'none';
+      document.getElementById('mg-ruleta-card').style.display = 'none';
+      document.getElementById('mg-queimada-card').style.display = 'none';
 
-      fetch('/api/minigames/cunca/status', {
-        headers: { 'wallet-address': userWalletAddress }
-      }).then(r => r.json()).then(data => {
-        if (data.hasCunca) {
-          document.getElementById('mg-cunca-card').style.display = 'block';
-        }
-      }).catch(console.error);
+      const hdrs = { 'wallet-address': userWalletAddress };
+
+      fetch('/api/minigames/enxebre/status', { headers: hdrs })
+        .then(r => r.json()).then(data => {
+          if (!data.playedToday) document.getElementById('mg-enxebre-card').style.display = 'block';
+        }).catch(console.error);
+
+      fetch('/api/minigames/cunca/status', { headers: hdrs })
+        .then(r => r.json()).then(data => {
+          if (data.hasCunca) document.getElementById('mg-cunca-card').style.display = 'block';
+        }).catch(console.error);
+
+      fetch('/api/minigames/ruleta/status', { headers: hdrs })
+        .then(r => r.json()).then(data => {
+          if (data.enabled && data.canPlay) {
+            document.getElementById('mg-ruleta-card').style.display = 'block';
+            document.getElementById('mg-ruleta-desc').textContent = `Gira la ruleta (${data.entryCost} $CORCHO). Te quedan ${data.maxPlays - data.playsToday} tiradas hoy.`;
+          }
+        }).catch(console.error);
+
+      fetch('/api/minigames/queimada/status', { headers: hdrs })
+        .then(r => r.json()).then(data => {
+          if (data.enabled && data.canPlay) {
+            document.getElementById('mg-queimada-card').style.display = 'block';
+            document.getElementById('mg-queimada-desc').textContent = `Prepara la queimada perfecta (${data.entryCost} $CORCHO). Te quedan ${data.maxPlays - data.playsToday} partidas hoy.`;
+          }
+        }).catch(console.error);
     }
     
     function closeMinigamesModal() {
@@ -12118,7 +12277,9 @@
           // Si no hay cunca, mostrar el botón genérico de minijuegos si están activos en general
           const enxebreEnabled = _corchoData?.rates?.enxebreEnabled;
           const cuncaEnabled = _corchoData?.rates?.cuncaEnabled;
-          if (enxebreEnabled || cuncaEnabled) {
+          const ruletaEnabled = _corchoData?.rates?.ruletaEnabled;
+          const queimadaEnabled = _corchoData?.rates?.queimadaEnabled;
+          if (enxebreEnabled || cuncaEnabled || ruletaEnabled || queimadaEnabled) {
             document.getElementById('btn-open-minigames').style.display = 'flex';
           } else {
             document.getElementById('btn-open-minigames').style.display = 'none';
@@ -12201,7 +12362,368 @@
       } catch (e) { showToast('Error de red', true); }
     }
 
+    // ==================== A RULETA DO PULPO ====================
+
+    const RULETA_COLORS = ['#7f1d1d','#92400e','#3d2614','#4a3728','#b45309','#a16207','#991b1b','#c4972e'];
+    const RULETA_ICONS = ['🦑','🌶️','🐙','🧂','🫒','🫒','🎪','👑'];
+    let _ruletaSlices = [];
+    let _ruletaSpinning = false;
+
+    function renderRuletaSVG(slices) {
+      _ruletaSlices = slices;
+      const svg = document.getElementById('ruleta-svg');
+      const cx = 150, cy = 150, r = 140;
+      const n = slices.length;
+      const angle = (2 * Math.PI) / n;
+      let html = '';
+
+      // Textura de fondo — papel envejecido
+      html += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#f5f0e6" stroke="#3d2614" stroke-width="3"/>`;
+
+      for (let i = 0; i < n; i++) {
+        const a1 = angle * i - Math.PI / 2;
+        const a2 = angle * (i + 1) - Math.PI / 2;
+        const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+        const x2 = cx + r * Math.cos(a2), y2 = cy + r * Math.sin(a2);
+
+        // Sector con trazos Castelao
+        html += `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 0,1 ${x2},${y2} Z" fill="${RULETA_COLORS[i]}" fill-opacity="0.12" stroke="#3d2614" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+
+        // Texto + icono en el centro del sector
+        const aMid = (a1 + a2) / 2;
+        const tx = cx + (r * 0.62) * Math.cos(aMid);
+        const ty = cy + (r * 0.62) * Math.sin(aMid);
+        const deg = (aMid * 180 / Math.PI) + 90;
+        html += `<text x="${tx}" y="${ty}" text-anchor="middle" dominant-baseline="middle" transform="rotate(${deg},${tx},${ty})" style="font-family:'Playfair Display',serif; font-size:9px; font-weight:900; fill:#3d2614;">${slices[i].name}</text>`;
+        const ix = cx + (r * 0.38) * Math.cos(aMid);
+        const iy = cy + (r * 0.38) * Math.sin(aMid);
+        html += `<text x="${ix}" y="${iy}" text-anchor="middle" dominant-baseline="middle" style="font-size:22px;">${RULETA_ICONS[i]}</text>`;
+      }
+
+      // Centro — sello con pulpo a tinta
+      html += `<circle cx="${cx}" cy="${cy}" r="28" fill="#f5f0e6" stroke="#3d2614" stroke-width="2.5"/>`;
+      html += `<text x="${cx}" y="${cy+2}" text-anchor="middle" dominant-baseline="middle" style="font-size:26px;">🐙</text>`;
+
+      // Trazo decorativo exterior tipo grabado
+      html += `<circle cx="${cx}" cy="${cy}" r="${r-4}" fill="none" stroke="#3d2614" stroke-width="0.8" stroke-dasharray="2,4"/>`;
+
+      svg.innerHTML = html;
+      svg.style.transform = 'rotate(0deg)';
+    }
+
+    async function openRuletaModal() {
+      closeMinigamesModal();
+      document.getElementById('ruleta-modal').style.display = 'flex';
+      document.getElementById('ruleta-result').style.display = 'none';
+      document.getElementById('ruleta-spin-btn').style.display = '';
+      _ruletaSpinning = false;
+
+      try {
+        const r = await fetch('/api/minigames/ruleta/status', { headers: { 'wallet-address': userWalletAddress } });
+        const data = await r.json();
+        if (!data.enabled) { showToast('Juego desactivado', true); closeRuletaModal(); return; }
+
+        document.getElementById('ruleta-cost-label').textContent = `Coste: ${data.entryCost} $CORCHO por tirada`;
+        document.getElementById('ruleta-plays-label').textContent = `Tiradas restantes hoy: ${data.maxPlays - data.playsToday}`;
+
+        if (!data.canPlay) {
+          document.getElementById('ruleta-spin-btn').style.display = 'none';
+          document.getElementById('ruleta-plays-label').textContent = '¡Has agotado las tiradas de hoy! Vuelve mañana.';
+        }
+        renderRuletaSVG(data.slices);
+      } catch (e) { showToast('Error de red', true); }
+    }
+
+    function closeRuletaModal() {
+      document.getElementById('ruleta-modal').style.display = 'none';
+    }
+
+    async function spinRuleta() {
+      if (_ruletaSpinning) return;
+      _ruletaSpinning = true;
+      document.getElementById('ruleta-result').style.display = 'none';
+      const btn = document.getElementById('ruleta-spin-btn');
+      btn.textContent = '🐙 Girando...';
+      btn.style.opacity = '0.6';
+
+      try {
+        const r = await fetch('/api/minigames/ruleta/spin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'wallet-address': userWalletAddress }
+        });
+        const data = await r.json();
+        if (!r.ok) {
+          showToast(data.error || 'Error', true);
+          btn.textContent = '🐙 GIRAR';
+          btn.style.opacity = '1';
+          _ruletaSpinning = false;
+          return;
+        }
+
+        // Animar la ruleta
+        const svg = document.getElementById('ruleta-svg');
+        const sliceAngle = 360 / 8;
+        const targetAngle = 360 * 6 + (360 - (data.sliceIndex * sliceAngle + sliceAngle / 2));
+        svg.style.transition = 'none';
+        svg.style.transform = 'rotate(0deg)';
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            svg.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
+            svg.style.transform = `rotate(${targetAngle}deg)`;
+          });
+        });
+
+        setTimeout(() => {
+          const resultEl = document.getElementById('ruleta-result');
+          const iconEl = document.getElementById('ruleta-result-icon');
+          const textEl = document.getElementById('ruleta-result-text');
+          const prizeEl = document.getElementById('ruleta-result-prize');
+
+          resultEl.style.display = 'block';
+          if (data.prize > 0) {
+            iconEl.textContent = data.sliceIndex === 7 ? '👑' : '🎉';
+            textEl.textContent = data.sliceName;
+            textEl.style.color = 'var(--wine)';
+            prizeEl.textContent = `+${data.prize} $CORCHO`;
+          } else {
+            iconEl.textContent = '😤';
+            textEl.textContent = data.sliceName;
+            textEl.style.color = 'var(--text-muted)';
+            prizeEl.textContent = 'Sin premio esta vez';
+          }
+
+          if (data.playsLeft > 0) {
+            btn.textContent = '🐙 GIRAR OTRA VEZ';
+            btn.style.opacity = '1';
+            btn.style.display = '';
+            document.getElementById('ruleta-plays-label').textContent = `Tiradas restantes hoy: ${data.playsLeft}`;
+          } else {
+            btn.style.display = 'none';
+            document.getElementById('ruleta-plays-label').textContent = '¡Sin tiradas! Vuelve mañana.';
+          }
+          _ruletaSpinning = false;
+          loadCorchoBalance();
+        }, 4200);
+
+      } catch (e) {
+        showToast('Error de red', true);
+        btn.textContent = '🐙 GIRAR';
+        btn.style.opacity = '1';
+        _ruletaSpinning = false;
+      }
+    }
+
+    // ==================== A QUEIMADA ====================
+
+    let _queimadaIngredients = [];
+    let _queimadaScore = 0;
+    let _queimadaActive = false;
+
+    function openQueimadaModal() {
+      closeMinigamesModal();
+      resetQueimadaUI();
+      document.getElementById('queimada-modal').style.display = 'flex';
+
+      fetch('/api/minigames/queimada/status', { headers: { 'wallet-address': userWalletAddress } })
+        .then(r => r.json()).then(data => {
+          if (!data.enabled) { showToast('Juego desactivado', true); closeQueimadaModal(); return; }
+          document.getElementById('queimada-cost-label').textContent = `Coste: ${data.entryCost} $CORCHO por partida`;
+          document.getElementById('queimada-plays-label').textContent = `Partidas restantes hoy: ${data.maxPlays - data.playsToday}`;
+          if (!data.canPlay) {
+            document.getElementById('queimada-start-btn').style.display = 'none';
+            document.getElementById('queimada-plays-label').textContent = '¡Has agotado las queimadas de hoy! Vuelve mañana.';
+          }
+        }).catch(e => showToast('Error de red', true));
+    }
+
+    function closeQueimadaModal() {
+      document.getElementById('queimada-modal').style.display = 'none';
+      _queimadaActive = false;
+    }
+
+    function resetQueimadaUI() {
+      _queimadaIngredients = [];
+      _queimadaScore = 0;
+      _queimadaActive = false;
+      document.getElementById('queimada-score').textContent = '0';
+      document.getElementById('queimada-bar').style.width = '0%';
+      document.getElementById('queimada-bar').style.background = 'linear-gradient(90deg, #16a34a, #facc15)';
+      document.getElementById('queimada-ingredients').innerHTML = '';
+      document.getElementById('queimada-last-ingredient').style.display = 'none';
+      document.getElementById('queimada-result').style.display = 'none';
+      document.getElementById('queimada-actions').style.display = 'none';
+      document.getElementById('queimada-start-btn').style.display = '';
+      document.getElementById('queimada-draw-btn').disabled = false;
+      document.getElementById('queimada-stand-btn').disabled = false;
+    }
+
+    async function startQueimadaGame() {
+      try {
+        const r = await fetch('/api/minigames/queimada/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'wallet-address': userWalletAddress }
+        });
+        const data = await r.json();
+        if (!r.ok) { showToast(data.error || 'Error', true); return; }
+
+        _queimadaActive = true;
+        _queimadaIngredients = [];
+        _queimadaScore = 0;
+        document.getElementById('queimada-start-btn').style.display = 'none';
+        document.getElementById('queimada-actions').style.display = 'flex';
+        loadCorchoBalance();
+      } catch (e) { showToast('Error de red', true); }
+    }
+
+    async function drawQueimadaIngredient() {
+      if (!_queimadaActive) return;
+      document.getElementById('queimada-draw-btn').disabled = true;
+
+      try {
+        const r = await fetch('/api/minigames/queimada/draw', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'wallet-address': userWalletAddress }
+        });
+        const data = await r.json();
+        if (!r.ok) { showToast(data.error || 'Error', true); document.getElementById('queimada-draw-btn').disabled = false; return; }
+
+        _queimadaScore += data.value;
+        _queimadaIngredients.push(data);
+
+        // Mostrar último ingrediente con animación
+        const lastEl = document.getElementById('queimada-last-ingredient');
+        lastEl.style.display = 'block';
+        lastEl.style.animation = 'none';
+        requestAnimationFrame(() => {
+          lastEl.style.animation = 'fadeInUp 0.5s ease';
+        });
+        document.getElementById('queimada-last-icon').textContent = data.icon;
+        document.getElementById('queimada-last-name').textContent = data.name;
+        document.getElementById('queimada-last-value').textContent = `+${data.value}`;
+
+        // Actualizar score
+        document.getElementById('queimada-score').textContent = _queimadaScore;
+        const pct = Math.min((_queimadaScore / 21) * 100, 110);
+        const bar = document.getElementById('queimada-bar');
+        bar.style.width = pct + '%';
+        if (_queimadaScore > 21) {
+          bar.style.background = '#ef4444';
+        } else if (_queimadaScore >= 18) {
+          bar.style.background = 'linear-gradient(90deg, #16a34a, #22c55e)';
+        } else if (_queimadaScore >= 15) {
+          bar.style.background = 'linear-gradient(90deg, #16a34a, #facc15)';
+        }
+
+        // Pill de ingrediente
+        const pillsEl = document.getElementById('queimada-ingredients');
+        const pill = document.createElement('div');
+        pill.style.cssText = 'background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:20px; padding:4px 10px; font-size:11px; color:#fff; white-space:nowrap;';
+        pill.textContent = `${data.icon} ${data.value}`;
+        pillsEl.appendChild(pill);
+
+        // Se pasó → auto-resolve
+        if (_queimadaScore > 21) {
+          _queimadaActive = false;
+          document.getElementById('queimada-draw-btn').disabled = true;
+          document.getElementById('queimada-stand-btn').disabled = true;
+          setTimeout(() => resolveQueimadaGame(), 800);
+          return;
+        }
+
+        document.getElementById('queimada-draw-btn').disabled = false;
+      } catch (e) {
+        showToast('Error de red', true);
+        document.getElementById('queimada-draw-btn').disabled = false;
+      }
+    }
+
+    function standQueimada() {
+      if (!_queimadaActive) return;
+      _queimadaActive = false;
+      document.getElementById('queimada-draw-btn').disabled = true;
+      document.getElementById('queimada-stand-btn').disabled = true;
+      resolveQueimadaGame();
+    }
+
+    async function resolveQueimadaGame() {
+      try {
+        const r = await fetch('/api/minigames/queimada/resolve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'wallet-address': userWalletAddress },
+          body: JSON.stringify({ ingredients: _queimadaIngredients, totalScore: _queimadaScore })
+        });
+        const data = await r.json();
+        if (!r.ok) { showToast(data.error || 'Error', true); return; }
+
+        document.getElementById('queimada-actions').style.display = 'none';
+        document.getElementById('queimada-last-ingredient').style.display = 'none';
+        const resultEl = document.getElementById('queimada-result');
+        const iconEl = document.getElementById('queimada-result-icon');
+        const textEl = document.getElementById('queimada-result-text');
+        const prizeEl = document.getElementById('queimada-result-prize');
+        resultEl.style.display = 'block';
+
+        if (data.result === 'burned') {
+          iconEl.textContent = '💀';
+          textEl.textContent = '¡SE QUEMÓ!';
+          prizeEl.textContent = 'Perdiste todo, neno';
+          prizeEl.style.color = '#ef4444';
+        } else if (data.result === 'weak') {
+          iconEl.textContent = '💨';
+          textEl.textContent = 'Queimada floja...';
+          prizeEl.textContent = 'Sin premio';
+          prizeEl.style.color = '#9ca3af';
+        } else if (data.result === 'good') {
+          iconEl.textContent = '👌';
+          textEl.textContent = 'Pasable';
+          prizeEl.textContent = `+${data.prize} $CORCHO`;
+          prizeEl.style.color = '#facc15';
+        } else if (data.result === 'great') {
+          iconEl.textContent = '🔥';
+          textEl.textContent = '¡Casi perfecta!';
+          prizeEl.textContent = `+${data.prize} $CORCHO`;
+          prizeEl.style.color = '#facc15';
+        } else {
+          iconEl.textContent = '🏆';
+          textEl.textContent = '¡¡QUEIMADA PERFECTA!!';
+          prizeEl.textContent = `+${data.prize} $CORCHO`;
+          prizeEl.style.color = '#22c55e';
+        }
+
+        loadCorchoBalance();
+
+        if (data.playsLeft > 0) {
+          document.getElementById('queimada-plays-label').textContent = `Partidas restantes hoy: ${data.playsLeft}`;
+          setTimeout(() => {
+            document.getElementById('queimada-start-btn').style.display = '';
+            document.getElementById('queimada-start-btn').textContent = '🔥 OTRA QUEIMADA';
+            document.getElementById('queimada-result').style.display = 'none';
+            document.getElementById('queimada-ingredients').innerHTML = '';
+            document.getElementById('queimada-score').textContent = '0';
+            document.getElementById('queimada-bar').style.width = '0%';
+            document.getElementById('queimada-bar').style.background = 'linear-gradient(90deg, #16a34a, #facc15)';
+            _queimadaIngredients = [];
+            _queimadaScore = 0;
+          }, 3000);
+        } else {
+          document.getElementById('queimada-plays-label').textContent = '¡Sin partidas! Vuelve mañana.';
+        }
+
+      } catch (e) { showToast('Error de red', true); }
+    }
+
   </script>
+
+  <style>
+    @keyframes flicker {
+      0% { opacity: 0.7; transform: translateY(0); }
+      100% { opacity: 1; transform: translateY(-3px); }
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
 
   <script src="/claim/app.js"></script>
 </body>

@@ -84,12 +84,58 @@ router.post('/cunca/pass', requireWallet, (req, res) => {
 // POST /api/admin/minigames/cunca/start (Admin only)
 router.post('/admin/cunca/start', (req, res) => {
   try {
-    // Basic admin check (this route should ideally be mounted under /api/admin)
-    // We'll trust the main app routing or add a simple check here
     const { targetWallet } = req.body;
     if (!targetWallet) return res.status(400).json({ error: 'Wallet requerida' });
     minigames.spawnCunca(targetWallet);
     res.json({ success: true });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// ==================== A RULETA DO PULPO ====================
+
+router.get('/ruleta/status', requireWallet, (req, res) => {
+  try {
+    res.json(minigames.getRuletaStatus(req.walletAddress));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/ruleta/spin', requireWallet, (req, res) => {
+  try {
+    const result = minigames.spinRuleta(req.walletAddress);
+    res.json(result);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// ==================== A QUEIMADA ====================
+
+router.get('/queimada/status', requireWallet, (req, res) => {
+  try {
+    res.json(minigames.getQueimadaStatus(req.walletAddress));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/queimada/start', requireWallet, (req, res) => {
+  try {
+    const result = minigames.startQueimada(req.walletAddress);
+    res.json(result);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+router.post('/queimada/draw', requireWallet, (req, res) => {
+  try {
+    const ingredient = minigames.drawIngredient();
+    res.json(ingredient);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/queimada/resolve', requireWallet, (req, res) => {
+  try {
+    const { ingredients, totalScore } = req.body;
+    if (!Array.isArray(ingredients) || typeof totalScore !== 'number') {
+      return res.status(400).json({ error: 'Datos inválidos' });
+    }
+    const result = minigames.resolveQueimada(req.walletAddress, ingredients, totalScore);
+    res.json(result);
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 

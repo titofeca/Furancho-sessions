@@ -2605,6 +2605,65 @@
               </div>
             </div>
 
+            <!-- A Ruleta do Pulpo -->
+            <div style="margin-top:16px; border-top:1px dashed rgba(42,21,9,0.1); padding-top:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h4 style="margin:0; font-size:13px; font-weight:800; color:var(--wine);">🐙 A Ruleta do Pulpo</h4>
+                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                  <input type="checkbox" id="minigame-ruleta-enabled" style="width:16px; height:16px;" />
+                  <span style="font-size:12px; font-weight:700; color:var(--text);">Activar</span>
+                </label>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
+                <div>
+                  <label style="display:block; font-size:10px; font-weight:700;">Coste por tirada:</label>
+                  <input type="number" id="mg-rul-entry" class="input-field" style="font-size:12px; padding:4px 8px;" />
+                </div>
+                <div>
+                  <label style="display:block; font-size:10px; font-weight:700;">Tiradas/día:</label>
+                  <input type="number" id="mg-rul-max" class="input-field" style="font-size:12px; padding:4px 8px;" />
+                </div>
+              </div>
+              <p style="font-size:10px; color:var(--text-muted); margin:0 0 6px;">Premio por rodaja (0 = no gana):</p>
+              <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:6px;">
+                <div><label style="display:block; font-size:9px; font-weight:700;">Tentáculo seco:</label><input type="number" id="mg-rul-s0" class="input-field" style="font-size:11px; padding:3px 6px;" /></div>
+                <div><label style="display:block; font-size:9px; font-weight:700;">Pimentón frío:</label><input type="number" id="mg-rul-s1" class="input-field" style="font-size:11px; padding:3px 6px;" /></div>
+                <div><label style="display:block; font-size:9px; font-weight:700;">Cacheira seca:</label><input type="number" id="mg-rul-s2" class="input-field" style="font-size:11px; padding:3px 6px;" /></div>
+                <div><label style="display:block; font-size:9px; font-weight:700;">Sal grosa:</label><input type="number" id="mg-rul-s3" class="input-field" style="font-size:11px; padding:3px 6px;" /></div>
+                <div><label style="display:block; font-size:9px; font-weight:700;">Pimentón bueno:</label><input type="number" id="mg-rul-s4" class="input-field" style="font-size:11px; padding:3px 6px;" /></div>
+                <div><label style="display:block; font-size:9px; font-weight:700;">Aceite da casa:</label><input type="number" id="mg-rul-s5" class="input-field" style="font-size:11px; padding:3px 6px;" /></div>
+                <div><label style="display:block; font-size:9px; font-weight:700;">Feira de Lugo:</label><input type="number" id="mg-rul-s6" class="input-field" style="font-size:11px; padding:3px 6px;" /></div>
+                <div><label style="display:block; font-size:9px; font-weight:700;">Pulpo de Ouro:</label><input type="number" id="mg-rul-s7" class="input-field" style="font-size:11px; padding:3px 6px;" /></div>
+              </div>
+            </div>
+
+            <!-- A Queimada -->
+            <div style="margin-top:16px; border-top:1px dashed rgba(42,21,9,0.1); padding-top:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h4 style="margin:0; font-size:13px; font-weight:800; color:var(--wine);">🔥 A Queimada</h4>
+                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                  <input type="checkbox" id="minigame-queimada-enabled" style="width:16px; height:16px;" />
+                  <span style="font-size:12px; font-weight:700; color:var(--text);">Activar</span>
+                </label>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
+                <div>
+                  <label style="display:block; font-size:10px; font-weight:700;">Coste por partida:</label>
+                  <input type="number" id="mg-qm-entry" class="input-field" style="font-size:12px; padding:4px 8px;" />
+                </div>
+                <div>
+                  <label style="display:block; font-size:10px; font-weight:700;">Partidas/día:</label>
+                  <input type="number" id="mg-qm-max" class="input-field" style="font-size:12px; padding:4px 8px;" />
+                </div>
+              </div>
+              <p style="font-size:10px; color:var(--text-muted); margin:0 0 6px;">Multiplicador del premio (x veces lo apostado):</p>
+              <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
+                <div><label style="display:block; font-size:9px; font-weight:700;">21 (perfecta) ×:</label><input type="number" id="mg-qm-m21" class="input-field" style="font-size:11px; padding:3px 6px;" /></div>
+                <div><label style="display:block; font-size:9px; font-weight:700;">18-20 ×:</label><input type="number" id="mg-qm-m1820" class="input-field" style="font-size:11px; padding:3px 6px;" /></div>
+                <div><label style="display:block; font-size:9px; font-weight:700;">15-17 ×:</label><input type="number" id="mg-qm-m1517" class="input-field" style="font-size:11px; padding:3px 6px;" /></div>
+              </div>
+            </div>
+
             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:12px;">
               <button onclick="saveCorchoAdminSettings()" style="background:var(--gold); color:#fff; border:none; border-radius:10px; padding:9px 18px; font-size:12px; font-weight:700; cursor:pointer;">
                 💾 Guardar Config Juegos
@@ -4899,6 +4958,18 @@
         setVal('mg-cun-base', data.settings.cuncaBasePot);
         setVal('mg-cun-cost', data.settings.cuncaPassCost);
         setVal('mg-cun-time', data.settings.cuncaTimeoutMins);
+        // Ruleta do Pulpo
+        setCheck('minigame-ruleta-enabled', data.settings.ruletaEnabled);
+        setVal('mg-rul-entry', data.settings.ruletaEntryCost);
+        setVal('mg-rul-max', data.settings.ruletaMaxPlays);
+        for (let i = 0; i < 8; i++) setVal('mg-rul-s' + i, data.settings['ruletaSlice' + i]);
+        // A Queimada
+        setCheck('minigame-queimada-enabled', data.settings.queimadaEnabled);
+        setVal('mg-qm-entry', data.settings.queimadaEntryCost);
+        setVal('mg-qm-max', data.settings.queimadaMaxPlays);
+        setVal('mg-qm-m21', data.settings.queimadaMult21);
+        setVal('mg-qm-m1820', data.settings.queimadaMult1820);
+        setVal('mg-qm-m1517', data.settings.queimadaMult1517);
       }
 
       // Top Holders
@@ -5463,7 +5534,26 @@
       cuncaEnabled: document.getElementById('minigame-cunca-enabled').checked ? 1 : 0,
       cuncaBasePot: getVal('mg-cun-base'),
       cuncaPassCost: getVal('mg-cun-cost'),
-      cuncaTimeoutMins: getVal('mg-cun-time')
+      cuncaTimeoutMins: getVal('mg-cun-time'),
+      // Ruleta do Pulpo
+      ruletaEnabled: document.getElementById('minigame-ruleta-enabled').checked ? 1 : 0,
+      ruletaEntryCost: getVal('mg-rul-entry'),
+      ruletaMaxPlays: getVal('mg-rul-max'),
+      ruletaSlice0: getVal('mg-rul-s0'),
+      ruletaSlice1: getVal('mg-rul-s1'),
+      ruletaSlice2: getVal('mg-rul-s2'),
+      ruletaSlice3: getVal('mg-rul-s3'),
+      ruletaSlice4: getVal('mg-rul-s4'),
+      ruletaSlice5: getVal('mg-rul-s5'),
+      ruletaSlice6: getVal('mg-rul-s6'),
+      ruletaSlice7: getVal('mg-rul-s7'),
+      // A Queimada
+      queimadaEnabled: document.getElementById('minigame-queimada-enabled').checked ? 1 : 0,
+      queimadaEntryCost: getVal('mg-qm-entry'),
+      queimadaMaxPlays: getVal('mg-qm-max'),
+      queimadaMult21: getVal('mg-qm-m21'),
+      queimadaMult1820: getVal('mg-qm-m1820'),
+      queimadaMult1517: getVal('mg-qm-m1517')
     };
 
     try {
