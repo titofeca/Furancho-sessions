@@ -95,15 +95,20 @@
             video.loop = true;
             video.muted = true;
             video.playsInline = true;
+            // Hacer el contenedor padre del logo (header-logo-row) de ancho completo
+            img.parentNode.style.maxWidth = 'none';
+            img.parentNode.style.width = '100%';
+            img.parentNode.style.padding = '0';
+            img.parentNode.style.background = 'transparent';
+            img.parentNode.style.backdropFilter = 'none';
+            img.parentNode.style.border = 'none';
             
             // Hacer el vídeo gigante ocupando todo el ancho de la pantalla (edge-to-edge)
             video.style.width = '100vw';
             video.style.maxWidth = '100vw';
             video.style.height = 'auto';
             video.style.display = 'block';
-            video.style.marginLeft = 'calc(-50vw + 50%)'; // Rompe el padding del contenedor
-            video.style.marginTop = '0px';
-            video.style.marginBottom = '20px';
+            video.style.margin = '0'; // Ya no hace falta el hack del margin negativo porque el padre es 100%
             video.style.objectFit = 'cover';
             video.style.pointerEvents = 'none';
             video.style.borderRadius = '0px'; // Sin bordes para que toque los extremos
