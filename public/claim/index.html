@@ -34,9 +34,78 @@
               background-color: #fdf4ff !important;
               background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 20c-5-5-10-2-10 3s5 8 10 8 10-3 10-8-5-8-10-3z M30 40c-5 5-10 2-10-3s5-8 10-8 10 3 10 8-5 8-10 3z M20 30c-5-5-2-10 3-10s8 5 8 10-3 10-8 10-8-5-3-10z M40 30c5-5 2-10-3-10s-8 5-8 10 3 10 8 10 8-5 3-10z' fill='%23fbcfe8' fill-opacity='0.4' fill-rule='evenodd'/%3E%3C/svg%3E") !important;
             }
-            .bottom-nav { background: rgba(253, 244, 255, 0.9) !important; }
+            }
+            .bottom-nav { background: rgba(253, 244, 255, 0.9) !important; z-index: 10001; }
+            
+            /* Banner Superior */
+            .dresscode-banner {
+              position: fixed;
+              top: 0;
+              left: 0;
+              width: 100%;
+              background: linear-gradient(135deg, #d946ef, #f43f5e);
+              color: white;
+              text-align: center;
+              padding: 10px 14px;
+              font-family: 'Playfair Display', serif;
+              font-weight: 900;
+              font-size: 13px;
+              z-index: 10000;
+              box-shadow: 0 4px 12px rgba(217, 70, 239, 0.4);
+              letter-spacing: 1px;
+              text-transform: uppercase;
+              box-sizing: border-box;
+            }
+            body { padding-top: 40px !important; }
+            
+            /* Flores Desbordantes Manga/Castelao */
+            .flower-overlay {
+              position: fixed;
+              background-image: url('/assets/flower-castelao.png');
+              background-size: contain;
+              background-repeat: no-repeat;
+              pointer-events: none; /* No bloquean clics */
+              z-index: 9000; /* Por encima de las tarjetas, debajo del banner/nav */
+              mix-blend-mode: multiply;
+              opacity: 0.9;
+              filter: drop-shadow(0px 8px 16px rgba(0,0,0,0.2));
+            }
+            .flower-overlay.tl { top: -20px; left: -50px; width: 220px; height: 220px; transform: rotate(15deg); }
+            .flower-overlay.br { bottom: 50px; right: -60px; width: 260px; height: 260px; transform: rotate(-165deg); }
+            .flower-overlay.tr { top: 25%; right: -80px; width: 160px; height: 160px; transform: rotate(-45deg); opacity: 0.75; }
           </style>
         `);
+
+        // Inyectar el banner y las flores cuando el DOM cargue
+        document.addEventListener('DOMContentLoaded', () => {
+          const banner = document.createElement('div');
+          banner.className = 'dresscode-banner';
+          banner.innerHTML = '✨ SEMANA DRESSCODE: ¡Saca tus mejores galas! ✨';
+          document.body.prepend(banner);
+
+          const f1 = document.createElement('div'); f1.className = 'flower-overlay tl'; document.body.appendChild(f1);
+          const f2 = document.createElement('div'); f2.className = 'flower-overlay br'; document.body.appendChild(f2);
+          const f3 = document.createElement('div'); f3.className = 'flower-overlay tr'; document.body.appendChild(f3);
+
+          // Cambiar logos estáticos por el vídeo animado de flores
+          document.querySelectorAll('.header-logo-row img').forEach(img => {
+            img.style.display = 'none'; // Ocultar imagen estática
+            
+            const video = document.createElement('video');
+            video.src = '/assets/flores.mp4';
+            video.autoplay = true;
+            video.loop = true;
+            video.muted = true;
+            video.playsInline = true;
+            // Copiar los estilos de la imagen original para que encaje perfecto
+            video.style.cssText = img.style.cssText;
+            video.style.display = 'block';
+            video.style.objectFit = 'cover';
+            video.style.pointerEvents = 'none';
+            
+            img.parentNode.insertBefore(video, img);
+          });
+        });
       }
     })();
   </script>
