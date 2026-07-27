@@ -2981,13 +2981,7 @@
         <div id="agenda-list" style="display:flex; flex-direction:column; gap:10px;">Cargando...</div>
       </div>
 
-      <!-- Ranking de Tapas -->
-      <div class="card" style="margin-bottom:20px;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <h2 style="font-family:'Playfair Display',serif; font-size:18px; font-weight:700; color:var(--text); margin:0;">🏆 Ranking de Tapas</h2>
-          <button onclick="openTapasRankingModal()" style="background:linear-gradient(135deg, rgba(196,151,58,0.1), rgba(196,151,58,0.2)); color:var(--gold); border:1px solid rgba(196,151,58,0.3); border-radius:50px; padding:8px 16px; font-size:12px; font-weight:700; cursor:pointer;">Ver ranking</button>
-        </div>
-      </div>
+
 
       <!-- Analytics de sesiones -->
       <div class="card" style="margin-bottom:20px;">
@@ -3143,8 +3137,19 @@
 
         <button onclick="saveFeaturedCardConfig()" style="width:100%; background:var(--wine); color:#fff; border:none; border-radius:50px; padding:12px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">Guardar Tarjeta Dorada</button>
       </div>
-
     </div>
+
+    <!-- Ranking de Tapas (al final de Eventos) -->
+    <div class="card" style="margin-bottom:20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h2 style="font-family:'Playfair Display',serif; font-size:18px; font-weight:700; color:var(--text); margin:0;">🏆 Ranking de Tapas</h2>
+        <button onclick="loadTapasRanking()" style="background:transparent; border:none; cursor:pointer; font-size:16px;">🔄</button>
+      </div>
+      <p style="font-size:11px; color:var(--text-muted); margin-bottom:16px;">Descubre cuáles son las tapas más valoradas por los clientes en toda la historia del Furancho.</p>
+      <div id="tapas-ranking-list" style="display:flex; flex-direction:column; gap:10px;">Cargando ranking...</div>
+    </div>
+
+  </div>
 
     <!-- ==================== NFTs & LOGROS ==================== -->
     <div class="page" id="page-nfts">
@@ -3715,19 +3720,7 @@
   </div>
 </div>
 
-<!-- Modal Ranking de Tapas -->
-<div id="tapas-ranking-modal" class="modal-backdrop">
-  <div class="modal-content" style="max-height:85vh; overflow-y:auto; padding-bottom:30px;">
-    <div class="modal-header">
-      <h2 style="font-family:'Playfair Display',serif; font-size:24px; color:var(--text);">Ranking de Tapas</h2>
-      <button class="close-btn" onclick="document.getElementById('tapas-ranking-modal').style.display='none'">×</button>
-    </div>
-    <p style="font-size:13px; color:var(--text-muted); margin-bottom:20px;">Descubre cuáles son las tapas más valoradas por los clientes en toda la historia del Furancho.</p>
-    <div id="tapas-ranking-list" style="display:flex; flex-direction:column; gap:10px;">
-      <!-- Loaded via JS -->
-    </div>
-  </div>
-</div>
+
 
 <script>
   // Registro Service Worker para PWA Admin
@@ -4310,6 +4303,9 @@
         tile('Personas totales', num(t.covers)),
         tile('% VIP', pct(t.vipPct))
       ].join('');
+
+      // ── Ranking de Tapas (Global) ──
+      loadTapasRanking();
 
       // ── Ranking "qué renta más": eventos ordenados por beneficio ──
       const rankWrap = document.getElementById('finance-ranking-wrap');
@@ -8553,7 +8549,7 @@
     if (r.status === 'completed') {
       statusBadge = `<span style="font-size:9.5px; font-weight:700; border-radius:4px; padding:2px 6px; text-transform:uppercase; background:rgba(196,151,58,0.12); color:var(--gold); font-family:'Outfit',sans-serif;">${r.collectedAt ? 'Entregado' : 'Finalizado'}</span>`;
     } else if (r.status === 'forfeited') {
-      statusBadge = `<span style="font-size:9.5px; font-weight:700; border-radius:4px; padding:2px 6px; text-transform:uppercase; background:rgba(42,21,9,0.08); color:var(--text-muted); font-family:'Outfit',sans-serif;">⌛ Perdido</span>`;
+      statusBadge = `<span style="font-size:9.5px; font-weight:700; border-radius:4px; padding:2px 6px; text-transform:uppercase; background:rgba(42,21,9,0.08); color:var(--text-muted); font-size:10px; font-weight:700; padding:2px 8px; border-radius:100px;">⌛ Perdido</span>`;
     } else {
       statusBadge = `<span style="font-size:9.5px; font-weight:700; border-radius:4px; padding:2px 6px; text-transform:uppercase; background:rgba(196,151,58,0.15); color:#7A5A00; font-family:'Outfit',sans-serif;">Activo</span>`;
     }
@@ -10086,11 +10082,10 @@
   }
   // ─────────────────────────────────────────────────────────────────────
 
-  async function openTapasRankingModal() {
-    const modal = document.getElementById('tapas-ranking-modal');
+  async function loadTapasRanking() {
     const list = document.getElementById('tapas-ranking-list');
+    if (!list) return;
     list.innerHTML = `<p style="font-size:13px; color:var(--text-muted); text-align:center; padding:20px;">Cargando ranking...</p>`;
-    modal.style.display = 'flex';
     
     try {
       const res = await fetch(`/api/events/tapas/ranking`, { headers: authHeaders() });
