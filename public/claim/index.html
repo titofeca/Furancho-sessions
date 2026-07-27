@@ -55,8 +55,9 @@
               letter-spacing: 1px;
               text-transform: uppercase;
               box-sizing: border-box;
+              position: relative;
             }
-            body { padding-top: 40px !important; }
+            body { padding-top: 0px !important; }
             
             /* Flores Desbordantes Manga/Castelao */
             .flower-overlay {
@@ -67,10 +68,10 @@
               pointer-events: none; /* No bloquean clics */
               z-index: 9000; /* Por encima de las tarjetas, debajo del banner/nav */
               mix-blend-mode: multiply; /* Para que el fondo blanco desaparezca */
-              opacity: 0.55; /* Más translúcidas para dejar ver el fondo */
+              opacity: 0.45; /* Más translúcidas para dejar ver el fondo */
             }
-            .flower-overlay.tl { top: -20px; left: -50px; width: 220px; height: 220px; transform: rotate(15deg); }
-            .flower-overlay.br { bottom: 50px; right: -60px; width: 260px; height: 260px; transform: rotate(-165deg); }
+            .flower-overlay.tl { top: -20px; left: -20px; width: 220px; height: 220px; transform: rotate(15deg); }
+            .flower-overlay.br { bottom: 20px; right: -30px; width: 260px; height: 260px; transform: rotate(-165deg); }
           </style>
         `);
 
@@ -96,20 +97,21 @@
             video.muted = true;
             video.playsInline = true;
             // Hacer el contenedor padre del logo (header-logo-row) de ancho completo
-            img.parentNode.style.maxWidth = 'none';
-            img.parentNode.style.width = '100%';
+            img.parentNode.style.maxWidth = '100vw';
+            img.parentNode.style.width = '100vw';
             img.parentNode.style.padding = '0';
             img.parentNode.style.background = 'transparent';
             img.parentNode.style.backdropFilter = 'none';
             img.parentNode.style.border = 'none';
+            img.parentNode.style.display = 'block'; // Quitar flex para evitar problemas de centrado
             
             // Hacer el vídeo gigante ocupando todo el ancho de la pantalla (edge-to-edge)
             video.style.width = '100vw';
             video.style.maxWidth = '100vw';
-            video.style.height = 'auto';
+            video.style.height = 'auto'; // Mantener proporciones
             video.style.display = 'block';
             video.style.margin = '0'; // Ya no hace falta el hack del margin negativo porque el padre es 100%
-            video.style.objectFit = 'cover';
+            video.style.objectFit = 'contain';
             video.style.pointerEvents = 'none';
             video.style.borderRadius = '0px'; // Sin bordes para que toque los extremos
             video.style.boxShadow = '0 10px 30px rgba(217, 70, 239, 0.15)';
