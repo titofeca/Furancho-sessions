@@ -3946,10 +3946,7 @@
       dauEl.innerHTML = '<div style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Cargando...</div>';
       tabsEl.innerHTML = '<div style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Cargando...</div>';
 
-      const token = localStorage.getItem('furancho_admin_token');
-      const res = await fetch('/api/admin/analytics/usage', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const res = await apiFetch('/api/admin/analytics/usage');
       const data = await res.json();
       if (!data.success) throw new Error(data.error || 'Error');
 
