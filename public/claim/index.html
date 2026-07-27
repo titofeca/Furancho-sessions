@@ -11309,18 +11309,126 @@
   </div>
 
   <!-- MODAL: O ENXEBRE (WORDLE) -->
-  <div id="enxebre-modal" style="display:none; position:fixed; inset:0; z-index:2500; background:rgba(255,255,255,0.95); align-items:center; justify-content:flex-start; flex-direction:column; padding:18px;">
-    <button onclick="closeEnxebre()" style="position:absolute; top:16px; right:16px; background:none; border:none; font-size:24px; color:var(--wine); cursor:pointer; font-weight:900;">✕</button>
-    <button onclick="document.getElementById('enxebre-help-modal').style.display='flex'" style="position:absolute; top:16px; left:16px; background:none; border:none; font-size:22px; cursor:pointer;">❓</button>
-    
-    <h3 style="font-family:'Playfair Display',serif; font-size:24px; color:var(--wine); margin:20px 0 10px;">O Enxebre</h3>
-    <p style="font-size:12px; color:var(--text-muted); text-align:center; margin-bottom:20px; max-width:300px;">Adivina la palabra (5 letras) relacionada con la gastronomía gallega y de furancho.</p>
-    
-    <div id="enxebre-grid" style="display:grid; grid-template-columns:repeat(5, 1fr); gap:6px; margin-bottom:30px;">
-      <!-- Grid generada por JS (6 filas x 5 cols) -->
+  <div id="enxebre-modal" style="display:none; position:fixed; inset:0; z-index:2500; background:#e8dcc8; align-items:center; justify-content:flex-start; flex-direction:column; overflow-y:auto;">
+    <style>
+      #enxebre-modal {
+        background: linear-gradient(135deg, #e8dcc8 0%, #d4c4a8 40%, #e0d3bc 70%, #d9ccb4 100%);
+      }
+      .enx-paper-texture {
+        position:absolute; inset:0; pointer-events:none; opacity:0.08;
+        background-image: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(120,90,50,0.15) 3px, transparent 4px),
+                          repeating-linear-gradient(90deg, transparent, transparent 5px, rgba(120,90,50,0.1) 5px, transparent 6px);
+      }
+      .enx-bodegon { position:absolute; pointer-events:none; opacity:0.18; }
+      .enx-title {
+        font-family:'Playfair Display',serif; font-size:22px; color:#3d2b1f;
+        margin:14px 0 4px; letter-spacing:2px; text-transform:uppercase;
+        text-shadow: 1px 1px 0 rgba(255,255,255,0.4);
+      }
+      .enx-subtitle {
+        font-family:'Courier New',monospace; font-size:11px; color:#6b5744;
+        text-align:center; margin-bottom:12px; max-width:280px; line-height:1.4;
+        letter-spacing:0.5px;
+      }
+      .enx-grid-wrap {
+        background: rgba(255,252,245,0.85); border-radius:8px; padding:10px;
+        border:2px solid rgba(100,70,40,0.25); position:relative;
+        box-shadow: inset 0 1px 3px rgba(100,70,40,0.15), 0 2px 8px rgba(0,0,0,0.1);
+      }
+      .enx-grid-wrap::before {
+        content:''; position:absolute; top:-6px; left:50%; transform:translateX(-50%);
+        width:60%; height:4px; background:linear-gradient(90deg, transparent, rgba(100,70,40,0.3), transparent);
+        border-radius:2px;
+      }
+      .enx-cell {
+        width:100%; aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+        font-family:'Courier New','Courier',monospace; font-size:24px; font-weight:900;
+        text-transform:uppercase; color:#3d2b1f;
+        background: rgba(255,252,245,0.6);
+        border:2px solid rgba(100,70,40,0.2); border-radius:4px;
+        transition: background 0.3s, border-color 0.3s, color 0.3s, transform 0.15s;
+        box-shadow: inset 0 1px 2px rgba(100,70,40,0.08);
+        letter-spacing:1px;
+      }
+      .enx-cell.filled { border-color:rgba(100,70,40,0.4); transform:scale(1.02); }
+      .enx-cell.correct { background:#2d5a27; color:#f0ead6; border-color:#2d5a27; box-shadow:0 1px 4px rgba(45,90,39,0.4); }
+      .enx-cell.present { background:#a67c32; color:#f0ead6; border-color:#a67c32; box-shadow:0 1px 4px rgba(166,124,50,0.4); }
+      .enx-cell.absent  { background:#8c8279; color:#e8dcc8; border-color:#8c8279; box-shadow:none; }
+      .enx-key {
+        display:flex; align-items:center; justify-content:center;
+        padding:10px 0; border:none; border-radius:6px; cursor:pointer;
+        font-family:'Courier New','Courier',monospace; font-weight:800; font-size:14px;
+        color:#3d2b1f;
+        background: linear-gradient(180deg, #e8dcc8 0%, #d4c4a8 100%);
+        border:1.5px solid rgba(100,70,40,0.3);
+        box-shadow: 0 2px 0 rgba(100,70,40,0.25), 0 3px 6px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.4);
+        transition: transform 0.1s, box-shadow 0.1s, background 0.3s, color 0.3s;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .enx-key:active { transform:translateY(2px); box-shadow:0 0 0 rgba(0,0,0,0.1), inset 0 1px 2px rgba(100,70,40,0.2); }
+      .enx-key.correct { background:#2d5a27!important; color:#f0ead6!important; border-color:#2d5a27!important; }
+      .enx-key.present { background:#a67c32!important; color:#f0ead6!important; border-color:#a67c32!important; }
+      .enx-key.absent  { background:#8c8279!important; color:#d4c4a8!important; border-color:#8c8279!important; }
+    </style>
+    <div class="enx-paper-texture"></div>
+
+    <!-- Bodegón SVG: escena de furancho en tinta Castelao -->
+    <svg class="enx-bodegon" style="bottom:0;left:0;width:120px;height:180px;" viewBox="0 0 120 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Botella de vino -->
+      <path d="M45 170 L45 90 Q45 75 50 70 L50 40 Q50 35 48 35 L48 25 L62 25 L62 35 Q60 35 60 40 L60 70 Q65 75 65 90 L65 170 Z" stroke="#4a3728" stroke-width="1.5" stroke-dasharray="4 2" fill="none"/>
+      <ellipse cx="55" cy="170" rx="12" ry="3" stroke="#4a3728" stroke-width="1" stroke-dasharray="3 2" fill="none"/>
+      <rect x="48" y="100" width="14" height="20" rx="2" stroke="#4a3728" stroke-width="1" stroke-dasharray="2 2" fill="none"/>
+      <!-- Cunca -->
+      <path d="M80 145 Q78 165 85 168 L105 168 Q112 165 110 145 Z" stroke="#4a3728" stroke-width="1.5" stroke-dasharray="3 2" fill="none"/>
+      <path d="M110 148 Q120 150 120 158 Q120 165 110 165" stroke="#4a3728" stroke-width="1.2" stroke-dasharray="3 2" fill="none"/>
+      <path d="M82 143 Q95 138 108 143" stroke="#4a3728" stroke-width="0.8" stroke-dasharray="2 1" fill="none" opacity="0.6"/>
+    </svg>
+
+    <svg class="enx-bodegon" style="bottom:0;right:0;width:130px;height:160px;" viewBox="0 0 130 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Queso -->
+      <path d="M20 140 L60 125 L90 140 L50 150 Z" stroke="#4a3728" stroke-width="1.5" stroke-dasharray="4 2" fill="none"/>
+      <path d="M60 125 L60 135 L90 148 L90 140" stroke="#4a3728" stroke-width="1" stroke-dasharray="3 2" fill="none"/>
+      <circle cx="40" cy="140" r="2" stroke="#4a3728" stroke-width="0.8" fill="none"/>
+      <circle cx="55" cy="138" r="1.5" stroke="#4a3728" stroke-width="0.8" fill="none"/>
+      <!-- Pan -->
+      <ellipse cx="105" cy="145" rx="20" ry="12" stroke="#4a3728" stroke-width="1.5" stroke-dasharray="3 2" fill="none"/>
+      <path d="M90 143 Q105 130 120 143" stroke="#4a3728" stroke-width="1" stroke-dasharray="2 2" fill="none"/>
+      <line x1="100" y1="140" x2="102" y2="136" stroke="#4a3728" stroke-width="0.6" stroke-dasharray="1 2" opacity="0.5"/>
+      <line x1="108" y1="139" x2="110" y2="135" stroke="#4a3728" stroke-width="0.6" stroke-dasharray="1 2" opacity="0.5"/>
+    </svg>
+
+    <svg class="enx-bodegon" style="top:60px;right:8px;width:70px;height:120px;" viewBox="0 0 70 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Chorizos colgados -->
+      <line x1="35" y1="0" x2="35" y2="15" stroke="#4a3728" stroke-width="1" stroke-dasharray="2 2"/>
+      <path d="M25 15 Q22 30 25 50 Q28 55 30 50 Q27 30 30 15 Z" stroke="#4a3728" stroke-width="1.2" stroke-dasharray="3 2" fill="none"/>
+      <path d="M40 15 Q37 35 40 55 Q43 60 45 55 Q42 35 45 15 Z" stroke="#4a3728" stroke-width="1.2" stroke-dasharray="3 2" fill="none"/>
+      <line x1="24" y1="25" x2="31" y2="25" stroke="#4a3728" stroke-width="0.6" stroke-dasharray="1 1" opacity="0.5"/>
+      <line x1="24" y1="35" x2="31" y2="35" stroke="#4a3728" stroke-width="0.6" stroke-dasharray="1 1" opacity="0.5"/>
+      <line x1="39" y1="28" x2="46" y2="28" stroke="#4a3728" stroke-width="0.6" stroke-dasharray="1 1" opacity="0.5"/>
+      <line x1="39" y1="40" x2="46" y2="40" stroke="#4a3728" stroke-width="0.6" stroke-dasharray="1 1" opacity="0.5"/>
+    </svg>
+
+    <svg class="enx-bodegon" style="top:50px;left:8px;width:60px;height:100px;" viewBox="0 0 60 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Jarra de vino -->
+      <path d="M20 90 Q18 50 22 35 L38 35 Q42 50 40 90 Z" stroke="#4a3728" stroke-width="1.5" stroke-dasharray="3 2" fill="none"/>
+      <path d="M22 35 Q30 30 38 35" stroke="#4a3728" stroke-width="1" stroke-dasharray="2 2" fill="none"/>
+      <path d="M40 50 Q50 52 50 62 Q50 72 40 72" stroke="#4a3728" stroke-width="1.2" stroke-dasharray="3 2" fill="none"/>
+      <ellipse cx="30" cy="90" rx="11" ry="3" stroke="#4a3728" stroke-width="1" stroke-dasharray="2 2" fill="none"/>
+    </svg>
+
+    <button onclick="closeEnxebre()" style="position:absolute; top:12px; right:12px; background:rgba(74,55,40,0.1); border:1.5px solid rgba(74,55,40,0.25); border-radius:50%; width:32px; height:32px; font-size:18px; color:#4a3728; cursor:pointer; font-weight:900; z-index:1; display:flex; align-items:center; justify-content:center;">✕</button>
+    <button onclick="document.getElementById('enxebre-help-modal').style.display='flex'" style="position:absolute; top:12px; left:12px; background:rgba(74,55,40,0.1); border:1.5px solid rgba(74,55,40,0.25); border-radius:50%; width:32px; height:32px; font-size:18px; cursor:pointer; z-index:1; display:flex; align-items:center; justify-content:center;">❓</button>
+
+    <h3 class="enx-title">O Enxebre</h3>
+    <p class="enx-subtitle">Adivina a palabra (5 letras) da gastronomía galega.</p>
+
+    <div class="enx-grid-wrap">
+      <div id="enxebre-grid" style="display:grid; grid-template-columns:repeat(5, 1fr); gap:5px; width:100%; max-width:260px;">
+        <!-- Grid generada por JS (6 filas x 5 cols) -->
+      </div>
     </div>
 
-    <div id="enxebre-keyboard" style="display:flex; flex-direction:column; gap:6px; width:100%; max-width:350px;">
+    <div id="enxebre-keyboard" style="display:flex; flex-direction:column; gap:5px; width:100%; max-width:360px; margin-top:14px; padding:0 6px 16px;">
       <!-- Teclado generado por JS -->
     </div>
   </div>
@@ -11354,18 +11462,18 @@
   </div>
 
   <!-- MODAL HELP ENXEBRE -->
-  <div id="enxebre-help-modal" style="display:none; position:fixed; inset:0; z-index:2600; background:rgba(0,0,0,0.65); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); align-items:center; justify-content:center; padding:18px;">
-    <div style="background:var(--cream); width:100%; max-width:400px; border-radius:20px; padding:24px; border:1.5px solid var(--gold); box-shadow:0 20px 40px rgba(0,0,0,0.3); position:relative;">
-      <button onclick="document.getElementById('enxebre-help-modal').style.display='none'" style="position:absolute; top:16px; right:16px; background:none; border:none; font-size:20px; color:var(--text-muted); cursor:pointer;">✕</button>
-      <h3 style="font-family:'Playfair Display',serif; font-size:20px; color:var(--wine); margin:0 0 16px; text-align:center;">📖 Cómo jugar a O Enxebre</h3>
-      <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin-bottom:12px;">Adivina la palabra de gastronomía gallega (5 letras) en un máximo de 6 intentos.</p>
-      <ul style="font-size:13px; color:var(--text); padding-left:20px; margin-bottom:16px; line-height:1.5;">
-        <li>🟩 <b>VERDE:</b> La letra está en la palabra y en la posición correcta.</li>
-        <li>🟨 <b>AMARILLO:</b> La letra está en la palabra, pero en otro sitio.</li>
-        <li>⬜ <b>GRIS:</b> La letra no está en la palabra.</li>
+  <div id="enxebre-help-modal" style="display:none; position:fixed; inset:0; z-index:2600; background:rgba(61,43,31,0.65); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); align-items:center; justify-content:center; padding:18px;">
+    <div style="background:linear-gradient(135deg, #e8dcc8, #d4c4a8); width:100%; max-width:400px; border-radius:12px; padding:24px; border:2px solid rgba(74,55,40,0.3); box-shadow:0 20px 40px rgba(0,0,0,0.3); position:relative;">
+      <button onclick="document.getElementById('enxebre-help-modal').style.display='none'" style="position:absolute; top:14px; right:14px; background:rgba(74,55,40,0.1); border:1.5px solid rgba(74,55,40,0.25); border-radius:50%; width:28px; height:28px; font-size:16px; color:#4a3728; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
+      <h3 style="font-family:'Playfair Display',serif; font-size:20px; color:#3d2b1f; margin:0 0 16px; text-align:center; letter-spacing:1px;">Como xogar a O Enxebre</h3>
+      <p style="font-family:'Courier New',monospace; font-size:12px; color:#6b5744; line-height:1.5; margin-bottom:12px;">Adivina a palabra de gastronomía galega (5 letras) nun máximo de 6 intentos.</p>
+      <ul style="font-family:'Courier New',monospace; font-size:12px; color:#4a3728; padding-left:20px; margin-bottom:16px; line-height:1.7;">
+        <li style="margin-bottom:6px;"><span style="display:inline-block;width:18px;height:18px;background:#2d5a27;border-radius:3px;vertical-align:middle;margin-right:6px;"></span> <b>VERDE:</b> Letra correcta na posición correcta.</li>
+        <li style="margin-bottom:6px;"><span style="display:inline-block;width:18px;height:18px;background:#a67c32;border-radius:3px;vertical-align:middle;margin-right:6px;"></span> <b>ÁMBAR:</b> Letra correcta, pero noutro sitio.</li>
+        <li><span style="display:inline-block;width:18px;height:18px;background:#8c8279;border-radius:3px;vertical-align:middle;margin-right:6px;"></span> <b>GRIS:</b> A letra non está na palabra.</li>
       </ul>
-      <p style="font-size:13px; color:var(--wine); font-weight:bold; margin-bottom:0;">Premios (en $CORCHO):</p>
-      <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin-top:4px;">Cuantos menos intentos necesites para acertar, mayor será tu premio en monedas. Si fallas los 6 intentos, inténtalo de nuevo mañana.</p>
+      <p style="font-family:'Courier New',monospace; font-size:12px; color:#3d2b1f; font-weight:bold; margin-bottom:0;">Premios (en $CORCHO):</p>
+      <p style="font-family:'Courier New',monospace; font-size:11px; color:#6b5744; line-height:1.5; margin-top:4px;">Cantos menos intentos, máis gañas. Se non acertas en 6, proba mañá.</p>
     </div>
   </div>
 
@@ -12135,17 +12243,7 @@
         for (let c = 0; c < 5; c++) {
           const cell = document.createElement('div');
           cell.id = `enx-cell-${r}-${c}`;
-          cell.style.width = '100%';
-          cell.style.aspectRatio = '1';
-          cell.style.border = '2px solid rgba(196,151,58,0.2)';
-          cell.style.borderRadius = '8px';
-          cell.style.display = 'flex';
-          cell.style.alignItems = 'center';
-          cell.style.justifyContent = 'center';
-          cell.style.fontSize = '28px';
-          cell.style.fontWeight = '900';
-          cell.style.textTransform = 'uppercase';
-          cell.style.color = 'var(--wine)';
+          cell.className = 'enx-cell' + (enxebreGrid[r][c] ? ' filled' : '');
           cell.innerText = enxebreGrid[r][c];
           container.appendChild(cell);
         }
@@ -12167,16 +12265,10 @@
         rowDiv.style.justifyContent = 'center';
         row.forEach(key => {
           const btn = document.createElement('button');
-          btn.innerText = key;
+          btn.innerText = key === 'DEL' ? '⌫' : key;
           btn.id = `enx-key-${key}`;
+          btn.className = 'enx-key';
           btn.style.flex = key.length > 1 ? '1.5' : '1';
-          btn.style.padding = '12px 0';
-          btn.style.border = 'none';
-          btn.style.borderRadius = '6px';
-          btn.style.background = 'rgba(196,151,58,0.1)';
-          btn.style.color = 'var(--wine)';
-          btn.style.fontWeight = '800';
-          btn.style.cursor = 'pointer';
           btn.onclick = () => handleEnxebreInput(key);
           rowDiv.appendChild(btn);
         });
@@ -12230,11 +12322,12 @@
           const cell = document.getElementById(`enx-cell-${enxebreCurrentRow}-${i}`);
           const keyBtn = document.getElementById(`enx-key-${guess[i]}`);
           setTimeout(() => {
-            cell.style.color = '#fff';
-            cell.style.border = 'none';
-            if (status === 'correct') { cell.style.background = '#16a34a'; if(keyBtn) keyBtn.style.background = '#16a34a'; keyBtn.style.color='#fff'; }
-            else if (status === 'present') { cell.style.background = '#eab308'; if(keyBtn && keyBtn.style.background !== 'rgb(22, 163, 74)') { keyBtn.style.background = '#eab308'; keyBtn.style.color='#fff'; } }
-            else { cell.style.background = '#9ca3af'; if(keyBtn && keyBtn.style.background !== 'rgb(22, 163, 74)' && keyBtn.style.background !== 'rgb(234, 179, 8)') { keyBtn.style.background = '#9ca3af'; keyBtn.style.color='#fff'; } }
+            cell.className = 'enx-cell ' + status;
+            if (keyBtn) {
+              if (status === 'correct') { keyBtn.className = 'enx-key correct'; }
+              else if (status === 'present' && !keyBtn.classList.contains('correct')) { keyBtn.className = 'enx-key present'; }
+              else if (!keyBtn.classList.contains('correct') && !keyBtn.classList.contains('present')) { keyBtn.className = 'enx-key absent'; }
+            }
           }, i * 300);
         });
 
