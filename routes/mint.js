@@ -1041,6 +1041,25 @@ router.post('/profile', (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Telemetry endpoint para analíticas de uso de la app
+router.post('/analytics/ping', requireAuth, (req, res) => {
+  try {
+    const { recordAppAnalytics } = require('../db/database');
+    const { timeSpent = 0, opens = 0, tabs = {} } = req.body || {};
+    
+    // Ignorar pings vacíos
+    if (timeSpent === 0 && opens === 0 && Object.keys(tabs).length === 0) {
+      return res.json({ success: true });
+    }
+    
+    recordAppAnalytics(req.user.walletAddress, { timeSpent, opens, tabs });
+    res.json({ success: true });
+  } catch (e) {
+    console.error('[Analytics] Error procesando ping:', e.message);
+    res.status(500).json({ error: 'Error procesando analíticas' });
+  }
+});
+
 module.exports = router;
 module.exports.performCheckin = performCheckin;
 module.exports.computeDailyTapaStatus = computeDailyTapaStatus;

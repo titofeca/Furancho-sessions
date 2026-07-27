@@ -1201,6 +1201,34 @@
     </div>
 
     <!-- ==================== CLIENTES Y MÉTRICAS (unificado) ==================== -->
+    <div class="page" id="page-analytics">
+      <div class="page-header" style="margin-bottom:16px;">
+        <h1 class="page-title">📈 Uso App</h1>
+        <p class="page-subtitle">Analítica de uso de la app por parte de los clientes (últimos 14 días)</p>
+      </div>
+      
+      <!-- DAU y Tiempo Medio -->
+      <div class="glass-card" style="margin-bottom:16px;">
+        <div class="card-header" style="margin-bottom:12px;">
+          <span class="card-title">Usuarios y Tiempos por Día</span>
+          <button onclick="loadAppAnalytics()" style="background:none; border:none; color:var(--text-muted); cursor:pointer;">↻ Actualizar</button>
+        </div>
+        <div id="analytics-dau-chart" style="display:flex; flex-direction:column; gap:8px;">
+          <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Cargando...</div>
+        </div>
+      </div>
+
+      <!-- Pestañas Populares -->
+      <div class="glass-card">
+        <div class="card-header" style="margin-bottom:12px;">
+          <span class="card-title">Pestañas más visitadas</span>
+        </div>
+        <div id="analytics-tabs-chart" style="display:flex; flex-direction:column; gap:8px;">
+          <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Cargando...</div>
+        </div>
+      </div>
+    </div>
+
     <div class="page" id="page-holders">
       <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
         <div>
@@ -3391,6 +3419,10 @@
       <span class="nav-icon">🪙</span>
       <span>Banco</span>
     </button>
+    <button class="nav-item" onclick="showPage('analytics')" id="nav-analytics">
+      <span class="nav-icon">📈</span>
+      <span>Uso App</span>
+    </button>
     <button class="nav-item" onclick="showPage('events')" id="nav-events" style="position:relative;">
       <span class="nav-icon">📅</span>
       <span>Eventos</span>
@@ -3891,6 +3923,7 @@
     if (pageId === 'messages') { loadMsgRsvpEvents(); loadScheduledMessages(); loadAchievementFilterOptions(); }
     if (pageId === 'dashboard') { loadStats(); loadHourlyChart(); loadPresentByLevel(); }
     if (pageId === 'banco') { loadCorchoAdminStats(); loadCorchoPending(); loadMemeShop(); }
+    if (pageId === 'analytics') loadAppAnalytics();
 
     loadVipBadge();
     if (pageId === 'holders') {
@@ -3906,6 +3939,81 @@
 
   // ===== Acceso camareros: código + enlace para compartir =====
   let _staffCodeShown = false, _staffCodeVal = null;
+
+  async function loadAppAnalytics() {
+    const dauEl = document.getElementById('analytics-dau-chart');
+    const tabsEl = document.getElementById('analytics-tabs-chart');
+    if (!dauEl || !tabsEl) return;
+
+    try {
+      dauEl.innerHTML = '<div style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Cargando...</div>';
+      tabsEl.innerHTML = '<div style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Cargando...</div>';
+
+      const token = localStorage.getItem('furancho_admin_token');
+      const res = await fetch('/api/admin/analytics/usage', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Error');
+
+      // DAU & Time Chart
+      let htmlDau = '<div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-bottom:8px;"><span>Fecha</span><span>Usuarios (Media mins)</span></div>';
+      const maxDau = Math.max(...data.chartData.map(d => d.dau), 1);
+      
+      data.chartData.slice().reverse().forEach(row => {
+        const pct = (row.dau / maxDau) * 100;
+        const color = row.dau > 0 ? '#16a34a' : 'rgba(42,21,9,0.1)';
+        htmlDau += `
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div style="width:70px; font-size:11px; font-family:monospace; color:var(--text-muted);">${row.day.substring(5)}</div>
+            <div style="flex:1; height:18px; background:rgba(42,21,9,0.05); border-radius:4px; position:relative; overflow:hidden;">
+              <div style="position:absolute; top:0; left:0; height:100%; width:${pct}%; background:${color}; border-radius:4px;"></div>
+            </div>
+            <div style="width:60px; font-size:11px; font-weight:700; text-align:right;">${row.dau} <span style="font-weight:400; color:var(--text-muted);">(${row.avgTimeMins}m)</span></div>
+          </div>
+        `;
+      });
+      dauEl.innerHTML = htmlDau;
+
+      // Tabs Popularity
+      const t = data.tabAgg || {};
+      const totalTabs = data.totalTabs || 1;
+      let htmlTabs = '';
+      
+      const tabNames = {
+        'screen-profile': 'Perfil 👤',
+        'screen-shop': 'Tienda 🪙',
+        'screen-raffles': 'Sorteos 🎰',
+        'screen-events': 'Eventos 📅',
+        'screen-dashboard': 'Tablón 📋'
+      };
+
+      const sortedTabs = Object.entries(t).sort((a, b) => b[1] - a[1]);
+      
+      if (sortedTabs.length === 0) {
+        htmlTabs = '<div style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Aún no hay clics registrados.</div>';
+      } else {
+        sortedTabs.forEach(([k, v]) => {
+          const name = tabNames[k] || k;
+          const pct = Math.round((v / totalTabs) * 100);
+          htmlTabs += `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <div style="font-size:12px; font-weight:600;">${name}</div>
+              <div style="font-size:12px; color:var(--text-muted);">${v} clics (${pct}%)</div>
+            </div>
+            <div style="height:6px; background:rgba(42,21,9,0.05); border-radius:4px; margin-bottom:12px; overflow:hidden;">
+              <div style="height:100%; width:${pct}%; background:var(--wine); border-radius:4px;"></div>
+            </div>
+          `;
+        });
+      }
+      tabsEl.innerHTML = htmlTabs;
+
+    } catch (e) {
+      dauEl.innerHTML = `<div style="color:var(--wine); font-size:12px; padding:10px;">Error: ${e.message}</div>`;
+      tabsEl.innerHTML = '';
+    }
+  }
   async function loadStaffCode() {
     const link = document.getElementById('staff-link');
     if (link) { link.href = location.origin + '/staff'; link.textContent = location.origin + '/staff'; }

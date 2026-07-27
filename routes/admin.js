@@ -2249,6 +2249,62 @@ router.post('/claim-daily-tapa', requireAuth, (req, res) => {
   }
 });
 
+router.get('/analytics/usage', requireAuth, (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const today = new Date();
+    const days = [];
+    
+    // Generar últimos 14 días (Madrid time)
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      days.push(d.toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' }));
+    }
+    
+    const rows = db.prepare(`
+      SELECT session_date, COUNT(*) as dau, 
+             SUM(opens) as total_opens, 
+             SUM(time_spent_seconds) as total_time
+      FROM app_analytics
+      WHERE session_date >= ?
+      GROUP BY session_date
+    `).all(days[0]);
+
+    const byDay = {};
+    rows.forEach(r => { byDay[r.session_date] = r; });
+
+    const chartData = days.map(day => {
+      const row = byDay[day] || { dau: 0, total_opens: 0, total_time: 0 };
+      return {
+        day,
+        dau: row.dau,
+        avgTimeMins: row.dau ? Math.round((row.total_time / row.dau) / 60) : 0,
+        avgOpens: row.dau ? (row.total_opens / row.dau).toFixed(1) : 0
+      };
+    });
+
+    // Pestañas populares (últimos 14 días)
+    const allRows = db.prepare(`SELECT tab_views FROM app_analytics WHERE session_date >= ?`).all(days[0]);
+    const tabAgg = {};
+    let totalTabs = 0;
+    allRows.forEach(r => {
+      try {
+        const t = JSON.parse(r.tab_views);
+        for (const [k, v] of Object.entries(t)) {
+          tabAgg[k] = (tabAgg[k] || 0) + v;
+          totalTabs += v;
+        }
+      } catch (e) {}
+    });
+
+    res.json({ success: true, chartData, tabAgg, totalTabs });
+  } catch (e) {
+    console.error('Error fetching analytics:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;
 module.exports.requireAuth = requireAuth;
 module.exports.verifyAdminToken = verifyToken;

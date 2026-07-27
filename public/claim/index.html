@@ -12805,6 +12805,76 @@
       } catch (e) { showToast('Error de red', true); }
     }
 
+    // --- TELEMETRY / APP ANALYTICS ---
+    (function initAppAnalytics() {
+      let unreportedTime = 0;
+      let unreportedOpens = 0;
+      let unreportedTabs = {};
+      let lastVisibleTime = document.visibilityState === 'visible' ? Date.now() : 0;
+      
+      // Track initial open
+      if (document.visibilityState === 'visible') unreportedOpens++;
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          lastVisibleTime = Date.now();
+          unreportedOpens++;
+        } else {
+          if (lastVisibleTime > 0) {
+            unreportedTime += Math.floor((Date.now() - lastVisibleTime) / 1000);
+            lastVisibleTime = 0;
+          }
+          sendTelemetry(); // Flush on hide
+        }
+      });
+
+      // Intercept showScreen
+      const originalShowScreen = window.showScreen;
+      window.showScreen = function(id) {
+        if (!unreportedTabs[id]) unreportedTabs[id] = 0;
+        unreportedTabs[id]++;
+        if (originalShowScreen) originalShowScreen(id);
+      };
+
+      // Periodic flush
+      setInterval(() => {
+        if (document.visibilityState === 'visible' && lastVisibleTime > 0) {
+          unreportedTime += Math.floor((Date.now() - lastVisibleTime) / 1000);
+          lastVisibleTime = Date.now();
+        }
+        sendTelemetry();
+      }, 30000);
+
+      function sendTelemetry() {
+        if (unreportedTime === 0 && unreportedOpens === 0 && Object.keys(unreportedTabs).length === 0) return;
+        if (!window.userWalletAddress) return; // Wait until identified
+
+        const payload = {
+          walletAddress: window.userWalletAddress,
+          timeSpent: unreportedTime,
+          opens: unreportedOpens,
+          tabs: unreportedTabs
+        };
+        
+        // Reset counters
+        unreportedTime = 0;
+        unreportedOpens = 0;
+        unreportedTabs = {};
+
+        // Use beacon if available (good for page hide), otherwise fetch
+        if (navigator.sendBeacon) {
+          const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+          navigator.sendBeacon('/api/mint/analytics/ping', blob);
+        } else {
+          fetch('/api/mint/analytics/ping', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'wallet-address': window.userWalletAddress },
+            body: JSON.stringify(payload),
+            keepalive: true
+          }).catch(() => {});
+        }
+      }
+    })();
   </script>
 
   <style>

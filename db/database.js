@@ -857,6 +857,20 @@ try {
 
 // conseguirlos. Se guardan aquí SOLO los que el admin ha decidido OCULTAR; por defecto
 // (no está en la tabla) el logro se muestra. Aplica a logros del código y creados.
+
+
+
+  db.exec(`CREATE TABLE IF NOT EXISTS app_analytics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_address TEXT,
+    session_date TEXT,
+    opens INTEGER DEFAULT 0,
+    time_spent_seconds INTEGER DEFAULT 0,
+    tab_views TEXT DEFAULT '{}',
+    last_updated TEXT DEFAULT (datetime('now'))
+  )`);
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_app_analytics_wallet_date ON app_analytics(wallet_address, session_date)`);
+
 try {
   db.exec(`CREATE TABLE IF NOT EXISTS achievement_hidden_locked (
     achievement_id TEXT PRIMARY KEY,
@@ -3202,8 +3216,46 @@ try {
   )`);
 } catch (_) {}
 
+function recordAppAnalytics(walletAddress, data) {
+  if (!walletAddress || !data) return;
+  try {
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+    const { opens = 0, timeSpent = 0, tabs = {} } = data;
+    
+    db.exec('BEGIN IMMEDIATE');
+    
+    const existing = db.prepare(`SELECT * FROM app_analytics WHERE wallet_address = ? AND session_date = ?`).get(walletAddress, todayStr);
+    
+    if (!existing) {
+      db.prepare(`
+        INSERT INTO app_analytics (wallet_address, session_date, opens, time_spent_seconds, tab_views)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(walletAddress, todayStr, opens, timeSpent, JSON.stringify(tabs));
+    } else {
+      const currentTabs = JSON.parse(existing.tab_views || '{}');
+      for (const [tab, count] of Object.entries(tabs)) {
+        currentTabs[tab] = (currentTabs[tab] || 0) + count;
+      }
+      db.prepare(`
+        UPDATE app_analytics 
+        SET opens = opens + ?, 
+            time_spent_seconds = time_spent_seconds + ?, 
+            tab_views = ?, 
+            last_updated = datetime('now')
+        WHERE id = ?
+      `).run(opens, timeSpent, JSON.stringify(currentTabs), existing.id);
+    }
+    
+    db.exec('COMMIT');
+  } catch (e) {
+    if (db.inTransaction) db.exec('ROLLBACK');
+    console.error('[Session] Error saving app analytics:', e.message);
+  }
+}
+
 module.exports = {
   db,
+  recordAppAnalytics,
   UPLOADS_DIR,
   registerAppInstall,
   getAppInstallStats,
