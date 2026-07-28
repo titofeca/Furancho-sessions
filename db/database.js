@@ -1205,7 +1205,6 @@ function checkRecentVisit(walletAddress, hours = 12) {
 function getVisitCount(walletAddress) {
   if (!walletAddress) return 0;
   
-  // 1. Calcular visitas reales
   const row = db.prepare(`
     SELECT COUNT(*) as count FROM (
       SELECT date(entry_time) as day FROM sessions WHERE LOWER(wallet_address) = LOWER(?) AND counted_as_visit = 1
@@ -1214,15 +1213,7 @@ function getVisitCount(walletAddress) {
     )
   `).get(walletAddress, walletAddress);
   
-  const realVisits = row ? row.count : 0;
-  if (realVisits === 0) return 0;
-
-  // 2. Restar penalizaciones (solo aplicadas manualmente, si las hubiera)
-  const penaltyRow = db.prepare(`SELECT SUM(penalty_visits) as total_penalty FROM level_decay_events WHERE LOWER(wallet_address) = LOWER(?)`).get(walletAddress);
-  const totalPenalty = penaltyRow && penaltyRow.total_penalty ? penaltyRow.total_penalty : 0;
-
-  const effectiveVisits = Math.max(1, realVisits - totalPenalty); // Nivel 1 mínimo (1 visita efectiva)
-  return effectiveVisits;
+  return row ? row.count : 0;
 }
 
 function checkAndApplyLevelDecay(walletAddress) {
@@ -2143,26 +2134,21 @@ try {
   const deact = db.prepare(`UPDATE events SET active = 0 WHERE active = 1 AND (title LIKE '%Test%' OR title LIKE '%test%')`).run();
   if (deact.changes > 0) console.log(`[DB] Higiene: ${deact.changes} evento(s) de prueba desactivado(s)`);
 
-  // 2) Sesiones de días sin evento → counted_as_visit = 0 (no son asistencia real).
-  //    Conservador: respeta la sesión si su fecha UTC o su fecha +2h coincide con un evento.
-  const unvisit = db.prepare(`
-    UPDATE sessions SET counted_as_visit = 0
-    WHERE counted_as_visit = 1
-      AND date(entry_time)            NOT IN (${EVENT_DATES_SQL})
-      AND date(entry_time, '+2 hours') NOT IN (${EVENT_DATES_SQL})
+  // 2) EMERGENCIA: Restaurar visitas perdidas. El script de higiene anterior borró visitas legítimas
+  // porque la tabla de eventos no tenía el histórico completo antiguo.
+  // Restauramos como visita (1) todas las sesiones ocurridas en Jueves (día del Furancho, %w=4).
+  const restore = db.prepare(`
+    UPDATE sessions 
+    SET counted_as_visit = 1 
+    WHERE strftime('%w', entry_time) = '4' 
+      AND counted_as_visit = 0
+      AND NOT (date(entry_time) = '2026-06-04' AND time(entry_time) < '17:30:00')
   `).run();
-  if (unvisit.changes > 0) console.log(`[DB] Higiene: ${unvisit.changes} sesión(es) de días sin evento desmarcadas como visita`);
+  if (restore.changes > 0) console.log(`[DB] Emergencia: Restauradas ${restore.changes} visita(s) legítimas de Jueves.`);
 
-  // 3) Sesiones zombi (abiertas, de hace >1 día, en día no-evento) → cerrar.
-  const zombies = db.prepare(`
-    UPDATE sessions
-    SET exit_time = datetime(entry_time, '+60 minutes'), duration_minutes = 60, auto_closed = 1
-    WHERE exit_time IS NULL
-      AND entry_time < datetime('now', '-1 day')
-      AND date(entry_time)            NOT IN (${EVENT_DATES_SQL})
-      AND date(entry_time, '+2 hours') NOT IN (${EVENT_DATES_SQL})
-  `).run();
-  if (zombies.changes > 0) console.log(`[DB] Higiene: ${zombies.changes} sesión(es) zombi cerradas`);
+  // Purgamos la tabla de penalizaciones que restaba visitas erróneamente en producción
+  db.prepare(`DELETE FROM level_decay_events`).run();
+  console.log(`[DB] Emergencia: Penalizaciones de decadencia purgadas.`);
 } catch (e) {
   console.warn('[DB] Higiene de datos falló:', e.message);
 }
