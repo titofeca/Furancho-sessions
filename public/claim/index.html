@@ -2259,15 +2259,15 @@
       <div class="profile-progress-card" style="padding:22px; margin-bottom:20px;">
 
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-          <p style="font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); margin:0;">Tu kilometraje furancheiro, ho</p>
+          <p style="font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); margin:0;">Kilometraje furancheiro</p>
           <!-- Indicador sesión activa -->
           <div id="session-active-badge" style="display:none; background:rgba(74,222,128,0.12); border:1px solid rgba(74,222,128,0.3); border-radius:100px; padding:4px 10px; font-size:10px; font-weight:700; color:#16a34a; white-space:nowrap;">
             🟢 Estás dentro, neno
           </div>
         </div>
 
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; gap:16px;">
-          <div style="display:flex; align-items:baseline; gap:6px; flex-shrink:0;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; gap:16px;">
+          <div onclick="openLevelsModal()" style="display:flex; align-items:baseline; gap:6px; flex-shrink:0; cursor:pointer;" title="Ver niveles VIP">
             <span id="visit-count-display" style="font-family:'Playfair Display',serif; font-size:42px; font-weight:900; color:var(--wine); line-height:1;">0</span>
             <span id="visit-total-display" style="font-size:14px; color:var(--text-muted);">visitas</span>
           </div>
@@ -2280,6 +2280,17 @@
             <button id="fichar-btn-exit" onclick="marcharDoFurancho()" style="width:100%; padding:12px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer; display:none; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 16px rgba(139,25,24,0.3); transition:all 0.3s ease;">
               🚪 Registrar Salida
             </button>
+          </div>
+        </div>
+
+        <!-- FOMO Next Level Indicator -->
+        <div id="next-level-indicator" onclick="openLevelsModal()" style="display:block; margin-bottom:20px; background:rgba(42,21,9,0.03); border:1px solid rgba(42,21,9,0.06); border-radius:12px; padding:10px 14px; cursor:pointer; transition:transform 0.15s ease;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <span id="next-level-text" style="font-size:12px; font-weight:600; color:var(--text);">Calculando próximo nivel...</span>
+            <span style="font-size:10px; color:var(--gold); font-weight:800; text-transform:uppercase; white-space:nowrap; margin-left:8px;">Niveles ›</span>
+          </div>
+          <div style="width:100%; height:4px; background:rgba(42,21,9,0.08); border-radius:4px; overflow:hidden;">
+            <div id="next-level-progress" style="height:100%; width:0%; background:var(--gold); border-radius:4px; transition:width 0.5s ease;"></div>
           </div>
         </div>
 
