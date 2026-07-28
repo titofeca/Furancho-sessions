@@ -9934,8 +9934,8 @@
               <span style="font-size:9px; font-weight:800; letter-spacing:0.5px; color:var(--gold); text-transform:uppercase;">Tapa</span>
               <span style="font-size:16px; font-weight:900; font-family:'Playfair Display',serif; color:var(--wine); line-height:1;">${idx+1}</span>
               <div style="display:flex; flex-direction:column; gap:1px; margin-top:2px;">
-                ${idx > 0 ? `<button onclick="moveTapa(${t.id},'up')" title="Subir" style="background:rgba(42,21,9,0.06); border:none; border-radius:4px; cursor:pointer; font-size:10px; padding:1px 5px; line-height:1.4; color:#7A6A5A;">▲</button>` : '<div style="height:18px;"></div>'}
-                ${idx < tapas.length-1 ? `<button onclick="moveTapa(${t.id},'down')" title="Bajar" style="background:rgba(42,21,9,0.06); border:none; border-radius:4px; cursor:pointer; font-size:10px; padding:1px 5px; line-height:1.4; color:#7A6A5A;">▼</button>` : ''}
+                ${idx > 0 ? `<button type="button" onclick="event.preventDefault(); event.stopPropagation(); moveTapa(${t.id},'up')" title="Subir" style="background:rgba(42,21,9,0.06); border:none; border-radius:4px; cursor:pointer; font-size:10px; padding:1px 5px; line-height:1.4; color:#7A6A5A;">▲</button>` : '<div style="height:18px;"></div>'}
+                ${idx < tapas.length-1 ? `<button type="button" onclick="event.preventDefault(); event.stopPropagation(); moveTapa(${t.id},'down')" title="Bajar" style="background:rgba(42,21,9,0.06); border:none; border-radius:4px; cursor:pointer; font-size:10px; padding:1px 5px; line-height:1.4; color:#7A6A5A;">▼</button>` : ''}
               </div>
             </div>
             <div style="flex:1; min-width:0;">
@@ -10045,7 +10045,7 @@
     const ALLERGEN_MAP = Object.fromEntries(ALLERGENS.map(a => [a.id, { icon: a.icon, name: a.name }]));
     const allergenChips = Object.entries(ALLERGEN_MAP).map(([id, a]) => {
       const sel = allergenList.includes(id);
-      return `<span onclick="this.classList.toggle('ae-sel')" data-id="${id}" class="ae-chip${sel?' ae-sel':''}" style="
+      return `<span onclick="toggleInlineAllergen(this)" data-id="${id}" class="ae-chip${sel?' ae-sel':''}" style="
         display:inline-flex; align-items:center; gap:3px; padding:4px 8px; border-radius:20px; cursor:pointer; font-size:11px; font-weight:600;
         border:1.5px solid ${sel?'rgba(139,25,24,0.4)':'rgba(42,21,9,0.12)'};
         background:${sel?'rgba(139,25,24,0.1)':'rgba(42,21,9,0.04)'};
@@ -10065,6 +10065,14 @@
           <button onclick="loadTapas(currentEventId)" style="flex:1; background:rgba(42,21,9,0.06); color:#7A6A5A; border:1px solid rgba(42,21,9,0.1); border-radius:10px; padding:11px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">Cancelar</button>
         </div>
       </div>`;
+  }
+
+  function toggleInlineAllergen(el) {
+    el.classList.toggle('ae-sel');
+    const sel = el.classList.contains('ae-sel');
+    el.style.border = sel ? '1.5px solid rgba(139,25,24,0.4)' : '1.5px solid rgba(42,21,9,0.12)';
+    el.style.background = sel ? 'rgba(139,25,24,0.1)' : 'rgba(42,21,9,0.04)';
+    el.style.color = sel ? 'var(--wine)' : '#7A6A5A';
   }
 
   async function saveTapaEdit(tapaId) {
