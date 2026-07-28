@@ -1529,7 +1529,7 @@
     /* ========== BOTONES ACCION RAPIDA ========== */
     .main-actions-row {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 8px;
       margin: 16px 0 24px;
       padding: 0 4px;
@@ -1601,6 +1601,103 @@
       color: var(--wine);
       letter-spacing: -0.2px;
       line-height: 1.1;
+    }
+
+    /* ========== CHAVE MEDALLON + BANNER ========== */
+    .chave-medallion-ring {
+      position: relative;
+      width: 46px; height: 46px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      filter: drop-shadow(0 3px 6px rgba(139,25,24,0.12));
+      transition: all 0.3s ease;
+    }
+    .chave-medallion-ring::before {
+      content: ''; position: absolute; inset: -1.5px; border-radius: 50%;
+      background: conic-gradient(from 0deg, var(--gold), #f3ddab, #b98a2e, var(--wine-light), var(--gold));
+      animation: portalSpin 8s linear infinite;
+      transition: all 0.3s ease;
+    }
+    .chave-medallion-core {
+      position: relative; z-index: 1; width: 100%; height: 100%; border-radius: 50%;
+      background: radial-gradient(circle at 34% 28%, #fffdf6, #f5ecd8 62%, #e9dcbe);
+      border: 2px solid rgba(255,255,255,0.92);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: inset 0 -3px 8px rgba(139,25,24,0.06), inset 0 1px 3px rgba(255,255,255,0.9);
+      transition: all 0.3s ease;
+    }
+    .chave-medallion-core svg { width: 22px; height: 22px; transition: all 0.3s ease; }
+    .action-medallion:hover .chave-medallion-core svg { transform: scale(1.1) translateY(-1px); }
+
+    /* Chave estados por color */
+    .chave-state-new .chave-medallion-ring::before { background: conic-gradient(from 0deg, #D85A30, #F0997B, #D85A30); }
+    .chave-state-new .chave-medallion-core { background: #FEF3EE; border-color: rgba(216,90,48,0.25); }
+    .chave-state-new .chave-medallion-core svg { stroke: #D85A30; }
+    .chave-state-new .medallion-label { color: #D85A30 !important; }
+
+    .chave-state-joined .chave-medallion-ring::before { background: conic-gradient(from 0deg, #1D9E75, #5DCAA5, #1D9E75); }
+    .chave-state-joined .chave-medallion-core { background: #EEFBF5; border-color: rgba(29,158,117,0.25); }
+    .chave-state-joined .chave-medallion-core svg { stroke: #1D9E75; }
+    .chave-state-joined .medallion-label { color: #0F6E56 !important; }
+
+    .chave-state-winner .chave-medallion-ring::before { background: conic-gradient(from 0deg, #EF9F27, #FAC775, #EF9F27); }
+    .chave-state-winner .chave-medallion-core { background: #FDF8EC; border-color: rgba(239,159,39,0.3); animation: chaveWinnerPulse 1.5s ease-in-out infinite; }
+    .chave-state-winner .chave-medallion-core svg { stroke: #BA7517; }
+    .chave-state-winner .medallion-label { color: #854F0B !important; }
+    @keyframes chaveWinnerPulse {
+      0%, 100% { box-shadow: inset 0 -3px 8px rgba(139,25,24,0.06), 0 0 0 0 rgba(239,159,39,0.35); }
+      50% { box-shadow: inset 0 -3px 8px rgba(139,25,24,0.06), 0 0 0 6px rgba(239,159,39,0); }
+    }
+
+    .chave-state-idle .chave-medallion-ring::before { background: conic-gradient(from 0deg, #aaa, #ddd, #aaa); animation: none; }
+    .chave-state-idle .chave-medallion-core { background: #f5f3ef; }
+    .chave-state-idle .chave-medallion-core svg { stroke: #999; }
+    .chave-state-idle .medallion-label { color: var(--text-muted) !important; }
+
+    .chave-state-lost .chave-medallion-ring::before { background: conic-gradient(from 0deg, #aaa, #ddd, #aaa); animation: none; }
+    .chave-state-lost .chave-medallion-core { background: #f5f3ef; }
+    .chave-state-lost .chave-medallion-core svg { stroke: #999; }
+    .chave-state-lost .medallion-label { color: var(--text-muted) !important; }
+
+    .chave-pill-badge {
+      position: absolute; top: -5px; right: -8px; z-index: 3;
+      font-size: 9px; font-weight: 800; padding: 2px 6px;
+      border-radius: 20px; white-space: nowrap; line-height: 1.3;
+      border: 1.5px solid #fff;
+    }
+
+    /* Banner de la Chave */
+    .chave-banner {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 14px;
+      margin: -12px 4px 20px;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .chave-banner:active { transform: scale(0.97); }
+    .chave-banner-icon {
+      width: 34px; height: 34px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .chave-banner-icon svg { width: 18px; height: 18px; }
+    .chave-banner-body { flex: 1; min-width: 0; }
+    .chave-banner-title { font-size: 13px; font-weight: 700; margin: 0; line-height: 1.3; }
+    .chave-banner-sub { font-size: 11px; font-weight: 500; margin: 2px 0 0; line-height: 1.3; }
+    .chave-banner-action {
+      font-size: 12px; font-weight: 800; padding: 6px 14px;
+      border-radius: 50px; white-space: nowrap; border: none;
+      cursor: pointer; font-family: 'Outfit', sans-serif;
+      transition: transform 0.1s; -webkit-tap-highlight-color: transparent;
+    }
+    .chave-banner-action:active { transform: scale(0.94); }
+    .chave-banner-chevron { font-size: 18px; color: var(--text-muted); flex-shrink: 0; line-height: 1; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .chave-state-winner .chave-medallion-core { animation: none; }
     }
 
     /* ========== RAFFLE MEJORADA ========== */
@@ -2237,6 +2334,23 @@
           </div>
           <div class="medallion-label">Ruta</div>
         </button>
+        <button id="chave-medallion" onclick="onChaveMedallionClick()" class="action-medallion chave-state-idle" aria-label="Chave Semanal">
+          <div class="chave-medallion-ring">
+            <span id="chave-pill" class="chave-pill-badge" style="display:none;"></span>
+            <div class="chave-medallion-core"><svg viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg></div>
+          </div>
+          <div class="medallion-label">Chave</div>
+        </button>
+      </div>
+
+      <!-- Banner Chave Semanal (aparece según estado) -->
+      <div id="chave-banner" class="chave-banner" style="display:none;">
+        <div id="chave-banner-icon" class="chave-banner-icon"></div>
+        <div class="chave-banner-body">
+          <p id="chave-banner-title" class="chave-banner-title"></p>
+          <p id="chave-banner-sub" class="chave-banner-sub"></p>
+        </div>
+        <span id="chave-banner-trail"></span>
       </div>
 
       <!-- Mantener compatibilidad con JS de raffle-status-text -->
@@ -2650,35 +2764,8 @@
         </div>
       </div>
 
-      <!-- ② EL SORTEO SEMANAL ("LA CHAVE SEMANAL") -->
-      <div class="profile-progress-card" id="weekly-claim-card" style="padding:14px 18px; margin-bottom:20px; border:1.5px solid rgba(196,151,58,0.3); background:linear-gradient(135deg, rgba(255, 255, 255, 0.75) 0%, rgba(245, 236, 216, 0.55) 100%); box-shadow: 0 10px 30px -10px rgba(42, 21, 9, 0.08); display:none;">
-        <details style="width:100%;" class="custom-details">
-          <summary style="list-style:none; cursor:pointer; display:flex; align-items:center; justify-content:space-between; outline:none; -webkit-tap-highlight-color:transparent;">
-            <div style="display:flex; align-items:center; gap:10px;">
-              <span style="font-size:24px; flex-shrink:0; line-height:1;">🔑</span>
-              <div>
-                <p style="font-size:10px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin:0;">Chave Semanal (Sorteo)</p>
-                <p id="weekly-prize-text" style="font-size:13px; font-weight:700; color:var(--wine); margin:2px 0 0;">Premio: Cargando...</p>
-              </div>
-            </div>
-            <span class="details-chevron" style="color:var(--gold); font-size:18px; font-weight:bold; transition:transform 0.3s;">▾</span>
-          </summary>
-          <div style="margin-top:14px; padding-top:14px; border-top:1px dashed rgba(196,151,58,0.3); display:flex; flex-direction:column; gap:12px;">
-            <p id="weekly-rules-text" style="font-size:13.5px; color:var(--text); font-weight:500; margin:0; line-height:1.5; display:block; white-space:pre-wrap; text-align:center;"></p>
-            <button id="weekly-claim-btn" onclick="claimWeeklyTicket()" style="
-              width:100%; padding:15px; border-radius:50px; font-size:15px; font-weight:800; cursor:pointer;
-              border:1.5px solid var(--wine); background:var(--wine); color:#fff;
-              font-family:'Outfit',sans-serif; transition:all 0.2s; outline:none; -webkit-tap-highlight-color:transparent;"
-              onmouseover="this.style.background='var(--wine-light)'; this.style.borderColor='var(--wine-light)';"
-              onmouseout="this.style.background='var(--wine)'; this.style.borderColor='var(--wine)';"
-              onmousedown="this.style.transform='scale(0.96)';">Trincar Boleto</button>
-            <p id="weekly-claim-tap-hint" class="chave-tap-hint" style="display:none; width:100%; justify-content:center; margin:0; font-size:12px; color:var(--wine);">👆 ¡Toca aquí, es gratis!</p>
-            <div style="text-align:center;">
-              <button id="weekly-info-btn" type="button" onclick="openChaveModal()" style="display:inline-block; background:rgba(139,25,24,0.06); border:1px solid rgba(139,25,24,0.15); padding:5px 12px; color:var(--wine); font-size:11.5px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; border-radius:100px; -webkit-tap-highlight-color:transparent; transition: all 0.2s;" onmouseover="this.style.background='rgba(139,25,24,0.12)'" onmouseout="this.style.background='rgba(139,25,24,0.06)'">ℹ️ ¿Cómo funciona?</button>
-            </div>
-          </div>
-        </details>
-      </div>
+      <!-- ② EL SORTEO SEMANAL — ahora integrado en medallon+banner; card legacy oculta -->
+      <div id="weekly-claim-card" style="display:none !important;"></div>
 
       <!-- ③ PRÓXIMAS SESSIONS -->
       <div id="agenda-section" style="margin-bottom:18px; display:none;">
@@ -9360,210 +9447,167 @@
     return _chaveLoserLines[h % _chaveLoserLines.length];
   }
 
+  function setChaveState(state, pillText, pillBg, pillColor) {
+    const med = document.getElementById('chave-medallion');
+    const pill = document.getElementById('chave-pill');
+    if (!med) return;
+    med.className = 'action-medallion ' + state;
+    if (pill) {
+      if (pillText) {
+        pill.textContent = pillText;
+        pill.style.display = 'block';
+        pill.style.background = pillBg || '#999';
+        pill.style.color = pillColor || '#fff';
+      } else {
+        pill.style.display = 'none';
+      }
+    }
+  }
+
+  function setChaveBanner(opts) {
+    const banner = document.getElementById('chave-banner');
+    if (!banner) return;
+    if (!opts || !opts.show) { banner.style.display = 'none'; return; }
+    banner.style.display = 'flex';
+    banner.style.background = opts.bg || 'transparent';
+    banner.style.border = opts.border || 'none';
+    banner.onclick = opts.onclick || null;
+
+    const icon = document.getElementById('chave-banner-icon');
+    if (icon) { icon.style.background = opts.iconBg || '#999'; icon.innerHTML = opts.iconSvg || ''; }
+
+    const title = document.getElementById('chave-banner-title');
+    if (title) { title.textContent = opts.title || ''; title.style.color = opts.titleColor || 'var(--text)'; }
+
+    const sub = document.getElementById('chave-banner-sub');
+    if (sub) { sub.textContent = opts.sub || ''; sub.style.color = opts.subColor || 'var(--text-muted)'; sub.style.display = opts.sub ? 'block' : 'none'; }
+
+    const trail = document.getElementById('chave-banner-trail');
+    if (trail) trail.innerHTML = opts.trail || '';
+  }
+
+  function onChaveMedallionClick() {
+    const data = _lastWeeklyData;
+    if (!data) {
+      showProfileBanner('🔑 La Chave Semanal abre el <strong>domingo a las 21:00</strong>. ¡Estate al loro, ho!', 'gold');
+      return;
+    }
+    openChaveModal();
+  }
+
   async function loadWeeklyRaffle() {
     if (!userWalletAddress) return;
-    const card = document.getElementById('weekly-claim-card');
-    const prizeText = document.getElementById('weekly-prize-text');
-    const rulesText = document.getElementById('weekly-rules-text');
-    const btn = document.getElementById('weekly-claim-btn');
-    if (!card || !prizeText || !btn) return;
+
+    const _keySvg = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>';
+    const _checkSvg = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+    const _trophySvg = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#412402" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>';
 
     try {
       const res = await resilientFetch(`/api/raffle/weekly/status?wallet=${userWalletAddress}`);
       const data = await res.json();
 
-      card.style.display = 'block';
-
-      // Guardar para el modal flotante con la info completa
       _lastWeeklyData = data;
-      const infoBtn = document.getElementById('weekly-info-btn');
-      if (infoBtn) infoBtn.style.display = 'inline-block';
 
-      // 1. Verificar si el usuario actual es el ganador del sorteo (soporta multi-ganador)
       const isWinner = isWeeklyWinner(data.winnerWallet, userWalletAddress);
 
-      // 1a. Ganador pendiente de CONFIRMAR (antes de las 23:59 de la noche del sorteo)
+      // 1a. Ganador pendiente de CONFIRMAR
       if (isWinner && data.status === 'completed' && !data.confirmedAt && data.confirmDeadline) {
         const deadlineMs = new Date(data.confirmDeadline.replace(' ', 'T') + 'Z').getTime();
         if (Date.now() < deadlineMs) {
-          btn.style.display = 'none';
           const deadlineStr = new Date(deadlineMs).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-          prizeText.innerHTML = `🏆 <strong>¡Te tocó la Chave, ho!</strong>`;
-          if (rulesText) {
-            rulesText.innerHTML = `
-              <p style="font-size:13px; color:var(--text-muted); margin:0 0 14px; line-height:1.5;">${data.prize}</p>
-              <div style="background:rgba(196,151,58,0.1); border:1.5px solid var(--gold); border-radius:14px; padding:14px;">
-                <p style="font-size:13px; color:var(--text); margin:0 0 10px; line-height:1.5;">⏰ Confirma que es para ti <strong>antes de las ${deadlineStr}</strong> o el premio se pierde, carallo.</p>
-                <button id="weekly-confirm-btn" onclick="confirmWeeklyPrize(this)" style="width:100%; padding:13px; background:linear-gradient(135deg,var(--wine),#6B1212); color:#fff; border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 4px 14px rgba(139,25,24,0.35);">
-                  🔑 ¡Es mío, ho! Confirmar premio
-                </button>
-              </div>`;
-          }
+          setChaveState('chave-state-winner', '🏆', '#EF9F27', '#412402');
+          setChaveBanner({
+            show: true,
+            bg: 'rgba(239,159,39,0.12)', border: '1.5px solid rgba(239,159,39,0.45)',
+            iconBg: '#EF9F27', iconSvg: _trophySvg,
+            title: '¡Te tocó a Chave, ho!', titleColor: '#412402',
+            sub: 'Confirma antes das ' + deadlineStr, subColor: '#854F0B',
+            trail: '<button class="chave-banner-action" style="background:#EF9F27; color:#412402;" onclick="event.stopPropagation(); confirmWeeklyPrize(this);">Confirmar</button>',
+            onclick: function() { openChaveModal(); }
+          });
           return;
         }
-        // Plazo vencido y el servidor aún no lo barrió → mostrar como perdido
-        btn.style.display = 'none';
-        prizeText.innerHTML = `🏆 <strong>Ganaste la Chave:</strong>`;
-        if (rulesText) {
-          rulesText.innerHTML = `
-            <p style="font-size:13px; color:var(--text-muted); margin:0 0 12px; line-height:1.5;">${data.prize}</p>
-            <div style="background:rgba(42,21,9,0.05); border:1.5px dashed rgba(42,21,9,0.2); border-radius:12px; padding:14px;">
-              <p style="font-size:13px; color:var(--text-muted); margin:0; line-height:1.5;">⌛ <strong>No confirmaste antes de las 23:59.</strong><br>El premio se dio por perdido, ho. ¡La próxima no se te escape!</p>
-            </div>`;
-        }
+        setChaveState('chave-state-lost', null);
+        setChaveBanner({ show: false });
         return;
       }
 
+      // 1b. Ganador confirmado
       if (isWinner && data.status === 'completed') {
-        // Ganador confirmado. Dos casos:
-        //  a) Premio NFT → "ven al furancho a por tu NFT" (sin código ni bono físico)
-        //  b) Premio físico → código de verificación + bono PDF (flujo de siempre)
-        btn.style.display = 'none';
-        prizeText.innerHTML = `🏆 <strong>¡Te tocó la Chave, ho!</strong>`;
-        const weekForPdf = data.currentWeek || _lastWeeklyData?.currentWeek;
-
-        if (data.nftAchievementId) {
-          if (rulesText) {
-            rulesText.innerHTML = `
-              <p style="font-size:13px; color:var(--text-muted); margin:0 0 14px; line-height:1.5;">${data.prize}</p>
-              <div style="background:linear-gradient(135deg, rgba(196,151,58,0.18), rgba(139,25,24,0.08)); border:1.5px solid var(--gold); border-radius:14px; padding:16px 14px; text-align:center;">
-                <p style="font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; color:var(--wine); margin:0 0 8px;">🏅 Premio NFT</p>
-                ${data.nftGranted
-                  ? '<p style="font-size:13px; color:var(--wine); font-weight:700; margin:0; line-height:1.5;">✅ Ya recogido — pendiente de confirmar por el admin, luego llega a tu wallet.</p>'
-                  : '<p style="font-size:13px; color:var(--text); margin:0; line-height:1.5;">Pásate por el furancho y enséñale tu <strong>🪪 ID Socio (QR)</strong> al camarero. Te lo entrega en persona ahí mismo.</p>'}
-              </div>`;
-            rulesText.insertAdjacentHTML('beforeend', weekForPdf ? weeklyChatBoxHtml(weekForPdf) : '');
-          }
-          return;
-        }
-
-        const bonoLink = weekForPdf
-          ? `<a href="/api/pdf/weekly/${encodeURIComponent(weekForPdf)}?wallet=${encodeURIComponent(userWalletAddress)}" target="_blank" style="display:block; margin-top:12px; padding:11px; background:rgba(196,151,58,0.12); border:1.5px solid var(--gold); color:var(--gold); border-radius:50px; font-size:13px; font-weight:700; text-decoration:none; text-align:center;">📄 Descargar bono PDF</a>`
-          : '';
-        if (rulesText) {
-          rulesText.innerHTML = `
-            <p style="font-size:13px; color:var(--text-muted); margin:0 0 14px; line-height:1.5;">${data.prize}</p>
-            <div style="background:rgba(139,25,24,0.06); border:1.5px dashed rgba(139,25,24,0.25); border-radius:14px; padding:16px 14px;">
-              <p style="font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); margin:0 0 6px;">🔑 Tu código del premio</p>
-              <p style="font-family:monospace; font-size:24px; font-weight:900; color:var(--wine); margin:0 0 6px; letter-spacing:4px;">${data.verificationCode || '—'}</p>
-              <p style="font-size:11px; color:var(--text-muted); margin:0;">Enséñaselo al staff para trincar el premio 🍷</p>
-            </div>
-            ${bonoLink}`;
-          rulesText.insertAdjacentHTML('beforeend', weekForPdf ? weeklyChatBoxHtml(weekForPdf) : '');
-        }
+        setChaveState('chave-state-winner', '✓', '#1D9E75', '#fff');
+        setChaveBanner({
+          show: true,
+          bg: 'rgba(239,159,39,0.08)', border: '1.5px solid rgba(196,151,58,0.3)',
+          iconBg: '#EF9F27', iconSvg: _trophySvg,
+          title: '¡Ganaste a Chave!', titleColor: '#412402',
+          sub: data.prize || 'Tu premio te espera', subColor: '#854F0B',
+          trail: '<span class="chave-banner-chevron">›</span>',
+          onclick: function() { openChaveModal(); }
+        });
         return;
       }
 
-      // 1b. Ganador de un premio que se dio por perdido (no confirmado/recogido a tiempo)
+      // 1c. Ganador con premio perdido
       if (isWinner && data.status === 'forfeited') {
-        btn.style.display = 'none';
-        prizeText.innerHTML = `🏆 <strong>Ganaste la Chave:</strong>`;
-        if (rulesText) {
-          rulesText.innerHTML = `
-            <p style="font-size:13px; color:var(--text-muted); margin:0 0 12px; line-height:1.5;">${data.prize}</p>
-            <div style="background:rgba(42,21,9,0.05); border:1.5px dashed rgba(42,21,9,0.2); border-radius:12px; padding:14px;">
-              <p style="font-size:13px; color:var(--text-muted); margin:0; line-height:1.5;">⌛ <strong>Premio dado por perdido</strong> — no se confirmó antes de las 23:59.<br>Quedó en tu historial como recuerdo. ¡La próxima no se te escape, ho! 🍷</p>
-            </div>`;
-          const weekForChat = data.currentWeek || _lastWeeklyData?.currentWeek;
-          rulesText.insertAdjacentHTML('beforeend', weekForChat ? weeklyChatBoxHtml(weekForChat) : '');
-        }
+        setChaveState('chave-state-lost', null);
+        setChaveBanner({ show: false });
         return;
       }
 
-      // 2. Si es un perdedor (participó pero no ganó en un sorteo completado o caducado):
-      // mensaje gracioso de "no ganaste" + aviso de que el domingo empieza uno nuevo.
+      // 2. Perdedor (participó pero no ganó)
       if ((data.status === 'completed' || data.status === 'forfeited') && data.claimed) {
-        btn.style.display = 'none';
-        prizeText.innerHTML = `🍀 <strong style="color:var(--wine);">Chave do Furancho</strong>`;
-        if (rulesText) {
-          rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:13px; line-height:1.5;">${chaveLoserLine(data.currentWeek)}<br>🔑 El <strong style="color:var(--wine);">domingo</strong> empieza un sorteo nuevo. ¡A por la revancha, rapaz!</span>`;
-        }
+        setChaveState('chave-state-lost', null);
+        setChaveBanner({ show: false });
         return;
       }
 
-      // 2b. El sorteo de esta semana YA se hizo y este furancheiro no se había apuntado:
-      // ya no puede trincar boleto hasta el próximo bombo (no enseñar el botón aunque
-      // estemos en horario de ventana — un sorteo adelantado cierra la semana en seco).
+      // 2b. Sorteo cerrado, no participó
       if (data.status === 'completed' || data.status === 'forfeited') {
-        btn.style.display = 'none';
-        prizeText.innerHTML = `🔑 <strong style="color:var(--wine);">Chave do Furancho</strong>`;
-        if (rulesText) {
-          rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:13px; line-height:1.5;">🎲 <strong>El sorteo de esta semana ya se hizo, ho.</strong> El <strong style="color:var(--wine);">domingo</strong> empieza uno nuevo — esta vez no te despistes, neno.</span>`;
-        }
+        setChaveState('chave-state-idle', null);
+        setChaveBanner({ show: false });
         return;
       }
 
-      // 3. Si no es el ganador ni participó de forma perdedora, validar si estamos dentro de la ventana de visibilidad activa (Domingo 21:00 a Miércoles 21:00)
+      // 3. Ventana activa (dom 21:00 – mié 21:00)
       const madridTimeStr = new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' });
       const madridDate = new Date(madridTimeStr);
-      const day = madridDate.getDay(); // 0=Dom..6=Sab
+      const day = madridDate.getDay();
       const hours = madridDate.getHours();
-
       let isActiveWindow = false;
-      if (day === 1 || day === 2) {
-        isActiveWindow = true;
-      } else if (day === 0) {
-        isActiveWindow = (hours >= 21);
-      } else if (day === 3) {
-        isActiveWindow = (hours < 21);
-      }
+      if (day === 1 || day === 2) isActiveWindow = true;
+      else if (day === 0) isActiveWindow = (hours >= 21);
+      else if (day === 3) isActiveWindow = (hours < 21);
 
       if (isActiveWindow) {
-        // Ventana activa: mostrar premio y permitir participación
-        btn.style.display = 'block';
-        const detailsLine = data.prizeDetails
-          ? `<span style="display:block; margin-top:4px; font-size:12px; font-weight:400; color:var(--text-muted); line-height:1.45;">${data.prizeDetails}</span>`
-          : '';
-        prizeText.innerHTML = `Premio: <strong style="color:var(--wine);">${data.prize || 'Sorpresa do Furancho'}</strong>${detailsLine}`;
-        if (rulesText) {
-          rulesText.textContent = data.rules || 'Trinca el boleto y a esperar al sorteo. ¡Un regalo de la hostia te puede tocar, rapaz!';
-        }
-
-        const tapHint = document.getElementById('weekly-claim-tap-hint');
-
         if (data.eligible === false) {
-          // Ve el premio pero no puede entrar (filtro de nivel/logro de esta edición).
-          btn.disabled = true;
-          btn.textContent = '🔒 No elegible';
-          btn.style.background = 'transparent';
-          btn.style.borderColor = 'rgba(139,25,24,0.25)';
-          btn.style.color = 'var(--text-muted)';
-          btn.classList.remove('chave-btn-attention');
-          card.classList.remove('chave-card-attention');
-          if (tapHint) tapHint.style.display = 'none';
-          if (rulesText) {
-            rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--wine); font-size:12.5px; font-weight:700; line-height:1.5;">🔒 ${data.eligibilityReason || 'Este sorteo es solo para ciertos furancheiros, ho.'}</span>`;
-          }
+          setChaveState('chave-state-idle', '🔒', 'rgba(42,21,9,0.55)', '#fff');
+          setChaveBanner({ show: false });
         } else if (data.claimed) {
-          btn.disabled = true;
-          btn.textContent = '✓ Participando';
-          btn.style.background = 'transparent';
-          btn.style.borderColor = 'rgba(139,25,24,0.3)';
-          btn.style.color = 'var(--wine)';
-          btn.classList.remove('chave-btn-attention');
-          card.classList.remove('chave-card-attention');
-          if (tapHint) tapHint.style.display = 'none';
+          setChaveState('chave-state-joined', '✓', '#1D9E75', '#fff');
+          setChaveBanner({
+            show: true,
+            bg: 'rgba(29,158,117,0.08)', border: '1.5px solid rgba(29,158,117,0.25)',
+            iconBg: '#1D9E75', iconSvg: _checkSvg,
+            title: 'Participando na Chave', titleColor: '#085041',
+            sub: 'Sorteo o xoves · ' + (data.prize || 'Sorpresa'), subColor: '#0F6E56',
+            trail: '<span class="chave-banner-chevron">›</span>',
+            onclick: function() { openChaveModal(); }
+          });
         } else {
-          btn.disabled = false;
-          btn.textContent = '🔑 ¡Trincar Boleto Ya!';
-          btn.style.background = '';
-          btn.style.borderColor = '';
-          btn.style.color = '#fff';
-          btn.classList.add('chave-btn-attention');
-          card.classList.add('chave-card-attention');
-          if (tapHint) tapHint.style.display = 'flex';
+          setChaveState('chave-state-new', 'Novo', '#D85A30', '#fff');
+          setChaveBanner({
+            show: true,
+            bg: 'rgba(216,90,48,0.08)', border: '1.5px solid rgba(216,90,48,0.25)',
+            iconBg: '#D85A30', iconSvg: _keySvg,
+            title: 'Chave semanal aberta', titleColor: '#712B13',
+            sub: 'Premio: ' + (data.prize || 'Sorpresa do Furancho'), subColor: '#993C1D',
+            trail: '<button class="chave-banner-action" style="background:#D85A30; color:#fff;" onclick="event.stopPropagation(); claimWeeklyTicket();">Entrar</button>',
+            onclick: function() { openChaveModal(); }
+          });
         }
       } else {
-        // Ventana inactiva (resto de la semana): mensaje del próximo sorteo + ocultar botón
-        btn.style.display = 'none';
-        btn.classList.remove('chave-btn-attention');
-        card.classList.remove('chave-card-attention');
-        const tapHint = document.getElementById('weekly-claim-tap-hint');
-        if (tapHint) tapHint.style.display = 'none';
-        prizeText.innerHTML = `🔑 <strong style="color:var(--wine);">Chave do Furancho</strong>`;
-        if (rulesText) {
-          rulesText.innerHTML = `<span style="display:block; margin-top:6px; color:var(--text-muted); font-size:13px; line-height:1.5;">⏳ El <strong style="color:var(--wine);">domingo a las 21:00</strong> empieza un sorteo nuevo de La Chave. ¡Estate al loro, ho!</span>`;
-        }
+        setChaveState('chave-state-idle', null);
+        setChaveBanner({ show: false });
       }
     } catch (e) {
       console.error('Error al cargar sorteo semanal:', e);
@@ -9604,10 +9648,9 @@
   }
 
   async function claimWeeklyTicket() {
-    const btn = document.getElementById('weekly-claim-btn');
-    if (!btn || btn.disabled || !userWalletAddress) return;
-    btn.disabled = true;
-    btn.textContent = 'Trincando...';
+    if (!userWalletAddress) return;
+    const bannerBtn = document.querySelector('#chave-banner-trail .chave-banner-action');
+    if (bannerBtn) { bannerBtn.disabled = true; bannerBtn.textContent = 'Trincando...'; }
 
     try {
       const res = await fetch('/api/raffle/weekly/claim', {
@@ -9615,56 +9658,39 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ walletAddress: userWalletAddress })
       });
-      
+
       const data = await res.json();
 
       if (res.status === 409) {
-        showProfileBanner('🎫 <strong>¡Tranquilo, ho!</strong> Ya estás apuntado para el sorteo de esta semana. El boleto ya está en el bombo.', 'gold');
+        showProfileBanner('🎫 <strong>¡Tranquilo, ho!</strong> Ya estás apuntado para el sorteo de esta semana.', 'gold');
         loadWeeklyRaffle();
         return;
       }
 
       if (res.status === 403) {
-        showProfileBanner('🚫 <strong>¡Ei, ho!</strong> Solo los furancheiros verificados pueden participar en la Chave Semanal. Pásate por el local y ficha tu entrada primero.', 'red');
-        btn.disabled = false;
-        btn.textContent = 'Trincar Boleto';
+        showProfileBanner('🚫 <strong>¡Ei, ho!</strong> Solo los furancheiros verificados pueden participar. Pásate por el local y ficha tu entrada primero.', 'red');
+        if (bannerBtn) { bannerBtn.disabled = false; bannerBtn.textContent = 'Entrar'; }
         return;
       }
 
       if (res.status === 429) {
-        showProfileBanner('⏳ <strong>¡Calma, rapaz!</strong> Demasiados intentos seguidos. Espera un momentito e inténtalo de nuevo.', 'gold');
-        btn.disabled = false;
-        btn.textContent = 'Trincar Boleto';
+        showProfileBanner('⏳ <strong>¡Calma, rapaz!</strong> Demasiados intentos. Espera un momentito.', 'gold');
+        if (bannerBtn) { bannerBtn.disabled = false; bannerBtn.textContent = 'Entrar'; }
         return;
       }
 
       if (data.success) {
-        btn.textContent = '✓ ¡Apuntado!';
-        btn.style.background = 'transparent';
-        btn.style.borderColor = 'rgba(139,25,24,0.3)';
-        btn.style.color = 'var(--wine)';
-        btn.classList.remove('chave-btn-attention');
-        const card0 = document.getElementById('weekly-claim-card');
-        if (card0) card0.classList.remove('chave-card-attention');
-        const tapHint0 = document.getElementById('weekly-claim-tap-hint');
-        if (tapHint0) tapHint0.style.display = 'none';
-
-        showProfileBanner('🎫 <strong>¡Boleto trincado, ho!</strong> Estás en el bombo de la Chave Semanal. Cruza los dedos.', 'green');
-
-        const card = document.getElementById('weekly-claim-card');
-        card.style.transform = 'scale(1.03)';
-        setTimeout(() => { card.style.transform = 'scale(1)'; }, 200);
-        
-        setTimeout(loadWeeklyRaffle, 1000);
+        showProfileBanner('🎫 <strong>¡Boleto trincado, ho!</strong> Estás en el bombo de la Chave Semanal.', 'green');
+        const med = document.getElementById('chave-medallion');
+        if (med) { med.style.transform = 'scale(1.08)'; setTimeout(function() { med.style.transform = ''; }, 250); }
+        setTimeout(loadWeeklyRaffle, 800);
       } else {
         showProfileBanner('❌ Error al trincar participación: ' + (data.error || 'Inténtalo de nuevo, ho.'), 'red');
-        btn.disabled = false;
-        btn.textContent = 'Trincar Boleto';
+        if (bannerBtn) { bannerBtn.disabled = false; bannerBtn.textContent = 'Entrar'; }
       }
     } catch (e) {
       showProfileBanner('📡 <strong>Error de red.</strong> Comprueba tu conexión e inténtalo de nuevo.', 'red');
-      btn.disabled = false;
-      btn.textContent = 'Trincar Boleto';
+      if (bannerBtn) { bannerBtn.disabled = false; bannerBtn.textContent = 'Entrar'; }
     }
   }
 
