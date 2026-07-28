@@ -2571,9 +2571,12 @@
               🎮 Jugar y Ganar $CORCHO
             </button>
 
+            <!-- Canjes pendientes de validar por staff -->
+            <div id="corcho-pending-section" style="display:none; margin-top:4px;"></div>
+
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
               <button onclick="openCorchoInfoModal()" style="background:none; border:none; color:var(--wine); font-size:12px; font-weight:800; cursor:pointer; text-decoration:underline;">ℹ️ Reglas do $CORCHO</button>
-              
+
               <!-- Desplegable Historial -->
               <details style="position:relative;">
                 <summary style="font-size:12px; font-weight:800; color:var(--wine); cursor:pointer; list-style:none; text-decoration:underline;">
@@ -12065,6 +12068,7 @@
   <script>
     // ── LÓGICA DEL BANCO DO CORCHO ($CORCHO) ──
     let _corchoData = null;
+    let _corchoItemsCache = [];
     const esc = str => (typeof escapeHtml === 'function' ? escapeHtml(str || '') : String(str || '').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
 
     async function openCorchoItemsModal() {
@@ -12108,8 +12112,9 @@
         ]);
 
         const items = itemsRes.items || [];
+        _corchoItemsCache = items;
         const isStoreOpen = econRes.storeOpenForItems !== false;
-        
+
         const userLvlText = document.getElementById('profile-card-level-tag')?.textContent || 'NIVEL 1';
         const userLvlNum = parseInt(userLvlText.replace(/\\D/g, ''), 10) || 1;
 
@@ -12139,7 +12144,7 @@
             ? `<button disabled style="padding:9px 14px; background:rgba(0,0,0,0.1); color:var(--text-muted); border:none; border-radius:20px; font-weight:800; font-size:12px; cursor:not-allowed; white-space:nowrap; flex-shrink:0;">
                  ${!isStoreOpen ? '🔒 Pechado' : (isLocked ? '🔒 VIP' : 'Agotado')}
                </button>`
-            : `<button onclick="redeemCorchoItem(${item.id}, '${esc(item.name).replace(/'/g, "\'")}', ${item.price_corcho})" style="padding:9px 14px; background:linear-gradient(135deg,var(--gold),#a47d2c); color:#2A1509; border:none; border-radius:20px; font-weight:900; font-size:12px; cursor:pointer; white-space:nowrap; flex-shrink:0;">
+            : `<button onclick="redeemCorchoItemById(${item.id})" style="padding:9px 14px; background:linear-gradient(135deg,var(--gold),#a47d2c); color:#2A1509; border:none; border-radius:20px; font-weight:900; font-size:12px; cursor:pointer; white-space:nowrap; flex-shrink:0;">
                  Canjear
                </button>`;
 
@@ -12223,6 +12228,12 @@
       document.getElementById('corcho-items-modal').style.display = 'none';
     }
 
+    function redeemCorchoItemById(itemId) {
+      const item = _corchoItemsCache.find(i => i.id === itemId);
+      if (!item) { showProfileBanner('❌ Artículo no encontrado. Recarga la tienda.', 'red'); return; }
+      redeemCorchoItem(itemId, item.name, item.price_corcho);
+    }
+
     async function redeemCorchoItem(itemId, itemName, price) {
       if (!userWalletAddress) { alert('Conecta tu wallet primero'); return; }
       if (!await corchoConfirm({
@@ -12302,7 +12313,62 @@
       if (_voucherTimerInterval) clearInterval(_voucherTimerInterval);
     }
 
+    let _pendingVouchersCache = [];
 
+    function openPendingVoucher(code) {
+      const v = _pendingVouchersCache.find(x => x.code === code);
+      if (!v) return;
+      openCorchoVoucherModal(v.itemName, v.itemEmoji || '🎁', { code: v.code, expiresAt: v.expiresAt });
+    }
+
+    async function loadCorchoPending() {
+      if (!userWalletAddress) return;
+      const section = document.getElementById('corcho-pending-section');
+      if (!section) return;
+      try {
+        const res = await resilientFetch(`/api/corcho/pending?wallet=${userWalletAddress}`);
+        const data = await res.json();
+        const vouchers = data.vouchers || [];
+        const packs = data.packs || [];
+        _pendingVouchersCache = vouchers;
+        if (!vouchers.length && !packs.length) { section.style.display = 'none'; return; }
+
+        let html = '<div style="background:rgba(239,159,39,0.08); border:1.5px solid rgba(239,159,39,0.3); border-radius:14px; padding:12px; display:flex; flex-direction:column; gap:8px;">';
+        html += '<p style="font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:#854F0B; margin:0;">Pendientes de validar</p>';
+
+        vouchers.forEach(v => {
+          const expMs = new Date(v.expiresAt.replace(' ', 'T') + 'Z').getTime();
+          const secsLeft = Math.max(0, Math.round((expMs - Date.now()) / 1000));
+          const mins = Math.floor(secsLeft / 60);
+          const secs = secsLeft % 60;
+          const timeStr = secsLeft > 0 ? String(mins).padStart(2,'0') + ':' + String(secs).padStart(2,'0') : 'Expirado';
+          html += `<div style="display:flex; align-items:center; gap:8px; padding:8px 10px; background:#fff; border-radius:10px; border:1px solid rgba(239,159,39,0.2);">
+            <span style="font-size:20px; flex-shrink:0;">${v.itemEmoji || '🎁'}</span>
+            <div style="flex:1; min-width:0;">
+              <p style="font-size:12px; font-weight:700; color:var(--wine); margin:0; line-height:1.3;">${esc(v.itemName)}</p>
+              <p style="font-size:10px; color:#854F0B; margin:1px 0 0; font-family:monospace; font-weight:700;">${v.code} · ${timeStr}</p>
+            </div>
+            <button onclick="openPendingVoucher('${v.code}')" style="padding:5px 10px; background:linear-gradient(135deg,var(--gold),#a47d2c); color:#2A1509; border:none; border-radius:20px; font-size:10px; font-weight:800; cursor:pointer; white-space:nowrap;">Ver vale</button>
+          </div>`;
+        });
+
+        packs.forEach(p => {
+          html += `<div style="display:flex; align-items:center; gap:8px; padding:8px 10px; background:#fff; border-radius:10px; border:1px solid rgba(239,159,39,0.2);">
+            <span style="font-size:20px; flex-shrink:0;">💳</span>
+            <div style="flex:1; min-width:0;">
+              <p style="font-size:12px; font-weight:700; color:var(--wine); margin:0; line-height:1.3;">Recarga: ${esc(p.packName)}</p>
+              <p style="font-size:10px; color:#854F0B; margin:1px 0 0;">+${p.coins} $CORCHO · ${p.priceEur}€ · Pendiente pago</p>
+            </div>
+          </div>`;
+        });
+
+        html += '</div>';
+        section.innerHTML = html;
+        section.style.display = 'block';
+      } catch (e) {
+        section.style.display = 'none';
+      }
+    }
 
     async function loadCorchoBalance() {
       if (!userWalletAddress) return;
@@ -12374,6 +12440,8 @@
             }).join('');
           }
         }
+
+        loadCorchoPending();
       } catch (e) {
         console.error('Error cargando Banco do Corcho:', e);
       }
