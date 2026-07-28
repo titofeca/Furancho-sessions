@@ -1077,10 +1077,10 @@ router.get('/profile', (req, res) => {
   try {
     const { walletAddress } = req.query;
     
-    const { getAppSetting, db } = require('../db/database');
+    const { getSetting, db } = require('../db/database');
     const marketing = {
-      easter_egg: getAppSetting('promo_easter_egg') === '1',
-      fomo: getAppSetting('promo_fomo') === '1'
+      easter_egg: getSetting('promo_easter_egg') === '1',
+      fomo: getSetting('promo_fomo') === '1'
     };
 
     if (!walletAddress) return res.json({ alias: '', marketing });
