@@ -316,8 +316,7 @@ router.post('/tapas/reorder', requireAuth, (req, res) => {
   try {
     const { db } = require('../db/database');
     const stmt = db.prepare(`UPDATE tapas SET sort_order=? WHERE id=?`);
-    const tx = db.transaction(() => items.forEach(item => stmt.run(item.sort_order, item.id)));
-    tx();
+    items.forEach(item => stmt.run(item.sort_order, item.id));
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
