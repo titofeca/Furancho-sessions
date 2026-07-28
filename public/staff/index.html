@@ -1165,6 +1165,9 @@
         } else if (c.error === 'qr_not_live'){
           bg = red; ic = '📵'; t = 'No es un QR en vivo';
           m = 'No aceptes capturas. Que el cliente abra su app y te enseñe el QR del Reto de los 5 en pantalla.';
+        } else if (c.error === 'terraza_closed') {
+          bg = red; ic = '🔒'; t = 'Terraza cerrada hoy';
+          m = 'Según el horario, hoy la terraza está cerrada. No se pueden fichar visitas de verano.';
         } else if (c.counted && c.completed){
           bg = gold; ic = '👑'; t = '¡LEYENDA DEL FURANCHO!';
           m = `¡Completó el Reto de los 5! Su NFT Furancho Legend queda pendiente de confirmar.`;

@@ -87,4 +87,13 @@ function saveTerrazaHours({ days, overrides, note }, updatedBy) {
   return cfg;
 }
 
-module.exports = { DAY_NAMES, getTerrazaHours, saveTerrazaHours };
+function isTerrazaOpenAt(d = new Date()) {
+  const dateStr = madridDateStr(Math.floor((d.getTime() - Date.now()) / 86400000));
+  const cfg = getTerrazaHours();
+  const ov = cfg.overrides.find(o => o.date === dateStr);
+  if (ov) return ov.open;
+  const dayIdx = (new Date(`${dateStr}T12:00:00`).getDay() + 6) % 7;
+  return cfg.days[dayIdx]?.open || false;
+}
+
+module.exports = { DAY_NAMES, getTerrazaHours, saveTerrazaHours, isTerrazaOpenAt };

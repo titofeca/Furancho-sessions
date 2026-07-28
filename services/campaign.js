@@ -225,6 +225,19 @@ function recordVisit(walletAddress, d = new Date()) {
       privilege: getPrivilegeTier(totalVisits)
     };
   }
+  
+  const { isTerrazaOpenAt } = require('./terraza');
+  if (!isTerrazaOpenAt(d)) {
+    const totalVisits = getCampaignVisitCount(walletAddress);
+    return {
+      active: true, counted: false, totalVisits,
+      required: CAMPAIGN.requiredVisits, completed: totalVisits >= CAMPAIGN.requiredVisits,
+      claimStatus: null, campaignName: CAMPAIGN.name,
+      error: 'terraza_closed',   // <── la terraza no está abierta hoy
+      privilege: getPrivilegeTier(totalVisits)
+    };
+  }
+
   return _doRecordVisit(walletAddress, madridDateStr(d));
 }
 
