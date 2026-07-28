@@ -2420,20 +2420,33 @@
             <!-- Botones Corcho (Resto en 1 línea) -->
             <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin:4px 0 8px;">
               <!-- Tienda -->
-              <button onclick="openCorchoItemsModal()" style="background:linear-gradient(165deg, rgba(22,163,74,0.1), rgba(21,128,61,0.05)); border:1.5px solid rgba(22,163,74,0.3); border-radius:14px; padding:10px 4px; display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(22,163,74,0.1);" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'">
-                <div style="width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg, #16a34a, #15803d); display:flex; align-items:center; justify-content:center; font-size:18px; box-shadow:0 4px 10px rgba(22,163,74,0.4);">🎁</div>
+              <button onclick="openCorchoItemsModal()" style="background:linear-gradient(165deg, rgba(22,163,74,0.08), rgba(21,128,61,0.03)); border:1.5px solid rgba(22,163,74,0.3); border-radius:14px; padding:12px 4px 10px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(22,163,74,0.08);" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'" ontouchend="this.style.transform='scale(1)'">
+                <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                  <line x1="3" y1="6" x2="21" y2="6"/>
+                  <path d="M16 10a4 4 0 0 1-8 0"/>
+                </svg>
                 <span style="font-family:'Outfit',sans-serif; font-size:11px; font-weight:800; color:#15803d; line-height:1.1; text-align:center;">Tienda</span>
               </button>
 
               <!-- Recargar -->
-              <button onclick="openCorchoPacksModal()" style="background:linear-gradient(165deg, rgba(212,175,55,0.1), rgba(169,123,31,0.05)); border:1.5px solid rgba(212,175,55,0.3); border-radius:14px; padding:10px 4px; display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(212,175,55,0.1);" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'">
-                <div style="width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg, var(--gold), #a97b1f); display:flex; align-items:center; justify-content:center; font-size:18px; box-shadow:0 4px 10px rgba(196,151,58,0.4);">💶</div>
+              <button onclick="openCorchoPacksModal()" style="background:linear-gradient(165deg, rgba(212,175,55,0.08), rgba(169,123,31,0.03)); border:1.5px solid rgba(212,175,55,0.3); border-radius:14px; padding:12px 4px 10px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(212,175,55,0.08);" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'" ontouchend="this.style.transform='scale(1)'">
+                <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#a97b1f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="5" width="20" height="14" rx="2"/>
+                  <line x1="2" y1="10" x2="22" y2="10"/>
+                  <path d="M12 15v-2m0 0v-2m0 2h2m-2 0H10"/>
+                </svg>
                 <span style="font-family:'Outfit',sans-serif; font-size:11px; font-weight:800; color:#a97b1f; line-height:1.1; text-align:center;">Recargar</span>
               </button>
 
               <!-- Traspasar -->
-              <button onclick="openCorchoTransferModal()" style="background:linear-gradient(165deg, rgba(42,21,9,0.1), rgba(42,21,9,0.02)); border:1.5px solid rgba(42,21,9,0.2); border-radius:14px; padding:10px 4px; display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(42,21,9,0.1);" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'">
-                <div style="width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg, rgba(42,21,9,0.85), rgba(100,40,20,0.9)); display:flex; align-items:center; justify-content:center; font-size:18px; box-shadow:0 4px 10px rgba(42,21,9,0.3);">🔄</div>
+              <button onclick="openCorchoTransferModal()" style="background:linear-gradient(165deg, rgba(42,21,9,0.08), rgba(42,21,9,0.02)); border:1.5px solid rgba(42,21,9,0.2); border-radius:14px; padding:12px 4px 10px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(42,21,9,0.06);" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'" ontouchend="this.style.transform='scale(1)'">
+                <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="rgba(42,21,9,0.85)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M17 1l4 4-4 4"/>
+                  <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                  <path d="M7 23l-4-4 4-4"/>
+                  <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+                </svg>
                 <span style="font-family:'Outfit',sans-serif; font-size:11px; font-weight:800; color:rgba(42,21,9,0.85); line-height:1.1; text-align:center;">Traspasar</span>
               </button>
             </div>
