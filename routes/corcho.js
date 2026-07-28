@@ -285,6 +285,14 @@ router.post('/redeem-item', (req, res) => {
       return res.status(400).json({ error: 'No se pudo procesar el canje.' });
     }
 
+    try {
+      const aliasRow = db.prepare(`SELECT alias FROM user_profiles WHERE LOWER(wallet_address) = LOWER(?)`).get(walletAddress);
+      const aliasStr = aliasRow && aliasRow.alias ? aliasRow.alias : (walletAddress.substring(0,6) + '...');
+      const msg = `🔥 ${aliasStr} acaba de quemar ${item.price_corcho.toLocaleString()} $CORCHO en un ${item.name}. ¡Que le quiten lo bailao!`;
+      const { injectSystemMuroMessage } = require('../db/database');
+      injectSystemMuroMessage(msg);
+    } catch(e) {}
+
     // Descontar 1 unidad del stock si es un artículo con unidades limitadas
     if (item.stock !== null && item.stock !== undefined && item.stock > 0) {
       try { decrementCorchoItemStock(item.id); } catch (_) {}

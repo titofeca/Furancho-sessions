@@ -382,6 +382,15 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
       nftAchievementId: nftAchievementId || null };
     broadcastToEligible('raffle_result', resultData, eligibleSet);
     broadcastToStaff('raffle_winner', resultData);
+    
+    try {
+      const aliasRow = db.prepare(`SELECT alias FROM wallets WHERE LOWER(address) = LOWER(?)`).get(winnerWallet);
+      const aliasStr = aliasRow && aliasRow.alias ? aliasRow.alias : winnerMasked;
+      const msg = `🎉 ¡La suerte está echada! \${aliasStr} acaba de ganar un Sorteo Chave Furancheira.`;
+      const { injectSystemMuroMessage } = require('../db/database');
+      injectSystemMuroMessage(msg);
+    } catch(e) {}
+
     // Actualizar estado activo con resultado
     if (activeRaffle?.raffleId === raffleId) {
       activeRaffle = { ...activeRaffle, phase: 'result', winnerWallet, verificationCode, acceptWindow: 600, resultAt: Date.now() };
@@ -709,6 +718,13 @@ router.patch('/:id/collect', requireAuth, (req, res) => {
           if (typeof clientSSE.res.flush === 'function') clientSSE.res.flush();
         } catch (_) {}
       }
+      try {
+        const { injectSystemMuroMessage } = require('../db/database');
+        const aliasRow = db.prepare(`SELECT alias FROM user_profiles WHERE LOWER(wallet_address) = LOWER(?)`).get(raffle.winner_wallet);
+        const aliasStr = aliasRow && aliasRow.alias ? aliasRow.alias : raffle.winner_wallet;
+        const msg = `🍸 ¡Salud! El admin acaba de entregar a ${aliasStr} su premio de la suerte.`;
+        injectSystemMuroMessage(msg);
+      } catch(e) {}
     }
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -805,6 +821,14 @@ router.post('/:id/redeem', (req, res) => {
       };
       broadcastToAdmins('bono_redeemed', payload);
       broadcastToStaff('bono_redeemed', payload);
+
+      try {
+        const { injectSystemMuroMessage, db } = require('../db/database');
+        const aliasRow = db.prepare(`SELECT alias FROM user_profiles WHERE LOWER(wallet_address) = LOWER(?)`).get(wallet);
+        const aliasStr = aliasRow && aliasRow.alias ? aliasRow.alias : payload.wallet;
+        const msg = `🍸 ¡Salud! ${aliasStr} acaba de canjear su premio (${result.prize}) en la barra.`;
+        injectSystemMuroMessage(msg);
+      } catch(e) {}
     }
     res.json({ success: true, ...result });
   } catch (e) { res.status(400).json({ error: e.message }); }

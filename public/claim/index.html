@@ -2399,6 +2399,10 @@
               </summary>
               <div style="margin-top:8px;">
                 <p style="font-size:11.5px; color:var(--text-muted); line-height:1.45; margin:0 0 8px;">Gana monedas fichando, subiendo de nivel o invitando a amigos. Úsalas para canjear consumiciones, comprar NFTs o traspasar pases a otros socios.</p>
+                <div style="background:rgba(239,68,68,0.06); border:1px solid rgba(239,68,68,0.2); border-radius:12px; padding:10px; margin-bottom:10px;">
+                  <p style="font-size:11px; font-weight:800; color:#b91c1c; margin:0 0 4px; text-transform:uppercase; letter-spacing:1px;">⚠️ Atención: Quema de Corchos (FIFO)</p>
+                  <p style="font-size:11px; color:#991b1b; margin:0; line-height:1.4;">Tus Corchos tienen fecha de caducidad. El sistema quemará automáticamente los Corchos más antiguos (FIFO) si pasas demasiado tiempo sin usarlos. ¡Gástalos antes de que vayan a la recicladora!</p>
+                </div>
                 <div style="background:rgba(196,151,58,0.06); border:1px solid rgba(196,151,58,0.2); border-radius:12px; padding:10px;">
                   <p style="font-size:11px; font-weight:800; color:var(--wine); margin:0 0 6px; text-transform:uppercase; letter-spacing:1px;">Cómo ganar más</p>
                   <ul style="margin:0; padding-left:16px; font-size:11.5px; color:var(--text); line-height:1.5;">
@@ -12060,6 +12064,9 @@
 
         const items = itemsRes.items || [];
         const isStoreOpen = econRes.storeOpenForItems !== false;
+        
+        const userLvlText = document.getElementById('profile-card-level-tag')?.textContent || 'NIVEL 1';
+        const userLvlNum = parseInt(userLvlText.replace(/\\D/g, ''), 10) || 1;
 
         let htmlHeader = '';
         if (!isStoreOpen) {
@@ -12075,7 +12082,8 @@
 
         container.innerHTML = htmlHeader + items.map(item => {
           const isOut = item.stock !== null && item.stock !== undefined && item.stock <= 0;
-          const isDisabled = !isStoreOpen || isOut;
+          const isLocked = item.min_level > userLvlNum;
+          const isDisabled = !isStoreOpen || isOut || isLocked;
           const stockBadge = (item.stock === null || item.stock === undefined || item.stock < 0)
             ? ''
             : isOut
@@ -12084,17 +12092,17 @@
 
           const btnHtml = isDisabled
             ? `<button disabled style="padding:9px 14px; background:rgba(0,0,0,0.1); color:var(--text-muted); border:none; border-radius:20px; font-weight:800; font-size:12px; cursor:not-allowed; white-space:nowrap; flex-shrink:0;">
-                 ${!isStoreOpen ? '🔒 Pechado' : 'Agotado'}
+                 ${!isStoreOpen ? '🔒 Pechado' : (isLocked ? '🔒 VIP' : 'Agotado')}
                </button>`
-            : `<button onclick="redeemCorchoItem(${item.id}, '${esc(item.name).replace(/'/g, "\\'")}', ${item.price_corcho})" style="padding:9px 14px; background:linear-gradient(135deg,var(--gold),#a47d2c); color:#2A1509; border:none; border-radius:20px; font-weight:900; font-size:12px; cursor:pointer; white-space:nowrap; flex-shrink:0;">
+            : `<button onclick="redeemCorchoItem(${item.id}, '${esc(item.name).replace(/'/g, "\'")}', ${item.price_corcho})" style="padding:9px 14px; background:linear-gradient(135deg,var(--gold),#a47d2c); color:#2A1509; border:none; border-radius:20px; font-weight:900; font-size:12px; cursor:pointer; white-space:nowrap; flex-shrink:0;">
                  Canjear
                </button>`;
 
           return `
-          <div style="padding:14px; border-radius:14px; border:1.5px solid rgba(196,151,58,0.35); background:#fff; display:flex; align-items:center; justify-content:space-between; gap:10px; ${isOut ? 'opacity:0.7;' : ''}">
-            <div style="flex:1; min-width:0;">
-              <div style="font-weight:800; color:var(--wine); font-size:14px;">${esc(item.emoji)} ${esc(item.name)}</div>
-              <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${item.description ? esc(item.description) : 'Canjeable en barra'}</div>
+          <div style="padding:14px; border-radius:14px; border:1.5px solid ${isLocked ? 'rgba(0,0,0,0.1)' : 'rgba(196,151,58,0.35)'}; background:${isLocked ? '#f8fafc' : '#fff'}; display:flex; align-items:center; justify-content:space-between; gap:10px; ${isOut ? 'opacity:0.7;' : ''}">
+            <div style="flex:1; min-width:0; ${isLocked ? 'filter: blur(4px); user-select:none;' : ''}">
+              <div style="font-weight:800; color:${isLocked ? '#94a3b8' : 'var(--wine)'}; font-size:14px;">${esc(item.emoji)} ${isLocked ? 'Ítem Oculto' : esc(item.name)}</div>
+              <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${isLocked ? '🤫 Secreto Furancheiro: Solo para Niveles ' + item.min_level + '+' : (item.description ? esc(item.description) : 'Canjeable en barra')}</div>
               <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:4px;">
                 <span style="font-size:12px; font-weight:800; color:var(--gold);">${item.price_corcho.toLocaleString()} $CORCHO</span>
                 ${stockBadge}

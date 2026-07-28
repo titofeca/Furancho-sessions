@@ -1204,6 +1204,11 @@ function checkRecentVisit(walletAddress, hours = 12) {
 
 function getVisitCount(walletAddress) {
   if (!walletAddress) return 0;
+  
+  // 1. Evaluar si hay penalizaciones pendientes (Lazy evaluation)
+  checkAndApplyLevelDecay(walletAddress);
+
+  // 2. Calcular visitas reales
   const row = db.prepare(`
     SELECT COUNT(*) as count FROM (
       SELECT date(entry_time) as day FROM sessions WHERE LOWER(wallet_address) = LOWER(?) AND counted_as_visit = 1
@@ -1211,7 +1216,72 @@ function getVisitCount(walletAddress) {
       SELECT date(visited_at) as day FROM visits WHERE LOWER(wallet_address) = LOWER(?)
     )
   `).get(walletAddress, walletAddress);
-  return row ? row.count : 0;
+  
+  const realVisits = row ? row.count : 0;
+
+  // 3. Restar penalizaciones
+  const penaltyRow = db.prepare(`SELECT SUM(penalty_visits) as total_penalty FROM level_decay_events WHERE LOWER(wallet_address) = LOWER(?)`).get(walletAddress);
+  const totalPenalty = penaltyRow && penaltyRow.total_penalty ? penaltyRow.total_penalty : 0;
+
+  const effectiveVisits = Math.max(1, realVisits - totalPenalty); // Nivel 1 mínimo (1 visita efectiva)
+  return effectiveVisits;
+}
+
+function checkAndApplyLevelDecay(walletAddress) {
+  if (!walletAddress) return;
+  // Solo aplicamos si el usuario tiene un mint (está registrado)
+  const isRegistered = db.prepare(`SELECT id FROM mints WHERE LOWER(wallet_address) = LOWER(?) AND status != 'failed'`).get(walletAddress);
+  if (!isRegistered) return;
+
+  // Obtener la última visita (sesión o visit legacy)
+  const lastVisit = db.prepare(`
+    SELECT MAX(day) as last_day FROM (
+      SELECT date(entry_time) as day FROM sessions WHERE LOWER(wallet_address) = LOWER(?) AND counted_as_visit = 1
+      UNION
+      SELECT date(visited_at) as day FROM visits WHERE LOWER(wallet_address) = LOWER(?)
+    )
+  `).get(walletAddress, walletAddress);
+
+  const lastVisitDate = lastVisit && lastVisit.last_day ? lastVisit.last_day : null;
+  if (!lastVisitDate) return;
+
+  // Obtener el último cálculo de penalización para no contar los mismos eventos dos veces
+  const lastDecay = db.prepare(`SELECT date(MAX(applied_at)) as last_decay_date FROM level_decay_events WHERE LOWER(wallet_address) = LOWER(?)`).get(walletAddress);
+  const checkFromDate = (lastDecay && lastDecay.last_decay_date && lastDecay.last_decay_date > lastVisitDate) ? lastDecay.last_decay_date : lastVisitDate;
+
+  // Contar cuántos eventos ha habido desde esa fecha hasta hoy (excluyendo hoy)
+  const missedEventsRow = db.prepare(`
+    SELECT COUNT(*) as missed FROM events 
+    WHERE event_date > ? AND event_date < date('now', 'localtime')
+  `).get(checkFromDate);
+
+  const missedEvents = missedEventsRow ? missedEventsRow.missed : 0;
+  if (missedEvents < 4) return; // Mínimo para el primer escalón de penalización
+
+  // Calcular nivel actual efectivo (sin aplicar nueva penalización aún)
+  const realVisitsRow = db.prepare(`
+    SELECT COUNT(*) as count FROM (
+      SELECT date(entry_time) as day FROM sessions WHERE LOWER(wallet_address) = LOWER(?) AND counted_as_visit = 1
+      UNION
+      SELECT date(visited_at) as day FROM visits WHERE LOWER(wallet_address) = LOWER(?)
+    )
+  `).get(walletAddress, walletAddress);
+  const penaltyRow = db.prepare(`SELECT SUM(penalty_visits) as total_penalty FROM level_decay_events WHERE LOWER(wallet_address) = LOWER(?)`).get(walletAddress);
+  const currentEffectiveVisits = Math.max(1, (realVisitsRow ? realVisitsRow.count : 0) - (penaltyRow && penaltyRow.total_penalty ? penaltyRow.total_penalty : 0));
+  
+  // Regla unificada de saltos (1=1, 2=2, 3=4, 4=12)
+  let currentLevel = 1;
+  if (currentEffectiveVisits >= 12) currentLevel = 4;
+  else if (currentEffectiveVisits >= 4) currentLevel = 3;
+  else if (currentEffectiveVisits >= 2) currentLevel = 2;
+
+  if (currentLevel === 4 && missedEvents >= 24) {
+    db.prepare(`INSERT INTO level_decay_events (wallet_address, penalty_visits, missed_events_count) VALUES (?, ?, ?)`).run(walletAddress, 8, missedEvents);
+  } else if (currentLevel === 3 && missedEvents >= 8) {
+    db.prepare(`INSERT INTO level_decay_events (wallet_address, penalty_visits, missed_events_count) VALUES (?, ?, ?)`).run(walletAddress, 2, missedEvents);
+  } else if (currentLevel === 2 && missedEvents >= 4) {
+    db.prepare(`INSERT INTO level_decay_events (wallet_address, penalty_visits, missed_events_count) VALUES (?, ?, ?)`).run(walletAddress, 1, missedEvents);
+  }
 }
 
 function getStats() {
@@ -3253,7 +3323,20 @@ function recordAppAnalytics(walletAddress, data) {
   }
 }
 
+
+function injectSystemMuroMessage(message) {
+  try {
+    db.prepare(`
+      INSERT INTO board_posts (wallet_address, display_name, body)
+      VALUES ('system', '🎙️ Altavoz Furancheiro', ?)
+    `).run(message);
+  } catch (e) {
+    console.error('Error injecting system muro message:', e.message);
+  }
+}
+
 module.exports = {
+  injectSystemMuroMessage,
   db,
   recordAppAnalytics,
   UPLOADS_DIR,
@@ -4280,22 +4363,25 @@ function getCorchoItems(onlyActive = true) {
   return db.prepare(`SELECT * FROM corcho_items ORDER BY price_corcho ASC`).all();
 }
 
-function addCorchoItem({ name, emoji, priceCorcho, description, stock }) {
+function addCorchoItem({ name, emoji, priceCorcho, description, stock, minLevel }) {
   if (!name || !priceCorcho || isNaN(parseInt(priceCorcho, 10))) {
     throw new Error('Nombre y precio en $CORCHO requeridos');
   }
   const stockVal = (stock !== undefined && stock !== null && stock !== '' && !isNaN(parseInt(stock, 10)))
     ? parseInt(stock, 10)
     : null;
+  const minLevelVal = (minLevel !== undefined && minLevel !== null && !isNaN(parseInt(minLevel, 10)))
+    ? parseInt(minLevel, 10)
+    : 1;
   const info = db.prepare(`
-    INSERT INTO corcho_items (name, emoji, price_corcho, description, stock, active)
-    VALUES (?, ?, ?, ?, ?, 1)
-  `).run(name.trim(), emoji || '🎁', parseInt(priceCorcho, 10), description ? description.trim() : null, stockVal);
+    INSERT INTO corcho_items (name, emoji, price_corcho, description, stock, min_level, active)
+    VALUES (?, ?, ?, ?, ?, ?, 1)
+  `).run(name.trim(), emoji || '🎁', parseInt(priceCorcho, 10), description ? description.trim() : null, stockVal, minLevelVal);
 
   return db.prepare(`SELECT * FROM corcho_items WHERE id = ?`).get(info.lastInsertRowid);
 }
 
-function updateCorchoItem(id, { name, emoji, priceCorcho, description, stock, active }) {
+function updateCorchoItem(id, { name, emoji, priceCorcho, description, stock, minLevel, active }) {
   const fields = [], vals = [];
   if (name !== undefined) { fields.push('name = ?'); vals.push(name.trim()); }
   if (emoji !== undefined) { fields.push('emoji = ?'); vals.push(emoji || '🎁'); }
@@ -4304,6 +4390,10 @@ function updateCorchoItem(id, { name, emoji, priceCorcho, description, stock, ac
   if (stock !== undefined) {
     const stockVal = (stock !== null && stock !== '' && !isNaN(parseInt(stock, 10))) ? parseInt(stock, 10) : null;
     fields.push('stock = ?'); vals.push(stockVal);
+  }
+  if (minLevel !== undefined) {
+    const minLevelVal = (!isNaN(parseInt(minLevel, 10))) ? parseInt(minLevel, 10) : 1;
+    fields.push('min_level = ?'); vals.push(minLevelVal);
   }
   if (active !== undefined) { fields.push('active = ?'); vals.push(active ? 1 : 0); }
   if (!fields.length) return db.prepare(`SELECT * FROM corcho_items WHERE id = ?`).get(id);

@@ -323,6 +323,19 @@ function performCheckin(walletAddress, ipAddress) {
     levelUp,
     corchoReward
   };
+  
+  if (result.counted) {
+    try {
+      const { injectSystemMuroMessage, db } = require('../db/database');
+      const mint = db.prepare(`SELECT level, level_name FROM mints WHERE LOWER(wallet_address) = LOWER(?) AND status != 'failed' ORDER BY level DESC LIMIT 1`).get(walletAddress);
+      if (mint && mint.level >= 3) {
+        const aliasRow = db.prepare(`SELECT alias FROM user_profiles WHERE LOWER(wallet_address) = LOWER(?)`).get(walletAddress);
+        const aliasStr = aliasRow && aliasRow.alias ? aliasRow.alias : (walletAddress.substring(0,6) + '...');
+        const msg = `👑 ¡Atención! O Magnate ${aliasStr} acaba de entrar al Furancho. Despejad la barra.`;
+        injectSystemMuroMessage(msg);
+      }
+    } catch(e){}
+  }
 
   // Aviso EN VIVO a la app del cliente por SSE: cuando el camarero (o el admin) le
   // ficha la entrada, su móvil se actualiza solo (botón → "Registrar Salida", badge

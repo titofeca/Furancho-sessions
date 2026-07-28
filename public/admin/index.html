@@ -5596,8 +5596,9 @@
               </div>
             </div>
             <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+              ${item.min_level >= 3 ? '<span style="font-size:10px; font-weight:800; color:#d4af37; background:rgba(212,175,55,0.15); padding:3px 7px; border-radius:6px; margin-right:4px; border:1px solid rgba(212,175,55,0.3);">Nivel 3+</span>' : ''}
               ${item.active ? '' : '<span style="font-size:10px; font-weight:800; color:#94a3b8; background:#f1f5f9; padding:3px 7px; border-radius:6px; margin-right:4px;">Oculto</span>'}
-              <button onclick="editCorchoAdminItem(${item.id}, '${escapeHtml(item.name)}', '${escapeHtml(item.emoji)}', ${item.price_corcho}, '${escapeHtml(item.description||'')}', ${item.active}, ${item.stock != null ? item.stock : 'null'})" title="Editar" style="width:32px; height:32px; border-radius:8px; border:1px solid rgba(196,151,58,0.3); background:rgba(196,151,58,0.08); color:var(--gold); font-size:13px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;">✏️</button>
+              <button onclick="editCorchoAdminItem(${item.id}, '${escapeHtml(item.name)}', '${escapeHtml(item.emoji)}', ${item.price_corcho}, '${escapeHtml(item.description||'')}', ${item.active}, ${item.stock != null ? item.stock : 'null'}, ${item.min_level || 1})" title="Editar" style="width:32px; height:32px; border-radius:8px; border:1px solid rgba(196,151,58,0.3); background:rgba(196,151,58,0.08); color:var(--gold); font-size:13px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;">✏️</button>
               <button onclick="deleteCorchoAdminItem(${item.id})" title="Borrar" style="width:32px; height:32px; border-radius:8px; border:1px solid rgba(239,68,68,0.2); background:rgba(239,68,68,0.06); color:#ef4444; font-size:13px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;">🗑️</button>
             </div>
           </div>
@@ -5634,12 +5635,14 @@
     const description = prompt('Descripción / detalles opcionales:');
     const stockStr = prompt('Stock / unidades disponibles (ej: 10, o dejar vacío / cancelar para ilimitado):', '10');
     const stock = stockStr !== null && stockStr.trim() !== '' && !isNaN(parseInt(stockStr, 10)) ? parseInt(stockStr, 10) : null;
+    const minLvlStr = prompt('Nivel mínimo requerido (1 = todos, 3 = VIP oculto):', '1');
+    const minLevel = minLvlStr !== null && !isNaN(parseInt(minLvlStr, 10)) ? parseInt(minLvlStr, 10) : 1;
 
     try {
       const res = await fetch('/api/admin/corcho/items', {
         method: 'POST',
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, emoji, priceCorcho: parseInt(priceStr, 10), description, stock })
+        body: JSON.stringify({ name, emoji, priceCorcho: parseInt(priceStr, 10), description, stock, minLevel })
       });
       const data = await res.json();
       if (data.success) {
@@ -5651,7 +5654,7 @@
     } catch (e) { showToast('Error de red', true); }
   }
 
-  async function editCorchoAdminItem(id, currentName, currentEmoji, currentPrice, currentDesc, currentActive, currentStock) {
+  async function editCorchoAdminItem(id, currentName, currentEmoji, currentPrice, currentDesc, currentActive, currentStock, currentMinLevel) {
     const name = prompt('Editar nombre:', currentName);
     if (!name) return;
     const emoji = prompt('Editar emoji:', currentEmoji) || currentEmoji;
@@ -5662,12 +5665,14 @@
     const stockStr = prompt('Stock / unidades disponibles (dejar vacío para ilimitado):', stockDefaultStr);
     const stock = stockStr !== null && stockStr.trim() !== '' && !isNaN(parseInt(stockStr, 10)) ? parseInt(stockStr, 10) : null;
     const active = confirm('¿Mantener activo en la app del cliente? (Cancelar = Ocultar)');
+    const minLvlStr = prompt('Nivel mínimo requerido (1 = todos, 3 = VIP oculto):', currentMinLevel || 1);
+    const minLevel = minLvlStr !== null && !isNaN(parseInt(minLvlStr, 10)) ? parseInt(minLvlStr, 10) : 1;
 
     try {
       const res = await fetch(`/api/admin/corcho/items/${id}`, {
         method: 'PUT',
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, emoji, priceCorcho: parseInt(priceStr, 10), description, stock, active })
+        body: JSON.stringify({ name, emoji, priceCorcho: parseInt(priceStr, 10), description, stock, minLevel, active })
       });
       const data = await res.json();
       if (data.success) {
