@@ -5,7 +5,7 @@
 
 const {
   getSetting, setSetting,
-  getCorchoBalance, addCorchoCoins, spendCorchoCoins, getCorchoHistory, transferNftWithFee
+  getCorchoBalance, getCorchoRanking, addCorchoCoins, spendCorchoCoins, getCorchoHistory, transferNftWithFee
 } = require('../db/database');
 
 const DEFAULT_RATES = {
@@ -307,6 +307,7 @@ module.exports = {
   rewardReferral,
   syncRetroactiveCorchoCoins,
   getCorchoBalance,
+  getCorchoRanking,
   addCorchoCoins,
   spendCorchoCoins,
   getCorchoHistory,

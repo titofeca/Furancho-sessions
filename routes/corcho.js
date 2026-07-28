@@ -13,6 +13,7 @@ router.get('/balance', (req, res) => {
 
   try {
     const stats = corcho.getCorchoBalance(wallet);
+    const ranking = corcho.getCorchoRanking(wallet);
     const history = corcho.getCorchoHistory(wallet, 30);
     const settings = corcho.getEconomySettings();
     const { getSessionCanjeCounts } = require('../db/database');
@@ -20,6 +21,7 @@ router.get('/balance', (req, res) => {
     res.json({
       wallet,
       balance: stats.balance,
+      ranking: ranking,
       totalEarned: stats.totalEarned,
       totalSpent: stats.totalSpent,
       history,

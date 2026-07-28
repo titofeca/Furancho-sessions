@@ -2373,13 +2373,16 @@
       <div class="profile-progress-card" id="corcho-card" style="padding:14px 18px; margin-bottom:20px; background:linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(245, 236, 216, 0.65) 100%); border:1.5px solid rgba(196, 151, 58, 0.4); box-shadow:0 10px 30px -10px rgba(42, 21, 9, 0.08); position:relative; overflow:hidden;">
         <div style="position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--gold),var(--wine));"></div>
         
-        <details style="width:100%;" class="custom-details">
-          <summary style="list-style:none; cursor:pointer; display:flex; align-items:center; justify-content:space-between; outline:none; -webkit-tap-highlight-color:transparent;">
+        <div style="width:100%;">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
             <div style="display:flex; align-items:center; gap:10px;">
               <img src="/assets/corcho_coin_gold.png" alt="$CORCHO" style="width:36px; height:36px; object-fit:contain; filter:drop-shadow(0 4px 10px rgba(196,151,58,0.5)); border-radius:50%;" />
               <div>
                 <h3 style="font-family:'Playfair Display',serif; font-size:16px; font-weight:900; color:var(--wine); margin:0;">Banco do Corcho</h3>
-                <span id="corcho-wealth-status" style="font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; color:var(--gold);">Calculando riqueza...</span>
+                <div style="display:flex; align-items:center; gap:6px; margin-top:3px;">
+                  <span id="corcho-wealth-status" style="font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; color:var(--gold);">Calculando riqueza...</span>
+                  <span id="corcho-ranking-badge" style="display:none; padding:2px 6px; border-radius:100px; font-size:8px; font-weight:900; text-transform:uppercase; letter-spacing:0.5px; white-space:nowrap;"></span>
+                </div>
               </div>
             </div>
 
@@ -2388,9 +2391,8 @@
                 <div style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:var(--wine); line-height:1;" id="corcho-user-balance">0</div>
                 <div style="font-size:9px; font-weight:800; color:var(--gold); letter-spacing:1px;">$CORCHO</div>
               </div>
-              <span class="details-chevron" style="color:var(--gold); font-size:18px; font-weight:bold; transition:transform 0.3s;">▾</span>
             </div>
-          </summary>
+          </div>
 
           <div style="margin-top:14px; padding-top:14px; border-top:1px dashed rgba(196,151,58,0.3); display:flex; flex-direction:column; gap:10px;">
             <details style="margin-bottom:12px;" class="custom-details">
@@ -2456,7 +2458,7 @@
               </details>
             </div>
           </div>
-        </details>
+        </div>
       </div>
 
       <!-- ①bis EL RETO DE LOS 5 (campaña de verano) -->
@@ -12276,10 +12278,36 @@
         const statusEl = document.getElementById('corcho-wealth-status');
         if (statusEl) {
           const bal = _corchoData.balance;
-          if (bal < 50) statusEl.textContent = "Calderilla Furancheira 🪙";
+          if (bal < 50) statusEl.textContent = "Calderilla 🪙";
           else if (bal < 200) statusEl.textContent = "Ahorrador nato 💰";
-          else if (bal < 600) statusEl.textContent = "Furancheiro de Posibles 🎩";
-          else statusEl.textContent = "Magnate do Viño 👑";
+          else if (bal < 600) statusEl.textContent = "Posibles 🎩";
+          else statusEl.textContent = "Magnate 👑";
+        }
+        
+        const badgeEl = document.getElementById('corcho-ranking-badge');
+        if (badgeEl && _corchoData.ranking && _corchoData.balance > 0) {
+          badgeEl.style.display = 'inline-block';
+          const r = _corchoData.ranking;
+          if (r.topPercentage <= 10) {
+            badgeEl.textContent = `👑 TOP ${r.topPercentage}%`;
+            badgeEl.style.background = 'rgba(196,151,58,0.15)';
+            badgeEl.style.color = 'var(--gold)';
+            badgeEl.style.border = '1px solid rgba(196,151,58,0.4)';
+          } else if (r.topPercentage <= 50) {
+            badgeEl.textContent = `⚖️ CLASE MEDIA (Top ${r.topPercentage}%)`;
+            badgeEl.style.background = 'rgba(42,21,9,0.06)';
+            badgeEl.style.color = 'rgba(42,21,9,0.7)';
+            badgeEl.style.border = '1px solid rgba(42,21,9,0.15)';
+          } else {
+            // El 100 - r.topPercentage% tiene más que tú
+            const poorer = r.percentile;
+            badgeEl.textContent = `⚠️ El ${r.topPercentage}% tiene más`;
+            badgeEl.style.background = 'rgba(185,28,28,0.08)';
+            badgeEl.style.color = '#b91c1c';
+            badgeEl.style.border = '1px solid rgba(185,28,28,0.2)';
+          }
+        } else if (badgeEl) {
+          badgeEl.style.display = 'none';
         }
 
         const feeEl = document.getElementById('transfer-fee-amount');

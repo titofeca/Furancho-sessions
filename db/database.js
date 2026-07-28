@@ -3376,6 +3376,7 @@ module.exports = {
   getHiddenLockedAchievementIds,
   setAchievementLockedVisibility,
   getCorchoBalance,
+  getCorchoRanking,
   addCorchoCoins,
   spendCorchoCoins,
   getCorchoHistory,
@@ -4087,6 +4088,39 @@ function getCorchoBalance(walletAddress) {
     balance: row ? row.balance : 0,
     totalEarned: row ? row.total_earned : 0,
     totalSpent: row ? row.total_spent : 0
+  };
+}
+
+function getCorchoRanking(walletAddress) {
+  if (!walletAddress) return { percentile: 0, topPercentage: 100, isWhale: false, richerCount: 0, totalCount: 0 };
+  
+  const userRow = db.prepare(`SELECT balance FROM corcho_balances WHERE LOWER(wallet_address) = LOWER(?)`).get(walletAddress);
+  const userBalance = userRow ? userRow.balance : 0;
+  
+  if (userBalance === 0) {
+     return { percentile: 0, topPercentage: 100, isWhale: false, richerCount: 0, totalCount: 0 };
+  }
+  
+  const richerCountRow = db.prepare(`SELECT COUNT(*) as richer FROM corcho_balances WHERE balance > ?`).get(userBalance);
+  const richerCount = richerCountRow ? richerCountRow.richer : 0;
+  
+  const totalCountRow = db.prepare(`SELECT COUNT(*) as total FROM corcho_balances WHERE balance > 0`).get();
+  const totalCount = totalCountRow ? totalCountRow.total : 1;
+  
+  if (totalCount === 0) {
+     return { percentile: 0, topPercentage: 100, isWhale: false, richerCount: 0, totalCount: 0 };
+  }
+  
+  let topPercentage = Math.ceil((richerCount / totalCount) * 100);
+  if (topPercentage === 0) topPercentage = 1; // "Top 1%"
+  
+  return {
+    percentile: 100 - topPercentage,
+    topPercentage: topPercentage,
+    isWhale: topPercentage <= 10,
+    isMiddle: topPercentage <= 50 && topPercentage > 10,
+    richerCount,
+    totalCount
   };
 }
 
