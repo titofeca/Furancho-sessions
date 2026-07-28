@@ -1082,12 +1082,13 @@ router.post('/profile', (req, res) => {
     if (!walletAddress) return res.status(400).json({ error: 'Falta wallet' });
     const { db } = require('../db/database');
     
-    // Upsert alias
-    db.prepare(`
-      INSERT INTO user_profiles (wallet_address, alias) 
-      VALUES (?, ?) 
-      ON CONFLICT(wallet_address) DO UPDATE SET alias=excluded.alias, updated_at=datetime('now')
-    `).run(walletAddress, alias || '');
+    // Upsert alias case-insensitively
+    const existing = db.prepare(`SELECT wallet_address FROM user_profiles WHERE LOWER(wallet_address) = LOWER(?)`).get(walletAddress);
+    if (existing) {
+      db.prepare(`UPDATE user_profiles SET alias=?, updated_at=datetime('now') WHERE wallet_address=?`).run(alias || '', existing.wallet_address);
+    } else {
+      db.prepare(`INSERT INTO user_profiles (wallet_address, alias) VALUES (?, ?)`).run(walletAddress, alias || '');
+    }
     
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
