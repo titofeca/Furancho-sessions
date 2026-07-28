@@ -3507,6 +3507,69 @@
   </div>
 
   <!-- ==================== RAFFLE MODAL ==================== -->
+  <!-- MODAL NIVELES VIP (FOMO) -->
+  <div id="levels-modal" style="display:none; position:fixed; inset:0; background:rgba(28,14,6,0.85); z-index:9999; align-items:flex-end; justify-content:center;" onclick="if(event.target===this) closeLevelsModal()">
+    <div style="background:#F2EDE3; border-radius:24px 24px 0 0; width:100%; max-width:500px; max-height:85vh; display:flex; flex-direction:column; box-shadow:0 -10px 40px rgba(0,0,0,0.5);">
+      <!-- Header -->
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:24px 24px 16px; border-bottom:1px solid rgba(42,21,9,0.1);">
+        <div>
+          <h2 style="font-family:'Playfair Display',serif; font-size:22px; font-weight:900; color:var(--wine); margin:0;">El Camino Furancheiro</h2>
+          <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0;">Ficha entrada para subir de nivel y ganar privilegios.</p>
+        </div>
+        <button onclick="closeLevelsModal()" style="background:rgba(42,21,9,0.06); border:none; width:36px; height:36px; border-radius:50%; font-size:20px; color:#7A6A5A; display:flex; align-items:center; justify-content:center; cursor:pointer;">×</button>
+      </div>
+      <!-- Body -->
+      <div style="padding:24px; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:16px;">
+        
+        <div style="background:#fff; border:1px solid rgba(42,21,9,0.1); border-radius:16px; padding:16px; display:flex; gap:14px; align-items:center;">
+          <div style="width:48px; height:48px; background:linear-gradient(135deg, rgba(42,21,9,0.05), rgba(42,21,9,0.1)); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:24px; flex-shrink:0;">🍼</div>
+          <div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <h3 style="margin:0; font-family:'Playfair Display',serif; font-size:18px; font-weight:800; color:#2A1509;">Cautivo</h3>
+              <span style="background:rgba(42,21,9,0.06); color:#7A6A5A; font-size:10px; font-weight:800; padding:2px 8px; border-radius:100px;">1 VISITA</span>
+            </div>
+            <p style="margin:0; font-size:12px; color:var(--text-muted); line-height:1.4;">Tu primera vez en el Furancho. Ya eres parte de la familia.</p>
+          </div>
+        </div>
+
+        <div style="background:#fff; border:1px solid rgba(42,21,9,0.1); border-radius:16px; padding:16px; display:flex; gap:14px; align-items:center;">
+          <div style="width:48px; height:48px; background:linear-gradient(135deg, rgba(212,80,138,0.1), rgba(212,80,138,0.2)); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:24px; flex-shrink:0;">🍷</div>
+          <div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <h3 style="margin:0; font-family:'Playfair Display',serif; font-size:18px; font-weight:800; color:#2A1509;">O Cunqueiro</h3>
+              <span style="background:rgba(212,80,138,0.15); color:#D4508A; font-size:10px; font-weight:800; padding:2px 8px; border-radius:100px;">2 VISITAS</span>
+            </div>
+            <p style="margin:0; font-size:12px; color:var(--text-muted); line-height:1.4;">El que repite. Desbloqueas reservas VIP y ganas 100 $CORCHO.</p>
+          </div>
+        </div>
+
+        <div style="background:#fff; border:1px solid rgba(139,25,24,0.15); border-radius:16px; padding:16px; display:flex; gap:14px; align-items:center; box-shadow:0 4px 12px rgba(139,25,24,0.04);">
+          <div style="width:48px; height:48px; background:linear-gradient(135deg, var(--wine), var(--wine-dark)); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:24px; flex-shrink:0;">🍖</div>
+          <div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <h3 style="margin:0; font-family:'Playfair Display',serif; font-size:18px; font-weight:800; color:var(--wine);">O Larpeiro</h3>
+              <span style="background:rgba(139,25,24,0.1); color:var(--wine); font-size:10px; font-weight:800; padding:2px 8px; border-radius:100px;">4 VISITAS</span>
+            </div>
+            <p style="margin:0; font-size:12px; color:var(--text-muted); line-height:1.4;">Un clásico del lugar. Acceso a sorteos premium y 250 $CORCHO.</p>
+          </div>
+        </div>
+
+        <div style="background:linear-gradient(135deg, #1c0e06, #2a1509); border:1px solid rgba(212,175,55,0.3); border-radius:16px; padding:16px; display:flex; gap:14px; align-items:center; position:relative; overflow:hidden; box-shadow:0 8px 24px rgba(42,21,9,0.2);">
+          <div style="position:absolute; top:-10px; right:-10px; font-size:60px; opacity:0.05;">👑</div>
+          <div style="width:48px; height:48px; background:linear-gradient(135deg, #D4AF37, #AA8C2C); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:24px; flex-shrink:0; box-shadow:0 2px 10px rgba(212,175,55,0.4);">👑</div>
+          <div style="position:relative; z-index:1;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <h3 style="margin:0; font-family:'Playfair Display',serif; font-size:18px; font-weight:800; color:var(--gold);">O Presidente</h3>
+              <span style="background:rgba(212,175,55,0.15); border:1px solid rgba(212,175,55,0.3); color:var(--gold); font-size:10px; font-weight:800; padding:2px 8px; border-radius:100px;">12 VISITAS</span>
+            </div>
+            <p style="margin:0; font-size:12px; color:rgba(255,255,255,0.7); line-height:1.4;">La élite. Trato de realeza, beneficios exclusivos y 500 $CORCHO.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
   <div class="raffle-modal screen" id="raffle-modal" style="position: fixed; inset: 0; z-index: 1000; background: var(--cream) !important; color: var(--text) !important;">
     <!-- Roulette Animation — logo girando -->
     <div id="raffle-roulette" style="display: none; text-align:center;">
@@ -4147,6 +4210,50 @@
       if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
     }
 
+    function openLevelsModal() {
+      document.getElementById('levels-modal').style.display = 'flex';
+    }
+    
+    function closeLevelsModal() {
+      document.getElementById('levels-modal').style.display = 'none';
+    }
+
+    function updateNextLevelInfo(visits) {
+      const el = document.getElementById('next-level-indicator');
+      const txt = document.getElementById('next-level-text');
+      const bar = document.getElementById('next-level-progress');
+      if (!el || !txt || !bar) return;
+      
+      let nextTarget = 0;
+      let nextName = '';
+      let prevTarget = 0;
+
+      if (visits < 1) {
+        nextTarget = 1; nextName = 'Cautivo'; prevTarget = 0;
+      } else if (visits < 2) {
+        nextTarget = 2; nextName = 'O Cunqueiro'; prevTarget = 1;
+      } else if (visits < 4) {
+        nextTarget = 4; nextName = 'O Larpeiro'; prevTarget = 2;
+      } else if (visits < 12) {
+        nextTarget = 12; nextName = 'O Presidente'; prevTarget = 4;
+      } else {
+        txt.textContent = '¡Ya eres el Rey del Furancho! 👑';
+        bar.style.width = '100%';
+        bar.style.background = 'linear-gradient(90deg, #D4AF37, #AA8C2C)';
+        return;
+      }
+
+      const left = nextTarget - visits;
+      txt.textContent = `Te ${left === 1 ? 'falta' : 'faltan'} ${left} ${left === 1 ? 'visita' : 'visitas'} para ${nextName}`;
+      
+      const totalSteps = nextTarget - prevTarget;
+      const doneSteps = visits - prevTarget;
+      const progress = (doneSteps / totalSteps) * 100;
+      
+      bar.style.width = `${progress}%`;
+      bar.style.background = 'var(--gold)';
+    }
+
     async function marcharDoFurancho() {
       const btn = document.querySelector('#marcho-footer button');
       if (btn) { btn.disabled = true; btn.textContent = '🚪 Registrando...'; }
@@ -4608,6 +4715,7 @@
       // Contador de visitas
       document.getElementById('visit-count-display').textContent = visitCount;
       document.getElementById('visit-total-display').textContent = visitCount >= 12 ? '✓ ¡El rey, ho!' : 'visitas';
+      updateNextLevelInfo(visitCount);
 
       // Badge VIP si hay reserva activa (confirmed/pending) para un evento futuro
       renderProfileVipBadge();
@@ -6745,6 +6853,7 @@
           if (typeof d.visitCount === 'number') {
             const vc = document.getElementById('visit-count-display');
             if (vc) vc.textContent = d.visitCount;
+            if (typeof updateNextLevelInfo === 'function') updateNextLevelInfo(d.visitCount);
           }
           if (typeof checkUserHistoryAndAdjustLevel === 'function') checkUserHistoryAndAdjustLevel();
           if (typeof renderPrizes === 'function') renderPrizes();
