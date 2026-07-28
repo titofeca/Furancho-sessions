@@ -8333,7 +8333,8 @@
     const lvl = document.getElementById('profile-card-level-tag')?.textContent || 'NIVEL 1';
     const name = document.getElementById('profile-card-name')?.textContent || 'Furancheiro';
     const profileImg = document.getElementById('profile-nft-image');
-    const img = (profileImg && profileImg.src) ? profileImg.src : '/assets/cunca.png';
+    const nftImgMain = document.getElementById('nft-image');
+    const img = (profileImg && profileImg.src) ? profileImg.src : (nftImgMain ? nftImgMain.src : '/assets/logo.png');
     const walletMasked = userWalletAddress ? userWalletAddress.substring(0,6) + '...' + userWalletAddress.slice(-6) : '0x...';
 
     const lvlEl = document.getElementById('id-modal-level-tag');
@@ -11128,11 +11129,11 @@
           </div>
 
           <div style="display:flex; gap:16px; align-items:center; position:relative; z-index:2;">
-            <img id="id-modal-nft-image" src="/assets/cunca.png" style="width:84px; height:84px; border-radius:14px; object-fit:cover; border:2px solid rgba(212,175,55,0.6); box-shadow:0 4px 15px rgba(0,0,0,0.4);" />
+            <img id="id-modal-nft-image" src="/assets/logo.png" style="width:84px; height:84px; border-radius:14px; object-fit:cover; border:2px solid rgba(212,175,55,0.6); box-shadow:0 4px 15px rgba(0,0,0,0.4);" />
             <div>
               <p style="font-size:10px; color:rgba(255,255,255,0.5); margin:0 0 2px; text-transform:uppercase; letter-spacing:1.5px; font-weight:700;">Identidad Furancheira</p>
               <h3 id="id-modal-nft-name" style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; margin:0 0 8px; color:#fff; line-height:1.1;">CAUTIVO</h3>
-              <p id="id-modal-wallet" style="font-family:monospace; font-size:11px; color:var(--gold); margin:0; background:rgba(212,175,55,0.1); padding:5px 8px; border-radius:6px; display:inline-block; border:1px solid rgba(212,175,55,0.2);">0x...</p>
+              <p id="id-modal-wallet" onclick="if(window.userWalletAddress) { navigator.clipboard.writeText(window.userWalletAddress); showToast('¡Wallet copiada al portapapeles!'); }" style="font-family:monospace; font-size:11px; color:var(--gold); margin:0; background:rgba(212,175,55,0.1); padding:5px 8px; border-radius:6px; display:inline-block; border:1px solid rgba(212,175,55,0.2); cursor:pointer;" title="Click para copiar">0x...</p>
             </div>
           </div>
         </div>
