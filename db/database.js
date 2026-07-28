@@ -1205,10 +1205,7 @@ function checkRecentVisit(walletAddress, hours = 12) {
 function getVisitCount(walletAddress) {
   if (!walletAddress) return 0;
   
-  // 1. Evaluar si hay penalizaciones pendientes (Lazy evaluation)
-  checkAndApplyLevelDecay(walletAddress);
-
-  // 2. Calcular visitas reales
+  // 1. Calcular visitas reales
   const row = db.prepare(`
     SELECT COUNT(*) as count FROM (
       SELECT date(entry_time) as day FROM sessions WHERE LOWER(wallet_address) = LOWER(?) AND counted_as_visit = 1
@@ -1218,8 +1215,9 @@ function getVisitCount(walletAddress) {
   `).get(walletAddress, walletAddress);
   
   const realVisits = row ? row.count : 0;
+  if (realVisits === 0) return 0;
 
-  // 3. Restar penalizaciones
+  // 2. Restar penalizaciones (solo aplicadas manualmente, si las hubiera)
   const penaltyRow = db.prepare(`SELECT SUM(penalty_visits) as total_penalty FROM level_decay_events WHERE LOWER(wallet_address) = LOWER(?)`).get(walletAddress);
   const totalPenalty = penaltyRow && penaltyRow.total_penalty ? penaltyRow.total_penalty : 0;
 
