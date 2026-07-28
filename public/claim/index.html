@@ -8349,7 +8349,7 @@
     if (imgEl) imgEl.src = img;
     
     const walletEl = document.getElementById('id-modal-wallet');
-    if (walletEl) walletEl.textContent = walletMasked;
+    if (walletEl) walletEl.textContent = userWalletAddress;
 
     const qrContainer = document.getElementById('id-qr-container');
     const campActive = window._campaignState && window._campaignState.active;
@@ -11135,7 +11135,7 @@
             <div>
               <p style="font-size:10px; color:rgba(255,255,255,0.5); margin:0 0 2px; text-transform:uppercase; letter-spacing:1.5px; font-weight:700;">Identidad Furancheira</p>
               <h3 id="id-modal-nft-name" style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; margin:0 0 8px; color:#fff; line-height:1.1;">CAUTIVO</h3>
-              <p id="id-modal-wallet" onclick="if(window.userWalletAddress) { navigator.clipboard.writeText(window.userWalletAddress); showToast('¡Wallet copiada al portapapeles!'); }" style="font-family:monospace; font-size:11px; color:var(--gold); margin:0; background:rgba(212,175,55,0.1); padding:5px 8px; border-radius:6px; display:inline-block; border:1px solid rgba(212,175,55,0.2); cursor:pointer;" title="Click para copiar">0x...</p>
+              <p id="id-modal-wallet" onclick="if(window.userWalletAddress) { navigator.clipboard.writeText(window.userWalletAddress); showToast('¡Wallet copiada al portapapeles!'); }" style="font-family:monospace; font-size:8.5px; color:var(--gold); margin:0; background:rgba(212,175,55,0.1); padding:6px; border-radius:6px; display:inline-block; border:1px solid rgba(212,175,55,0.2); cursor:pointer; word-break: break-all; max-width: 180px; line-height: 1.2;" title="Click para copiar">0x...</p>
             </div>
           </div>
         </div>
