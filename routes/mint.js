@@ -151,51 +151,16 @@ router.post('/entry', mintLimiter, async (req, res) => {
       });
     }
 
-    // Abrir sesión — openSession decide si cuenta como visita:
-    // solo si hay evento en la agenda ahora Y no hay otra visita contada esta semana
-    const result = openSession(walletAddress, false);
+    const result = performCheckin(walletAddress, req.ip);
 
-    // Visit count post-entrada (ya incluye la visita de hoy si contó)
-    const visitCount = getVisitCount(walletAddress);
-
-    // Otorgar el nivel que corresponda por nº de visitas SOLO si esta entrada contó
-    // como visita nueva (si no contó, no hay hito que celebrar). Idempotente: no
-    // duplica pases. Esto es lo que hace que VOLVER suba de nivel desde el fichaje.
-    let levelUp = null;
-    if (result.counted) {
-      try {
-        levelUp = awardLevelByVisits({ walletAddress, visitCount, ipAddress: req.ip });
-      } catch (e) {
-        console.error('Error otorgando nivel en /entry:', e.message);
-      }
-    }
-
-    // Mesa VIP de hoy: misma consecuencia que si le ficha el camarero o el admin.
-    completeVipReservationOnCheckin(walletAddress);
-
-    let pendingNftPrizes = [];
-    try {
-      const { getPendingNftPrizes } = require('../db/database');
-      const achievements = require('../services/achievements');
-      pendingNftPrizes = (getPendingNftPrizes(walletAddress) || []).map(r => {
-        const a = achievements.getById(r.nft_achievement_id);
-        return { prize: r.prize, name: a ? a.name : r.prize, image: a ? a.image : null };
-      });
-    } catch (_) {}
-
+    // Adjuntar ya los campos extra que devolvía específicamente /entry,
+    // aprovechando que performCheckin ahora devuelve TODO lo necesario.
     return res.json({
-      success: true,
-      action: 'entry',
-      isNew: visitCount === 1 && result.counted,
-      visitCount,
-      counted: !!result.counted,
-      hasEventNow: result.hasEventNow !== false,
-      alreadyCounted: !!result.alreadyVisitedThisWeek || !!result.alreadyOpen,
-      levelUp,
-      pendingNftPrizes,
-      message: visitCount === 1 && result.counted
+      ...result,
+      alreadyCounted: !result.counted,
+      message: result.isNew
         ? '¡Benvido a Furancho Sessions!'
-        : `¡Benvido de volta! Levas ${visitCount} visita${visitCount !== 1 ? 's' : ''}.`
+        : `¡Benvido de volta! Levas ${result.visitCount} visita${result.visitCount !== 1 ? 's' : ''}.`
     });
   } catch (error) {
     console.error('Error en /entry:', error.message);
@@ -313,6 +278,16 @@ function performCheckin(walletAddress, ipAddress) {
 
   completeVipReservationOnCheckin(walletAddress);
 
+  let pendingNftPrizes = [];
+  try {
+    const { getPendingNftPrizes } = require('../db/database');
+    const achievements = require('../services/achievements');
+    pendingNftPrizes = (getPendingNftPrizes(walletAddress) || []).map(r => {
+      const a = achievements.getById(r.nft_achievement_id);
+      return { prize: r.prize, name: a ? a.name : r.prize, image: a ? a.image : null };
+    });
+  } catch (_) {}
+
   const payload = {
     success: true,
     action: 'entry',
@@ -321,9 +296,60 @@ function performCheckin(walletAddress, ipAddress) {
     counted: !!result.counted,
     hasEventNow: result.hasEventNow !== false,
     levelUp,
-    corchoReward
+    corchoReward,
+    pendingNftPrizes
   };
   
+  // Auto-acreditar premios de $CORCHO pendientes al fichar entrada (staff/admin)
+  let autoCreditedCorchos = 0;
+  try {
+    const { db } = require('../db/database');
+    const processPending = (table, row) => {
+      let winners = [];
+      try { winners = JSON.parse(row.winner_wallet); } catch (e) { winners = [row.winner_wallet]; }
+      if (!Array.isArray(winners)) winners = [row.winner_wallet];
+      
+      if (winners.some(w => w && w.toLowerCase() === walletAddress.toLowerCase())) {
+        let collected = [];
+        try { collected = JSON.parse(row.collected_wallets || '[]'); } catch(e) {}
+        
+        if (!collected.some(w => w.toLowerCase() === walletAddress.toLowerCase())) {
+          const match = row.prize.match(/(\d+)\s*\$?CORCHO/i);
+          if (match) {
+            const qty = parseInt(match[1], 10);
+            const { addCorchoCoins } = require('../db/database');
+            const refId = `raffle_auto_${table}_${row.id || row.claimed_week}_${walletAddress}`;
+            addCorchoCoins(walletAddress, qty, 'raffle_prize', `🎉 Premio de la Chave: ${row.prize}`, refId);
+            autoCreditedCorchos += qty;
+            
+            collected.push(walletAddress);
+            let newStatus = row.status;
+            let colAt = row.collected_at;
+            if (collected.length >= winners.length) {
+              newStatus = 'collected';
+              colAt = new Date().toISOString();
+            }
+            const idField = table === 'raffles' ? 'id' : 'claimed_week';
+            const idVal = table === 'raffles' ? row.id : row.claimed_week;
+            db.prepare(`UPDATE ${table} SET collected_wallets = ?, status = ?, collected_at = ? WHERE ${idField} = ?`)
+              .run(JSON.stringify(collected), newStatus, colAt, idVal);
+          }
+        }
+      }
+    };
+
+    const pendingRaffles = db.prepare(`SELECT * FROM raffles WHERE status = 'accepted' AND upper(prize) LIKE '%CORCHO%'`).all();
+    for (const r of pendingRaffles) processPending('raffles', r);
+
+    const pendingWeekly = db.prepare(`SELECT * FROM weekly_raffles WHERE status = 'accepted' AND upper(prize) LIKE '%CORCHO%'`).all();
+    for (const r of pendingWeekly) processPending('weekly_raffles', r);
+
+  } catch (e) {
+    console.error('Error auto-crediting corchos en performCheckin:', e.message);
+  }
+  
+  payload.autoCreditedCorchos = autoCreditedCorchos;
+
   if (result.counted) {
     try {
       const { injectSystemMuroMessage, db } = require('../db/database');

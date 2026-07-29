@@ -5571,9 +5571,13 @@
         });
         if (res.ok) {
           const data = await res.json();
-          btn.textContent = window._currentRaffleIsNft
+          let successText = window._currentRaffleIsNft
             ? '✅ ¡Premio trincado! El staff te entrega el NFT en persona, ho'
             : '✅ ¡Premio trincado! Enséñale el código al staff, ho';
+          if (data && /corcho/i.test(data.prize || '')) {
+            successText = '✅ ¡Confirmado! Ficha entrada en el local para recibir los corchos automáticamente, ho';
+          }
+          btn.textContent = successText;
           btn.style.background = 'linear-gradient(135deg,#4ade80,#16a34a)';
           document.getElementById('accept-countdown-wrap').style.display = 'none';
           if (_acceptCountdownInterval) clearInterval(_acceptCountdownInterval);
@@ -9634,10 +9638,11 @@
         if (modal) { modal.style.display = 'none'; document.body.style.overflow = 'auto'; }
         launchParticles();
         if (navigator.vibrate) navigator.vibrate([100,50,100,50,400]);
-        showProfileBanner(
-          `🔑 <strong>¡Premio confirmado, ho!</strong> ${data.prize}<br>Tu código: <strong style="font-family:monospace; font-size:16px; letter-spacing:2px;">${data.verificationCode}</strong><br>Enséñaselo al staff en el local para trincarlo. ¡A disfrutarlo, rapaz!`,
-          'gold'
-        );
+        let msg = `🔑 <strong>¡Premio confirmado, ho!</strong> ${data.prize}<br>Tu código: <strong style="font-family:monospace; font-size:16px; letter-spacing:2px;">${data.verificationCode}</strong><br>Enséñaselo al staff en el local para trincarlo. ¡A disfrutarlo, rapaz!`;
+        if (/corcho/i.test(data.prize || '')) {
+          msg = `🔑 <strong>¡Premio confirmado, ho!</strong> ${data.prize}<br><strong>¡Atención!</strong> Para recibir tus $CORCHO automáticamente, debes asistir al próximo evento del Furancho y <strong>fichar entrada</strong> en la puerta con tu QR de la app. ¡Se te ingresarán al momento de escanear!`;
+        }
+        showProfileBanner(msg, 'gold');
         loadWeeklyRaffle();
       } else {
         showProfileBanner('❌ ' + (data.error || 'No se pudo confirmar. Inténtalo de nuevo, ho.'), 'red');

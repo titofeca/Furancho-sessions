@@ -573,6 +573,7 @@ try { db.exec(`ALTER TABLE event_finances ADD COLUMN cost_other_label TEXT`); } 
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected INTEGER DEFAULT 0`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_at TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_by TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE raffles ADD COLUMN collected_wallets TEXT DEFAULT '[]'`); } catch (_) {}
 
 // ── INSTALACIONES DE LA APP (contador de "furancheiros con app") ─────────────
 // Tabla TOTALMENTE AISLADA: registra la wallet cuando alguien crea/abre su cuenta,
@@ -609,6 +610,7 @@ try { db.exec(`ALTER TABLE raffles ADD COLUMN acceptance_deadline TEXT`); } catc
 try { db.exec(`ALTER TABLE raffles ADD COLUMN accepted_at TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN rejected_at TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN rejection_note TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE weekly_raffles ADD COLUMN collected_wallets TEXT DEFAULT '[]'`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN target_level INTEGER`); } catch (_) {}
 try { db.exec(`ALTER TABLE scheduled_raffles ADD COLUMN target_level INTEGER`); } catch (_) {}
 try { db.exec(`ALTER TABLE raffles ADD COLUMN prize_details TEXT`); } catch (_) {}

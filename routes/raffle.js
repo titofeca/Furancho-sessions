@@ -1602,9 +1602,24 @@ router.post('/grant-corcho-prize', requireAuth, (req, res) => {
 // admin y staff pulsan, no se dobla. type 'raffle_prize' está en la guarda de idempotencia.
 function grantCorchoPrizeHandler(req, res, grantedBy) {
   const { walletAddress, amount, prizeName, raffleId, week } = req.body || {};
-  if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
-    return res.status(400).json({ error: 'Wallet no válida' });
+  let wallets = [];
+  try {
+    if (typeof walletAddress === 'string' && walletAddress.startsWith('[')) {
+      wallets = JSON.parse(walletAddress);
+    } else if (Array.isArray(walletAddress)) {
+      wallets = walletAddress;
+    } else {
+      wallets = [walletAddress];
+    }
+  } catch (e) {
+    wallets = [walletAddress];
   }
+
+  wallets = wallets.filter(w => typeof w === 'string' && /^0x[a-fA-F0-9]{40}$/i.test(w));
+  if (wallets.length === 0) {
+    return res.status(400).json({ error: 'Wallets no válidas' });
+  }
+
   const qty = parseInt(amount, 10);
   if (!qty || isNaN(qty) || qty <= 0) {
     return res.status(400).json({ error: 'Cantidad de $CORCHO no válida' });
@@ -1615,30 +1630,41 @@ function grantCorchoPrizeHandler(req, res, grantedBy) {
     const title = prizeName ? `🎉 Premio de sorteo: ${prizeName}` : '🎉 Premio de sorteo do Furancho';
     const ref = raffleId ? `raffle_prize_${raffleId}`
               : (week ? `raffle_prize_week_${week}` : `raffle_grant_${Date.now()}`);
-    const result = addCorchoCoins(walletAddress, qty, 'raffle_prize', title, ref);
-    if (result && result.alreadyGranted) {
-      return res.json({ success: true, already: true, message: `Este premio en $CORCHO ya se había acreditado.` });
+    
+    let successCount = 0;
+    let alreadyCount = 0;
+
+    for (const wallet of wallets) {
+      const result = addCorchoCoins(wallet, qty, 'raffle_prize', title, ref);
+      if (result && result.alreadyGranted) {
+        alreadyCount++;
+        continue;
+      }
+      successCount++;
+      try {
+        sendPushToWallet(
+          wallet,
+          '🪙 ¡CorchoCoins Acreditadas!',
+          `🎉 Has recibido ${qty.toLocaleString()} $CORCHO como premio do Furancho. ¡Disfrútalas en tus canjes!`
+        );
+      } catch (_) {}
+
+      try {
+        broadcastCorchoPending({
+          kind: 'prize_corcho',
+          wallet: wallet,
+          walletMasked: `${wallet.slice(0,6)}…${wallet.slice(-4)}`,
+          coins: qty,
+          prizeName
+        });
+      } catch (_) {}
     }
 
-    try {
-      sendPushToWallet(
-        walletAddress,
-        '🪙 ¡CorchoCoins Acreditadas!',
-        `🎉 Has recibido ${qty.toLocaleString()} $CORCHO como premio do Furancho. ¡Disfrútalas en tus canjes!`
-      );
-    } catch (_) {}
+    if (successCount === 0 && alreadyCount > 0) {
+      return res.json({ success: true, already: true, message: `Este premio ya se había acreditado a ${alreadyCount > 1 ? 'los ganadores' : 'este ganador'}.` });
+    }
 
-    try {
-      broadcastCorchoPending({
-        kind: 'prize_corcho',
-        wallet: walletAddress,
-        walletMasked: `${walletAddress.slice(0,6)}…${walletAddress.slice(-4)}`,
-        coins: qty,
-        prizeName
-      });
-    } catch (_) {}
-
-    res.json({ success: true, newBalance: result.newBalance, message: `✅ Acreditadas ${qty.toLocaleString()} $CORCHO a ${walletAddress.slice(0,6)}…${walletAddress.slice(-4)}` });
+    res.json({ success: true, message: `✅ Acreditadas ${qty.toLocaleString()} $CORCHO a ${successCount} ganador(es)` });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

@@ -6962,15 +6962,23 @@
 
   // Acredita $CORCHO de premio a un ganador de sorteo (evento o agenda). Pregunta el
   // importe, llama al endpoint idempotente y notifica al ganador (push). Admin.
-  async function grantCorchoToRaffleWinner(raffleId, wallet) {
-    const amountStr = prompt(`¿Cuántos $CORCHO le doy al ganador (${wallet.slice(0,6)}…${wallet.slice(-4)})?`, '500');
+  async function grantCorchoToRaffleWinner(raffleId, walletData) {
+    let wallets = [];
+    try {
+      wallets = JSON.parse(walletData);
+      if (!Array.isArray(wallets)) wallets = [walletData];
+    } catch(e) {
+      wallets = [walletData];
+    }
+    const label = wallets.length > 1 ? `los ${wallets.length} ganadores` : `al ganador (${wallets[0].slice(0,6)}…${wallets[0].slice(-4)})`;
+    const amountStr = prompt(`¿Cuántos $CORCHO le doy a ${label}? (Se enviarán a CADA UNO)`, '1000');
     if (!amountStr) return;
     const amount = parseInt(amountStr, 10);
     if (!amount || amount <= 0) { showToast('Cantidad no válida', true); return; }
     try {
       const r = await fetch('/api/raffle/grant-corcho-prize', {
         method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress: wallet, amount, raffleId: raffleId || undefined, prizeName: 'Sorteo do Furancho' })
+        body: JSON.stringify({ walletAddress: wallets, amount, raffleId: raffleId || undefined, prizeName: 'Sorteo do Furancho' })
       });
       const d = await r.json();
       if (d.success) showToast(d.already ? 'Ese premio ya estaba acreditado' : `✅ ${amount.toLocaleString()} $CORCHO al ganador`);
@@ -8137,7 +8145,7 @@
   }
 
   async function grantCorchoFromRaffle(raffleId, btn) {
-    const amount = prompt('¿Cuántos $CORCHO dar al ganador?', '100');
+    const amount = prompt('¿Cuántos $CORCHO dar? (Se entregarán a CADA GANADOR si hay varios)', '1000');
     if (!amount) return;
     const qty = parseInt(amount, 10);
     if (!qty || qty <= 0) return showToast('Cantidad no válida', true);
