@@ -187,6 +187,46 @@ router.post('/vip', async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+// POST /api/events/vip/manual — creación manual de reserva VIP por el admin (teléfono/email/mesa/pax/hora)
+router.post('/vip/manual', requireAuth, (req, res) => {
+  const { eventId, name, phone, email, groupSize, time, mesa, notes } = req.body;
+  if (!eventId || !name || !groupSize) {
+    return res.status(400).json({ error: 'Faltan datos obligatorios (evento, nombre, personas)' });
+  }
+  try {
+    const { createManualVipReservation, getEvents } = require('../db/database');
+    const result = createManualVipReservation({
+      eventId: parseInt(eventId, 10),
+      name,
+      phone: phone || '',
+      email: email || '',
+      groupSize: parseInt(groupSize, 10),
+      time: time || '',
+      mesa: mesa || '',
+      notes: notes || ''
+    });
+
+    // Notificar en tiempo real al panel admin
+    try {
+      const { broadcastToAdmins } = require('./raffle');
+      const events = getEvents();
+      const ev = events.find(e => e.id === parseInt(eventId, 10));
+      broadcastToAdmins('new_vip_request', {
+        id: result.reservationId,
+        eventId: parseInt(eventId, 10),
+        phone: [phone, email].filter(Boolean).join(' / '),
+        groupSize: parseInt(groupSize, 10),
+        notes: notes || '',
+        eventTitle: ev ? ev.title : `Evento #${eventId}`
+      });
+    } catch (_) {}
+
+    res.json({ success: true, ...result });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 // GET /api/events/:id/vip/reservations — admin ve todas las reservas
 router.get('/:id/vip/reservations', requireAuth, (req, res) => {
   try {

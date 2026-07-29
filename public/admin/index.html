@@ -10556,12 +10556,13 @@
               <div style="height:100%; width:${pct}%; background:${barColor}; border-radius:100px; transition:width 0.3s;"></div>
             </div>
 
-            <!-- Control de capacidad -->
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px; background:rgba(42,21,9,0.03); border-radius:10px; padding:10px 12px;">
-              <span style="font-size:11px; color:var(--text-muted); flex:1;">Plazas disponibles (ajustar por tel./presencial):</span>
+            <!-- Control de capacidad y reserva manual -->
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px; background:rgba(42,21,9,0.03); border-radius:10px; padding:10px 12px; flex-wrap:wrap;">
+              <span style="font-size:11px; color:var(--text-muted); flex:1; min-width:140px;">Plazas disponibles:</span>
               <input id="vip-max-${ev.id}" type="number" min="0" max="50" value="${capacity.max}"
-                style="width:58px; padding:5px 8px; border-radius:8px; border:1.5px solid rgba(42,21,9,0.12); background:#fff; font-size:13px; font-family:'Outfit',sans-serif; text-align:center; color:var(--text);">
-              <button onclick="setVipCapacity(${ev.id})" style="padding:5px 12px; border-radius:8px; border:none; background:var(--wine); color:#fff; font-size:11px; font-weight:700; cursor:pointer;">Guardar</button>
+                style="width:54px; padding:5px 6px; border-radius:8px; border:1.5px solid rgba(42,21,9,0.12); background:#fff; font-size:13px; font-family:'Outfit',sans-serif; text-align:center; color:var(--text);">
+              <button onclick="setVipCapacity(${ev.id})" style="padding:5px 10px; border-radius:8px; border:none; background:var(--wine); color:#fff; font-size:11px; font-weight:700; cursor:pointer;">Guardar total</button>
+              <button onclick="openManualVipModal(${ev.id}, '${ev.title.replace(/'/g, "\\'")}', ${capacity.remaining})" style="padding:5px 12px; border-radius:8px; border:none; background:#16a34a; color:#fff; font-size:11px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:4px;">➕ Reserva Manual</button>
             </div>`;
 
         if (reservations.length === 0) {
@@ -12919,6 +12920,129 @@
         ov.style.display = 'flex';
         requestAnimationFrame(() => ov.style.opacity = '1');
       });
+    }
+  </script>
+
+  <!-- MODAL: CREAR RESERVA VIP MANUAL (ADMIN) -->
+  <div id="manual-vip-modal" onclick="if(event.target===this)closeManualVipModal()" style="display:none; position:fixed; inset:0; z-index:3000; background:rgba(0,0,0,0.65); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); align-items:center; justify-content:center; padding:16px;">
+    <div style="background:var(--cream, #F2EDE3); width:100%; max-width:440px; border-radius:20px; padding:22px; border:1.5px solid var(--gold, #C4973A); box-shadow:0 20px 40px rgba(0,0,0,0.3); position:relative; font-family:'Outfit',sans-serif;">
+      <button onclick="closeManualVipModal()" style="position:absolute; top:16px; right:16px; background:none; border:none; font-size:20px; color:var(--text-muted); cursor:pointer;">✕</button>
+      
+      <h3 style="font-family:'Playfair Display',serif; font-size:20px; font-weight:700; color:var(--wine); margin:0 0 4px;">📝 Reserva VIP Manual</h3>
+      <p id="m-vip-event-title" style="font-size:12px; color:var(--text-muted); margin:0 0 16px; font-weight:600;"></p>
+
+      <input type="hidden" id="m-vip-event-id" />
+
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div>
+          <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">👤 Nombre del Cliente / Titular *</label>
+          <input type="text" id="m-vip-name" placeholder="Ej: Pepe Pérez / Grupo Manolo" style="width:100%; padding:10px 12px; border:1.5px solid rgba(42,21,9,0.12); border-radius:10px; font-size:13px; box-sizing:border-box; background:#fff;" />
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div>
+            <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">📞 Teléfono</label>
+            <input type="tel" id="m-vip-phone" placeholder="Ej: 612345678" style="width:100%; padding:10px 12px; border:1.5px solid rgba(42,21,9,0.12); border-radius:10px; font-size:13px; box-sizing:border-box; background:#fff;" />
+          </div>
+          <div>
+            <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">📧 Email (opcional)</label>
+            <input type="email" id="m-vip-email" placeholder="cliente@gmail.com" style="width:100%; padding:10px 12px; border:1.5px solid rgba(42,21,9,0.12); border-radius:10px; font-size:13px; box-sizing:border-box; background:#fff;" />
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div>
+            <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">👥 Personas (Pax) *</label>
+            <input type="number" id="m-vip-pax" min="1" max="50" value="4" style="width:100%; padding:10px 12px; border:1.5px solid rgba(42,21,9,0.12); border-radius:10px; font-size:13px; box-sizing:border-box; background:#fff;" />
+            <span id="m-vip-pax-hint" style="font-size:10px; color:var(--text-muted);"></span>
+          </div>
+          <div>
+            <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">⏰ Hora de Reserva</label>
+            <input type="time" id="m-vip-time" value="21:30" style="width:100%; padding:10px 12px; border:1.5px solid rgba(42,21,9,0.12); border-radius:10px; font-size:13px; box-sizing:border-box; background:#fff;" />
+          </div>
+        </div>
+
+        <div>
+          <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">🏷️ Asignar Mesa / Alias (opcional)</label>
+          <input type="text" id="m-vip-mesa" placeholder="Ej: Mesa 3 (Si queda en blanco se genera un alias gallego)" style="width:100%; padding:10px 12px; border:1.5px solid rgba(42,21,9,0.12); border-radius:10px; font-size:13px; box-sizing:border-box; background:#fff;" />
+        </div>
+
+        <div>
+          <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">📝 Notas / Observaciones</label>
+          <input type="text" id="m-vip-notes" placeholder="Ej: Alergia a marisco / Celebración cumpleaños" style="width:100%; padding:10px 12px; border:1.5px solid rgba(42,21,9,0.12); border-radius:10px; font-size:13px; box-sizing:border-box; background:#fff;" />
+        </div>
+
+        <div id="m-vip-err" style="color:#ef4444; font-size:12px; font-weight:700; display:none;"></div>
+
+        <button onclick="submitManualVipReservation()" style="margin-top:8px; width:100%; padding:13px; background:linear-gradient(135deg,#16a34a,#15803d); color:#fff; border:none; border-radius:50px; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 4px 12px rgba(22,163,74,0.3);">
+          ✨ CREAR RESERVA Y DESCONTAR PLAZAS
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function openManualVipModal(eventId, eventTitle, remainingPax) {
+      document.getElementById('m-vip-event-id').value = eventId;
+      document.getElementById('m-vip-event-title').textContent = `${eventTitle} · Libres: ${remainingPax} pax`;
+      document.getElementById('m-vip-name').value = '';
+      document.getElementById('m-vip-phone').value = '';
+      document.getElementById('m-vip-email').value = '';
+      document.getElementById('m-vip-pax').value = 4;
+      document.getElementById('m-vip-pax-hint').textContent = `Máx disponible: ${remainingPax} pax`;
+      document.getElementById('m-vip-time').value = '21:30';
+      document.getElementById('m-vip-mesa').value = '';
+      document.getElementById('m-vip-notes').value = '';
+      document.getElementById('m-vip-err').style.display = 'none';
+      document.getElementById('manual-vip-modal').style.display = 'flex';
+    }
+
+    function closeManualVipModal() {
+      document.getElementById('manual-vip-modal').style.display = 'none';
+    }
+
+    async function submitManualVipReservation() {
+      const eventId = document.getElementById('m-vip-event-id').value;
+      const name = document.getElementById('m-vip-name').value.trim();
+      const phone = document.getElementById('m-vip-phone').value.trim();
+      const email = document.getElementById('m-vip-email').value.trim();
+      const groupSize = parseInt(document.getElementById('m-vip-pax').value, 10);
+      const time = document.getElementById('m-vip-time').value.trim();
+      const mesa = document.getElementById('m-vip-mesa').value.trim();
+      const notes = document.getElementById('m-vip-notes').value.trim();
+      const errEl = document.getElementById('m-vip-err');
+
+      if (!name) {
+        errEl.textContent = 'Indica el nombre del cliente o titular.';
+        errEl.style.display = 'block';
+        return;
+      }
+      if (!groupSize || groupSize <= 0) {
+        errEl.textContent = 'Indica el número de personas (pax).';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      errEl.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/events/vip/manual', {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({ eventId, name, phone, email, groupSize, time, mesa, notes })
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          throw new Error(data.error || 'Error creando la reserva.');
+        }
+        closeManualVipModal();
+        if (typeof corchoAlert === 'function') corchoAlert('✅ Reserva VIP manual creada correctamente.', 'Reserva Creada', '📝');
+        if (typeof loadVipReservations === 'function') loadVipReservations();
+        else location.reload();
+      } catch (e) {
+        errEl.textContent = e.message;
+        errEl.style.display = 'block';
+      }
     }
   </script>
 </body>

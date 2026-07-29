@@ -2222,6 +2222,35 @@ function createVipReservation({ eventId, walletAddress, phone, groupSize, notes 
   };
 }
 
+function createManualVipReservation({ eventId, name, phone, email, groupSize, time, mesa, notes }) {
+  const cap = getVipCapacity(eventId);
+  const pax = parseInt(groupSize, 10);
+  if (isNaN(pax) || pax <= 0) throw new Error('El número de personas debe ser mayor que 0.');
+  if (pax > cap.remaining) {
+    throw new Error(`Solo quedan ${cap.remaining} plazas VIP disponibles (intentas reservar para ${pax} personas).`);
+  }
+  
+  const manualWallet = `manual_${Date.now()}_${Math.floor(Math.random()*10000)}`;
+  const contactInfo = [phone, email].filter(Boolean).join(' / ') || 'Manual (Sin contacto)';
+  
+  let fullNotes = `Cliente: ${name.trim()}`;
+  if (time && time.trim()) fullNotes += ` | Hora: ${time.trim()}`;
+  if (notes && notes.trim()) fullNotes += ` | ${notes.trim()}`;
+
+  const aliasName = (mesa && mesa.trim()) ? mesa.trim() : generateVipAlias(eventId);
+
+  const result = db.prepare(`
+    INSERT INTO vip_reservations (event_id, wallet_address, phone, group_size, status, alias, notes)
+    VALUES (?, ?, ?, ?, 'confirmed', ?, ?)
+  `).run(eventId, manualWallet, contactInfo, pax, aliasName, fullNotes);
+
+  return {
+    capacity: getVipCapacity(eventId),
+    reservationId: result.lastInsertRowid,
+    alias: aliasName
+  };
+}
+
 function getVipReservations(eventId) {
   return db.prepare(`
     SELECT id, substr(wallet_address,1,6)||'...'||substr(wallet_address,-4) as wallet_masked,
@@ -3441,6 +3470,7 @@ module.exports = {
   getRsvpsDetail,
   setRsvpAllergens,
   createVipReservation,
+  createManualVipReservation,
   getVipReservations,
   getVipReservation,
   getVipCapacity,
