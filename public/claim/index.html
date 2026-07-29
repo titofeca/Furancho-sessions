@@ -9537,9 +9537,28 @@
       if (codeWrap) codeWrap.style.display = 'none';
     } else {
       const isWinner = isWeeklyWinner(data.winnerWallet, userWalletAddress);
+      const isCompleted = (data.status === 'completed' || data.status === 'forfeited' || !!data.drawnAt);
 
       if (statusBox && statusText) {
-        if (data.claimed) {
+        if (isCompleted) {
+          statusBox.style.display = 'block';
+          if (isWinner) {
+            statusBox.style.background = 'rgba(239,159,39,0.12)';
+            statusBox.style.borderColor = 'rgba(239,159,39,0.4)';
+            statusText.style.color = '#854F0B';
+            statusText.innerHTML = '🏆 <strong>¡ENHORABUENA! ¡TE TOCÓ A CHAVE!</strong><br><span style="font-size:12px; font-weight:500; color:#412402;">Eres el afortunado ganador de esta semana. Consulta la información a continuación.</span>';
+          } else if (data.claimed) {
+            statusBox.style.background = 'rgba(100,116,139,0.1)';
+            statusBox.style.borderColor = 'rgba(100,116,139,0.3)';
+            statusText.style.color = '#475569';
+            statusText.innerHTML = '🎲 <strong>Sorteo de a Chave ya realizado</strong><br><span style="font-size:12px; font-weight:500; color:var(--text-muted);">El sorteo de esta semana ya se ha celebrado y hay afortunados ganadores. Esta vez no hubo suerte, ¡pero tu boleto quedó registrado! ¡Nos vemos en el próximo sorteo! 🍀</span>';
+          } else {
+            statusBox.style.background = 'rgba(100,116,139,0.1)';
+            statusBox.style.borderColor = 'rgba(100,116,139,0.3)';
+            statusText.style.color = '#475569';
+            statusText.innerHTML = '🎲 <strong>Sorteo de a Chave finalizado</strong><br><span style="font-size:12px; font-weight:500; color:var(--text-muted);">El sorteo de esta semana ya ha finalizado. No olvides fichar para participar en el próximo.</span>';
+          }
+        } else if (data.claimed) {
           statusBox.style.display = 'block';
           statusBox.style.background = 'rgba(22,163,74,0.08)';
           statusBox.style.borderColor = 'rgba(22,163,74,0.3)';
@@ -9829,16 +9848,32 @@
       }
 
       // 2. Perdedor (participó pero no ganó)
-      if ((data.status === 'completed' || data.status === 'forfeited') && data.claimed) {
+      if ((data.status === 'completed' || data.status === 'forfeited' || data.drawnAt) && data.claimed) {
         setChaveState('chave-state-lost', null);
-        setChaveBanner({ show: false });
+        setChaveBanner({
+          show: true,
+          bg: 'rgba(100,116,139,0.08)', border: '1.5px solid rgba(100,116,139,0.25)',
+          iconBg: '#64748b', iconSvg: _keySvg,
+          title: 'Sorteo de a Chave celebrado', titleColor: '#334155',
+          sub: 'Esta vez no hubo suerte. ¡Toca para ver detalles! 🍀', subColor: '#475569',
+          trail: '<span class="chave-banner-chevron">›</span>',
+          onclick: function() { openChaveModal(); }
+        });
         return;
       }
 
       // 2b. Sorteo cerrado, no participó
-      if (data.status === 'completed' || data.status === 'forfeited') {
+      if (data.status === 'completed' || data.status === 'forfeited' || data.drawnAt) {
         setChaveState('chave-state-idle', null);
-        setChaveBanner({ show: false });
+        setChaveBanner({
+          show: true,
+          bg: 'rgba(100,116,139,0.05)', border: '1.5px solid rgba(100,116,139,0.2)',
+          iconBg: '#94a3b8', iconSvg: _keySvg,
+          title: 'Sorteo de a Chave finalizado', titleColor: '#475569',
+          sub: 'Ya hay ganadores esta semana. ¡Ficha para el próximo!', subColor: '#64748b',
+          trail: '<span class="chave-banner-chevron">›</span>',
+          onclick: function() { openChaveModal(); }
+        });
         return;
       }
 
