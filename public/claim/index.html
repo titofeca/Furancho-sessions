@@ -13947,8 +13947,7 @@
           const activeWallet = userWalletAddress || localStorage.getItem('furancho_wallet_address') || '';
           const hdrs = { 'wallet-address': activeWallet };
           const res = await fetch('/api/minigames/rasca/status', { headers: hdrs });
-          const rascaCostEl = document.getElementById('rasca-cost');
-          if (rascaCostEl && data.entryCost !== undefined) rascaCostEl.textContent = data.entryCost;
+          const data = await res.json();
           if (!res.ok || data.error) {
             document.getElementById('rasca-status-text').textContent = data.error || 'Error al conectar.';
           } else if (data.enabled === false) {
@@ -13985,8 +13984,10 @@
           // Setup Canvas
           rascaCanvas = document.getElementById('rasca-canvas');
           rascaCtx = rascaCanvas.getContext('2d');
+          rascaCtx.globalCompositeOperation = 'source-over';
           rascaCtx.fillStyle = '#94a3b8'; // Silver coating
           rascaCtx.fillRect(0, 0, rascaCanvas.width, rascaCanvas.height);
+          rascaCanvas.style.display = 'block';
           
           // Scratching logic
           let scratchedPixels = 0;
@@ -14014,7 +14015,7 @@
               } else {
                 document.getElementById('rasca-msg').textContent = 'Suerte en la próxima rascada 😅';
               }
-              setTimeout(openRascaModal, 4000); // Reset after 4s
+              setTimeout(openRascaModal, 2500); // Reset after 2.5s
             }
           }
           
@@ -14024,7 +14025,6 @@
           window.ontouchend = () => isScratching = false;
           rascaCanvas.onmousemove = scratch;
           rascaCanvas.ontouchmove = scratch;
-          rascaCanvas.style.display = 'block';
 
         } catch (e) {
           document.getElementById('rasca-msg').textContent = e.message;
