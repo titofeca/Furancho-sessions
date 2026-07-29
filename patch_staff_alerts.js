@@ -55,9 +55,9 @@ if (!content.includes('function playGlobalAlert')) {
   
   // Try to find the login function (e.g. login or handleLogin or doLogin)
   if (content.includes('function doLogin')) {
-    content = content.replace('function doLogin', 'function doLogin(e) { if(e) e.preventDefault(); initAudio();');
+    content = content.replace(/async function doLogin\s*\([^)]*\)\s*\{/, '$&\n      if (typeof initAudio === "function") initAudio();');
   } else if (content.includes('function handleLogin')) {
-    content = content.replace('function handleLogin', 'function handleLogin(e) { if(e) e.preventDefault(); initAudio();');
+    content = content.replace(/function handleLogin\s*\([^)]*\)\s*\{/, '$&\n      if (typeof initAudio === "function") initAudio();');
   } else {
     // If not found, attach it to the login button click
     content = content.replace(/id="btn-login"/, 'id="btn-login" onclick="initAudio()"');

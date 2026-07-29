@@ -2024,10 +2024,15 @@
         <div style="margin-bottom:14px; padding:16px; background:rgba(196,151,58,0.07); border:1.5px solid rgba(196,151,58,0.3); border-radius:14px; display:flex; flex-direction:column; gap:8px;">
           <div>
             <p style="font-size:13px; font-weight:700; color:var(--gold); margin-bottom:6px;">📱 Con el QR de recuperación <span style="font-size:10px; background:rgba(196,151,58,0.2); padding:2px 7px; border-radius:100px; margin-left:4px;">MÁS DABUTI</span></p>
-            <p style="font-size:12px; color:var(--text-muted); line-height:1.6; margin:0;">Escanea el QR de tu cuenta o sube la imagen guardada en tu galería para entrar al instante, rapaz.</p>
+            <p style="font-size:12px; color:var(--text-muted); line-height:1.6; margin:0;">Escanea el QR de tu cuenta con la cámara o sube la imagen desde tu galería.</p>
           </div>
+          <div id="restore-qr-camera-zone" style="display:none; width:100%; height:220px; border-radius:12px; overflow:hidden; margin-bottom:4px; background:#000;"></div>
+          <button id="restore-qr-camera-btn" onclick="startRestoreQrCamera()"
+            style="width:100%; padding:10px 12px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:10px; font-size:12px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; display:flex; align-items:center; justify-content:center; gap:6px;">
+            📷 Escanear QR con la cámara
+          </button>
           <button id="claim-qr-upload-btn" onclick="document.getElementById('claim-qr-file-input').click()"
-            style="width: 100%; padding: 10px 12px; background: var(--gold); color: #fff; border: none; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: 'Outfit', sans-serif; display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 4px;">
+            style="width: 100%; padding: 10px 12px; background: var(--gold); color: #fff; border: none; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: 'Outfit', sans-serif; display: flex; align-items: center; justify-content: center; gap: 6px;">
             📂 Seleccionar captura de QR desde mi galería
           </button>
           <input type="file" id="claim-qr-file-input" accept="image/*" style="display:none;" onchange="handleQrFileUpload(this)" />
@@ -7733,6 +7738,56 @@
       btn.disabled = false;
       btn.textContent = 'Recuperar mi cuenta';
     }
+  }
+
+  let _restoreQrScanner = null;
+  async function startRestoreQrCamera() {
+    const zone = document.getElementById('restore-qr-camera-zone');
+    const btn = document.getElementById('restore-qr-camera-btn');
+    if (_restoreQrScanner) { try { _restoreQrScanner.stop(); } catch(e){} _restoreQrScanner = null; }
+    zone.style.display = 'block';
+    btn.textContent = 'Cargando cámara...';
+    btn.disabled = true;
+    try {
+      _restoreQrScanner = new Html5Qrcode('restore-qr-camera-zone');
+      const devices = await Html5Qrcode.getCameras();
+      let cameraId = devices[0]?.id;
+      const back = devices.find(d => /back|rear|trasera|environment/i.test(d.label || ''));
+      if (back) cameraId = back.id;
+      else if (devices.length > 1) cameraId = devices[devices.length - 1].id;
+
+      await _restoreQrScanner.start(cameraId, { fps: 10, qrbox: { width: 200, height: 200 }, aspectRatio: 1.0, experimentalFeatures: { useBarCodeDetectorIfSupported: true } },
+        (decodedText) => {
+          try { _restoreQrScanner.stop(); } catch(e){}
+          _restoreQrScanner = null;
+          zone.style.display = 'none';
+          btn.disabled = false;
+          btn.textContent = '📷 Escanear QR con la cámara';
+          const match = decodedText.match(/[\?&]restore=(0x[a-fA-F0-9]{40})/);
+          if (match && match[1]) {
+            restoreByAddress(match[1]);
+          } else {
+            showToast('QR no válido. Usa el QR de tu pase de socio.', true);
+          }
+        },
+        () => {}
+      );
+      btn.textContent = '⏹ Detener cámara';
+      btn.disabled = false;
+      btn.onclick = function() { stopRestoreQrCamera(); };
+    } catch (e) {
+      zone.style.display = 'none';
+      btn.disabled = false;
+      btn.textContent = '📷 Escanear QR con la cámara';
+      showToast('No se pudo abrir la cámara. Usa la galería o pega tu dirección.', true);
+    }
+  }
+  function stopRestoreQrCamera() {
+    if (_restoreQrScanner) { try { _restoreQrScanner.stop(); } catch(e){} _restoreQrScanner = null; }
+    document.getElementById('restore-qr-camera-zone').style.display = 'none';
+    const btn = document.getElementById('restore-qr-camera-btn');
+    btn.textContent = '📷 Escanear QR con la cámara';
+    btn.onclick = function() { startRestoreQrCamera(); };
   }
 
   function restoreByAddress(directValue) {

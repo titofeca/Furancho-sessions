@@ -219,7 +219,8 @@
       }
     }
 
-    async function doLogin(e) { if(e) e.preventDefault(); initAudio();(){
+    async function doLogin(e) {
+      if(e) e.preventDefault();
       const code = document.getElementById('code-input').value.trim();
       const name = document.getElementById('staff-name-input').value.trim();
       const err = document.getElementById('gate-err');
