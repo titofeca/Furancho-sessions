@@ -3569,7 +3569,7 @@ function getEventRecap(eventDate) {
 
   const levelUps = db.prepare(`
     SELECT COUNT(*) AS c FROM mints
-    WHERE date(created_at) = ? AND status = 'success'
+    WHERE event_date = ? AND status = 'success'
   `).get(eventDate)?.c || 0;
 
   const nftsMinted = db.prepare(`

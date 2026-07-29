@@ -141,7 +141,32 @@ function getEconomySettings() {
     queimadaMult1517: getRate('queimadaMult1517'),
     queimadaMaxPlays: getRate('queimadaMaxPlays'),
     vacationMode: getRate('vacationMode'),
-    vacationMaxDailyGameCorchos: getRate('vacationMaxDailyGameCorchos')
+    vacationMaxDailyGameCorchos: getRate('vacationMaxDailyGameCorchos'),
+    
+    // Rasca
+    rascaEnabled: getRate('rascaEnabled'),
+    rascaEntryCost: getRate('rascaEntryCost'),
+    rascaPrize1: getRate('rascaPrize1'),
+    rascaPrize2: getRate('rascaPrize2'),
+    rascaPrize3: getRate('rascaPrize3'),
+    rascaMaxPlays: getRate('rascaMaxPlays'),
+    // Traga
+    tragaEnabled: getRate('tragaEnabled'),
+    tragaEntryCost: getRate('tragaEntryCost'),
+    tragaPrize3: getRate('tragaPrize3'),
+    tragaPrize2: getRate('tragaPrize2'),
+    tragaMaxPlays: getRate('tragaMaxPlays'),
+    // Chave
+    chaveEnabled: getRate('chaveEnabled'),
+    chaveEntryCost: getRate('chaveEntryCost'),
+    chavePrizePleno: getRate('chavePrizePleno'),
+    chavePrizeRoce: getRate('chavePrizeRoce'),
+    chaveMaxPlays: getRate('chaveMaxPlays'),
+    // Trivial
+    trivialEnabled: getRate('trivialEnabled'),
+    trivialEntryCost: getRate('trivialEntryCost'),
+    trivialPrize: getRate('trivialPrize'),
+    trivialMaxPlays: getRate('trivialMaxPlays')
   };
 }
 

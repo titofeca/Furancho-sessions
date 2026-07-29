@@ -13233,7 +13233,11 @@
           const cuncaEnabled = _corchoData?.rates?.cuncaEnabled;
           const ruletaEnabled = _corchoData?.rates?.ruletaEnabled;
           const queimadaEnabled = _corchoData?.rates?.queimadaEnabled;
-          if (enxebreEnabled || cuncaEnabled || ruletaEnabled || queimadaEnabled) {
+          const rascaEnabled = _corchoData?.rates?.rascaEnabled;
+          const tragaEnabled = _corchoData?.rates?.tragaEnabled;
+          const chaveEnabled = _corchoData?.rates?.chaveEnabled;
+          const trivialEnabled = _corchoData?.rates?.trivialEnabled;
+          if (enxebreEnabled || cuncaEnabled || ruletaEnabled || queimadaEnabled || rascaEnabled || tragaEnabled || chaveEnabled || trivialEnabled) {
             document.getElementById('btn-open-minigames').style.display = 'flex';
           } else {
             document.getElementById('btn-open-minigames').style.display = 'none';
@@ -13738,6 +13742,20 @@
         }
       }
 
+      window.spawnSummerParticles = function() {
+        const container = document.getElementById('summer-particles');
+        if (!container) return;
+        container.innerHTML = '';
+        
+        const emojis = ['🐚', '⛱️', '🦀', '🌊', '⭐️', '🏖️'];
+        let particlesHtml = '';
+        for (let i = 0; i < 15; i++) {
+          const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+          const size = 12 + Math.random() * 16;
+          const left = Math.random() * 100;
+          const delay = Math.random() * 5;
+          const dur = 4 + Math.random() * 6;
+          particlesHtml += `<div style="position:absolute; left:${left}%; top:-30px; font-size:${size}px; animation:levelup-fall ${dur}s ${delay}s linear infinite; opacity:0.3; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.1));">${emoji}</div>`;
         }
         container.innerHTML = particlesHtml;
       };
