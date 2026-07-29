@@ -54,6 +54,34 @@ function checkEnxebreGuess(guess) {
   return result;
 }
 
+function startEnxebre(wallet) {
+  const settings = corcho.getEconomySettings();
+  if (!settings.enxebreEnabled) throw new Error('Minijuego desactivado');
+
+  const today = new Date().toISOString().slice(0, 10);
+  const existing = db.prepare(`SELECT * FROM enxebre_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
+  if (existing) {
+    if (existing.attempts > 0 || existing.solved === 1) throw new Error('Ya has jugado hoy');
+    // Ya está empezada pero sin intentos (recargó la página)
+    return { sessionStarted: true, resumed: true };
+  }
+
+  const entryCost = settings.enxebreEntryCost || 0;
+  if (entryCost > 0) {
+    const { spendCorchoCoins } = require('./corcho');
+    const res = spendCorchoCoins(wallet, entryCost, 'minigame_enxebre_entry', `🎮 O Enxebre: entrada (-${entryCost} $CORCHO)`);
+    if (!res.ok) throw new Error(`Necesitas al menos ${entryCost} $CORCHO para jugar`);
+  }
+
+  // Insertar fila inicial
+  db.prepare(`
+    INSERT INTO enxebre_history (wallet_address, play_date, attempts, solved, awarded_corchos)
+    VALUES (?, ?, 0, 0, 0)
+  `).run(wallet, today);
+
+  return { sessionStarted: true, entryCost };
+}
+
 function recordEnxebrePlay(wallet, attempts, solved) {
   const settings = corcho.getEconomySettings();
   if (!settings.enxebreEnabled) throw new Error('Minijuego desactivado');
@@ -61,8 +89,9 @@ function recordEnxebrePlay(wallet, attempts, solved) {
   const today = new Date().toISOString().slice(0, 10);
   
   // Check if played today
-  const existing = db.prepare(`SELECT 1 FROM enxebre_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
-  if (existing) throw new Error('Ya has jugado hoy');
+  const existing = db.prepare(`SELECT * FROM enxebre_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
+  if (!existing) throw new Error('Debes iniciar el juego primero');
+  if (existing.attempts > 0 || existing.solved === 1) throw new Error('Ya has terminado el juego hoy');
 
   let awarded = 0;
   if (solved && attempts >= 1 && attempts <= 6) {
@@ -70,9 +99,10 @@ function recordEnxebrePlay(wallet, attempts, solved) {
   }
 
   db.prepare(`
-    INSERT INTO enxebre_history (wallet_address, play_date, attempts, solved, awarded_corchos)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(wallet, today, attempts, solved ? 1 : 0, awarded);
+    UPDATE enxebre_history 
+    SET attempts = ?, solved = ?, awarded_corchos = ?
+    WHERE id = ?
+  `).run(attempts, solved ? 1 : 0, awarded, existing.id);
 
   if (awarded > 0) {
     const { addCorchoCoins } = require('./corcho');
@@ -341,6 +371,7 @@ function resolveQueimada(wallet, ingredients, totalScore) {
 
 module.exports = {
   checkEnxebreGuess,
+  startEnxebre,
   recordEnxebrePlay,
   getActiveCunca,
   spawnCunca,

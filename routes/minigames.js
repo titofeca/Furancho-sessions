@@ -19,11 +19,23 @@ router.get('/enxebre/status', requireWallet, (req, res) => {
   try {
     const today = new Date().toISOString().slice(0, 10);
     const existing = db.prepare(`SELECT * FROM enxebre_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(req.walletAddress, today);
+    const { getEconomySettings } = require('../services/corcho');
+    const settings = getEconomySettings();
     res.json({
-      playedToday: !!existing,
-      history: existing || null
+      playedToday: existing && existing.solved !== null ? true : false,
+      startedToday: !!existing,
+      history: existing || null,
+      entryCost: settings.enxebreEntryCost || 0
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/minigames/enxebre/start
+router.post('/enxebre/start', requireWallet, (req, res) => {
+  try {
+    const result = minigames.startEnxebre(req.walletAddress);
+    res.json(result);
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 // POST /api/minigames/enxebre/guess

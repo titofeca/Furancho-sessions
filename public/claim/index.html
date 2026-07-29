@@ -11621,22 +11621,38 @@
       
       <div id="mg-enxebre-card" style="display:none; background:#fff; border-radius:14px; padding:16px; border:1px solid rgba(196,151,58,0.3); margin-bottom:12px; cursor:pointer;" onclick="openEnxebre()">
         <h4 style="margin:0 0 6px; color:var(--wine); font-size:16px; font-weight:900;">O Enxebre (Wordle)</h4>
-        <p style="margin:0; font-size:12px; color:var(--text-muted);">Adivina la palabra del Furancho (gastronomía) en 6 intentos y llévate hasta 50 $CORCHO.</p>
+        <p style="margin:0; font-size:12px; color:var(--text-muted);">Adivina la palabra del Furancho en 6 intentos.</p>
+        <div style="margin-top:8px; font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:10px;">
+          <span style="background:rgba(42,21,9,0.05); padding:2px 6px; border-radius:4px;">💸 Coste: Gratis</span>
+          <span style="background:rgba(212,175,55,0.15); padding:2px 6px; border-radius:4px; color:var(--gold);">🏆 Premio: Hasta 50 $CORCHO</span>
+        </div>
       </div>
 
       <div id="mg-cunca-card" style="display:none; background:#fff; border-radius:14px; padding:16px; border:1px solid rgba(196,151,58,0.3); margin-bottom:12px; cursor:pointer;" onclick="openCuncaQuente()">
         <h4 style="margin:0 0 6px; color:#d97706; font-size:16px; font-weight:900;">🔥 A Cunca Quente</h4>
-        <p style="margin:0; font-size:12px; color:var(--text-muted);">Comprueba si tienes la Cunca Quente. Si es así, bébetela o pásala a un amigo engordando el bote.</p>
+        <p style="margin:0; font-size:12px; color:var(--text-muted);">Si tienes la Cunca Quente, bébetela o pásala a un amigo.</p>
+        <div style="margin-top:8px; font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:10px;">
+          <span style="background:rgba(42,21,9,0.05); padding:2px 6px; border-radius:4px;">💸 Pasar: 5 $CORCHO</span>
+          <span style="background:rgba(212,175,55,0.15); padding:2px 6px; border-radius:4px; color:var(--gold);">🏆 Premio: Todo el bote acumulado</span>
+        </div>
       </div>
 
       <div id="mg-ruleta-card" style="display:none; background:#fff; border-radius:14px; padding:16px; border:1px solid rgba(196,151,58,0.3); margin-bottom:12px; cursor:pointer;" onclick="openRuletaModal()">
         <h4 style="margin:0 0 6px; color:var(--wine); font-size:16px; font-weight:900;">🐙 A Ruleta do Pulpo</h4>
-        <p id="mg-ruleta-desc" style="margin:0; font-size:12px; color:var(--text-muted);">Gira la ruleta y prueba suerte. ¿Te tocará el Pulpo de Ouro?</p>
+        <p id="mg-ruleta-desc" style="margin:0; font-size:12px; color:var(--text-muted);">Gira la ruleta y prueba suerte.</p>
+        <div style="margin-top:8px; font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:10px;">
+          <span style="background:rgba(42,21,9,0.05); padding:2px 6px; border-radius:4px;">💸 Coste: 10 $CORCHO</span>
+          <span style="background:rgba(212,175,55,0.15); padding:2px 6px; border-radius:4px; color:var(--gold);">🏆 Premio: Hasta x4 (40 $CORCHO)</span>
+        </div>
       </div>
 
       <div id="mg-queimada-card" style="display:none; background:#fff; border-radius:14px; padding:16px; border:1px solid rgba(196,151,58,0.3); cursor:pointer;" onclick="openQueimadaModal()">
         <h4 style="margin:0 0 6px; color:#b45309; font-size:16px; font-weight:900;">🔥 A Queimada</h4>
-        <p id="mg-queimada-desc" style="margin:0; font-size:12px; color:var(--text-muted);">Prepara tu queimada perfecta. Saca ingredientes y acércate a 21 sin pasarte.</p>
+        <p id="mg-queimada-desc" style="margin:0; font-size:12px; color:var(--text-muted);">Saca ingredientes y acércate a 21 sin pasarte.</p>
+        <div style="margin-top:8px; font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:10px;">
+          <span style="background:rgba(42,21,9,0.05); padding:2px 6px; border-radius:4px;">💸 Coste: 15 $CORCHO</span>
+          <span style="background:rgba(212,175,55,0.15); padding:2px 6px; border-radius:4px; color:var(--gold);">🏆 Premio: Hasta x3 (45 $CORCHO)</span>
+        </div>
       </div>
     </div>
   </div>
@@ -11662,6 +11678,12 @@
         font-family:'Courier New',monospace; font-size:11px; color:#6b5744;
         text-align:center; margin-bottom:12px; max-width:280px; line-height:1.4;
         letter-spacing:0.5px;
+      }
+      .enx-cost-label {
+        font-size:12px; color:var(--wine); font-weight:700; margin:0 0 10px; text-align:center;
+      }
+      .enx-start-btn {
+        padding:12px 30px; background:linear-gradient(135deg, #2d5a27, #1b4317); color:#fff; border:none; border-radius:12px; font-family:'Playfair Display',serif; font-size:16px; font-weight:900; cursor:pointer; box-shadow:0 4px 15px rgba(45,90,39,0.3); margin-top:20px;
       }
       .enx-grid-wrap {
         background: rgba(255,252,245,0.85); border-radius:8px; padding:10px;
@@ -11754,15 +11776,22 @@
 
     <h3 class="enx-title">O Enxebre</h3>
     <p class="enx-subtitle">Adivina a palabra (5 letras) da gastronomía galega.</p>
+    <div id="enxebre-cost-label" class="enx-cost-label" style="font-size:12px; color:var(--wine); font-weight:700; margin:0 0 10px; text-align:center;"></div>
 
-    <div class="enx-grid-wrap">
-      <div id="enxebre-grid" style="display:grid; grid-template-columns:repeat(5, 1fr); gap:5px; width:100%; max-width:260px;">
-        <!-- Grid generada por JS (6 filas x 5 cols) -->
-      </div>
+    <div id="enxebre-start-container" style="display:none; text-align:center; width:100%; margin-top:20px;">
+      <button id="enxebre-start-btn" onclick="startEnxebreGame()" style="padding:12px 30px; background:linear-gradient(135deg, #2d5a27, #1b4317); color:#fff; border:none; border-radius:12px; font-family:'Playfair Display',serif; font-size:16px; font-weight:900; cursor:pointer; box-shadow:0 4px 15px rgba(45,90,39,0.3);">JUGAR</button>
     </div>
 
-    <div id="enxebre-keyboard" style="display:flex; flex-direction:column; gap:5px; width:100%; max-width:360px; margin-top:14px; padding:0 6px 16px;">
-      <!-- Teclado generado por JS -->
+    <div id="enxebre-game-container" style="display:none; width:100%; flex-direction:column; align-items:center;">
+      <div class="enx-grid-wrap">
+        <div id="enxebre-grid" style="display:grid; grid-template-columns:repeat(5, 1fr); gap:5px; width:100%; max-width:260px;">
+          <!-- Grid generada por JS (6 filas x 5 cols) -->
+        </div>
+      </div>
+
+      <div id="enxebre-keyboard" style="display:flex; flex-direction:column; gap:5px; width:100%; max-width:360px; margin-top:14px; padding:0 6px 16px;">
+        <!-- Teclado generado por JS -->
+      </div>
     </div>
   </div>
 
@@ -12720,6 +12749,50 @@
     function openEnxebre() {
       closeMinigamesModal();
       document.getElementById('enxebre-modal').style.display = 'flex';
+      document.getElementById('enxebre-game-container').style.display = 'none';
+      document.getElementById('enxebre-start-container').style.display = 'none';
+      document.getElementById('enxebre-cost-label').textContent = 'Cargando...';
+
+      fetch('/api/minigames/enxebre/status', { headers: { 'wallet-address': userWalletAddress } })
+        .then(r => r.json()).then(data => {
+          if (data.playedToday) {
+            document.getElementById('enxebre-cost-label').textContent = '¡Ya has jugado hoy! Vuelve mañana.';
+            return;
+          }
+          
+          if (data.startedToday) {
+            // Ya empezó y recargó la página
+            document.getElementById('enxebre-cost-label').textContent = 'Continuar partida...';
+            startEnxebreSession();
+          } else {
+            const cost = data.entryCost || 0;
+            document.getElementById('enxebre-cost-label').textContent = cost > 0 ? `Coste: ${cost} $CORCHO` : 'Coste: Gratis';
+            document.getElementById('enxebre-start-btn').textContent = cost > 0 ? `PAGAR Y JUGAR` : `JUGAR`;
+            document.getElementById('enxebre-start-container').style.display = 'block';
+          }
+        }).catch(e => showToast('Error de red', true));
+    }
+
+    async function startEnxebreGame() {
+      try {
+        const r = await fetch('/api/minigames/enxebre/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'wallet-address': userWalletAddress }
+        });
+        const data = await r.json();
+        if (!r.ok) { showToast(data.error || 'Error', true); return; }
+        
+        loadCorchoBalance();
+        startEnxebreSession();
+      } catch (e) { showToast('Error de red', true); }
+    }
+
+    function startEnxebreSession() {
+      document.getElementById('enxebre-start-container').style.display = 'none';
+      document.getElementById('enxebre-game-container').style.display = 'flex';
+      enxebreGrid = Array(6).fill().map(() => Array(5).fill(''));
+      enxebreCurrentRow = 0;
+      enxebreCurrentCol = 0;
       renderEnxebreGrid();
       renderEnxebreKeyboard();
       document.addEventListener('keydown', handleEnxebreKeydown);

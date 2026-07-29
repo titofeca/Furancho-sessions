@@ -24,6 +24,7 @@ const DEFAULT_RATES = {
   
   // Minijuegos
   enxebreEnabled: 1,       // 1 = activado, 0 = desactivado
+  enxebreEntryCost: 0,     // Coste de jugar a O Enxebre
   enxebrePrize1: 50,
   enxebrePrize2: 40,
   enxebrePrize3: 30,
@@ -80,6 +81,7 @@ function getEconomySettings() {
     rsvpShowup: getRate('rsvpShowup'),
     vipShowup: getRate('vipShowup'),
     enxebreEnabled: getRate('enxebreEnabled'),
+    enxebreEntryCost: getRate('enxebreEntryCost'),
     enxebrePrize1: getRate('enxebrePrize1'),
     enxebrePrize2: getRate('enxebrePrize2'),
     enxebrePrize3: getRate('enxebrePrize3'),

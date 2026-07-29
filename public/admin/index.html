@@ -2610,12 +2610,11 @@
               <button onclick="saveCorchoAdminSettings()" style="background:var(--gold); color:#fff; border:none; border-radius:10px; padding:9px 18px; font-size:12px; font-weight:700; cursor:pointer;">
                 💾 Guardar Recompensas
               </button>
-              <span style="font-size:11px; color:var(--text-muted);">
+              <p style="font-size:11px; color:var(--text-muted);">
                 💡 Para peajes individuales por NFT ve a
                 <button onclick="showPage('banco')" style="background:none; border:none; color:var(--wine); font-weight:700; font-size:11px; cursor:pointer; text-decoration:underline; padding:0;">Traspasos →</button>
-              </span>
+              </p>
             </div>
-          </div>
 
           <!-- Minijuegos Configurables -->
           <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
@@ -2628,6 +2627,10 @@
                   <input type="checkbox" id="minigame-enxebre-enabled" style="width:16px; height:16px;" />
                   <span style="font-size:12px; font-weight:700; color:var(--text);">Activar</span>
                 </label>
+              </div>
+              <div style="margin-bottom:10px;">
+                <label style="display:block; font-size:10px; font-weight:700;">Coste entrada ($CORCHO):</label>
+                <input type="number" id="mg-enx-cost" class="input-field" style="font-size:12px; padding:4px 8px; width:100%; max-width:150px;"/>
               </div>
               <p style="font-size:11px; color:var(--text-muted); margin:0 0 10px;">Premios por número de intentos (1 a 6):</p>
               <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
@@ -5131,6 +5134,7 @@
         // Minijuegos
         const setCheck = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
         setCheck('minigame-enxebre-enabled', data.settings.enxebreEnabled);
+        setVal('mg-enx-cost', data.settings.enxebreEntryCost || 0);
         setVal('mg-enx-1', data.settings.enxebrePrize1);
         setVal('mg-enx-2', data.settings.enxebrePrize2);
         setVal('mg-enx-3', data.settings.enxebrePrize3);
@@ -5713,6 +5717,7 @@
       level3: getVal('rate-level3'),
       level4: getVal('rate-level4'),
       enxebreEnabled: document.getElementById('minigame-enxebre-enabled').checked ? 1 : 0,
+      enxebreEntryCost: getVal('mg-enx-cost'),
       enxebrePrize1: getVal('mg-enx-1'),
       enxebrePrize2: getVal('mg-enx-2'),
       enxebrePrize3: getVal('mg-enx-3'),
