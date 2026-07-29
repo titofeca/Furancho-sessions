@@ -9526,13 +9526,35 @@
       detailsEl.style.display = det ? 'block' : 'none';
     }
 
+    const statusBox = document.getElementById('chave-modal-status-box');
+    const statusText = document.getElementById('chave-modal-status-text');
+
     if (!data) {
       // Sin datos cargados aún
+      if (statusBox) statusBox.style.display = 'none';
       if (prizeEl) prizeEl.textContent = '🤫 Premio aún en secreto — el jefe anda maquinando, ho…';
       if (rulesEl) rulesEl.textContent = CHAVE_DEFAULT_RULES;
       if (codeWrap) codeWrap.style.display = 'none';
     } else {
       const isWinner = isWeeklyWinner(data.winnerWallet, userWalletAddress);
+
+      if (statusBox && statusText) {
+        if (data.claimed) {
+          statusBox.style.display = 'block';
+          statusBox.style.background = 'rgba(22,163,74,0.08)';
+          statusBox.style.borderColor = 'rgba(22,163,74,0.3)';
+          statusText.style.color = '#15803d';
+          statusText.innerHTML = '✅ <strong>¡Ya estás participando en el Sorteo de a Chave!</strong><br><span style="font-size:12px; font-weight:500; color:var(--text-muted);">Tu boleto está registrado para el sorteo del miércoles a las 21:00.</span>';
+        } else if (data.status === 'active') {
+          statusBox.style.display = 'block';
+          statusBox.style.background = 'rgba(196,151,58,0.1)';
+          statusBox.style.borderColor = 'rgba(196,151,58,0.35)';
+          statusText.style.color = '#8b6914';
+          statusText.innerHTML = '🎟️ <strong>Aún no has trincado tu boleto esta semana</strong><br><span style="font-size:12px; font-weight:500; color:var(--text-muted);">Ficha entrada en el local esta semana para trincar tu boleto.</span>';
+        } else {
+          statusBox.style.display = 'none';
+        }
+      }
 
       if (prizeEl) prizeEl.textContent = data.prize || '🤫 Premio aún en secreto — el jefe anda maquinando, ho…';
 
@@ -11523,6 +11545,11 @@
       </div>
       <!-- Cuerpo scrollable -->
       <div style="overflow-y:auto; padding:18px 22px 28px; flex:1;">
+        <!-- Estado de participación del cliente -->
+        <div id="chave-modal-status-box" style="display:none; background:rgba(22,163,74,0.08); border:1.5px solid rgba(22,163,74,0.3); border-radius:14px; padding:14px; margin-bottom:16px; text-align:center;">
+          <p id="chave-modal-status-text" style="font-size:13.5px; font-weight:700; color:#15803d; margin:0; line-height:1.5;"></p>
+        </div>
+
         <p style="font-size:10px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:var(--text-muted); margin:0 0 6px;">Premio de la semana</p>
         <p id="chave-modal-prize" style="font-size:17px; font-weight:800; color:var(--wine); margin:0 0 16px; line-height:1.35;">—</p>
 
@@ -11930,7 +11957,7 @@
         </div>
       </div>
 
-      <div id="mg-chave-card" style="display:none; background:#fff; border-radius:14px; padding:16px; border:1px solid rgba(196,151,58,0.3); margin-top:12px; cursor:pointer;" onclick="openChaveModal()">
+      <div id="mg-chave-card" style="display:none; background:#fff; border-radius:14px; padding:16px; border:1px solid rgba(196,151,58,0.3); margin-top:12px; cursor:pointer;" onclick="openChaveVirtualModal()">
         <h4 style="margin:0 0 6px; color:#16a34a; font-size:16px; font-weight:900;">🎯 A Chave Virtual</h4>
         <p id="mg-chave-desc" style="margin:0; font-size:12px; color:var(--text-muted);">Demuestra tu puntería milimétrica.</p>
         <div style="margin-top:8px; font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:10px;">
@@ -12204,6 +12231,9 @@
       <button id="rasca-buy-btn" onclick="buyRasca()" style="margin-top:16px; width:100%; padding:14px; background:linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; border:none; border-radius:50px; font-size:16px; font-weight:800; cursor:pointer; box-shadow:0 6px 16px rgba(37,99,235,0.3);">
         COMPRAR BOLETO
       </button>
+      <button onclick="document.getElementById('rasca-modal').style.display='none'" style="margin-top:10px; width:100%; padding:12px; background:rgba(0,0,0,0.06); color:var(--text-muted); border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer;">
+        Cerrar
+      </button>
     </div>
   </div>
 
@@ -12224,6 +12254,9 @@
 
       <button id="traga-spin-btn" onclick="spinTraga()" style="margin-top:16px; width:100%; padding:14px; background:linear-gradient(135deg,#d946ef,#c026d3); color:#fff; border:none; border-radius:50px; font-size:16px; font-weight:800; cursor:pointer; box-shadow:0 6px 16px rgba(192,38,211,0.3);">
         TIRAR DE LA PALANCA
+      </button>
+      <button onclick="document.getElementById('traga-modal').style.display='none'" style="margin-top:10px; width:100%; padding:12px; background:rgba(0,0,0,0.06); color:var(--text-muted); border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer;">
+        Cerrar
       </button>
     </div>
   </div>
@@ -12248,6 +12281,9 @@
       <button id="chave-throw-btn" onclick="throwChave()" style="margin-top:16px; width:100%; padding:14px; background:linear-gradient(135deg,#22c55e,#16a34a); color:#fff; border:none; border-radius:50px; font-size:16px; font-weight:800; cursor:pointer; box-shadow:0 6px 16px rgba(22,163,74,0.3);">
         ¡LANZAR!
       </button>
+      <button onclick="document.getElementById('chave-virtual-modal').style.display='none'" style="margin-top:10px; width:100%; padding:12px; background:rgba(0,0,0,0.06); color:var(--text-muted); border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer;">
+        Cerrar
+      </button>
     </div>
   </div>
 
@@ -12271,6 +12307,9 @@
 
       <button id="trivial-start-btn" onclick="startTrivial()" style="margin-top:16px; width:100%; padding:14px; background:linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; border:none; border-radius:50px; font-size:16px; font-weight:800; cursor:pointer; box-shadow:0 6px 16px rgba(37,99,235,0.3);">
         COMENZAR RETO
+      </button>
+      <button onclick="document.getElementById('trivial-modal').style.display='none'" style="margin-top:10px; width:100%; padding:12px; background:rgba(0,0,0,0.06); color:var(--text-muted); border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer;">
+        Cerrar
       </button>
     </div>
   </div>
@@ -14054,7 +14093,7 @@
 
       // 3. A CHAVE VIRTUAL
       let chaveInterval = null, chavePos = 0, chaveDir = 1;
-      window.openChaveModal = async function() {
+      window.openChaveVirtualModal = async function() {
         document.getElementById('chave-virtual-modal').style.display = 'flex';
         document.getElementById('chave-msg').textContent = '';
         document.getElementById('chave-throw-btn').style.display = 'none';
@@ -14114,7 +14153,7 @@
             document.getElementById('chave-msg').textContent = '¡Has fallado! Agua.';
           }
           if (data.prize > 0) loadCorchoBalance();
-          setTimeout(() => { document.getElementById('chave-icon').textContent = '🗝️'; openChaveModal(); }, 3000);
+          setTimeout(() => { document.getElementById('chave-icon').textContent = '🗝️'; openChaveVirtualModal(); }, 3000);
 
         } catch (e) {
           document.getElementById('chave-msg').textContent = e.message;
