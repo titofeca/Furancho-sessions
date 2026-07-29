@@ -11898,81 +11898,90 @@
   <!-- ==================== MINIJUEGOS MODALS ==================== -->
   
   <!-- MODAL: MINIJUEGOS MENU -->
-  <div id="minigames-menu-modal" style="display:none; position:fixed; inset:0; z-index:2400; background:rgba(0,0,0,0.65); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); align-items:center; justify-content:center; padding:18px;">
-    <div style="background:var(--cream); width:100%; max-width:400px; border-radius:20px; padding:22px; border:1.5px solid var(--gold); box-shadow:0 20px 40px rgba(0,0,0,0.3); position:relative;">
-      <button onclick="closeMinigamesModal()" style="position:absolute; top:16px; right:16px; background:none; border:none; font-size:20px; color:var(--text-muted); cursor:pointer;">✕</button>
-      <h3 style="font-family:'Playfair Display',serif; font-size:20px; color:var(--wine); margin:0 0 16px; text-align:center;">🎮 Juegos del Furancho</h3>
+  <div id="minigames-menu-modal" onclick="if(event.target===this)closeMinigamesModal()" style="display:none; position:fixed; inset:0; z-index:2400; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:16px;">
+    <div style="background:var(--cream, #F2EDE3); width:100%; max-width:420px; max-height:85vh; border-radius:24px; padding:20px 16px 20px; border:1.5px solid var(--gold, #C4973A); box-shadow:0 20px 50px rgba(0,0,0,0.4); position:relative; display:flex; flex-direction:column; box-sizing:border-box; overflow:hidden;">
       
-      <div id="mg-enxebre-card" style="display:none; background:#fff; border-radius:14px; padding:16px; border:1px solid rgba(196,151,58,0.3); margin-bottom:12px; cursor:pointer;" onclick="openEnxebre()">
-        <h4 style="margin:0 0 6px; color:var(--wine); font-size:16px; font-weight:900;">O Enxebre (Wordle)</h4>
-        <p style="margin:0; font-size:12px; color:var(--text-muted);">Adivina la palabra del Furancho en 6 intentos.</p>
-        <div style="margin-top:8px; font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:10px;">
-          <span style="background:rgba(42,21,9,0.05); padding:2px 6px; border-radius:4px;">💸 Coste: Gratis</span>
-          <span style="background:rgba(212,175,55,0.15); padding:2px 6px; border-radius:4px; color:var(--gold);">🏆 Premio: Hasta 50 $CORCHO</span>
-        </div>
+      <!-- Cabecera Fija -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; padding-bottom:10px; border-bottom:1.5px solid rgba(196,151,58,0.25); flex-shrink:0;">
+        <h3 style="font-family:'Playfair Display',serif; font-size:21px; font-weight:900; color:var(--wine); margin:0; display:flex; align-items:center; gap:8px;">🎮 Juegos del Furancho</h3>
+        <button onclick="closeMinigamesModal()" style="background:rgba(42,21,9,0.08); border:none; border-radius:50%; width:32px; height:32px; font-size:18px; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
       </div>
 
-      <div id="mg-cunca-card" style="display:none; background:#fff; border-radius:14px; padding:16px; border:1px solid rgba(196,151,58,0.3); margin-bottom:12px; cursor:pointer;" onclick="openCuncaQuente()">
-        <h4 style="margin:0 0 6px; color:#d97706; font-size:16px; font-weight:900;">🔥 A Cunca Quente</h4>
-        <p style="margin:0; font-size:12px; color:var(--text-muted);">Si tienes la Cunca Quente, bébetela o pásala a un amigo.</p>
-        <div style="margin-top:8px; font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:10px;">
-          <span style="background:rgba(42,21,9,0.05); padding:2px 6px; border-radius:4px;">💸 Pasar: 5 $CORCHO</span>
-          <span style="background:rgba(212,175,55,0.15); padding:2px 6px; border-radius:4px; color:var(--gold);">🏆 Premio: Todo el bote acumulado</span>
+      <!-- Lista Scrollable de Juegos -->
+      <div style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:10px; padding-right:4px; -webkit-overflow-scrolling:touch;">
+        
+        <div id="mg-enxebre-card" style="display:none; background:#fff; border-radius:16px; padding:14px; border:1.5px solid rgba(196,151,58,0.3); cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.03);" onclick="openEnxebre()">
+          <h4 style="margin:0 0 4px; color:var(--wine); font-size:15.5px; font-weight:900;">O Enxebre (Wordle)</h4>
+          <p style="margin:0 0 8px; font-size:12px; color:var(--text-muted); line-height:1.35;">Adivina la palabra del Furancho en 6 intentos.</p>
+          <div style="font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:8px; flex-wrap:wrap;">
+            <span style="background:rgba(42,21,9,0.05); padding:3px 8px; border-radius:6px;">💸 Coste: Gratis</span>
+            <span style="background:rgba(212,175,55,0.15); padding:3px 8px; border-radius:6px; color:var(--gold);">🏆 Premio: Hasta 50 $CORCHO</span>
+          </div>
         </div>
-      </div>
 
-      <div id="mg-ruleta-card" style="display:none; background:#fff; border-radius:14px; padding:16px; border:1px solid rgba(196,151,58,0.3); margin-bottom:12px; cursor:pointer;" onclick="openRuletaModal()">
-        <h4 style="margin:0 0 6px; color:var(--wine); font-size:16px; font-weight:900;">🐙 A Ruleta do Pulpo</h4>
-        <p id="mg-ruleta-desc" style="margin:0; font-size:12px; color:var(--text-muted);">Gira la ruleta y prueba suerte.</p>
-        <div style="margin-top:8px; font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:10px;">
-          <span style="background:rgba(42,21,9,0.05); padding:2px 6px; border-radius:4px;">💸 Coste: 10 $CORCHO</span>
-          <span style="background:rgba(212,175,55,0.15); padding:2px 6px; border-radius:4px; color:var(--gold);">🏆 Premio: Hasta x4 (40 $CORCHO)</span>
+        <div id="mg-cunca-card" style="display:none; background:#fff; border-radius:16px; padding:14px; border:1.5px solid rgba(196,151,58,0.3); cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.03);" onclick="openCuncaQuente()">
+          <h4 style="margin:0 0 4px; color:#d97706; font-size:15.5px; font-weight:900;">🔥 A Cunca Quente</h4>
+          <p style="margin:0 0 8px; font-size:12px; color:var(--text-muted); line-height:1.35;">Si tienes la Cunca Quente, bébetela o pásala a un amigo.</p>
+          <div style="font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:8px; flex-wrap:wrap;">
+            <span style="background:rgba(42,21,9,0.05); padding:3px 8px; border-radius:6px;">💸 Pasar: 5 $CORCHO</span>
+            <span style="background:rgba(212,175,55,0.15); padding:3px 8px; border-radius:6px; color:var(--gold);">🏆 Premio: Bote acumulado</span>
+          </div>
         </div>
-      </div>
 
-      <div id="mg-queimada-card" style="display:none; background:#fff; border-radius:14px; padding:16px; border:1px solid rgba(196,151,58,0.3); cursor:pointer;" onclick="openQueimadaModal()">
-        <h4 style="margin:0 0 6px; color:#b45309; font-size:16px; font-weight:900;">🔥 A Queimada</h4>
-        <p id="mg-queimada-desc" style="margin:0; font-size:12px; color:var(--text-muted);">Saca ingredientes y acércate a 21 sin pasarte.</p>
-        <div style="margin-top:8px; font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:10px;">
-          <span style="background:rgba(42,21,9,0.05); padding:2px 6px; border-radius:4px;">💸 Coste: 15 $CORCHO</span>
-          <span style="background:rgba(212,175,55,0.15); padding:2px 6px; border-radius:4px; color:var(--gold);">🏆 Premio: Hasta x3 (45 $CORCHO)</span>
+        <div id="mg-ruleta-card" style="display:none; background:#fff; border-radius:16px; padding:14px; border:1.5px solid rgba(196,151,58,0.3); cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.03);" onclick="openRuletaModal()">
+          <h4 style="margin:0 0 4px; color:var(--wine); font-size:15.5px; font-weight:900;">🐙 A Ruleta do Pulpo</h4>
+          <p id="mg-ruleta-desc" style="margin:0 0 8px; font-size:12px; color:var(--text-muted); line-height:1.35;">Gira la ruleta y prueba suerte.</p>
+          <div style="font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:8px; flex-wrap:wrap;">
+            <span style="background:rgba(42,21,9,0.05); padding:3px 8px; border-radius:6px;">💸 Coste: 10 $CORCHO</span>
+            <span style="background:rgba(212,175,55,0.15); padding:3px 8px; border-radius:6px; color:var(--gold);">🏆 Premio: Hasta x4 (40 $CORCHO)</span>
+          </div>
         </div>
-      </div>
 
-      <div id="mg-rasca-card" style="display:none; background:#fff; border-radius:14px; padding:16px; border:1px solid rgba(196,151,58,0.3); margin-top:12px; cursor:pointer;" onclick="openRascaModal()">
-        <h4 style="margin:0 0 6px; color:#475569; font-size:16px; font-weight:900;">🎟️ O Rasca Furancheiro</h4>
-        <p id="mg-rasca-desc" style="margin:0; font-size:12px; color:var(--text-muted);">Raspa y descubre 3 símbolos iguales.</p>
-        <div style="margin-top:8px; font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:10px;">
-          <span style="background:rgba(42,21,9,0.05); padding:2px 6px; border-radius:4px;">💸 Coste: 10 $CORCHO</span>
-          <span style="background:rgba(212,175,55,0.15); padding:2px 6px; border-radius:4px; color:var(--gold);">🏆 Premio: Hasta 100 $CORCHO</span>
+        <div id="mg-queimada-card" style="display:none; background:#fff; border-radius:16px; padding:14px; border:1.5px solid rgba(196,151,58,0.3); cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.03);" onclick="openQueimadaModal()">
+          <h4 style="margin:0 0 4px; color:#b45309; font-size:15.5px; font-weight:900;">🔥 A Queimada</h4>
+          <p id="mg-queimada-desc" style="margin:0 0 8px; font-size:12px; color:var(--text-muted); line-height:1.35;">Saca ingredientes y acércate a 21 sin pasarte.</p>
+          <div style="font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:8px; flex-wrap:wrap;">
+            <span style="background:rgba(42,21,9,0.05); padding:3px 8px; border-radius:6px;">💸 Coste: 15 $CORCHO</span>
+            <span style="background:rgba(212,175,55,0.15); padding:3px 8px; border-radius:6px; color:var(--gold);">🏆 Premio: Hasta x3 (45 $CORCHO)</span>
+          </div>
         </div>
-      </div>
 
-      <div id="mg-traga-card" style="display:none; background:#fff; border-radius:14px; padding:16px; border:1px solid rgba(196,151,58,0.3); margin-top:12px; cursor:pointer;" onclick="openTragaModal()">
-        <h4 style="margin:0 0 6px; color:#c026d3; font-size:16px; font-weight:900;">🎰 As Tragaperras da Ría</h4>
-        <p id="mg-traga-desc" style="margin:0; font-size:12px; color:var(--text-muted);">Gira los rodillos y saca 3 iguales.</p>
-        <div style="margin-top:8px; font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:10px;">
-          <span style="background:rgba(42,21,9,0.05); padding:2px 6px; border-radius:4px;">💸 Coste: 10 $CORCHO</span>
-          <span style="background:rgba(212,175,55,0.15); padding:2px 6px; border-radius:4px; color:var(--gold);">🏆 Premio: Hasta 100 $CORCHO</span>
+        <div id="mg-rasca-card" style="display:none; background:#fff; border-radius:16px; padding:14px; border:1.5px solid rgba(196,151,58,0.3); cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.03);" onclick="openRascaModal()">
+          <h4 style="margin:0 0 4px; color:#475569; font-size:15.5px; font-weight:900;">🎟️ O Rasca Furancheiro</h4>
+          <p id="mg-rasca-desc" style="margin:0 0 8px; font-size:12px; color:var(--text-muted); line-height:1.35;">Raspa y descubre 3 símbolos iguales.</p>
+          <div style="font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:8px; flex-wrap:wrap;">
+            <span style="background:rgba(42,21,9,0.05); padding:3px 8px; border-radius:6px;">💸 Coste: 10 $CORCHO</span>
+            <span style="background:rgba(212,175,55,0.15); padding:3px 8px; border-radius:6px; color:var(--gold);">🏆 Premio: Hasta 100 $CORCHO</span>
+          </div>
         </div>
-      </div>
 
-      <div id="mg-chave-card" style="display:none; background:#fff; border-radius:14px; padding:16px; border:1px solid rgba(196,151,58,0.3); margin-top:12px; cursor:pointer;" onclick="openChaveVirtualModal()">
-        <h4 style="margin:0 0 6px; color:#16a34a; font-size:16px; font-weight:900;">🎯 A Chave Virtual</h4>
-        <p id="mg-chave-desc" style="margin:0; font-size:12px; color:var(--text-muted);">Demuestra tu puntería milimétrica.</p>
-        <div style="margin-top:8px; font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:10px;">
-          <span style="background:rgba(42,21,9,0.05); padding:2px 6px; border-radius:4px;">💸 Coste: 10 $CORCHO</span>
-          <span style="background:rgba(212,175,55,0.15); padding:2px 6px; border-radius:4px; color:var(--gold);">🏆 Premio: Hasta 50 $CORCHO</span>
+        <div id="mg-traga-card" style="display:none; background:#fff; border-radius:16px; padding:14px; border:1.5px solid rgba(196,151,58,0.3); cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.03);" onclick="openTragaModal()">
+          <h4 style="margin:0 0 4px; color:#c026d3; font-size:15.5px; font-weight:900;">🎰 As Tragaperras da Ría</h4>
+          <p id="mg-traga-desc" style="margin:0 0 8px; font-size:12px; color:var(--text-muted); line-height:1.35;">Gira los rodillos y saca 3 iguales.</p>
+          <div style="font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:8px; flex-wrap:wrap;">
+            <span style="background:rgba(42,21,9,0.05); padding:3px 8px; border-radius:6px;">💸 Coste: 10 $CORCHO</span>
+            <span style="background:rgba(212,175,55,0.15); padding:3px 8px; border-radius:6px; color:var(--gold);">🏆 Premio: Hasta 100 $CORCHO</span>
+          </div>
         </div>
-      </div>
 
-      <div id="mg-trivial-card" style="display:none; background:#fff; border-radius:14px; padding:16px; border:1px solid rgba(196,151,58,0.3); margin-top:12px; cursor:pointer;" onclick="openTrivialModal()">
-        <h4 style="margin:0 0 6px; color:#2563eb; font-size:16px; font-weight:900;">🧠 Trivial Furancheiro</h4>
-        <p id="mg-trivial-desc" style="margin:0; font-size:12px; color:var(--text-muted);">Responde a las 3 preguntas de hoy.</p>
-        <div style="margin-top:8px; font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:10px;">
-          <span style="background:rgba(42,21,9,0.05); padding:2px 6px; border-radius:4px;">💸 Coste: 5 $CORCHO</span>
-          <span style="background:rgba(212,175,55,0.15); padding:2px 6px; border-radius:4px; color:var(--gold);">🏆 Premio: 100 $CORCHO</span>
+        <div id="mg-chave-card" style="display:none; background:#fff; border-radius:16px; padding:14px; border:1.5px solid rgba(196,151,58,0.3); cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.03);" onclick="openChaveVirtualModal()">
+          <h4 style="margin:0 0 4px; color:#16a34a; font-size:15.5px; font-weight:900;">🎯 A Chave Virtual</h4>
+          <p id="mg-chave-desc" style="margin:0 0 8px; font-size:12px; color:var(--text-muted); line-height:1.35;">Demuestra tu puntería milimétrica.</p>
+          <div style="font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:8px; flex-wrap:wrap;">
+            <span style="background:rgba(42,21,9,0.05); padding:3px 8px; border-radius:6px;">💸 Coste: 10 $CORCHO</span>
+            <span style="background:rgba(212,175,55,0.15); padding:3px 8px; border-radius:6px; color:var(--gold);">🏆 Premio: Hasta 50 $CORCHO</span>
+          </div>
         </div>
+
+        <div id="mg-trivial-card" style="display:none; background:#fff; border-radius:16px; padding:14px; border:1.5px solid rgba(196,151,58,0.3); cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.03);" onclick="openTrivialModal()">
+          <h4 style="margin:0 0 4px; color:#2563eb; font-size:15.5px; font-weight:900;">🧠 Trivial Furancheiro</h4>
+          <p id="mg-trivial-desc" style="margin:0 0 8px; font-size:12px; color:var(--text-muted); line-height:1.35;">Responde a las 3 preguntas de hoy.</p>
+          <div style="font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:8px; flex-wrap:wrap;">
+            <span style="background:rgba(42,21,9,0.05); padding:3px 8px; border-radius:6px;">💸 Coste: 5 $CORCHO</span>
+            <span style="background:rgba(212,175,55,0.15); padding:3px 8px; border-radius:6px; color:var(--gold);">🏆 Premio: 100 $CORCHO</span>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>

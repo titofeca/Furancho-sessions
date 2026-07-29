@@ -10,7 +10,7 @@ function applyVacationModeCap(wallet, basePrize) {
   const today = new Date().toISOString().slice(0, 10);
   
   // Calculate how many minigame corchos they already won today
-  const earnedRow = db.prepare(`SELECT SUM(amount) as s FROM corcho_coins WHERE LOWER(wallet_address) = LOWER(?) AND reason LIKE 'minigame_%' AND date(created_at) = ?`).get(wallet, today);
+  const earnedRow = db.prepare(`SELECT SUM(amount) as s FROM corcho_transactions WHERE LOWER(wallet_address) = LOWER(?) AND type LIKE 'minigame_%' AND amount > 0 AND date(created_at) = ?`).get(wallet, today);
   const earned = earnedRow ? (earnedRow.s || 0) : 0;
   
   if (earned >= maxDaily) {

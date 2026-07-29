@@ -58,7 +58,11 @@ router.post('/checkin', staffLimiter, requireStaff, (req, res) => {
     // Regla (anti-captura incluida) en services/campaign.js: la misma que aplica el
     // Escáner del panel, para que fichar por camarero o por admin cuente igual.
     const campaign = require('../services/campaign');
-    result.campaign = campaign.recordVisitFromScan(walletAddress, campaignTs);
+    if (campaignTs) {
+      result.campaign = campaign.recordVisitFromScan(walletAddress, campaignTs);
+    } else {
+      result.campaign = campaign.recordVisitByStaff(walletAddress);
+    }
 
     // ── Premios NFT pendientes de entrega presencial ────────────────────────
     // Si el cliente ganó un sorteo cuyo premio es un NFT (p.ej. Chave Dourada)

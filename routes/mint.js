@@ -436,7 +436,11 @@ router.post('/admin-checkin', requireAuth, (req, res) => {
     // escanea el ID Socio de siempre en vez del QR del reto, no suma — y el panel
     // se lo dice, para que nadie crea que ha sumado un sello que no existe.
     const campaign = require('../services/campaign');
-    result.campaign = campaign.recordVisitFromScan(walletAddress, campaignTs);
+    if (campaignTs) {
+      result.campaign = campaign.recordVisitFromScan(walletAddress, campaignTs);
+    } else {
+      result.campaign = campaign.recordVisitByStaff(walletAddress);
+    }
     return res.json(result);
   } catch (error) {
     console.error('Error en /admin-checkin:', error.message);
