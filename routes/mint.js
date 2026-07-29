@@ -794,11 +794,14 @@ router.get('/history', (req, res) => {
     }
 
     let sseRequired = false;
+    let vacationMode = false;
     try {
       sseRequired = db.prepare(`SELECT value FROM app_settings WHERE key = 'raffle_require_active_sse'`).get()?.value === '1';
+      const corchoSettings = require('../services/corcho').getEconomySettings();
+      vacationMode = !!corchoSettings.vacationMode;
     } catch (_) {}
 
-    res.json({ levels, visitCount, hasActiveSession: !!activeSession, pendingApproval: pendingApproval || null, serialsByLevel, visits, referral, raffleRequireSse: sseRequired });
+    res.json({ levels, visitCount, hasActiveSession: !!activeSession, pendingApproval: pendingApproval || null, serialsByLevel, visits, referral, raffleRequireSse: sseRequired, vacationMode });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
