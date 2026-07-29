@@ -13341,10 +13341,12 @@
 
       function sendTelemetry() {
         if (unreportedTime === 0 && unreportedOpens === 0 && Object.keys(unreportedTabs).length === 0) return;
-        if (!window.userWalletAddress) return; // Wait until identified
+        
+        const walletAddress = localStorage.getItem('furancho_wallet_address');
+        if (!walletAddress) return; // Wait until identified
 
         const payload = {
-          walletAddress: window.userWalletAddress,
+          walletAddress: walletAddress,
           timeSpent: unreportedTime,
           opens: unreportedOpens,
           tabs: unreportedTabs
@@ -13362,7 +13364,7 @@
         } else {
           fetch('/api/mint/analytics/ping', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'wallet-address': window.userWalletAddress },
+            headers: { 'Content-Type': 'application/json', 'wallet-address': walletAddress },
             body: JSON.stringify(payload),
             keepalive: true
           }).catch(() => {});
