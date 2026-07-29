@@ -7735,16 +7735,12 @@
     }
   }
 
-  function restoreByAddress() {
-    const input = document.getElementById('restore-wallet-input');
-    const btn = document.getElementById('restore-wallet-btn');
-    const addr = (input.value || '').trim();
+  function restoreByAddress(directValue) {
+    const addr = (directValue || document.getElementById('restore-wallet-input')?.value || '').trim();
     if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
       showToast('Dirección no válida. Debe empezar por 0x y tener 42 caracteres.', true);
       return;
     }
-    btn.disabled = true;
-    btn.textContent = 'Restaurando...';
     localStorage.setItem('furancho_wallet_address', addr);
     _setWalletCookie(addr);
     if (!localStorage.getItem('furancho_account_created_at')) {
@@ -11397,6 +11393,16 @@
         <div style="display:flex; gap:8px;">
           <input type="text" id="id-alias-input" placeholder="Ej. O Rei do Viño" style="flex:1; padding:12px; border-radius:10px; border:1.5px solid rgba(42,21,9,0.15); font-size:14px; font-family:'Outfit',sans-serif; outline:none; transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='rgba(42,21,9,0.15)'" />
           <button onclick="saveFuranchoAlias()" style="padding:0 20px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); color:#fff; border:none; border-radius:10px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 4px 12px rgba(139,25,24,0.3);">Guardar</button>
+        </div>
+      </div>
+
+      <!-- Restaurar cuenta anterior -->
+      <div id="id-restore-section" style="background:rgba(22,163,74,0.06); border:1.5px solid rgba(22,163,74,0.25); border-radius:14px; padding:14px; margin-bottom:16px; text-align:left;">
+        <p style="font-size:12px; font-weight:700; color:#15803d; margin:0 0 6px;">🔗 ¿Esta no es tu cuenta?</p>
+        <p style="font-size:11px; color:var(--text-muted); margin:0 0 10px; line-height:1.4;">Pega tu dirección 0x… para recuperar tu cuenta real:</p>
+        <div style="display:flex; gap:6px;">
+          <input id="id-restore-input" type="text" placeholder="0x5efd6c90..." style="flex:1; padding:9px 10px; border:1.5px solid rgba(22,163,74,0.3); border-radius:10px; font-family:monospace; font-size:12px; box-sizing:border-box;" />
+          <button onclick="restoreByAddress(document.getElementById('id-restore-input').value)" style="padding:9px 14px; background:#16a34a; color:#fff; border:none; border-radius:10px; font-size:12px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; white-space:nowrap;">Restaurar</button>
         </div>
       </div>
 
