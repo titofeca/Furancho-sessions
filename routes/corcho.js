@@ -67,7 +67,7 @@ router.post('/transfer-nft', (req, res) => {
   try {
     let feeKey = nftType === 'level' ? `transfer_fee_${nftId}` : `transfer_fee_ach_${nftId}`;
     let feeSetting = require('../db/database').getSetting(feeKey, null);
-    let fee = (feeSetting !== null && !isNaN(parseInt(feeSetting, 10))) ? parseInt(feeSetting, 10) : corcho.getRate('nftTransferFee');
+    let fee = (feeSetting !== null && !isNaN(parseInt(feeSetting, 10))) ? parseInt(feeSetting, 10) : 0;
 
     const result = corcho.transferNftWithFee(fromWallet, toWallet, nftType, nftId, fee);
 

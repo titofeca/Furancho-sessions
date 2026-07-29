@@ -2601,19 +2601,11 @@
                 <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Recompensa Nivel 4 (Presidente):</label>
                 <input type="number" id="rate-level4" class="input-field" style="font-size:12px; padding:6px 10px;" />
               </div>
-              <div>
-                <label style="display:block; font-size:11px; font-weight:700; color:var(--wine);">Peaje Global por Traspaso NFT:</label>
-                <input type="number" id="rate-nftTransferFee" class="input-field" style="font-size:12px; padding:6px 10px;" />
-              </div>
             </div>
             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
               <button onclick="saveCorchoAdminSettings()" style="background:var(--gold); color:#fff; border:none; border-radius:10px; padding:9px 18px; font-size:12px; font-weight:700; cursor:pointer;">
                 💾 Guardar Recompensas
               </button>
-              <p style="font-size:11px; color:var(--text-muted);">
-                💡 Para peajes individuales por NFT ve a
-                <button onclick="showPage('banco')" style="background:none; border:none; color:var(--wine); font-weight:700; font-size:11px; cursor:pointer; text-decoration:underline; padding:0;">Traspasos →</button>
-              </p>
             </div>
             </div>
           </div>
@@ -2944,11 +2936,8 @@
 
       <!-- Info box -->
       <div style="background:linear-gradient(135deg,rgba(196,151,58,0.1),rgba(42,21,9,0.04)); border:1.5px solid rgba(196,151,58,0.35); border-radius:14px; padding:14px; margin-bottom:16px; font-size:12px; color:var(--text-muted); line-height:1.6;">
-        <strong style="color:var(--wine);">ℹ️ ¿Cómo funciona el traspaso?</strong><br>
-        Cuando un socio traspasa un NFT (pase de nivel o logro) a otro socio, se le cobra un <strong>peaje en $CORCHO</strong>. 
-        Aquí configuras cuánto cuesta cada traspaso según el tipo de NFT. El peaje global se configura en 
-        <button onclick="showPage('dashboard')" style="background:none; border:none; color:var(--wine); font-weight:700; font-size:12px; cursor:pointer; text-decoration:underline; padding:0;">la sección de arriba</button>.
-        Aquí puedes ajustar tarifas <strong>individualmente por nivel o logro</strong> y ver el historial de traspasos.
+        <strong style="color:var(--wine);">ℹ️ Configuración Unificada de Peajes por NFT ($CORCHO)</strong><br>
+        Todos los peajes de traspaso entre socios se gestionan aquí de forma <strong>100% individual para cada tipo de NFT</strong> (Niveles principales, Logros especiales y Memes VIP). Cada NFT se cobrará exactamente al precio en $CORCHO que tú especifiques.
       </div>
 
       
