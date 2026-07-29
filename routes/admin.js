@@ -1596,7 +1596,13 @@ router.get('/corcho/fraud-check', requireAuth, (req, res) => {
     let campaignVisits = {};
     try { campaignVisits = mapOf(db.prepare(`SELECT LOWER(wallet_address) w, COUNT(*) c FROM campaign_visits GROUP BY LOWER(wallet_address)`).all()); } catch (_) {}
 
-    const KNOWN = new Set(['checkin', 'exit', 'level_award', 'campaign_visit', 'referral', 'admin_adjustment', 'buy_pack', 'raffle_prize']);
+    const KNOWN = new Set([
+      'checkin', 'exit', 'level_award', 'campaign_visit', 'referral',
+      'admin_adjustment', 'buy_pack', 'raffle_prize',
+      'minigame_ruleta', 'minigame_queimada', 'minigame_enxebre',
+      'minigame_rasca', 'minigame_traga', 'minigame_chave',
+      'minigame_trivial', 'minigame_cunca'
+    ]);
 
     // Agrupar créditos por cartera
     const wallets = {};
@@ -1626,7 +1632,7 @@ router.get('/corcho/fraud-check', requireAuth, (req, res) => {
       if (buyPackOrphans[x.w]) reasons.push(`${buyPackOrphans[x.w]} recarga(s) acreditada(s) sin pago confirmado`);
 
       Object.keys(bt).forEach(t => {
-        if (!KNOWN.has(t)) reasons.push(`crédito de origen desconocido: tipo "${t}" (${bt[t].c}×, +${bt[t].amt})`);
+        if (!KNOWN.has(t) && !t.startsWith('minigame_')) reasons.push(`crédito de origen desconocido: tipo "${t}" (${bt[t].c}×, +${bt[t].amt})`);
       });
 
       if (bt.admin_adjustment) notes.push(`Ajuste manual del admin: +${bt.admin_adjustment.amt} $CORCHO (${bt.admin_adjustment.c}×) — recuerda si lo hiciste tú`);

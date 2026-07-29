@@ -13499,9 +13499,11 @@
       _ruletaSpinning = false;
 
       try {
-        const r = await fetch('/api/minigames/ruleta/status', { headers: { 'wallet-address': userWalletAddress } });
+        const activeWallet = userWalletAddress || localStorage.getItem('furancho_wallet_address') || '';
+        const r = await fetch('/api/minigames/ruleta/status', { headers: { 'wallet-address': activeWallet } });
         const data = await r.json();
-        if (!data.enabled) { showToast('Juego desactivado', true); closeRuletaModal(); return; }
+        if (!r.ok || data.error) { showToast(data.error || 'Error al conectar', true); closeRuletaModal(); return; }
+        if (data.enabled === false) { showToast('Juego desactivado', true); closeRuletaModal(); return; }
 
         document.getElementById('ruleta-cost-label').textContent = `Coste: ${data.entryCost} $CORCHO por tirada`;
         document.getElementById('ruleta-plays-label').textContent = `Tiradas restantes hoy: ${data.maxPlays - data.playsToday}`;
@@ -13527,9 +13529,10 @@
       btn.style.opacity = '0.6';
 
       try {
+        const activeWallet = userWalletAddress || localStorage.getItem('furancho_wallet_address') || '';
         const r = await fetch('/api/minigames/ruleta/spin', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'wallet-address': userWalletAddress }
+          headers: { 'Content-Type': 'application/json', 'wallet-address': activeWallet }
         });
         const data = await r.json();
         if (!r.ok) {
@@ -13604,9 +13607,11 @@
       resetQueimadaUI();
       document.getElementById('queimada-modal').style.display = 'flex';
 
-      fetch('/api/minigames/queimada/status', { headers: { 'wallet-address': userWalletAddress } })
+      const activeWallet = userWalletAddress || localStorage.getItem('furancho_wallet_address') || '';
+      fetch('/api/minigames/queimada/status', { headers: { 'wallet-address': activeWallet } })
         .then(r => r.json()).then(data => {
-          if (!data.enabled) { showToast('Juego desactivado', true); closeQueimadaModal(); return; }
+          if (data.error) { showToast(data.error, true); closeQueimadaModal(); return; }
+          if (data.enabled === false) { showToast('Juego desactivado', true); closeQueimadaModal(); return; }
           document.getElementById('queimada-cost-label').textContent = `Coste: ${data.entryCost} $CORCHO por partida`;
           document.getElementById('queimada-plays-label').textContent = `Partidas restantes hoy: ${data.maxPlays - data.playsToday}`;
           if (!data.canPlay) {
@@ -13894,11 +13899,14 @@
         document.getElementById('rasca-status-text').textContent = 'Cargando...';
         
         try {
-          const hdrs = { 'wallet-address': userWalletAddress };
+          const activeWallet = userWalletAddress || localStorage.getItem('furancho_wallet_address') || '';
+          const hdrs = { 'wallet-address': activeWallet };
           const res = await fetch('/api/minigames/rasca/status', { headers: hdrs });
           const data = await res.json();
-          document.getElementById('rasca-cost').textContent = data.entryCost;
-          if (!data.enabled) {
+          if (data.entryCost !== undefined) document.getElementById('rasca-cost').textContent = data.entryCost;
+          if (!res.ok || data.error) {
+            document.getElementById('rasca-status-text').textContent = data.error || 'Error al conectar.';
+          } else if (data.enabled === false) {
             document.getElementById('rasca-status-text').textContent = 'Juego desactivado temporalmente.';
           } else if (data.playsLeft <= 0) {
             document.getElementById('rasca-status-text').textContent = 'Límite diario alcanzado. Vuelve mañana.';
@@ -13913,7 +13921,8 @@
         document.getElementById('rasca-buy-btn').style.display = 'none';
         document.getElementById('rasca-msg').textContent = 'Comprando boleto...';
         try {
-          const hdrs = { 'wallet-address': userWalletAddress };
+          const activeWallet = userWalletAddress || localStorage.getItem('furancho_wallet_address') || '';
+          const hdrs = { 'wallet-address': activeWallet };
           const res = await fetch('/api/minigames/rasca/play', { method: 'POST', headers: hdrs });
           const data = await res.json();
           if (data.error) throw new Error(data.error);
@@ -13987,10 +13996,13 @@
         ['slot-1', 'slot-2', 'slot-3'].forEach(id => document.getElementById(id).textContent = '❓');
         
         try {
-          const hdrs = { 'wallet-address': userWalletAddress };
+          const activeWallet = userWalletAddress || localStorage.getItem('furancho_wallet_address') || '';
+          const hdrs = { 'wallet-address': activeWallet };
           const res = await fetch('/api/minigames/traga/status', { headers: hdrs });
           const data = await res.json();
-          if (!data.enabled) {
+          if (!res.ok || data.error) {
+            document.getElementById('traga-status-text').textContent = data.error || 'Error al conectar.';
+          } else if (data.enabled === false) {
             document.getElementById('traga-status-text').textContent = 'Juego desactivado temporalmente.';
           } else if (data.playsLeft <= 0) {
             document.getElementById('traga-status-text').textContent = 'Límite diario alcanzado. Vuelve mañana.';
@@ -14014,7 +14026,8 @@
         }, 100);
 
         try {
-          const hdrs = { 'wallet-address': userWalletAddress };
+          const activeWallet = userWalletAddress || localStorage.getItem('furancho_wallet_address') || '';
+          const hdrs = { 'wallet-address': activeWallet };
           const res = await fetch('/api/minigames/traga/spin', { method: 'POST', headers: hdrs });
           const data = await res.json();
           if (data.error) throw new Error(data.error);
@@ -14053,10 +14066,13 @@
         clearInterval(chaveInterval);
         
         try {
-          const hdrs = { 'wallet-address': userWalletAddress };
+          const activeWallet = userWalletAddress || localStorage.getItem('furancho_wallet_address') || '';
+          const hdrs = { 'wallet-address': activeWallet };
           const res = await fetch('/api/minigames/chave/status', { headers: hdrs });
           const data = await res.json();
-          if (!data.enabled) {
+          if (!res.ok || data.error) {
+            document.getElementById('chave-status-text').textContent = data.error || 'Error al conectar.';
+          } else if (data.enabled === false) {
             document.getElementById('chave-status-text').textContent = 'Juego desactivado temporalmente.';
           } else if (data.playsLeft <= 0) {
             document.getElementById('chave-status-text').textContent = 'Límite diario alcanzado. Vuelve mañana.';
@@ -14083,7 +14099,8 @@
         document.getElementById('chave-msg').style.color = '#166534';
         
         try {
-          const hdrs = { 'wallet-address': userWalletAddress, 'Content-Type': 'application/json' };
+          const activeWallet = userWalletAddress || localStorage.getItem('furancho_wallet_address') || '';
+          const hdrs = { 'wallet-address': activeWallet, 'Content-Type': 'application/json' };
           const res = await fetch('/api/minigames/chave/throw', { method: 'POST', headers: hdrs, body: JSON.stringify({ timing: finalTiming }) });
           const data = await res.json();
           if (data.error) throw new Error(data.error);
@@ -14118,10 +14135,13 @@
         document.getElementById('trivial-status-text').textContent = 'Cargando...';
         
         try {
-          const hdrs = { 'wallet-address': userWalletAddress };
+          const activeWallet = userWalletAddress || localStorage.getItem('furancho_wallet_address') || '';
+          const hdrs = { 'wallet-address': activeWallet };
           const res = await fetch('/api/minigames/trivial/status', { headers: hdrs });
           const data = await res.json();
-          if (!data.enabled) {
+          if (!res.ok || data.error) {
+            document.getElementById('trivial-status-text').textContent = data.error || 'Error al conectar.';
+          } else if (data.enabled === false) {
             document.getElementById('trivial-status-text').textContent = 'Juego desactivado temporalmente.';
           } else if (data.playsLeft <= 0) {
             document.getElementById('trivial-status-text').textContent = 'Límite diario alcanzado. Vuelve mañana.';

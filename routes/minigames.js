@@ -4,10 +4,11 @@ const minigames = require('../services/minigames');
 const { db } = require('../db/database');
 const { requireAuth } = require('./events'); // Assuming it's exported or similar. Wait, I should implement a simple middleware if I can't import it.
 
-// Middleware simple
 const requireWallet = (req, res, next) => {
   const wallet = req.headers['wallet-address'] || req.query.wallet || (req.body && req.body.walletAddress);
-  if (!wallet) return res.status(401).json({ error: 'Wallet required' });
+  if (!wallet || wallet === 'null' || wallet === 'undefined') {
+    return res.status(401).json({ error: 'Debes tener la cuenta iniciada para jugar.' });
+  }
   req.walletAddress = wallet;
   next();
 };

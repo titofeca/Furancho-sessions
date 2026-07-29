@@ -131,7 +131,7 @@ function getStatus(wallet, gameId) {
   const plays = db.prepare(`SELECT COUNT(*) as c FROM minigame_plays WHERE LOWER(wallet_address) = LOWER(?) AND game_id = ? AND play_date = ?`).get(wallet, gameId, today).c;
   
   return {
-    enabled: settings[`${gameId}Enabled`],
+    enabled: Boolean(settings[`${gameId}Enabled`]),
     entryCost: settings[`${gameId}EntryCost`],
     maxPlays: settings[`${gameId}MaxPlays`],
     playsToday: plays,
