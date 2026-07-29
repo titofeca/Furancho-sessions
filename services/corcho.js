@@ -56,6 +56,33 @@ const DEFAULT_RATES = {
   queimadaMult1820: 2,      // Multiplicador 18-20 (x2)
   queimadaMult1517: 1,      // Multiplicador 15-17 (x1 = empate)
   queimadaMaxPlays: 3,       // Partidas al día
+  // O Rasca Furancheiro
+  rascaEnabled: 1,
+  rascaEntryCost: 10,
+  rascaPrize1: 100,        // Tres símbolos de oro
+  rascaPrize2: 50,         // Tres símbolos de plata
+  rascaPrize3: 20,         // Tres símbolos de bronce
+  rascaMaxPlays: 3,
+
+  // As Tragaperras da Ría
+  tragaEnabled: 1,
+  tragaEntryCost: 10,
+  tragaPrize3: 100,        // 3 símbolos iguales
+  tragaPrize2: 10,         // 2 símbolos iguales
+  tragaMaxPlays: 5,
+
+  // A Chave Virtual
+  chaveEnabled: 1,
+  chaveEntryCost: 10,
+  chavePrizePleno: 50,
+  chavePrizeRoce: 15,
+  chaveMaxPlays: 3,
+
+  // Trivial Furancheiro
+  trivialEnabled: 1,
+  trivialEntryCost: 5,
+  trivialPrize: 100,
+  trivialMaxPlays: 1,      // Solo 1 intento diario para acertar las 3 preguntas
   
   // Modo Vacaciones
   vacationMode: 0,

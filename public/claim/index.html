@@ -11813,6 +11813,42 @@
           <span style="background:rgba(212,175,55,0.15); padding:2px 6px; border-radius:4px; color:var(--gold);">🏆 Premio: Hasta x3 (45 $CORCHO)</span>
         </div>
       </div>
+
+      <div id="mg-rasca-card" style="display:none; background:#fff; border-radius:14px; padding:16px; border:1px solid rgba(196,151,58,0.3); margin-top:12px; cursor:pointer;" onclick="openRascaModal()">
+        <h4 style="margin:0 0 6px; color:#475569; font-size:16px; font-weight:900;">🎟️ O Rasca Furancheiro</h4>
+        <p id="mg-rasca-desc" style="margin:0; font-size:12px; color:var(--text-muted);">Raspa y descubre 3 símbolos iguales.</p>
+        <div style="margin-top:8px; font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:10px;">
+          <span style="background:rgba(42,21,9,0.05); padding:2px 6px; border-radius:4px;">💸 Coste: 10 $CORCHO</span>
+          <span style="background:rgba(212,175,55,0.15); padding:2px 6px; border-radius:4px; color:var(--gold);">🏆 Premio: Hasta 100 $CORCHO</span>
+        </div>
+      </div>
+
+      <div id="mg-traga-card" style="display:none; background:#fff; border-radius:14px; padding:16px; border:1px solid rgba(196,151,58,0.3); margin-top:12px; cursor:pointer;" onclick="openTragaModal()">
+        <h4 style="margin:0 0 6px; color:#c026d3; font-size:16px; font-weight:900;">🎰 As Tragaperras da Ría</h4>
+        <p id="mg-traga-desc" style="margin:0; font-size:12px; color:var(--text-muted);">Gira los rodillos y saca 3 iguales.</p>
+        <div style="margin-top:8px; font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:10px;">
+          <span style="background:rgba(42,21,9,0.05); padding:2px 6px; border-radius:4px;">💸 Coste: 10 $CORCHO</span>
+          <span style="background:rgba(212,175,55,0.15); padding:2px 6px; border-radius:4px; color:var(--gold);">🏆 Premio: Hasta 100 $CORCHO</span>
+        </div>
+      </div>
+
+      <div id="mg-chave-card" style="display:none; background:#fff; border-radius:14px; padding:16px; border:1px solid rgba(196,151,58,0.3); margin-top:12px; cursor:pointer;" onclick="openChaveModal()">
+        <h4 style="margin:0 0 6px; color:#16a34a; font-size:16px; font-weight:900;">🎯 A Chave Virtual</h4>
+        <p id="mg-chave-desc" style="margin:0; font-size:12px; color:var(--text-muted);">Demuestra tu puntería milimétrica.</p>
+        <div style="margin-top:8px; font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:10px;">
+          <span style="background:rgba(42,21,9,0.05); padding:2px 6px; border-radius:4px;">💸 Coste: 10 $CORCHO</span>
+          <span style="background:rgba(212,175,55,0.15); padding:2px 6px; border-radius:4px; color:var(--gold);">🏆 Premio: Hasta 50 $CORCHO</span>
+        </div>
+      </div>
+
+      <div id="mg-trivial-card" style="display:none; background:#fff; border-radius:14px; padding:16px; border:1px solid rgba(196,151,58,0.3); margin-top:12px; cursor:pointer;" onclick="openTrivialModal()">
+        <h4 style="margin:0 0 6px; color:#2563eb; font-size:16px; font-weight:900;">🧠 Trivial Furancheiro</h4>
+        <p id="mg-trivial-desc" style="margin:0; font-size:12px; color:var(--text-muted);">Responde a las 3 preguntas de hoy.</p>
+        <div style="margin-top:8px; font-size:11px; font-weight:bold; color:var(--wine); display:flex; gap:10px;">
+          <span style="background:rgba(42,21,9,0.05); padding:2px 6px; border-radius:4px;">💸 Coste: 5 $CORCHO</span>
+          <span style="background:rgba(212,175,55,0.15); padding:2px 6px; border-radius:4px; color:var(--gold);">🏆 Premio: 100 $CORCHO</span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -12049,6 +12085,94 @@
       <p style="font-size:13px; color:var(--text-muted); line-height:1.6; margin-bottom:12px;">Cada tirada cuesta $CORCHO. La ruleta tiene 8 rodajas con distintos premios: desde nada hasta el Pulpo de Ouro, que multiplica por 4 lo apostado.</p>
       <p style="font-size:13px; color:var(--text-muted); line-height:1.6; margin-bottom:12px;">Gira y cruza los dedos. Si la suerte te acompaña, te llevas un buen puñado de $CORCHO al bolsillo.</p>
       <p style="font-size:12px; color:var(--wine); font-weight:700;">¡Prueba suerte, ho!</p>
+    </div>
+  <!-- ==================== NEW MINIGAMES MODALS ==================== -->
+
+  <!-- MODAL: O RASCA FURANCHEIRO -->
+  <div id="rasca-modal" style="display:none; position:fixed; inset:0; z-index:2500; background:rgba(0,0,0,0.85); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); align-items:center; justify-content:center; flex-direction:column; padding:18px;">
+    <button onclick="document.getElementById('rasca-modal').style.display='none'" style="position:absolute; top:16px; right:16px; background:rgba(255,255,255,0.1); border:none; border-radius:50%; width:32px; height:32px; color:#fff; cursor:pointer; font-size:18px; z-index:10;">✕</button>
+    <div style="background:linear-gradient(135deg, #f8fafc, #e2e8f0); width:100%; max-width:340px; border-radius:16px; padding:24px; text-align:center; box-shadow:0 20px 40px rgba(0,0,0,0.5); position:relative; overflow:hidden;">
+      <h3 style="margin:0 0 8px; color:#334155; font-size:22px; font-weight:900;">🎟️ O Rasca Furancheiro</h3>
+      <p id="rasca-status-text" style="font-size:13px; color:#64748b; margin-bottom:16px;">Coste: <span id="rasca-cost"></span> $CORCHO</p>
+      
+      <div id="rasca-play-area" style="display:none; position:relative; width:260px; height:120px; margin:0 auto; background:#fff; border-radius:12px; box-shadow:inset 0 4px 10px rgba(0,0,0,0.05); overflow:hidden;">
+        <div id="rasca-result" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:space-around; font-size:40px; user-select:none;"></div>
+        <canvas id="rasca-canvas" width="260" height="120" style="position:absolute; inset:0; z-index:2; cursor:crosshair;"></canvas>
+      </div>
+      
+      <div id="rasca-msg" style="margin-top:16px; min-height:24px; font-size:16px; font-weight:800; color:#0f172a;"></div>
+
+      <button id="rasca-buy-btn" onclick="buyRasca()" style="margin-top:16px; width:100%; padding:14px; background:linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; border:none; border-radius:50px; font-size:16px; font-weight:800; cursor:pointer; box-shadow:0 6px 16px rgba(37,99,235,0.3);">
+        COMPRAR BOLETO
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: TRAGAPERRAS -->
+  <div id="traga-modal" style="display:none; position:fixed; inset:0; z-index:2500; background:rgba(0,0,0,0.85); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); align-items:center; justify-content:center; flex-direction:column; padding:18px;">
+    <button onclick="document.getElementById('traga-modal').style.display='none'" style="position:absolute; top:16px; right:16px; background:rgba(255,255,255,0.1); border:none; border-radius:50%; width:32px; height:32px; color:#fff; cursor:pointer; font-size:18px; z-index:10;">✕</button>
+    <div style="background:linear-gradient(135deg, #fdf4ff, #fae8ff); border:2px solid #d946ef; width:100%; max-width:340px; border-radius:16px; padding:24px; text-align:center; box-shadow:0 20px 40px rgba(217,70,239,0.3); position:relative;">
+      <h3 style="margin:0 0 8px; color:#86198f; font-size:22px; font-weight:900;">🎰 Tragaperras da Ría</h3>
+      <p id="traga-status-text" style="font-size:13px; color:#a21caf; margin-bottom:16px;"></p>
+      
+      <div style="display:flex; justify-content:space-between; background:#fff; padding:16px; border-radius:12px; box-shadow:inset 0 4px 10px rgba(0,0,0,0.1); margin-bottom:16px;">
+        <div class="traga-slot" id="slot-1" style="font-size:48px; width:60px; height:60px; display:flex; align-items:center; justify-content:center;">❓</div>
+        <div class="traga-slot" id="slot-2" style="font-size:48px; width:60px; height:60px; display:flex; align-items:center; justify-content:center; border-left:2px solid #f3e8ff; border-right:2px solid #f3e8ff;">❓</div>
+        <div class="traga-slot" id="slot-3" style="font-size:48px; width:60px; height:60px; display:flex; align-items:center; justify-content:center;">❓</div>
+      </div>
+      
+      <div id="traga-msg" style="margin-top:8px; min-height:24px; font-size:16px; font-weight:800; color:#86198f;"></div>
+
+      <button id="traga-spin-btn" onclick="spinTraga()" style="margin-top:16px; width:100%; padding:14px; background:linear-gradient(135deg,#d946ef,#c026d3); color:#fff; border:none; border-radius:50px; font-size:16px; font-weight:800; cursor:pointer; box-shadow:0 6px 16px rgba(192,38,211,0.3);">
+        TIRAR DE LA PALANCA
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: A CHAVE VIRTUAL -->
+  <div id="chave-modal" style="display:none; position:fixed; inset:0; z-index:2500; background:rgba(0,0,0,0.85); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); align-items:center; justify-content:center; flex-direction:column; padding:18px;">
+    <button onclick="document.getElementById('chave-modal').style.display='none'" style="position:absolute; top:16px; right:16px; background:rgba(255,255,255,0.1); border:none; border-radius:50%; width:32px; height:32px; color:#fff; cursor:pointer; font-size:18px; z-index:10;">✕</button>
+    <div style="background:linear-gradient(135deg, #f0fdf4, #dcfce7); border:2px solid #22c55e; width:100%; max-width:340px; border-radius:16px; padding:24px; text-align:center; box-shadow:0 20px 40px rgba(34,197,94,0.3); position:relative;">
+      <h3 style="margin:0 0 8px; color:#166534; font-size:22px; font-weight:900;">🎯 A Chave Virtual</h3>
+      <p id="chave-status-text" style="font-size:13px; color:#15803d; margin-bottom:16px;"></p>
+      
+      <div style="font-size:60px; margin-bottom:10px;" id="chave-icon">🗝️</div>
+      
+      <div style="width:100%; height:30px; background:#e2e8f0; border-radius:15px; position:relative; overflow:hidden; margin-bottom:16px;">
+        <div style="position:absolute; left:35%; width:30%; height:100%; background:#fef08a;"></div> <!-- Roce -->
+        <div style="position:absolute; left:45%; width:10%; height:100%; background:#4ade80;"></div> <!-- Pleno -->
+        <div id="chave-cursor" style="position:absolute; left:0%; width:4px; height:100%; background:#000; transition:left 0.1s linear;"></div>
+      </div>
+      
+      <div id="chave-msg" style="margin-top:8px; min-height:24px; font-size:16px; font-weight:800; color:#166534;"></div>
+
+      <button id="chave-throw-btn" onclick="throwChave()" style="margin-top:16px; width:100%; padding:14px; background:linear-gradient(135deg,#22c55e,#16a34a); color:#fff; border:none; border-radius:50px; font-size:16px; font-weight:800; cursor:pointer; box-shadow:0 6px 16px rgba(22,163,74,0.3);">
+        ¡LANZAR!
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: TRIVIAL FURANCHEIRO -->
+  <div id="trivial-modal" style="display:none; position:fixed; inset:0; z-index:2500; background:rgba(0,0,0,0.85); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); align-items:center; justify-content:center; flex-direction:column; padding:18px;">
+    <button onclick="document.getElementById('trivial-modal').style.display='none'" style="position:absolute; top:16px; right:16px; background:rgba(255,255,255,0.1); border:none; border-radius:50%; width:32px; height:32px; color:#fff; cursor:pointer; font-size:18px; z-index:10;">✕</button>
+    <div style="background:linear-gradient(135deg, #eff6ff, #dbeafe); border:2px solid #3b82f6; width:100%; max-width:340px; border-radius:16px; padding:24px; text-align:center; box-shadow:0 20px 40px rgba(59,130,246,0.3); position:relative;">
+      <h3 style="margin:0 0 8px; color:#1e40af; font-size:22px; font-weight:900;">🧠 Trivial Furancheiro</h3>
+      <p id="trivial-status-text" style="font-size:13px; color:#1d4ed8; margin-bottom:16px;"></p>
+      
+      <div id="trivial-quiz-area" style="display:none; text-align:left;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:12px; font-weight:bold; color:#1e40af;">
+          <span id="trivial-progress">Pregunta 1/3</span>
+          <span id="trivial-timer" style="color:#ef4444;">⏱️ 10</span>
+        </div>
+        <h4 id="trivial-q" style="font-size:16px; color:#0f172a; margin-bottom:16px; line-height:1.4;"></h4>
+        <div id="trivial-options" style="display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+      
+      <div id="trivial-msg" style="margin-top:16px; min-height:24px; font-size:16px; font-weight:800; color:#1e40af;"></div>
+
+      <button id="trivial-start-btn" onclick="startTrivial()" style="margin-top:16px; width:100%; padding:14px; background:linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; border:none; border-radius:50px; font-size:16px; font-weight:800; cursor:pointer; box-shadow:0 6px 16px rgba(37,99,235,0.3);">
+        COMENZAR RETO
+      </button>
     </div>
   </div>
 
@@ -12899,6 +13023,17 @@
             document.getElementById('mg-queimada-desc').textContent = `Prepara la queimada perfecta (${data.entryCost} $CORCHO). Te quedan ${data.maxPlays - data.playsToday} partidas hoy.`;
           }
         }).catch(console.error);
+
+      // New Minigames
+      ['rasca', 'traga', 'chave', 'trivial'].forEach(game => {
+        document.getElementById(`mg-${game}-card`).style.display = 'none';
+        fetch(`/api/minigames/${game}/status`, { headers: hdrs })
+          .then(r => r.json()).then(data => {
+            if (data.enabled && data.playsLeft > 0) {
+              document.getElementById(`mg-${game}-card`).style.display = 'block';
+            }
+          }).catch(console.error);
+      });
     }
     
     function closeMinigamesModal() {
@@ -13603,30 +13738,348 @@
         }
       }
 
-      window.spawnSummerParticles = function() {
-        const container = document.getElementById('summer-particles');
-        if (!container) return;
-        container.innerHTML = '';
-        
-        // Change dress code emojis
-        const f1 = document.getElementById('dresscode-flower-1');
-        const f2 = document.getElementById('dresscode-flower-2');
-        if (f1) f1.textContent = '🐚';
-        if (f2) f2.textContent = '⛱️';
-        
-        const emojis = ['🐚', '⛱️', '🦀', '🌊', '⭐️', '🏖️'];
-        let particlesHtml = '';
-        for (let i = 0; i < 15; i++) {
-          const emoji = emojis[Math.floor(Math.random() * emojis.length)];
-          const size = 12 + Math.random() * 16;
-          const left = Math.random() * 100;
-          const delay = Math.random() * 5;
-          const dur = 4 + Math.random() * 6;
-          // Reuse raffle-particles animation (levelup-fall)
-          particlesHtml += `<div style="position:absolute; left:${left}%; top:-30px; font-size:${size}px; animation:levelup-fall ${dur}s ${delay}s linear infinite; opacity:0.3; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.1));">${emoji}</div>`;
         }
         container.innerHTML = particlesHtml;
       };
+
+      // ==================== NEW MINIGAMES LOGIC ====================
+
+      // 1. RASCA FURANCHEIRO
+      let rascaCanvas, rascaCtx, isScratching = false;
+      window.openRascaModal = async function() {
+        document.getElementById('rasca-modal').style.display = 'flex';
+        document.getElementById('rasca-play-area').style.display = 'none';
+        document.getElementById('rasca-msg').textContent = '';
+        document.getElementById('rasca-buy-btn').style.display = 'none';
+        document.getElementById('rasca-status-text').textContent = 'Cargando...';
+        
+        try {
+          const hdrs = { 'wallet-address': userWalletAddress };
+          const res = await fetch('/api/minigames/rasca/status', { headers: hdrs });
+          const data = await res.json();
+          document.getElementById('rasca-cost').textContent = data.entryCost;
+          if (!data.enabled) {
+            document.getElementById('rasca-status-text').textContent = 'Juego desactivado temporalmente.';
+          } else if (data.playsLeft <= 0) {
+            document.getElementById('rasca-status-text').textContent = 'Límite diario alcanzado. Vuelve mañana.';
+          } else {
+            document.getElementById('rasca-status-text').textContent = `Coste: ${data.entryCost} $CORCHO. Te quedan ${data.playsLeft} boletos hoy.`;
+            document.getElementById('rasca-buy-btn').style.display = 'block';
+          }
+        } catch (e) { document.getElementById('rasca-status-text').textContent = 'Error al cargar.'; }
+      };
+
+      window.buyRasca = async function() {
+        document.getElementById('rasca-buy-btn').style.display = 'none';
+        document.getElementById('rasca-msg').textContent = 'Comprando boleto...';
+        try {
+          const hdrs = { 'wallet-address': userWalletAddress };
+          const res = await fetch('/api/minigames/rasca/play', { method: 'POST', headers: hdrs });
+          const data = await res.json();
+          if (data.error) throw new Error(data.error);
+
+          document.getElementById('rasca-msg').textContent = '¡Rasca para descubrir tu premio!';
+          const area = document.getElementById('rasca-play-area');
+          area.style.display = 'block';
+          
+          let icons = '❌ ❌ ❌';
+          if (data.result === 'gold') icons = '🏆 🏆 🏆';
+          else if (data.result === 'silver') icons = '🥈 🥈 🥈';
+          else if (data.result === 'bronze') icons = '🥉 🥉 🥉';
+          document.getElementById('rasca-result').textContent = icons;
+
+          // Setup Canvas
+          rascaCanvas = document.getElementById('rasca-canvas');
+          rascaCtx = rascaCanvas.getContext('2d');
+          rascaCtx.fillStyle = '#94a3b8'; // Silver coating
+          rascaCtx.fillRect(0, 0, rascaCanvas.width, rascaCanvas.height);
+          
+          // Scratching logic
+          let scratchedPixels = 0;
+          const totalPixels = rascaCanvas.width * rascaCanvas.height;
+          
+          function scratch(e) {
+            if (!isScratching) return;
+            const rect = rascaCanvas.getBoundingClientRect();
+            const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+            const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+            
+            rascaCtx.globalCompositeOperation = 'destination-out';
+            rascaCtx.beginPath();
+            rascaCtx.arc(x, y, 20, 0, Math.PI * 2);
+            rascaCtx.fill();
+            
+            scratchedPixels += Math.PI * 400; // rough estimation
+            if (scratchedPixels > totalPixels * 0.4) {
+              rascaCanvas.style.display = 'none'; // Reveal completely
+              isScratching = false;
+              if (data.prize > 0) {
+                document.getElementById('rasca-msg').textContent = `¡Felicidades! Has ganado ${data.prize} $CORCHO 🎉`;
+                document.getElementById('rasca-msg').style.color = '#16a34a';
+                refreshBank();
+              } else {
+                document.getElementById('rasca-msg').textContent = 'Suerte en la próxima rascada 😅';
+              }
+              setTimeout(openRascaModal, 4000); // Reset after 4s
+            }
+          }
+          
+          rascaCanvas.onmousedown = () => isScratching = true;
+          rascaCanvas.ontouchstart = () => isScratching = true;
+          window.onmouseup = () => isScratching = false;
+          window.ontouchend = () => isScratching = false;
+          rascaCanvas.onmousemove = scratch;
+          rascaCanvas.ontouchmove = scratch;
+          rascaCanvas.style.display = 'block';
+
+        } catch (e) {
+          document.getElementById('rasca-msg').textContent = e.message;
+          document.getElementById('rasca-buy-btn').style.display = 'block';
+        }
+      };
+
+      // 2. TRAGAPERRAS
+      window.openTragaModal = async function() {
+        document.getElementById('traga-modal').style.display = 'flex';
+        document.getElementById('traga-msg').textContent = '';
+        document.getElementById('traga-spin-btn').style.display = 'none';
+        document.getElementById('traga-status-text').textContent = 'Cargando...';
+        ['slot-1', 'slot-2', 'slot-3'].forEach(id => document.getElementById(id).textContent = '❓');
+        
+        try {
+          const hdrs = { 'wallet-address': userWalletAddress };
+          const res = await fetch('/api/minigames/traga/status', { headers: hdrs });
+          const data = await res.json();
+          if (!data.enabled) {
+            document.getElementById('traga-status-text').textContent = 'Juego desactivado temporalmente.';
+          } else if (data.playsLeft <= 0) {
+            document.getElementById('traga-status-text').textContent = 'Límite diario alcanzado. Vuelve mañana.';
+          } else {
+            document.getElementById('traga-status-text').textContent = `Coste: ${data.entryCost} $CORCHO. Te quedan ${data.playsLeft} tiradas hoy.`;
+            document.getElementById('traga-spin-btn').style.display = 'block';
+          }
+        } catch (e) { document.getElementById('traga-status-text').textContent = 'Error al cargar.'; }
+      };
+
+      window.spinTraga = async function() {
+        document.getElementById('traga-spin-btn').style.display = 'none';
+        document.getElementById('traga-msg').textContent = 'Gimoteando rodillos...';
+        document.getElementById('traga-msg').style.color = '#86198f';
+        const slots = [document.getElementById('slot-1'), document.getElementById('slot-2'), document.getElementById('slot-3')];
+        
+        // Fake spin animation
+        let spinInterval = setInterval(() => {
+          const emojis = ['🍷', '🥟', '🐙', '🐚'];
+          slots.forEach(s => s.textContent = emojis[Math.floor(Math.random() * emojis.length)]);
+        }, 100);
+
+        try {
+          const hdrs = { 'wallet-address': userWalletAddress };
+          const res = await fetch('/api/minigames/traga/spin', { method: 'POST', headers: hdrs });
+          const data = await res.json();
+          if (data.error) throw new Error(data.error);
+
+          setTimeout(() => {
+            clearInterval(spinInterval);
+            slots[0].textContent = data.result[0];
+            slots[1].textContent = data.result[1];
+            slots[2].textContent = data.result[2];
+            
+            if (data.prize > 0) {
+              document.getElementById('traga-msg').textContent = `¡Ganas ${data.prize} $CORCHO! 🎉`;
+              document.getElementById('traga-msg').style.color = '#16a34a';
+              refreshBank();
+            } else {
+              document.getElementById('traga-msg').textContent = '¡Vaya! No ha habido suerte.';
+            }
+            setTimeout(openTragaModal, 3000);
+          }, 2000);
+
+        } catch (e) {
+          clearInterval(spinInterval);
+          document.getElementById('traga-msg').textContent = e.message;
+          document.getElementById('traga-spin-btn').style.display = 'block';
+        }
+      };
+
+      // 3. A CHAVE VIRTUAL
+      let chaveInterval = null, chavePos = 0, chaveDir = 1;
+      window.openChaveModal = async function() {
+        document.getElementById('chave-modal').style.display = 'flex';
+        document.getElementById('chave-msg').textContent = '';
+        document.getElementById('chave-throw-btn').style.display = 'none';
+        document.getElementById('chave-status-text').textContent = 'Cargando...';
+        document.getElementById('chave-cursor').style.left = '0%';
+        clearInterval(chaveInterval);
+        
+        try {
+          const hdrs = { 'wallet-address': userWalletAddress };
+          const res = await fetch('/api/minigames/chave/status', { headers: hdrs });
+          const data = await res.json();
+          if (!data.enabled) {
+            document.getElementById('chave-status-text').textContent = 'Juego desactivado temporalmente.';
+          } else if (data.playsLeft <= 0) {
+            document.getElementById('chave-status-text').textContent = 'Límite diario alcanzado. Vuelve mañana.';
+          } else {
+            document.getElementById('chave-status-text').textContent = `Coste: ${data.entryCost} $CORCHO. Te quedan ${data.playsLeft} lanzamientos.`;
+            document.getElementById('chave-throw-btn').style.display = 'block';
+            
+            // Start cursor oscillation
+            chaveInterval = setInterval(() => {
+              chavePos += 3 * chaveDir;
+              if (chavePos >= 100) { chavePos = 100; chaveDir = -1; }
+              if (chavePos <= 0) { chavePos = 0; chaveDir = 1; }
+              document.getElementById('chave-cursor').style.left = `${chavePos}%`;
+            }, 30);
+          }
+        } catch (e) { document.getElementById('chave-status-text').textContent = 'Error al cargar.'; }
+      };
+
+      window.throwChave = async function() {
+        document.getElementById('chave-throw-btn').style.display = 'none';
+        clearInterval(chaveInterval);
+        const finalTiming = chavePos;
+        document.getElementById('chave-msg').textContent = 'Lanzando...';
+        document.getElementById('chave-msg').style.color = '#166534';
+        
+        try {
+          const hdrs = { 'wallet-address': userWalletAddress, 'Content-Type': 'application/json' };
+          const res = await fetch('/api/minigames/chave/throw', { method: 'POST', headers: hdrs, body: JSON.stringify({ timing: finalTiming }) });
+          const data = await res.json();
+          if (data.error) throw new Error(data.error);
+
+          if (data.result === 'pleno') {
+            document.getElementById('chave-icon').textContent = '💥';
+            document.getElementById('chave-msg').textContent = `¡PLENO! Ganas ${data.prize} $CORCHO 🎉`;
+            document.getElementById('chave-msg').style.color = '#16a34a';
+          } else if (data.result === 'roce') {
+            document.getElementById('chave-icon').textContent = '✨';
+            document.getElementById('chave-msg').textContent = `¡ROCE! Ganas ${data.prize} $CORCHO 👏`;
+          } else {
+            document.getElementById('chave-icon').textContent = '💨';
+            document.getElementById('chave-msg').textContent = '¡Has fallado! Agua.';
+          }
+          if (data.prize > 0) refreshBank();
+          setTimeout(() => { document.getElementById('chave-icon').textContent = '🗝️'; openChaveModal(); }, 3000);
+
+        } catch (e) {
+          document.getElementById('chave-msg').textContent = e.message;
+          document.getElementById('chave-throw-btn').style.display = 'block';
+        }
+      };
+
+      // 4. TRIVIAL FURANCHEIRO
+      let trivialQuestions = [], trivialCurrentIdx = 0, trivialTimer = null, trivialTimeLeft = 10;
+      window.openTrivialModal = async function() {
+        document.getElementById('trivial-modal').style.display = 'flex';
+        document.getElementById('trivial-msg').textContent = '';
+        document.getElementById('trivial-start-btn').style.display = 'none';
+        document.getElementById('trivial-quiz-area').style.display = 'none';
+        document.getElementById('trivial-status-text').textContent = 'Cargando...';
+        
+        try {
+          const hdrs = { 'wallet-address': userWalletAddress };
+          const res = await fetch('/api/minigames/trivial/status', { headers: hdrs });
+          const data = await res.json();
+          if (!data.enabled) {
+            document.getElementById('trivial-status-text').textContent = 'Juego desactivado temporalmente.';
+          } else if (data.playsLeft <= 0) {
+            document.getElementById('trivial-status-text').textContent = 'Límite diario alcanzado. Vuelve mañana.';
+          } else {
+            document.getElementById('trivial-status-text').textContent = `Coste: ${data.entryCost} $CORCHO. Tienes ${data.playsLeft} intento diario.`;
+            document.getElementById('trivial-start-btn').style.display = 'block';
+            trivialQuestions = data.questions;
+          }
+        } catch (e) { document.getElementById('trivial-status-text').textContent = 'Error al cargar.'; }
+      };
+
+      window.startTrivial = function() {
+        document.getElementById('trivial-start-btn').style.display = 'none';
+        document.getElementById('trivial-quiz-area').style.display = 'block';
+        trivialCurrentIdx = 0;
+        showTrivialQuestion();
+      };
+
+      function showTrivialQuestion() {
+        if (trivialCurrentIdx >= 3) {
+          finishTrivial(true);
+          return;
+        }
+        
+        const q = trivialQuestions[trivialCurrentIdx];
+        document.getElementById('trivial-progress').textContent = `Pregunta ${trivialCurrentIdx + 1}/3`;
+        document.getElementById('trivial-q').textContent = q.q;
+        
+        const optsContainer = document.getElementById('trivial-options');
+        optsContainer.innerHTML = '';
+        q.o.forEach((optText, idx) => {
+          const btn = document.createElement('button');
+          btn.textContent = optText;
+          btn.style.cssText = 'padding:12px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; font-size:14px; text-align:left; cursor:pointer; font-weight:600; color:#334155; transition:all 0.2s;';
+          btn.onclick = () => answerTrivial(idx, q._a, btn);
+          optsContainer.appendChild(btn);
+        });
+
+        trivialTimeLeft = 10;
+        document.getElementById('trivial-timer').textContent = `⏱️ ${trivialTimeLeft}`;
+        clearInterval(trivialTimer);
+        trivialTimer = setInterval(() => {
+          trivialTimeLeft--;
+          document.getElementById('trivial-timer').textContent = `⏱️ ${trivialTimeLeft}`;
+          if (trivialTimeLeft <= 0) {
+            clearInterval(trivialTimer);
+            finishTrivial(false, 'Se acabó el tiempo');
+          }
+        }, 1000);
+      }
+
+      function answerTrivial(selectedIdx, correctIdx, btnNode) {
+        clearInterval(trivialTimer);
+        const allBtns = document.getElementById('trivial-options').querySelectorAll('button');
+        allBtns.forEach(b => b.disabled = true);
+        
+        if (selectedIdx === correctIdx) {
+          btnNode.style.background = '#dcfce7';
+          btnNode.style.borderColor = '#22c55e';
+          setTimeout(() => {
+            trivialCurrentIdx++;
+            showTrivialQuestion();
+          }, 1000);
+        } else {
+          btnNode.style.background = '#fee2e2';
+          btnNode.style.borderColor = '#ef4444';
+          allBtns[correctIdx].style.background = '#dcfce7';
+          allBtns[correctIdx].style.borderColor = '#22c55e';
+          setTimeout(() => {
+            finishTrivial(false, 'Respuesta incorrecta');
+          }, 1500);
+        }
+      }
+
+      async function finishTrivial(won, reason = '') {
+        clearInterval(trivialTimer);
+        document.getElementById('trivial-quiz-area').style.display = 'none';
+        document.getElementById('trivial-msg').textContent = 'Validando resultados...';
+        document.getElementById('trivial-msg').style.color = '#1e40af';
+        
+        try {
+          const hdrs = { 'wallet-address': userWalletAddress, 'Content-Type': 'application/json' };
+          const res = await fetch('/api/minigames/trivial/submit', { method: 'POST', headers: hdrs, body: JSON.stringify({ won }) });
+          const data = await res.json();
+          if (data.error) throw new Error(data.error);
+
+          if (won) {
+            document.getElementById('trivial-msg').textContent = `¡Has acertado todas! Ganas ${data.prize} $CORCHO 🎉`;
+            document.getElementById('trivial-msg').style.color = '#16a34a';
+            if (data.prize > 0) refreshBank();
+          } else {
+            document.getElementById('trivial-msg').textContent = `¡Lástima! ${reason}.`;
+            document.getElementById('trivial-msg').style.color = '#ef4444';
+          }
+        } catch (e) {
+          document.getElementById('trivial-msg').textContent = e.message;
+        }
+      }
     })();
   </script>
 

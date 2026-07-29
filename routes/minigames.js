@@ -151,4 +151,50 @@ router.post('/queimada/resolve', requireWallet, (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+// ==================== NEW MINIGAMES (RASCA, TRAGA, CHAVE, TRIVIAL) ====================
+const newMinigames = require('../services/new_minigames');
+
+// 1. Rasca Furancheiro
+router.get('/rasca/status', requireWallet, (req, res) => {
+  try { res.json(newMinigames.getStatus(req.walletAddress, 'rasca')); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.post('/rasca/play', requireWallet, (req, res) => {
+  try { res.json(newMinigames.playRasca(req.walletAddress)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// 2. Tragaperras
+router.get('/traga/status', requireWallet, (req, res) => {
+  try { res.json(newMinigames.getStatus(req.walletAddress, 'traga')); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.post('/traga/spin', requireWallet, (req, res) => {
+  try { res.json(newMinigames.playTraga(req.walletAddress)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// 3. Chave Virtual
+router.get('/chave/status', requireWallet, (req, res) => {
+  try { res.json(newMinigames.getStatus(req.walletAddress, 'chave')); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.post('/chave/throw', requireWallet, (req, res) => {
+  try { res.json(newMinigames.playChave(req.walletAddress, req.body.timing || 0)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// 4. Trivial
+router.get('/trivial/status', requireWallet, (req, res) => {
+  try {
+    const status = newMinigames.getStatus(req.walletAddress, 'trivial');
+    res.json({ ...status, questions: newMinigames.getTrivialQuestions() });
+  }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.post('/trivial/submit', requireWallet, (req, res) => {
+  try { res.json(newMinigames.submitTrivial(req.walletAddress, !!req.body.won)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 module.exports = router;

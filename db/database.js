@@ -252,6 +252,19 @@ try {
   )`);
 } catch (_) {}
 
+// Historial genérico para los 4 minijuegos nuevos
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS minigame_plays (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_address TEXT NOT NULL,
+    game_id TEXT NOT NULL,
+    play_date TEXT NOT NULL,
+    cost INTEGER NOT NULL DEFAULT 0,
+    won INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`);
+} catch (_) {}
+
 // Estado activo del minijuego "A Cunca Quente" (Patata caliente)
 try {
   db.exec(`CREATE TABLE IF NOT EXISTS cunca_quente (

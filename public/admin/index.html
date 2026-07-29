@@ -2756,6 +2756,82 @@
               </div>
             </div>
 
+            <!-- O Rasca Furancheiro -->
+            <div style="margin-top:16px; border-top:1px dashed rgba(42,21,9,0.1); padding-top:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h4 style="margin:0; font-size:13px; font-weight:800; color:var(--wine);">🎟️ O Rasca Furancheiro</h4>
+                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                  <input type="checkbox" id="minigame-rasca-enabled" style="width:16px; height:16px;" />
+                  <span style="font-size:12px; font-weight:700; color:var(--text);">Activar</span>
+                </label>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
+                <div><label style="display:block; font-size:10px; font-weight:700;">Coste por boleto:</label><input type="number" id="mg-rasca-entry" class="input-field" style="font-size:12px; padding:4px 8px;" /></div>
+                <div><label style="display:block; font-size:10px; font-weight:700;">Boletos/día:</label><input type="number" id="mg-rasca-max" class="input-field" style="font-size:12px; padding:4px 8px;" /></div>
+              </div>
+              <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
+                <div><label style="display:block; font-size:9px; font-weight:700;">Premio Oro:</label><input type="number" id="mg-rasca-p1" class="input-field" style="font-size:11px; padding:3px 6px;" /></div>
+                <div><label style="display:block; font-size:9px; font-weight:700;">Premio Plata:</label><input type="number" id="mg-rasca-p2" class="input-field" style="font-size:11px; padding:3px 6px;" /></div>
+                <div><label style="display:block; font-size:9px; font-weight:700;">Premio Bronce:</label><input type="number" id="mg-rasca-p3" class="input-field" style="font-size:11px; padding:3px 6px;" /></div>
+              </div>
+            </div>
+
+            <!-- As Tragaperras da Ría -->
+            <div style="margin-top:16px; border-top:1px dashed rgba(42,21,9,0.1); padding-top:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h4 style="margin:0; font-size:13px; font-weight:800; color:var(--wine);">🎰 As Tragaperras da Ría</h4>
+                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                  <input type="checkbox" id="minigame-traga-enabled" style="width:16px; height:16px;" />
+                  <span style="font-size:12px; font-weight:700; color:var(--text);">Activar</span>
+                </label>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
+                <div><label style="display:block; font-size:10px; font-weight:700;">Coste por tirada:</label><input type="number" id="mg-traga-entry" class="input-field" style="font-size:12px; padding:4px 8px;" /></div>
+                <div><label style="display:block; font-size:10px; font-weight:700;">Tiradas/día:</label><input type="number" id="mg-traga-max" class="input-field" style="font-size:12px; padding:4px 8px;" /></div>
+              </div>
+              <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;">
+                <div><label style="display:block; font-size:9px; font-weight:700;">Premio 3 Iguales:</label><input type="number" id="mg-traga-p3" class="input-field" style="font-size:11px; padding:3px 6px;" /></div>
+                <div><label style="display:block; font-size:9px; font-weight:700;">Premio 2 Iguales:</label><input type="number" id="mg-traga-p2" class="input-field" style="font-size:11px; padding:3px 6px;" /></div>
+              </div>
+            </div>
+
+            <!-- A Chave Virtual -->
+            <div style="margin-top:16px; border-top:1px dashed rgba(42,21,9,0.1); padding-top:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h4 style="margin:0; font-size:13px; font-weight:800; color:var(--wine);">🎯 A Chave Virtual</h4>
+                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                  <input type="checkbox" id="minigame-chave-enabled" style="width:16px; height:16px;" />
+                  <span style="font-size:12px; font-weight:700; color:var(--text);">Activar</span>
+                </label>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
+                <div><label style="display:block; font-size:10px; font-weight:700;">Coste por partida:</label><input type="number" id="mg-chave-entry" class="input-field" style="font-size:12px; padding:4px 8px;" /></div>
+                <div><label style="display:block; font-size:10px; font-weight:700;">Partidas/día:</label><input type="number" id="mg-chave-max" class="input-field" style="font-size:12px; padding:4px 8px;" /></div>
+              </div>
+              <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;">
+                <div><label style="display:block; font-size:9px; font-weight:700;">Premio Pleno:</label><input type="number" id="mg-chave-pleno" class="input-field" style="font-size:11px; padding:3px 6px;" /></div>
+                <div><label style="display:block; font-size:9px; font-weight:700;">Premio Roce:</label><input type="number" id="mg-chave-roce" class="input-field" style="font-size:11px; padding:3px 6px;" /></div>
+              </div>
+            </div>
+
+            <!-- Trivial Furancheiro -->
+            <div style="margin-top:16px; border-top:1px dashed rgba(42,21,9,0.1); padding-top:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h4 style="margin:0; font-size:13px; font-weight:800; color:var(--wine);">🧠 Trivial Furancheiro</h4>
+                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                  <input type="checkbox" id="minigame-trivial-enabled" style="width:16px; height:16px;" />
+                  <span style="font-size:12px; font-weight:700; color:var(--text);">Activar</span>
+                </label>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
+                <div><label style="display:block; font-size:10px; font-weight:700;">Coste (jugar 3 pregs):</label><input type="number" id="mg-trivial-entry" class="input-field" style="font-size:12px; padding:4px 8px;" /></div>
+                <div><label style="display:block; font-size:10px; font-weight:700;">Partidas/día:</label><input type="number" id="mg-trivial-max" class="input-field" style="font-size:12px; padding:4px 8px;" /></div>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr; gap:8px;">
+                <div><label style="display:block; font-size:9px; font-weight:700;">Premio si acierta las 3:</label><input type="number" id="mg-trivial-prize" class="input-field" style="font-size:11px; padding:3px 6px;" /></div>
+              </div>
+            </div>
+
             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:12px;">
               <button onclick="saveCorchoAdminSettings()" style="background:var(--gold); color:#fff; border:none; border-radius:10px; padding:9px 18px; font-size:12px; font-weight:700; cursor:pointer;">
                 💾 Guardar Config Juegos
@@ -5184,6 +5260,30 @@
         setVal('mg-qm-m21', data.settings.queimadaMult21);
         setVal('mg-qm-m1820', data.settings.queimadaMult1820);
         setVal('mg-qm-m1517', data.settings.queimadaMult1517);
+        // Rasca
+        setCheck('minigame-rasca-enabled', data.settings.rascaEnabled);
+        setVal('mg-rasca-entry', data.settings.rascaEntryCost);
+        setVal('mg-rasca-max', data.settings.rascaMaxPlays);
+        setVal('mg-rasca-p1', data.settings.rascaPrize1);
+        setVal('mg-rasca-p2', data.settings.rascaPrize2);
+        setVal('mg-rasca-p3', data.settings.rascaPrize3);
+        // Traga
+        setCheck('minigame-traga-enabled', data.settings.tragaEnabled);
+        setVal('mg-traga-entry', data.settings.tragaEntryCost);
+        setVal('mg-traga-max', data.settings.tragaMaxPlays);
+        setVal('mg-traga-p3', data.settings.tragaPrize3);
+        setVal('mg-traga-p2', data.settings.tragaPrize2);
+        // Chave
+        setCheck('minigame-chave-enabled', data.settings.chaveEnabled);
+        setVal('mg-chave-entry', data.settings.chaveEntryCost);
+        setVal('mg-chave-max', data.settings.chaveMaxPlays);
+        setVal('mg-chave-pleno', data.settings.chavePrizePleno);
+        setVal('mg-chave-roce', data.settings.chavePrizeRoce);
+        // Trivial
+        setCheck('minigame-trivial-enabled', data.settings.trivialEnabled);
+        setVal('mg-trivial-entry', data.settings.trivialEntryCost);
+        setVal('mg-trivial-max', data.settings.trivialMaxPlays);
+        setVal('mg-trivial-prize', data.settings.trivialPrize);
       }
 
       // Top Holders
@@ -5775,7 +5875,31 @@
       queimadaMaxPlays: getVal('mg-qm-max'),
       queimadaMult21: getVal('mg-qm-m21'),
       queimadaMult1820: getVal('mg-qm-m1820'),
-      queimadaMult1517: getVal('mg-qm-m1517')
+      queimadaMult1517: getVal('mg-qm-m1517'),
+      // Rasca Furancheiro
+      rascaEnabled: document.getElementById('minigame-rasca-enabled').checked ? 1 : 0,
+      rascaEntryCost: getVal('mg-rasca-entry'),
+      rascaMaxPlays: getVal('mg-rasca-max'),
+      rascaPrize1: getVal('mg-rasca-p1'),
+      rascaPrize2: getVal('mg-rasca-p2'),
+      rascaPrize3: getVal('mg-rasca-p3'),
+      // Tragaperras
+      tragaEnabled: document.getElementById('minigame-traga-enabled').checked ? 1 : 0,
+      tragaEntryCost: getVal('mg-traga-entry'),
+      tragaMaxPlays: getVal('mg-traga-max'),
+      tragaPrize3: getVal('mg-traga-p3'),
+      tragaPrize2: getVal('mg-traga-p2'),
+      // Chave
+      chaveEnabled: document.getElementById('minigame-chave-enabled').checked ? 1 : 0,
+      chaveEntryCost: getVal('mg-chave-entry'),
+      chaveMaxPlays: getVal('mg-chave-max'),
+      chavePrizePleno: getVal('mg-chave-pleno'),
+      chavePrizeRoce: getVal('mg-chave-roce'),
+      // Trivial
+      trivialEnabled: document.getElementById('minigame-trivial-enabled').checked ? 1 : 0,
+      trivialEntryCost: getVal('mg-trivial-entry'),
+      trivialMaxPlays: getVal('mg-trivial-max'),
+      trivialPrize: getVal('mg-trivial-prize')
     };
 
     try {
