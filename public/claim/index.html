@@ -2038,6 +2038,12 @@
           <input type="file" id="claim-qr-file-input" accept="image/*" style="display:none;" onchange="handleQrFileUpload(this)" />
         </div>
  
+        <!-- Escanear QR o subir foto de cuenta -->
+        <button onclick="openQrAccountScanner()" style="width:100%; padding:14px; background:#fff; border:1.5px solid var(--wine); border-radius:14px; font-family:'Outfit',sans-serif; font-size:13.5px; font-weight:700; color:var(--wine); cursor:pointer; text-align:left; display:flex; align-items:center; gap:10px; box-shadow:0 2px 8px rgba(139,25,24,0.08); margin-bottom:8px;">
+          <span style="font-size:18px;">📷</span>
+          <span>Escanear o subir foto de QR de cuenta</span>
+        </button>
+
         <!-- Palabras — opción secundaria -->
         <button onclick="openRestoreFlow()" style="width:100%; padding:14px; background:transparent; border:1.5px solid rgba(42,21,9,0.15); border-radius:14px; font-family:'Outfit',sans-serif; font-size:13px; font-weight:600; color:var(--text-muted); cursor:pointer; text-align:left; display:flex; align-items:center; gap:10px;">
           <span style="font-size:16px;">📝</span>
@@ -3647,8 +3653,18 @@
               <span style="font-size:11px; color:var(--text-muted);">¿Tienes otra cuenta?</span>
               <div style="flex:1; height:1px; background:rgba(42,21,9,0.08);"></div>
             </div>
+            <!-- Escanear / subir foto QR -->
+            <button onclick="openQrAccountScanner()"
+              style="width:100%; padding:13px 16px; background:#fff; border:1.5px solid var(--wine); border-radius:14px; display:flex; align-items:center; gap:12px; cursor:pointer; font-family:'Outfit',sans-serif; text-align:left; box-shadow:0 3px 10px rgba(139,25,24,0.08);">
+              <span style="font-size:22px; flex-shrink:0;">📷</span>
+              <div>
+                <p style="font-size:13px; font-weight:800; color:var(--wine); margin:0 0 2px 0;">Escanear o subir foto de QR de cuenta</p>
+                <p style="font-size:11px; color:var(--text-muted); margin:0;">Abre la cámara o elige la imagen guardada para recuperar tu pase.</p>
+              </div>
+            </button>
+            <!-- Restaurar con 12 palabras -->
             <button onclick="openRestoreFlow()"
-              style="width:100%; padding:13px 16px; background:transparent; border:1.5px solid rgba(42,21,9,0.1); border-radius:14px; display:flex; align-items:center; gap:12px; cursor:pointer; font-family:'Outfit',sans-serif; text-align:left;">
+              style="width:100%; padding:13px 16px; background:transparent; border:1.5px solid rgba(42,21,9,0.1); border-radius:14px; display:flex; align-items:center; gap:12px; cursor:pointer; font-family:'Outfit',sans-serif; text-align:left; margin-top:6px;">
               <span style="font-size:22px; flex-shrink:0;">🔑</span>
               <div>
                 <p style="font-size:13px; font-weight:700; color:var(--text-muted); margin:0 0 2px 0;">Restaurar pase con mis 12 palabras</p>
@@ -12259,8 +12275,8 @@
   <!-- ==================== NEW MINIGAMES MODALS ==================== -->
 
   <!-- MODAL: O RASCA FURANCHEIRO -->
-  <div id="rasca-modal" style="display:none; position:fixed; inset:0; z-index:2500; background:rgba(0,0,0,0.85); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); align-items:center; justify-content:center; flex-direction:column; padding:18px;">
-    <button onclick="document.getElementById('rasca-modal').style.display='none'" style="position:absolute; top:16px; right:16px; background:rgba(255,255,255,0.1); border:none; border-radius:50%; width:32px; height:32px; color:#fff; cursor:pointer; font-size:18px; z-index:10;">✕</button>
+  <div id="rasca-modal" onclick="if(event.target===this)closeRascaModal()" style="display:none; position:fixed; inset:0; z-index:2500; background:rgba(0,0,0,0.85); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); align-items:center; justify-content:center; flex-direction:column; padding:18px;">
+    <button onclick="closeRascaModal()" style="position:absolute; top:16px; right:16px; background:rgba(255,255,255,0.1); border:none; border-radius:50%; width:32px; height:32px; color:#fff; cursor:pointer; font-size:18px; z-index:10;">✕</button>
     <div style="background:linear-gradient(135deg, #f8fafc, #e2e8f0); width:100%; max-width:340px; border-radius:16px; padding:24px; text-align:center; box-shadow:0 20px 40px rgba(0,0,0,0.5); position:relative; overflow:hidden;">
       <h3 style="margin:0 0 8px; color:#334155; font-size:22px; font-weight:900;">🎟️ O Rasca Furancheiro</h3>
       <p id="rasca-status-text" style="font-size:13px; color:#64748b; margin-bottom:16px;">Coste: <span id="rasca-cost"></span> $CORCHO</p>
@@ -12275,7 +12291,7 @@
       <button id="rasca-buy-btn" onclick="buyRasca()" style="margin-top:16px; width:100%; padding:14px; background:linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; border:none; border-radius:50px; font-size:16px; font-weight:800; cursor:pointer; box-shadow:0 6px 16px rgba(37,99,235,0.3);">
         COMPRAR BOLETO
       </button>
-      <button onclick="document.getElementById('rasca-modal').style.display='none'" style="margin-top:10px; width:100%; padding:12px; background:rgba(0,0,0,0.06); color:var(--text-muted); border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer;">
+      <button onclick="closeRascaModal()" style="margin-top:10px; width:100%; padding:12px; background:rgba(0,0,0,0.06); color:var(--text-muted); border:none; border-radius:50px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer;">
         Cerrar
       </button>
     </div>
@@ -13970,13 +13986,22 @@
       // ==================== NEW MINIGAMES LOGIC ====================
 
       // 1. RASCA FURANCHEIRO
-      let rascaCanvas, rascaCtx, isScratching = false;
+      let rascaCanvas, rascaCtx, isScratching = false, currentRascaData = null;
+
+      window.closeRascaModal = function() {
+        isScratching = false;
+        document.getElementById('rasca-modal').style.display = 'none';
+        document.getElementById('rasca-play-area').style.display = 'none';
+        document.getElementById('rasca-msg').textContent = '';
+      };
+
       window.openRascaModal = async function() {
         document.getElementById('rasca-modal').style.display = 'flex';
         document.getElementById('rasca-play-area').style.display = 'none';
         document.getElementById('rasca-msg').textContent = '';
         document.getElementById('rasca-buy-btn').style.display = 'none';
         document.getElementById('rasca-status-text').textContent = 'Cargando...';
+        isScratching = false;
         
         try {
           const activeWallet = userWalletAddress || localStorage.getItem('furancho_wallet_address') || '';
@@ -13988,25 +14013,55 @@
           } else if (data.enabled === false) {
             document.getElementById('rasca-status-text').textContent = 'Juego desactivado temporalmente.';
           } else if (data.playsLeft <= 0) {
-            document.getElementById('rasca-status-text').textContent = 'Límite diario alcanzado. Vuelve mañana.';
+            document.getElementById('rasca-status-text').textContent = 'Límite diario alcanzado (3/3). Vuelve mañana.';
           } else {
             document.getElementById('rasca-status-text').textContent = `Coste: ${data.entryCost} $CORCHO. Te quedan ${data.playsLeft} boletos hoy.`;
-            document.getElementById('rasca-buy-btn').style.display = 'block';
+            const buyBtn = document.getElementById('rasca-buy-btn');
+            buyBtn.style.display = 'block';
+            buyBtn.disabled = false;
+            buyBtn.textContent = 'COMPRAR BOLETO';
+            buyBtn.onclick = function() { buyRasca(); };
           }
         } catch (e) { document.getElementById('rasca-status-text').textContent = 'Error al cargar.'; }
       };
 
+      window.revealRascaPrize = function() {
+        if (!currentRascaData) return;
+        const canvas = document.getElementById('rasca-canvas');
+        if (canvas) canvas.style.display = 'none';
+        isScratching = false;
+        
+        if (currentRascaData.prize > 0) {
+          document.getElementById('rasca-msg').textContent = `¡Felicidades! Has ganado ${currentRascaData.prize} $CORCHO 🎉`;
+          document.getElementById('rasca-msg').style.color = '#16a34a';
+          if (typeof loadCorchoBalance === 'function') loadCorchoBalance();
+        } else {
+          document.getElementById('rasca-msg').textContent = 'Suerte en la próxima rascada 😅';
+          document.getElementById('rasca-msg').style.color = '#334155';
+        }
+        
+        const buyBtn = document.getElementById('rasca-buy-btn');
+        buyBtn.textContent = 'JUGAR OTRO BOLETO 🎟️';
+        buyBtn.style.display = 'block';
+        buyBtn.disabled = false;
+        buyBtn.onclick = function() { openRascaModal(); };
+      };
+
       window.buyRasca = async function() {
-        document.getElementById('rasca-buy-btn').style.display = 'none';
+        const buyBtn = document.getElementById('rasca-buy-btn');
+        buyBtn.style.display = 'none';
         document.getElementById('rasca-msg').textContent = 'Comprando boleto...';
+        document.getElementById('rasca-msg').style.color = '#334155';
+        
         try {
           const activeWallet = userWalletAddress || localStorage.getItem('furancho_wallet_address') || '';
           const hdrs = { 'wallet-address': activeWallet };
           const res = await fetch('/api/minigames/rasca/play', { method: 'POST', headers: hdrs });
           const data = await res.json();
           if (data.error) throw new Error(data.error);
+          currentRascaData = data;
 
-          document.getElementById('rasca-msg').textContent = '¡Rasca para descubrir tu premio!';
+          document.getElementById('rasca-msg').textContent = '¡Rasca la tarjeta o pulsa en ella!';
           const area = document.getElementById('rasca-play-area');
           area.style.display = 'block';
           
@@ -14036,21 +14091,12 @@
             
             rascaCtx.globalCompositeOperation = 'destination-out';
             rascaCtx.beginPath();
-            rascaCtx.arc(x, y, 20, 0, Math.PI * 2);
+            rascaCtx.arc(x, y, 22, 0, Math.PI * 2);
             rascaCtx.fill();
             
-            scratchedPixels += Math.PI * 400; // rough estimation
-            if (scratchedPixels > totalPixels * 0.4) {
-              rascaCanvas.style.display = 'none'; // Reveal completely
-              isScratching = false;
-              if (data.prize > 0) {
-                document.getElementById('rasca-msg').textContent = `¡Felicidades! Has ganado ${data.prize} $CORCHO 🎉`;
-                document.getElementById('rasca-msg').style.color = '#16a34a';
-                loadCorchoBalance();
-              } else {
-                document.getElementById('rasca-msg').textContent = 'Suerte en la próxima rascada 😅';
-              }
-              setTimeout(openRascaModal, 2500); // Reset after 2.5s
+            scratchedPixels += Math.PI * 484;
+            if (scratchedPixels > totalPixels * 0.2) {
+              revealRascaPrize();
             }
           }
           
@@ -14060,10 +14106,15 @@
           window.ontouchend = () => isScratching = false;
           rascaCanvas.onmousemove = scratch;
           rascaCanvas.ontouchmove = scratch;
+          rascaCanvas.onclick = function() { revealRascaPrize(); };
 
         } catch (e) {
           document.getElementById('rasca-msg').textContent = e.message;
-          document.getElementById('rasca-buy-btn').style.display = 'block';
+          document.getElementById('rasca-msg').style.color = '#ef4444';
+          buyBtn.style.display = 'block';
+          buyBtn.disabled = false;
+          buyBtn.textContent = 'COMPRAR BOLETO';
+          buyBtn.onclick = function() { buyRasca(); };
         }
       };
 
@@ -14333,6 +14384,186 @@
       to { opacity: 1; transform: translateY(0); }
     }
   </style>
+
+  <!-- MODAL: ESCÁNER Y CARGA DE QR PARA RECUPERAR CUENTA -->
+  <div id="qr-restore-modal" onclick="if(event.target===this)closeQrAccountScanner()" style="display:none; position:fixed; inset:0; z-index:3500; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:16px;">
+    <div style="background:var(--cream, #F2EDE3); width:100%; max-width:440px; border-radius:24px; padding:22px; border:1.5px solid var(--gold, #C4973A); box-shadow:0 20px 40px rgba(0,0,0,0.4); position:relative; font-family:'Outfit',sans-serif; text-align:center;">
+      <button onclick="closeQrAccountScanner()" style="position:absolute; top:16px; right:16px; background:none; border:none; font-size:22px; color:var(--text-muted); cursor:pointer;">✕</button>
+      
+      <h3 style="font-family:'Playfair Display',serif; font-size:20px; font-weight:800; color:var(--wine); margin:0 0 4px;">📷 Escanear QR de Cuenta</h3>
+      <p style="font-size:12px; color:var(--text-muted); margin:0 0 16px;">Apunta con la cámara al QR de tu pase o selecciona la foto que guardaste.</p>
+
+      <!-- Visor de Cámara -->
+      <div id="qr-camera-viewport" style="width:100%; height:250px; background:#000; border-radius:16px; overflow:hidden; position:relative; margin-bottom:14px; border:2px dashed rgba(196,151,58,0.5); display:flex; align-items:center; justify-content:center;">
+        <span id="qr-camera-placeholder" style="color:rgba(255,255,255,0.7); font-size:13px; font-weight:600; padding:20px;">Presiona "Activar Cámara" para escanear en vivo.</span>
+      </div>
+
+      <div id="qr-restore-status" style="display:none; font-size:13px; font-weight:700; color:var(--wine); margin-bottom:12px;"></div>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <button id="qr-camera-toggle-btn" onclick="toggleQrCameraScanner()" style="width:100%; padding:13px; background:var(--wine); color:#fff; border:none; border-radius:50px; font-size:14px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 14px rgba(139,25,24,0.3);">
+          <span>📷</span> <span id="qr-camera-btn-text">Activar Cámara</span>
+        </button>
+
+        <input type="file" id="qr-file-input" accept="image/*" style="display:none;" onchange="handleQrRecoveryFile(this)" />
+        
+        <button onclick="document.getElementById('qr-file-input').click()" style="width:100%; padding:13px; background:#fff; color:var(--dark); border:1.5px solid rgba(42,21,9,0.2); border-radius:50px; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;">
+          <span>🖼️</span> <span>Seleccionar foto del QR desde la Galería</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let activeHtml5QrScanner = null;
+
+    function extractWalletFromQrText(decodedText) {
+      if (!decodedText) return null;
+      const matchRestore = decodedText.match(/[\?&]restore=(0x[a-fA-F0-9]{40})/i);
+      if (matchRestore) return matchRestore[1];
+      const matchWallet = decodedText.match(/[\?&]wallet=(0x[a-fA-F0-9]{40})/i);
+      if (matchWallet) return matchWallet[1];
+      const matchCampaign = decodedText.match(/CAMPAIGN:(0x[a-fA-F0-9]{40})/i);
+      if (matchCampaign) return matchCampaign[1];
+      const matchDirect = decodedText.match(/(0x[a-fA-F0-9]{40})/i);
+      if (matchDirect) return matchDirect[1];
+      return null;
+    }
+
+    function openQrAccountScanner() {
+      const modal = document.getElementById('qr-restore-modal');
+      if (modal) modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+      const statusEl = document.getElementById('qr-restore-status');
+      if (statusEl) statusEl.style.display = 'none';
+    }
+
+    function closeQrAccountScanner() {
+      stopQrCameraScanner();
+      const modal = document.getElementById('qr-restore-modal');
+      if (modal) modal.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+
+    async function toggleQrCameraScanner() {
+      if (activeHtml5QrScanner) {
+        stopQrCameraScanner();
+      } else {
+        startQrCameraScanner();
+      }
+    }
+
+    async function startQrCameraScanner() {
+      const placeholder = document.getElementById('qr-camera-placeholder');
+      const statusEl = document.getElementById('qr-restore-status');
+      const btnText = document.getElementById('qr-camera-btn-text');
+
+      if (placeholder) placeholder.style.display = 'none';
+      if (statusEl) {
+        statusEl.textContent = 'Iniciando cámara...';
+        statusEl.style.color = 'var(--text-muted)';
+        statusEl.style.display = 'block';
+      }
+
+      try {
+        activeHtml5QrScanner = new Html5Qrcode("qr-camera-viewport");
+        await activeHtml5QrScanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 220, height: 220 } },
+          (decodedText) => {
+            const wallet = extractWalletFromQrText(decodedText);
+            if (wallet) {
+              stopQrCameraScanner();
+              executeQrAccountRestore(wallet);
+            }
+          },
+          () => {}
+        );
+        if (btnText) btnText.textContent = 'Detener Cámara';
+        if (statusEl) statusEl.textContent = 'Apuntando cámara... Coloca el QR dentro del recuadro.';
+      } catch (err) {
+        console.error('Error al iniciar cámara QR:', err);
+        if (statusEl) {
+          statusEl.textContent = 'No se pudo acceder a la cámara. Revisa los permisos de tu navegador o sube la foto del QR.';
+          statusEl.style.color = '#ef4444';
+        }
+        if (placeholder) placeholder.style.display = 'block';
+      }
+    }
+
+    function stopQrCameraScanner() {
+      if (activeHtml5QrScanner) {
+        activeHtml5QrScanner.stop().then(() => {
+          activeHtml5QrScanner.clear();
+          activeHtml5QrScanner = null;
+        }).catch(() => {
+          activeHtml5QrScanner = null;
+        });
+      }
+      const btnText = document.getElementById('qr-camera-btn-text');
+      if (btnText) btnText.textContent = 'Activar Cámara';
+      const placeholder = document.getElementById('qr-camera-placeholder');
+      if (placeholder) placeholder.style.display = 'block';
+    }
+
+    async function handleQrRecoveryFile(input) {
+      if (!input.files || input.files.length === 0) return;
+      const file = input.files[0];
+      const statusEl = document.getElementById('qr-restore-status');
+      if (statusEl) {
+        statusEl.textContent = 'Escaneando foto...';
+        statusEl.style.color = 'var(--wine)';
+        statusEl.style.display = 'block';
+      }
+
+      let tempReader = document.getElementById('temp-qr-reader');
+      if (!tempReader) {
+        tempReader = document.createElement('div');
+        tempReader.id = 'temp-qr-reader';
+        tempReader.style.display = 'none';
+        document.body.appendChild(tempReader);
+      }
+
+      try {
+        const html5QrCode = new Html5Qrcode("temp-qr-reader");
+        const decodedText = await html5QrCode.scanFile(file, false);
+        const wallet = extractWalletFromQrText(decodedText);
+        if (wallet) {
+          input.value = '';
+          executeQrAccountRestore(wallet);
+        } else {
+          if (statusEl) {
+            statusEl.textContent = 'El QR de la foto no contiene una clave de cuenta válida.';
+            statusEl.style.color = '#ef4444';
+          }
+          input.value = '';
+        }
+      } catch (err) {
+        console.error(err);
+        if (statusEl) {
+          statusEl.textContent = 'No se encontró ningún código QR legible en la foto. Selecciona una captura clara.';
+          statusEl.style.color = '#ef4444';
+        }
+        input.value = '';
+      }
+    }
+
+    function executeQrAccountRestore(walletAddress) {
+      const statusEl = document.getElementById('qr-restore-status');
+      if (statusEl) {
+        statusEl.textContent = '🎉 ¡Cuenta detectada! Restaurando tu pase...';
+        statusEl.style.color = '#15803d';
+        statusEl.style.display = 'block';
+      }
+      localStorage.setItem('furancho_wallet_address', walletAddress);
+      if (typeof _setWalletCookie === 'function') _setWalletCookie(walletAddress);
+      localStorage.setItem('furancho_account_created_at', new Date().toISOString());
+      
+      setTimeout(() => {
+        window.location.href = '/claim';
+      }, 800);
+    }
+  </script>
 
   <script src="/claim/app.js"></script>
 </body>
