@@ -2577,7 +2577,7 @@
             <!-- Botones Corcho (Resto en 1 línea) -->
             <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin:4px 0 8px;">
               <!-- Tienda -->
-              <button onclick="openCorchoItemsModal()" style="background:linear-gradient(165deg, rgba(22,163,74,0.08), rgba(21,128,61,0.03)); border:1.5px solid rgba(22,163,74,0.3); border-radius:14px; padding:12px 4px 10px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(22,163,74,0.08);" >
+              <button id="btn-corcho-tienda" onclick="openCorchoItemsModal()" style="background:linear-gradient(165deg, rgba(22,163,74,0.08), rgba(21,128,61,0.03)); border:1.5px solid rgba(22,163,74,0.3); border-radius:14px; padding:12px 4px 10px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(22,163,74,0.08);">
                 <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
                   <line x1="3" y1="6" x2="21" y2="6"/>
@@ -2587,7 +2587,7 @@
               </button>
 
               <!-- Recargar -->
-              <button onclick="openCorchoPacksModal()" style="background:linear-gradient(165deg, rgba(212,175,55,0.08), rgba(169,123,31,0.03)); border:1.5px solid rgba(212,175,55,0.3); border-radius:14px; padding:12px 4px 10px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(212,175,55,0.08);" >
+              <button id="btn-corcho-recargar" onclick="openCorchoPacksModal()" style="background:linear-gradient(165deg, rgba(212,175,55,0.08), rgba(169,123,31,0.03)); border:1.5px solid rgba(212,175,55,0.3); border-radius:14px; padding:12px 4px 10px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(212,175,55,0.08);">
                 <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#a97b1f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                   <rect x="2" y="5" width="20" height="14" rx="2"/>
                   <line x1="2" y1="10" x2="22" y2="10"/>
@@ -2597,7 +2597,7 @@
               </button>
 
               <!-- Traspasar -->
-              <button onclick="openCorchoTransferModal()" style="background:linear-gradient(165deg, rgba(42,21,9,0.08), rgba(42,21,9,0.02)); border:1.5px solid rgba(42,21,9,0.2); border-radius:14px; padding:12px 4px 10px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(42,21,9,0.06);" >
+              <button id="btn-corcho-traspasar" onclick="openCorchoTransferModal()" style="background:linear-gradient(165deg, rgba(42,21,9,0.08), rgba(42,21,9,0.02)); border:1.5px solid rgba(42,21,9,0.2); border-radius:14px; padding:12px 4px 10px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(42,21,9,0.06);">
                 <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="rgba(42,21,9,0.85)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M17 1l4 4-4 4"/>
                   <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
@@ -2618,7 +2618,7 @@
             <div id="corcho-pending-section" style="display:none; margin-top:4px;"></div>
 
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-              <button onclick="openCorchoInfoModal()" style="background:none; border:none; color:var(--wine); font-size:12px; font-weight:800; cursor:pointer; text-decoration:underline;">ℹ️ Reglas do $CORCHO</button>
+              <button id="btn-corcho-info" onclick="openCorchoInfoModal()" style="background:none; border:none; color:var(--wine); font-size:12px; font-weight:800; cursor:pointer; text-decoration:underline;">ℹ️ Reglas do $CORCHO</button>
 
               <!-- Desplegable Historial -->
               <details style="position:relative;">
@@ -12393,6 +12393,19 @@
       }
     }
     window.openCorchoItemsModal = openCorchoItemsModal;
+
+    // Wiring adicional por addEventListener (más fiable en iOS Safari que onclick)
+    document.addEventListener('DOMContentLoaded', function() {}, false);
+    (function wireCorchoButtons() {
+      var tienda = document.getElementById('btn-corcho-tienda');
+      var recargar = document.getElementById('btn-corcho-recargar');
+      var traspasar = document.getElementById('btn-corcho-traspasar');
+      var reglas = document.getElementById('btn-corcho-info');
+      if (tienda)   tienda.addEventListener('click', function(e) { e.stopPropagation(); openCorchoItemsModal(); });
+      if (recargar) recargar.addEventListener('click', function(e) { e.stopPropagation(); openCorchoPacksModal(); });
+      if (traspasar) traspasar.addEventListener('click', function(e) { e.stopPropagation(); openCorchoTransferModal(); });
+      if (reglas)   reglas.addEventListener('click', function(e) { e.stopPropagation(); openCorchoInfoModal(); });
+    })();
 
     let _activeCorchoCatTab = 'items';
 
