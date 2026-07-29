@@ -1064,6 +1064,33 @@
         <p class="page-subtitle" id="dash-subtitle">Cargando datos...</p>
       </div>
 
+      <!-- 🩺 Saúde & 🚦 Semáforo — estado rápido visible en Dashboard -->
+      <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
+        <!-- Saúde do Furancho -->
+        <details class="glass-card" style="flex:1; min-width:140px; margin-bottom:0; outline:none; border-radius:14px; overflow:hidden;" ontoggle="if(this.open) loadFuranchoHealth()">
+          <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; padding:12px 14px; user-select:none; gap:6px;">
+            <span style="font-size:13px; font-weight:700; color:var(--text);">🩺 Saúde do Furancho</span>
+            <span id="health-chip" style="font-size:13px; font-weight:800;">—</span>
+          </summary>
+          <div style="padding:12px 14px; border-top:1px solid rgba(42,21,9,0.06);">
+            <div id="health-body"><p style="font-size:11px; color:var(--text-muted); text-align:center; padding:8px 0;">Cargando…</p></div>
+            <button onclick="loadFuranchoHealth(true)" style="width:100%; padding:7px; margin-top:10px; background:rgba(42,21,9,0.05); border:1px solid rgba(42,21,9,0.12); border-radius:8px; font-size:11px; font-weight:700; color:var(--text-muted); cursor:pointer; font-family:'Outfit',sans-serif;">↻ Recalcular</button>
+          </div>
+        </details>
+        <!-- Semáforo antifraude -->
+        <details class="glass-card" style="flex:1; min-width:140px; margin-bottom:0; outline:none; border-radius:14px; overflow:hidden;" ontoggle="if(this.open) loadCorchoFraudCheck()">
+          <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; padding:12px 14px; user-select:none; gap:6px;">
+            <span style="font-size:13px; font-weight:700; color:var(--text);">🚦 Semáforo $CORCHO</span>
+            <span id="fraud-summary-chips" style="display:flex; gap:4px; align-items:center;"></span>
+          </summary>
+          <div style="padding:12px 14px; border-top:1px solid rgba(42,21,9,0.06);">
+            <div id="fraud-legend" style="background:rgba(196,151,58,0.07); border:1px solid rgba(196,151,58,0.2); border-radius:10px; padding:10px 12px; margin-bottom:10px; font-size:11px; color:var(--text-muted); line-height:1.5;">Cargando…</div>
+            <button onclick="loadCorchoFraudCheck(true)" style="width:100%; padding:7px; margin-bottom:10px; background:rgba(42,21,9,0.05); border:1px solid rgba(42,21,9,0.12); border-radius:8px; font-size:11px; font-weight:700; color:var(--text-muted); cursor:pointer; font-family:'Outfit',sans-serif;">↻ Comprobar</button>
+            <div id="fraud-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+          </div>
+        </details>
+      </div>
+
       <!-- Resumen de Métricas Clave y Niveles (Plegable) -->
       <details class="glass-card" style="margin-bottom:20px; outline:none; -webkit-tap-highlight-color:transparent;">
         <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; outline:none; user-select:none; padding:14px 18px;">
@@ -2508,7 +2535,7 @@
     <div class="page" id="page-banco">
       <div class="page-header">
         <h1 class="page-title">🪙 Banco do Corcho</h1>
-        <div class="page-subtitle">Economía $CORCHO · validaciones · saúde · traspasos</div>
+        <div class="page-subtitle">Economía $CORCHO · validaciones · traspasos</div>
       </div>
 
       <!-- Banco do Corcho — Economía $CORCHO -->
@@ -2901,84 +2928,12 @@
         </div>
       </details>
 
-      <!-- 🩺 Saúde do Furancho (control económico, solo admin) -->
-      <details class="glass-card" style="margin-bottom:20px; outline:none; -webkit-tap-highlight-color:transparent;" ontoggle="if(this.open) loadFuranchoHealth()">
-        <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; outline:none; user-select:none; padding:14px 18px; border-bottom:1px solid rgba(42,21,9,0.06);">
-          <span class="card-title" style="font-size:15px; margin:0;">🩺 Saúde do Furancho</span>
-          <span id="health-chip" style="font-size:12px; font-weight:800;">—</span>
-        </summary>
-        <div style="padding:16px 18px;">
-          <div id="health-body"><p style="font-size:12px; color:var(--text-muted); text-align:center; padding:10px 0;">Cargando…</p></div>
-          <button onclick="loadFuranchoHealth(true)" style="width:100%; padding:9px; margin-top:12px; background:rgba(42,21,9,0.05); border:1px solid rgba(42,21,9,0.12); border-radius:10px; font-size:12px; font-weight:800; color:var(--text-muted); cursor:pointer; font-family:'Outfit',sans-serif;">↻ Volver a calcular</button>
-        </div>
-      </details>
-
-      <!-- 🚦 Semáforo antifraude $CORCHO -->
-      <details class="glass-card" style="margin-bottom:20px; outline:none; -webkit-tap-highlight-color:transparent;" ontoggle="if(this.open) loadCorchoFraudCheck()">
-        <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; outline:none; user-select:none; padding:14px 18px; border-bottom:1px solid rgba(42,21,9,0.06);">
-          <span class="card-title" style="font-size:15px; margin:0;">🚦 Semáforo antifraude $CORCHO</span>
-          <span id="fraud-summary-chips" style="display:flex; gap:5px; align-items:center;"></span>
-        </summary>
-        <div style="padding:16px 18px;">
-          <div id="fraud-legend" style="background:linear-gradient(135deg,rgba(196,151,58,0.08),rgba(139,25,24,0.04)); border:1px solid rgba(196,151,58,0.25); border-radius:12px; padding:12px 14px; margin-bottom:14px; font-size:11.5px; color:var(--text-muted); line-height:1.5;">Cargando…</div>
-          <button onclick="loadCorchoFraudCheck(true)" style="width:100%; padding:9px; margin-bottom:14px; background:rgba(42,21,9,0.05); border:1px solid rgba(42,21,9,0.12); border-radius:10px; font-size:12px; font-weight:800; color:var(--text-muted); cursor:pointer; font-family:'Outfit',sans-serif;">↻ Volver a comprobar</button>
-          <div id="fraud-list" style="display:flex; flex-direction:column; gap:8px;"></div>
-        </div>
-      </details>
-
-
-
-
-      <div class="page-header" style="border-top:1px solid rgba(42,21,9,0.1); padding-top:22px; margin-top:8px;">
-        <h1 class="page-title" style="font-size:20px;">🤝 Traspasos de NFTs</h1>
-        <div class="page-subtitle">Peaje en $CORCHO por traspasar un NFT entre socios</div>
+      <!-- Traspasos: historial de solicitudes pendientes -->
+      <div style="background:linear-gradient(135deg,rgba(196,151,58,0.06),rgba(42,21,9,0.02)); border:1.5px solid rgba(196,151,58,0.25); border-radius:14px; padding:12px 16px; margin-bottom:16px; font-size:12px; color:var(--text-muted); line-height:1.5;">
+        🤝 <strong style="color:var(--wine);">Peajes de Traspaso de NFTs</strong> → Los precios individuales por NFT se gestionan desde la pestaña
+        <button onclick="showPage('nfts')" style="background:none; border:none; color:var(--wine); font-weight:800; font-size:12px; cursor:pointer; text-decoration:underline; padding:0 2px;">🏅 NFTs →</button>
       </div>
 
-      <!-- Info box -->
-      <div style="background:linear-gradient(135deg,rgba(196,151,58,0.1),rgba(42,21,9,0.04)); border:1.5px solid rgba(196,151,58,0.35); border-radius:14px; padding:14px; margin-bottom:16px; font-size:12px; color:var(--text-muted); line-height:1.6;">
-        <strong style="color:var(--wine);">ℹ️ Configuración Unificada de Peajes por NFT ($CORCHO)</strong><br>
-        Todos los peajes de traspaso entre socios se gestionan aquí de forma <strong>100% individual para cada tipo de NFT</strong> (Niveles principales, Logros especiales y Memes VIP). Cada NFT se cobrará exactamente al precio en $CORCHO que tú especifiques.
-      </div>
-
-      
-      <div class="glass-card">
-        <div class="card-header">
-          <div class="card-title">Coste del peaje de traspaso por NFT ($CORCHO)</div>
-        </div>
-        <div style="padding: 16px;">
-          <p style="font-size:11.5px; color:var(--text-muted); margin-bottom:12px;">Todos los traspasos de NFTs entre socios se pagan en <strong>$CORCHO (CorchoCoins)</strong>. Si un socio no tiene el saldo configurado, el traspaso no se ejecutará.</p>
-          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:20px; margin-bottom:16px;">
-            <div>
-              <p style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">Niveles principales</p>
-              <div style="display:flex; flex-direction:column; gap:8px;">
-                <label style="font-size:12px; display:flex; align-items:center; gap:8px;">
-                  <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Nivel 1 (Cautivo):</span>
-                  <input type="number" id="fee-level-1" value="0" min="0" placeholder="150" style="width:85px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15); flex-shrink:0;" /> <span style="font-size:10px; font-weight:700; color:var(--gold);">$CORCHO</span>
-                </label>
-                <label style="font-size:12px; display:flex; align-items:center; gap:8px;">
-                  <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Nivel 2 (Cunqueiro):</span>
-                  <input type="number" id="fee-level-2" value="0" min="0" placeholder="150" style="width:85px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15); flex-shrink:0;" /> <span style="font-size:10px; font-weight:700; color:var(--gold);">$CORCHO</span>
-                </label>
-                <label style="font-size:12px; display:flex; align-items:center; gap:8px;">
-                  <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Nivel 3 (Larpeiro):</span>
-                  <input type="number" id="fee-level-3" value="150" min="0" placeholder="150" style="width:85px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15); flex-shrink:0;" /> <span style="font-size:10px; font-weight:700; color:var(--gold);">$CORCHO</span>
-                </label>
-                <label style="font-size:12px; display:flex; align-items:center; gap:8px;">
-                  <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Nivel 4 (Presidente):</span>
-                  <input type="number" id="fee-level-4" value="250" min="0" placeholder="250" style="width:85px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15); flex-shrink:0;" /> <span style="font-size:10px; font-weight:700; color:var(--gold);">$CORCHO</span>
-                </label>
-              </div>
-            </div>
-            <div>
-              <p style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">Logros especiales y Memes</p>
-              <div id="transfer-fees-achievements-container" style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto; padding-right:4px;">
-                <!-- Cargados dinámicamente -->
-              </div>
-            </div>
-          </div>
-          <button class="btn-primary" onclick="saveTransferFeesSettings()" style="width:100%;">💾 Guardar Tarifas de Peaje ($CORCHO)</button>
-        </div>
-      </div>
 
 
       <div class="glass-card">
@@ -3306,8 +3261,56 @@
     <div class="page" id="page-nfts">
       <div class="page-header">
         <h1 class="page-title">🏅 NFTs & Logros</h1>
-        <p class="page-subtitle">Logros, minteo Polygon, campaña y privilegios</p>
+        <p class="page-subtitle">Logros, minteo Polygon, campaña, privilegios y peajes de traspaso</p>
       </div>
+
+      <!-- 🤝 Peajes de Traspaso de NFTs — Fuente única de configuración -->
+      <details class="glass-card" style="margin-bottom:20px; border:1.5px solid rgba(139,25,24,0.15); border-radius:16px; background:#fff; overflow:hidden; outline:none;">
+        <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; padding:14px 18px; background:linear-gradient(135deg, rgba(139,25,24,0.04), rgba(196,151,58,0.06)); border-bottom:1px solid rgba(42,21,9,0.08); user-select:none;">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span style="font-size:18px;">🤝</span>
+            <span class="card-title" style="font-size:15px; margin:0; font-weight:800; color:var(--wine);">Peajes de Traspaso de NFTs ($CORCHO)</span>
+            <span style="font-size:10px; font-weight:800; background:rgba(139,25,24,0.08); color:var(--wine); padding:2px 8px; border-radius:20px;">Precio por NFT</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <button onclick="event.stopPropagation(); saveTransferFeesSettings()" style="background:var(--wine); color:#fff; border:none; border-radius:8px; padding:6px 14px; font-size:11px; font-weight:700; cursor:pointer; box-shadow:0 2px 6px rgba(139,25,24,0.3);">💾 Guardar Peajes</button>
+            <span style="font-size:12px; font-weight:700; color:var(--wine); opacity:0.8;">▼ Plegar</span>
+          </div>
+        </summary>
+        <div style="padding:16px 18px;">
+          <p style="font-size:11.5px; color:var(--text-muted); margin-bottom:14px; line-height:1.5;">Configura el precio en <strong>$CORCHO</strong> que se cobra al traspasar cada tipo de NFT entre socios. Cada NFT tiene su propio precio. Si el valor es 0, el traspaso es gratuito.</p>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:20px; margin-bottom:16px;">
+            <div>
+              <p style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">Niveles principales</p>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <label style="font-size:12px; display:flex; align-items:center; gap:8px;">
+                  <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Nivel 1 (Cautivo):</span>
+                  <input type="number" id="fee-level-1" value="0" min="0" placeholder="0" style="width:85px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15); flex-shrink:0;" /> <span style="font-size:10px; font-weight:700; color:var(--gold);">$CORCHO</span>
+                </label>
+                <label style="font-size:12px; display:flex; align-items:center; gap:8px;">
+                  <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Nivel 2 (Cunqueiro):</span>
+                  <input type="number" id="fee-level-2" value="0" min="0" placeholder="0" style="width:85px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15); flex-shrink:0;" /> <span style="font-size:10px; font-weight:700; color:var(--gold);">$CORCHO</span>
+                </label>
+                <label style="font-size:12px; display:flex; align-items:center; gap:8px;">
+                  <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Nivel 3 (Larpeiro):</span>
+                  <input type="number" id="fee-level-3" value="150" min="0" placeholder="150" style="width:85px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15); flex-shrink:0;" /> <span style="font-size:10px; font-weight:700; color:var(--gold);">$CORCHO</span>
+                </label>
+                <label style="font-size:12px; display:flex; align-items:center; gap:8px;">
+                  <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Nivel 4 (Presidente):</span>
+                  <input type="number" id="fee-level-4" value="250" min="0" placeholder="250" style="width:85px; padding:6px; border-radius:6px; border:1px solid rgba(42,21,9,0.15); flex-shrink:0;" /> <span style="font-size:10px; font-weight:700; color:var(--gold);">$CORCHO</span>
+                </label>
+              </div>
+            </div>
+            <div>
+              <p style="font-size:12px; font-weight:700; color:var(--wine); margin-bottom:8px;">Logros especiales y Memes</p>
+              <div id="transfer-fees-achievements-container" style="display:flex; flex-direction:column; gap:8px; max-height:260px; overflow-y:auto; padding-right:4px;">
+                <!-- Cargados dinámicamente -->
+              </div>
+            </div>
+          </div>
+          <button class="btn-primary" onclick="saveTransferFeesSettings()" style="width:100%;">💾 Guardar Tarifas de Peaje ($CORCHO)</button>
+        </div>
+      </details>
 
       <!-- Logros NFT especiales (Plegable) -->
       <details class="glass-card" style="margin-bottom:20px; outline:none; -webkit-tap-highlight-color:transparent;">
@@ -12139,9 +12142,9 @@
   // --- LOGICA DE TRASPASOS ---
   let loadedAchievementIdsForFees = [];
 
-  async function loadPendingTransfers() {
+  // Carga solo la configuración de peajes (niveles + logros) — puede llamarse desde Banco o NFTs
+  async function loadTransferFeesConfig() {
     try {
-      // Cargar configuracion de peajes de niveles
       const level1 = await fetch('/api/admin/settings/transfer_fee_1', { headers: authHeaders() }).then(r=>r.json());
       const level2 = await fetch('/api/admin/settings/transfer_fee_2', { headers: authHeaders() }).then(r=>r.json());
       const level3 = await fetch('/api/admin/settings/transfer_fee_3', { headers: authHeaders() }).then(r=>r.json());
@@ -12151,21 +12154,18 @@
       if (level2.value !== undefined) document.getElementById('fee-level-2').value = level2.value !== null ? level2.value : 150;
       if (level3.value !== undefined) document.getElementById('fee-level-3').value = level3.value !== null ? level3.value : 150;
       if (level4.value !== undefined) document.getElementById('fee-level-4').value = level4.value !== null ? level4.value : 250;
-      
-      // Cargar catálogo de logros y sus peajes correspondientes en $CORCHO
+
       const achCatalogRes = await fetch('/api/achievements/admin/list', { headers: authHeaders() }).then(r=>r.json());
       const achievements = achCatalogRes.achievements || [];
-      
       loadedAchievementIdsForFees = achievements.map(a => a.id);
-      
+
       const achContainer = document.getElementById('transfer-fees-achievements-container');
       if (achContainer) {
         achContainer.innerHTML = '';
         for (const a of achievements) {
-          // Fetch dynamic fee in $CORCHO for this achievement
           const feeRes = await fetch(`/api/admin/settings/transfer_fee_ach_${a.id}`, { headers: authHeaders() }).then(r=>r.json());
-          const feeVal = (feeRes.value !== undefined && feeRes.value !== null) ? feeRes.value : '150'; // default 150 $CORCHO
-          
+          const feeVal = (feeRes.value !== undefined && feeRes.value !== null) ? feeRes.value : '150';
+
           const label = document.createElement('label');
           label.style.cssText = 'font-size:12px; display:flex; align-items:center; gap:8px;';
           label.innerHTML = `
@@ -12175,8 +12175,16 @@
           achContainer.appendChild(label);
         }
       }
+    } catch (e) {
+      console.error('Error cargando configuración de peajes:', e);
+    }
+  }
 
+  async function loadPendingTransfers() {
+    // Carga la configuración de peajes (también disponible desde tab NFTs)
+    await loadTransferFeesConfig();
 
+    try {
       // Cargar traspasos pendientes
       const res = await fetch('/api/admin/transfers', { headers: authHeaders() });
       if (res.status === 401) return;
@@ -12285,6 +12293,9 @@
     originalShowPage(pageId);
     if (pageId === 'banco') {
       loadPendingTransfers();
+    }
+    if (pageId === 'nfts') {
+      loadTransferFeesConfig();
     }
   };
 
