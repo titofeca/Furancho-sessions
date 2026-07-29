@@ -55,7 +55,11 @@ const DEFAULT_RATES = {
   queimadaMult21: 3,        // Multiplicador queimada perfecta (x3)
   queimadaMult1820: 2,      // Multiplicador 18-20 (x2)
   queimadaMult1517: 1,      // Multiplicador 15-17 (x1 = empate)
-  queimadaMaxPlays: 3       // Partidas al día
+  queimadaMaxPlays: 3,       // Partidas al día
+  
+  // Modo Vacaciones
+  vacationMode: 0,
+  vacationMaxDailyGameCorchos: 2
 };
 
 function getRate(key) {
@@ -108,7 +112,9 @@ function getEconomySettings() {
     queimadaMult21: getRate('queimadaMult21'),
     queimadaMult1820: getRate('queimadaMult1820'),
     queimadaMult1517: getRate('queimadaMult1517'),
-    queimadaMaxPlays: getRate('queimadaMaxPlays')
+    queimadaMaxPlays: getRate('queimadaMaxPlays'),
+    vacationMode: getRate('vacationMode'),
+    vacationMaxDailyGameCorchos: getRate('vacationMaxDailyGameCorchos')
   };
 }
 

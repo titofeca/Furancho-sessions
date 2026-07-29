@@ -1395,6 +1395,13 @@
           }catch(_){}
         });
 
+        _staffSse.addEventListener('pending_nft_checkin', (e) => {
+          const data = JSON.parse(e.data);
+          staffToast(`🎁 ¡ATENCIÓN! ${data.alias} acaba de entrar y tiene premios físicos pendientes: ${data.prizes}. ¡Búscalo!`);
+          playNoticeSound();
+          if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 500]);
+        });
+
       }catch(_){ _staffSse = null; }
     }
 

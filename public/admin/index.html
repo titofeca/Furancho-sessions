@@ -2615,6 +2615,29 @@
                 <button onclick="showPage('banco')" style="background:none; border:none; color:var(--wine); font-weight:700; font-size:11px; cursor:pointer; text-decoration:underline; padding:0;">Traspasos →</button>
               </p>
             </div>
+            </div>
+          </div>
+
+          <!-- MODO VACACIONES -->
+          <div style="margin-bottom:16px; padding:14px; background:rgba(216,90,48,0.05); border:1.5px solid rgba(216,90,48,0.3); border-radius:12px;">
+            <div class="card-title" style="font-size:14px; margin-bottom:10px; color:#d85a30;">🏖️ MODO VACACIONES</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <p style="font-size:11.5px; color:var(--text-muted); margin:0; line-height:1.4;">
+                Al activarlo, se limitan las ganancias en minijuegos para no perder corchos.
+              </p>
+              <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                <input type="checkbox" id="corcho-vacation-mode" style="width:16px; height:16px;" />
+                <span style="font-size:12px; font-weight:800; color:var(--text);">Activar Modo Vacaciones</span>
+              </label>
+            </div>
+            <div>
+              <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Max $CORCHO por usuario/día en juegos:</label>
+              <input type="number" id="corcho-vacation-max" class="input-field" style="font-size:12px; padding:6px 10px; max-width:150px;" />
+            </div>
+            <div style="margin-top:10px; text-align:right;">
+              <button onclick="saveCorchoAdminSettings()" style="background:var(--wine); color:#fff; border:none; border-radius:8px; padding:7px 14px; font-size:11px; font-weight:700; cursor:pointer;">💾 Guardar</button>
+            </div>
+          </div>
 
           <!-- Minijuegos Configurables -->
           <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
@@ -5131,8 +5154,12 @@
         setVal('rate-level3', data.settings.level3);
         setVal('rate-level4', data.settings.level4);
         
-        // Minijuegos
         const setCheck = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+        
+        setCheck('corcho-vacation-mode', data.settings.vacationMode);
+        setVal('corcho-vacation-max', data.settings.vacationMaxDailyGameCorchos);
+
+        // Minijuegos
         setCheck('minigame-enxebre-enabled', data.settings.enxebreEnabled);
         setVal('mg-enx-cost', data.settings.enxebreEntryCost || 0);
         setVal('mg-enx-1', data.settings.enxebrePrize1);
@@ -5716,6 +5743,8 @@
       level2: getVal('rate-level2'),
       level3: getVal('rate-level3'),
       level4: getVal('rate-level4'),
+      vacationMode: document.getElementById('corcho-vacation-mode').checked ? 1 : 0,
+      vacationMaxDailyGameCorchos: getVal('corcho-vacation-max'),
       enxebreEnabled: document.getElementById('minigame-enxebre-enabled').checked ? 1 : 0,
       enxebreEntryCost: getVal('mg-enx-cost'),
       enxebrePrize1: getVal('mg-enx-1'),
@@ -6531,6 +6560,38 @@
         console.error('Error procesando evento corcho_pending:', err);
       }
     });
+    adminSseSource.addEventListener('pending_nft_checkin', (e) => {
+      try {
+        const d = JSON.parse(e.data);
+        const msg = `🎁 ¡ATENCIÓN! ${d.alias} acaba de entrar y tiene premios físicos pendientes: ${d.prizes}. ¡Búscalo para entregárselos!`;
+        showToast(msg);
+        if (Notification.permission === 'granted') {
+          new Notification('🎁 Premio Pendiente', {
+            body: `${d.alias} ha entrado. Premios pendientes: ${d.prizes}`,
+            icon: '/assets/logo.png',
+            tag: 'nft-pending-' + Date.now()
+          });
+        }
+        
+        // Añadir tarjeta persistente
+        const container = document.getElementById('vip-notifications-container');
+        if (container) {
+          const card = document.createElement('div');
+          card.style.cssText = 'background:rgba(216,90,48,0.1); border-left:4px solid #d85a30; border-radius:8px; padding:12px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;';
+          card.innerHTML = `
+            <div>
+              <div style="font-weight:700; color:#d85a30; font-size:14px; margin-bottom:4px;">🎁 Premio pendiente en local</div>
+              <div style="font-size:13px; color:var(--text-color);">${d.alias} acaba de entrar y tiene pendiente recoger: <strong>${d.prizes}</strong>.</div>
+            </div>
+            <button onclick="this.parentElement.remove()" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:5px; font-size:16px;">&times;</button>
+          `;
+          container.prepend(card);
+        }
+      } catch (err) {
+        console.error('Error procesando evento pending_nft_checkin:', err);
+      }
+    });
+
 
     adminSseSource.addEventListener('bono_redeemed', (e) => {
       try {

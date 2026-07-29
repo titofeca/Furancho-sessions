@@ -2426,6 +2426,36 @@
           <p style="font-size:14px; font-weight:700; color:#16a34a; margin:0;">✅ Requisito confirmado</p>
           <p id="dress-code-done-text" style="font-size:11px; color:var(--text-muted); margin:4px 0 0; line-height:1.4;">El staff lo sabe, disfruta la noche ho</p>
         </div>
+        <!-- Pasaporte de Verano (Oculto por defecto, se carga vía JS) -->
+        <div id="summer-passport-card" style="display:none; margin-bottom:16px; border-radius:16px; background:linear-gradient(135deg, rgba(234,179,8,0.1), rgba(216,90,48,0.08)); border:2px solid rgba(234,179,8,0.4); padding:16px; text-align:center; position:relative; overflow:hidden; box-shadow:0 8px 24px rgba(234,179,8,0.15);">
+          <div style="position:absolute; top:-10px; right:-10px; font-size:40px; opacity:0.1; transform:rotate(15deg);">🏖️</div>
+          <div style="position:absolute; bottom:-10px; left:-10px; font-size:40px; opacity:0.1; transform:rotate(-20deg);">🌴</div>
+          
+          <h3 style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:var(--wine); margin:0 0 4px; line-height:1.1;">☀️ Pasaporte de Verano</h3>
+          <p style="font-size:11.5px; color:var(--text-muted); margin:0 0 12px; line-height:1.4;">Ficha cada día y colecciona 20 sellos. ¡Los 3 primeros se llevan un premio gordo a la vuelta!</p>
+          
+          <div style="display:flex; justify-content:center; align-items:center; margin-bottom:12px; gap:8px;">
+            <div style="font-size:24px; font-weight:900; color:#d85a30; font-family:monospace;" id="passport-stamp-count">0/20</div>
+            <div style="font-size:11px; text-transform:uppercase; font-weight:700; color:var(--text-muted); text-align:left; line-height:1.2;">sellos<br>conseguidos</div>
+          </div>
+          
+          <div id="passport-stamp-grid" style="display:grid; grid-template-columns:repeat(5, 1fr); gap:6px; margin-bottom:14px; padding:10px; background:rgba(255,255,255,0.05); border-radius:12px; border:1px dashed rgba(234,179,8,0.3);">
+            <!-- Renderizado dinámico -->
+          </div>
+
+          <div id="passport-claim-box">
+            <button id="passport-claim-btn" onclick="claimSummerStamp()" style="width:100%; padding:14px; border-radius:50px; font-size:14px; font-weight:800; cursor:pointer; border:none; background:linear-gradient(135deg,#eab308,#d85a30); color:#fff; font-family:'Outfit',sans-serif; transition:all 0.2s; box-shadow:0 4px 14px rgba(234,179,8,0.4);">
+              📍 Estampar Sello de Hoy
+            </button>
+            <p id="passport-claim-msg" style="display:none; font-size:12px; font-weight:700; color:#16a34a; margin:10px 0 0;">✅ Sello estampado. ¡Vuelve mañana!</p>
+            <p id="passport-wait-msg" style="display:none; font-size:12px; font-weight:700; color:var(--text-muted); margin:10px 0 0;">⏳ El pasaporte arranca el 31 de Julio.</p>
+          </div>
+          
+          <div id="passport-winner-box" style="display:none; margin-top:14px; padding:12px; background:rgba(22,163,74,0.1); border:1.5px solid #16a34a; border-radius:12px;">
+            <p style="font-size:14px; font-weight:800; color:#16a34a; margin:0 0 4px;">🎉 ¡PASAPORTE COMPLETADO!</p>
+            <p id="passport-winner-text" style="font-size:12px; color:var(--text); margin:0;">¡Eres el ganador nº X! Te daremos tu premio en mano el día de la reapertura al fichar en puerta.</p>
+          </div>
+        </div>
 
         <!-- Hint siguiente nivel -->
         <p id="profile-progress-hint" style="font-size:12px; color:var(--text-muted); margin:0 0 16px; line-height:1.5;"></p>
@@ -4973,6 +5003,102 @@
       } catch(err) {
         console.error('showProfileScreen error:', err);
         showScreen('screen-profile'); // mostrar perfil aunque algo falle
+      }
+      
+      loadSummerPassport();
+    }
+
+    async function loadSummerPassport() {
+      if (!userWalletAddress) return;
+      
+      try {
+        const res = await resilientFetch(`/api/corcho/summer/status?walletAddress=${userWalletAddress}`);
+        const data = await res.json();
+        if (!data.success) return;
+
+        const card = document.getElementById('summer-passport-card');
+        const grid = document.getElementById('passport-stamp-grid');
+        const count = document.getElementById('passport-stamp-count');
+        const claimBtn = document.getElementById('passport-claim-btn');
+        const claimMsg = document.getElementById('passport-claim-msg');
+        const waitMsg = document.getElementById('passport-wait-msg');
+        const winBox = document.getElementById('passport-winner-box');
+        const winText = document.getElementById('passport-winner-text');
+
+        if (!card) return;
+        card.style.display = 'block';
+        count.textContent = `${data.totalStamps}/20`;
+
+        let html = '';
+        for (let i = 1; i <= 20; i++) {
+          if (i <= data.totalStamps) {
+            html += `<div style="aspect-ratio:1; border-radius:50%; background:rgba(216,90,48,0.2); border:1.5px solid #d85a30; display:flex; align-items:center; justify-content:center; font-size:16px;">🏖️</div>`;
+          } else {
+            html += `<div style="aspect-ratio:1; border-radius:50%; background:rgba(255,255,255,0.05); border:1.5px dashed rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; font-size:10px; color:rgba(255,255,255,0.3); font-weight:700;">${i}</div>`;
+          }
+        }
+        grid.innerHTML = html;
+
+        if (data.totalStamps >= 20) {
+          document.getElementById('passport-claim-box').style.display = 'none';
+          if (data.winnerInfo) {
+            winBox.style.display = 'block';
+            let extra = '';
+            if (data.winnerInfo.position === 1) extra = '¡Llegaste el primero! (300 $CORCHO)';
+            else if (data.winnerInfo.position === 2) extra = '¡Llegaste de segundo! (150 $CORCHO)';
+            else extra = '¡Llegaste a tiempo! (50 $CORCHO)';
+            winText.textContent = `Eres el ganador nº ${data.winnerInfo.position}. ${extra} Se te darán en mano el día de la reapertura al fichar en puerta.`;
+          }
+        } else {
+          winBox.style.display = 'none';
+          document.getElementById('passport-claim-box').style.display = 'block';
+          
+          if (new Date().toISOString().slice(0, 10) < '2026-07-31') {
+            claimBtn.style.display = 'none';
+            claimMsg.style.display = 'none';
+            waitMsg.style.display = 'block';
+          } else if (data.canClaimToday) {
+            claimBtn.style.display = 'block';
+            claimMsg.style.display = 'none';
+            waitMsg.style.display = 'none';
+          } else {
+            claimBtn.style.display = 'none';
+            claimMsg.style.display = 'block';
+            waitMsg.style.display = 'none';
+          }
+        }
+
+      } catch(e) {
+        console.error('Error cargando pasaporte:', e);
+      }
+    }
+
+    async function claimSummerStamp() {
+      if (!userWalletAddress) return;
+      const btn = document.getElementById('passport-claim-btn');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '⏳ Estampando...';
+      btn.disabled = true;
+
+      try {
+        const res = await resilientFetch('/api/corcho/summer/stamp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ walletAddress: userWalletAddress })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('🏖️ ¡Sello estampado!');
+          loadSummerPassport();
+        } else {
+          showToast('❌ ' + data.error);
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+        }
+      } catch (e) {
+        showToast('❌ Error de conexión al estampar.');
+        btn.innerHTML = originalText;
+        btn.disabled = false;
       }
     }
 
@@ -9298,7 +9424,14 @@
 
       if (prizeEl) prizeEl.textContent = data.prize || '🤫 Premio aún en secreto — el jefe anda maquinando, ho…';
 
-      if (rulesEl) rulesEl.textContent = data.rules || CHAVE_DEFAULT_RULES;
+      if (rulesEl) {
+        let text = data.rules || CHAVE_DEFAULT_RULES;
+        if (data.prize && /corcho/i.test(data.prize)) {
+          text += '\n\nNOTA IMPORTANTE: Al ser un premio en $CORCHO, para recibir tu ingreso en el banco deberás asistir al evento del día siguiente y fichar entrada en la puerta del local.';
+        }
+        rulesEl.textContent = text;
+        rulesEl.style.whiteSpace = 'pre-wrap'; // Ensure the newlines are rendered
+      }
 
       if (codeWrap && codeEl) {
         if (isWinner && data.status === 'completed' && data.verificationCode) {

@@ -151,7 +151,7 @@ router.post('/entry', mintLimiter, async (req, res) => {
       });
     }
 
-    const result = performCheckin(walletAddress, req.ip);
+    const result = performCheckin(walletAddress, req.ip, true); // true = isSelfCheckin
 
     // Adjuntar ya los campos extra que devolvía específicamente /entry,
     // aprovechando que performCheckin ahora devuelve TODO lo necesario.
@@ -234,7 +234,7 @@ function completeVipReservationOnCheckin(walletAddress) {
   }
 }
 
-function performCheckin(walletAddress, ipAddress) {
+function performCheckin(walletAddress, ipAddress, isSelfCheckin = false) {
   const { getVisitCount, openSession } = require('../db/database');
   const result = openSession(walletAddress, false);
   const visitCount = getVisitCount(walletAddress);
@@ -274,6 +274,34 @@ function performCheckin(walletAddress, ipAddress) {
         }
       }
     } catch (e) { console.error('Error recompensando CorchoCoins en check-in:', e.message); }
+
+    try {
+      // ── PASAPORTE DE VERANO: Recompensa en Puerta ──
+      const passportWin = db.prepare(`SELECT * FROM summer_passport_winners WHERE LOWER(wallet_address) = LOWER(?) AND prize_granted = 0`).get(walletAddress);
+      if (passportWin) {
+        let passportPrize = 50;
+        if (passportWin.position === 1) passportPrize = 300;
+        else if (passportWin.position === 2) passportPrize = 150;
+
+        const { addCorchoCoins } = require('../services/corcho');
+        addCorchoCoins(
+          walletAddress,
+          passportPrize,
+          'summer_passport',
+          `🏖️ Premio Pasaporte de Verano (Posición ${passportWin.position}) (+${passportPrize} $CORCHO)`,
+          `passport_win_${passportWin.id}`
+        );
+
+        db.prepare(`UPDATE summer_passport_winners SET prize_granted = 1 WHERE id = ?`).run(passportWin.id);
+
+        try {
+          const aliasRow = db.prepare(`SELECT alias FROM user_profiles WHERE LOWER(wallet_address) = LOWER(?)`).get(walletAddress);
+          const alias = aliasRow && aliasRow.alias ? aliasRow.alias : walletAddress.substring(0, 6) + '...';
+          const { injectSystemMuroMessage } = require('../db/database');
+          injectSystemMuroMessage(`🏖️ ¡BOOM! ${alias} ha vuelto de vacaciones con su Pasaporte lleno y ha cobrado ${passportPrize} $CORCHO al entrar por la puerta. ¡Mítico!`);
+        } catch (_) {}
+      }
+    } catch (e) { console.error('Error procesando premio Pasaporte Verano:', e.message); }
   }
 
   completeVipReservationOnCheckin(walletAddress);
@@ -287,6 +315,20 @@ function performCheckin(walletAddress, ipAddress) {
       return { prize: r.prize, name: a ? a.name : r.prize, image: a ? a.image : null };
     });
   } catch (_) {}
+
+  if (pendingNftPrizes.length > 0 && isSelfCheckin) {
+    try {
+      const { broadcastToAdmins } = require('./raffle');
+      const aliasRow = require('../db/database').db.prepare(`SELECT alias FROM user_profiles WHERE LOWER(wallet_address) = LOWER(?)`).get(walletAddress);
+      const aliasStr = (aliasRow && aliasRow.alias) ? aliasRow.alias : (walletAddress.substring(0, 6) + '...');
+      
+      broadcastToAdmins('pending_nft_checkin', {
+        wallet: walletAddress,
+        alias: aliasStr,
+        prizes: pendingNftPrizes.map(p => p.name).join(', ')
+      });
+    } catch(e) { console.error('Error broadcasting pending NFT checkin:', e); }
+  }
 
   const payload = {
     success: true,

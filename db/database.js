@@ -163,6 +163,30 @@ try {
 try {
   db.exec(`ALTER TABLE weekly_raffles ADD COLUMN collected_wallets TEXT DEFAULT NULL`);
 } catch (_) {}
+
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS summer_stamps (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      wallet_address TEXT NOT NULL,
+      stamp_date TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(wallet_address, stamp_date)
+    )
+  `);
+} catch (_) {}
+
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS summer_passport_winners (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      wallet_address TEXT NOT NULL UNIQUE,
+      position INTEGER NOT NULL,
+      completed_at TEXT DEFAULT (datetime('now')),
+      prize_granted INTEGER DEFAULT 0
+    )
+  `);
+} catch (_) {}
 // Multi-ganador: confirmación y pérdida POR ganador (mapa {wallet: fecha}).
 // `confirmed_at`/`forfeited_at` quedan como marcas agregadas (cuando TODOS confirman/pierden).
 try { db.exec(`ALTER TABLE weekly_raffles ADD COLUMN confirmed_wallets TEXT DEFAULT NULL`); } catch (_) {}

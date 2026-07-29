@@ -1,6 +1,26 @@
 const { db } = require('../db/database');
 const corcho = require('./corcho');
 
+// ==================== VACATION MODE ====================
+function applyVacationModeCap(wallet, basePrize) {
+  const settings = corcho.getEconomySettings();
+  if (!settings.vacationMode) return basePrize; // Normal behavior
+  
+  const maxDaily = parseInt(settings.vacationMaxDailyGameCorchos || 2, 10);
+  const today = new Date().toISOString().slice(0, 10);
+  
+  // Calculate how many minigame corchos they already won today
+  const earnedRow = db.prepare(`SELECT SUM(amount) as s FROM corcho_coins WHERE LOWER(wallet_address) = LOWER(?) AND reason LIKE 'minigame_%' AND date(created_at) = ?`).get(wallet, today);
+  const earned = earnedRow ? (earnedRow.s || 0) : 0;
+  
+  if (earned >= maxDaily) {
+    return 0;
+  } else if (earned + basePrize > maxDaily) {
+    return maxDaily - earned;
+  }
+  return basePrize;
+}
+
 // ==================== O ENXEBRE (WORDLE) ====================
 
 // Diccionario reducido de 5 letras relacionadas exclusivamente con gastronomía gallega y furancho
@@ -96,6 +116,7 @@ function recordEnxebrePlay(wallet, attempts, solved) {
   let awarded = 0;
   if (solved && attempts >= 1 && attempts <= 6) {
     awarded = settings[`enxebrePrize${attempts}`] || 0;
+    awarded = applyVacationModeCap(wallet, awarded);
   }
 
   db.prepare(`
@@ -267,7 +288,8 @@ function spinRuleta(wallet) {
 
   const sliceIndex = Math.floor(Math.random() * 8);
   const slice = RULETA_SLICES[sliceIndex];
-  const prize = settings[slice.key] || 0;
+  let prize = settings[slice.key] || 0;
+  prize = applyVacationModeCap(wallet, prize);
 
   db.prepare(`
     INSERT INTO ruleta_history (wallet_address, play_date, entry_cost, slice_index, slice_name, awarded_corchos)
@@ -353,6 +375,8 @@ function resolveQueimada(wallet, ingredients, totalScore) {
   } else {
     result = 'weak';
   }
+
+  prize = applyVacationModeCap(wallet, prize);
 
   db.prepare(`
     INSERT INTO queimada_history (wallet_address, play_date, entry_cost, ingredients, total_score, result, awarded_corchos)

@@ -339,3 +339,93 @@ router.post('/redeem-item', (req, res) => {
 
 module.exports = router;
 
+// ── PASAPORTE DE VERANO ──────────────────────────────────────────────────────
+
+router.get('/summer/status', (req, res) => {
+  const { walletAddress } = req.query;
+  if (!walletAddress || !ETH_REGEX.test(walletAddress)) {
+    return res.status(400).json({ error: 'Wallet no válida' });
+  }
+
+  try {
+    const { db } = require('../db/database');
+    const stamps = db.prepare(`SELECT stamp_date FROM summer_stamps WHERE LOWER(wallet_address) = LOWER(?) ORDER BY stamp_date ASC`).all(walletAddress);
+    const totalStamps = stamps.length;
+    
+    // Check if they won
+    const winner = db.prepare(`SELECT position, prize_granted FROM summer_passport_winners WHERE LOWER(wallet_address) = LOWER(?)`).get(walletAddress);
+
+    // Can they claim today?
+    const today = new Date().toISOString().slice(0, 10);
+    const hasStampedToday = stamps.some(s => s.stamp_date === today);
+    // Passport starts July 31st 2026
+    const canClaimToday = (today >= '2026-07-31') && !hasStampedToday && totalStamps < 20;
+
+    res.json({
+      success: true,
+      totalStamps,
+      hasStampedToday,
+      canClaimToday,
+      winnerInfo: winner || null
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/summer/stamp', (req, res) => {
+  const { walletAddress } = req.body;
+  if (!walletAddress || !ETH_REGEX.test(walletAddress)) {
+    return res.status(400).json({ error: 'Wallet no válida' });
+  }
+
+  try {
+    const { db } = require('../db/database');
+    const today = new Date().toISOString().slice(0, 10);
+
+    if (today < '2026-07-31') {
+      return res.status(400).json({ error: 'El pasaporte de verano arranca el 31 de Julio. ¡Vuelve ese día!' });
+    }
+
+    const stamps = db.prepare(`SELECT COUNT(*) as c FROM summer_stamps WHERE LOWER(wallet_address) = LOWER(?)`).get(walletAddress).c;
+    if (stamps >= 20) {
+      return res.status(400).json({ error: 'Ya has completado tu pasaporte (20 sellos).' });
+    }
+
+    try {
+      db.prepare(`INSERT INTO summer_stamps (wallet_address, stamp_date) VALUES (?, ?)`).run(walletAddress, today);
+    } catch (err) {
+      if (err.message.includes('UNIQUE')) {
+        return res.status(400).json({ error: 'Ya has puesto tu sello de hoy. Vuelve mañana.' });
+      }
+      throw err;
+    }
+
+    const newTotal = stamps + 1;
+    let justCompleted = false;
+    let position = null;
+
+    if (newTotal === 20) {
+      // Registrar ganador
+      const currentWinners = db.prepare(`SELECT COUNT(*) as c FROM summer_passport_winners`).get().c;
+      position = currentWinners + 1;
+      db.prepare(`
+        INSERT INTO summer_passport_winners (wallet_address, position)
+        VALUES (?, ?)
+      `).run(walletAddress, position);
+      justCompleted = true;
+    }
+
+    res.json({
+      success: true,
+      message: '¡Sello estampado con éxito!',
+      newTotal,
+      justCompleted,
+      position
+    });
+
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
