@@ -12384,8 +12384,13 @@
     const esc = str => (typeof escapeHtml === 'function' ? escapeHtml(str || '') : String(str || '').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
 
     async function openCorchoItemsModal() {
-      document.getElementById('corcho-items-modal').style.display = 'flex';
-      switchCorchoCatTab('items');
+      alert('Abriendo tienda - V1');
+      try {
+        document.getElementById('corcho-items-modal').style.display = 'flex';
+        switchCorchoCatTab('items');
+      } catch (e) {
+        alert('Error en openCorchoItemsModal: ' + e.message);
+      }
     }
 
     let _activeCorchoCatTab = 'items';
@@ -12428,7 +12433,7 @@
         const isStoreOpen = econRes.storeOpenForItems !== false;
 
         const userLvlText = document.getElementById('profile-card-level-tag')?.textContent || 'NIVEL 1';
-        const userLvlNum = parseInt(userLvlText.replace(/\\D/g, ''), 10) || 1;
+        const userLvlNum = parseInt(userLvlText.replace(/\D/g, ''), 10) || 1;
 
         let htmlHeader = '';
         if (!isStoreOpen) {
