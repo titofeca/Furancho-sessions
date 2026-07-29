@@ -2038,6 +2038,14 @@
           <span style="font-size:16px;">📝</span>
           <span>Usar mis 12 palabras de recuperación</span>
         </button>
+
+        <!-- Restaurar con dirección wallet -->
+        <div style="margin-top:14px; padding:16px; background:rgba(22,163,74,0.06); border:1.5px solid rgba(22,163,74,0.25); border-radius:14px;">
+          <p style="font-size:13px; font-weight:700; color:#15803d; margin-bottom:8px;">🔗 Pegar mi dirección de socio</p>
+          <p style="font-size:11px; color:var(--text-muted); line-height:1.5; margin-bottom:10px;">Si tienes tu dirección 0x… (del carnet, de una captura, o te la dieron por soporte), pégala aquí:</p>
+          <input id="restore-wallet-input" type="text" placeholder="0x5efd6c90..." style="width:100%; padding:10px 12px; border:1.5px solid rgba(22,163,74,0.3); border-radius:10px; font-family:monospace; font-size:13px; box-sizing:border-box; margin-bottom:8px;" />
+          <button id="restore-wallet-btn" onclick="restoreByAddress()" style="width:100%; padding:10px; background:#16a34a; color:#fff; border:none; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">Restaurar cuenta</button>
+        </div>
       </div>
     </div>
   </div>
@@ -7725,6 +7733,25 @@
       btn.disabled = false;
       btn.textContent = 'Recuperar mi cuenta';
     }
+  }
+
+  function restoreByAddress() {
+    const input = document.getElementById('restore-wallet-input');
+    const btn = document.getElementById('restore-wallet-btn');
+    const addr = (input.value || '').trim();
+    if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
+      showToast('Dirección no válida. Debe empezar por 0x y tener 42 caracteres.', true);
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Restaurando...';
+    localStorage.setItem('furancho_wallet_address', addr);
+    _setWalletCookie(addr);
+    if (!localStorage.getItem('furancho_account_created_at')) {
+      localStorage.setItem('furancho_account_created_at', new Date().toISOString());
+    }
+    showToast('¡Cuenta restaurada! Cargando tu perfil...');
+    setTimeout(() => { window.location.href = '/claim?restore=' + addr; }, 800);
   }
 
   // ==================== MENSAJES FLOTANTES ====================
