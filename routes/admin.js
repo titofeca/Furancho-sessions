@@ -1074,6 +1074,31 @@ router.get('/report-data', requireAuth, (req, res) => {
   }
 });
 
+// GET /api/admin/search-wallet?q=0x5EFd — buscar wallet por fragmento (admin)
+router.get('/search-wallet', requireAuth, (req, res) => {
+  const q = (req.query.q || '').trim();
+  if (q.length < 4) return res.status(400).json({ error: 'Mínimo 4 caracteres' });
+  try {
+    const { db } = require('../db/database');
+    const pattern = `%${q}%`;
+    const wallets = db.prepare(`
+      SELECT DISTINCT m.wallet_address, m.level, m.level_name,
+        (SELECT COUNT(*) FROM sessions s WHERE s.wallet_address = m.wallet_address) AS visits,
+        (SELECT COALESCE(SUM(CASE WHEN ct.type IN ('earn','admin_grant','purchase') THEN ct.amount ELSE 0 END) -
+          SUM(CASE WHEN ct.type IN ('spend','admin_deduct','transfer_out') THEN ct.amount ELSE 0 END), 0)
+          FROM corcho_transactions ct WHERE ct.wallet_address = m.wallet_address) AS balance,
+        (SELECT p.alias FROM user_profiles p WHERE p.wallet_address = m.wallet_address) AS alias
+      FROM mints m
+      WHERE m.wallet_address LIKE ? AND m.status = 'success'
+      ORDER BY m.level DESC, visits DESC
+      LIMIT 20
+    `).all(pattern);
+    res.json({ results: wallets });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/admin/inspect-wallet/:address — Inspeccionar un furancheiro específico (admin)
 router.get('/inspect-wallet/:address', requireAuth, (req, res) => {
   const { address } = req.params;
