@@ -2577,7 +2577,7 @@
             <!-- Botones Corcho (Resto en 1 línea) -->
             <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin:4px 0 8px;">
               <!-- Tienda -->
-              <button id="btn-corcho-tienda" onclick="(function(){ var m=document.getElementById('corcho-items-modal'); if(!m){alert('ERROR: modal NO encontrado en DOM');return;} alert('Modal encontrado. display='+m.style.display+' | visible='+m.offsetParent); m.style.display='flex'; alert('Tras set flex: display='+m.style.display+' | computed='+getComputedStyle(m).display); })();" style="background:linear-gradient(165deg, rgba(22,163,74,0.08), rgba(21,128,61,0.03)); border:1.5px solid rgba(22,163,74,0.3); border-radius:14px; padding:12px 4px 10px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(22,163,74,0.08);">
+              <button id="btn-corcho-tienda" onclick="openCorchoItemsModal()" style="background:linear-gradient(165deg, rgba(22,163,74,0.08), rgba(21,128,61,0.03)); border:1.5px solid rgba(22,163,74,0.3); border-radius:14px; padding:12px 4px 10px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(22,163,74,0.08);">
                 <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
                   <line x1="3" y1="6" x2="21" y2="6"/>
@@ -12086,6 +12086,7 @@
       <p style="font-size:13px; color:var(--text-muted); line-height:1.6; margin-bottom:12px;">Gira y cruza los dedos. Si la suerte te acompaña, te llevas un buen puñado de $CORCHO al bolsillo.</p>
       <p style="font-size:12px; color:var(--wine); font-weight:700;">¡Prueba suerte, ho!</p>
     </div>
+  </div>
   <!-- ==================== NEW MINIGAMES MODALS ==================== -->
 
   <!-- MODAL: O RASCA FURANCHEIRO -->
@@ -12436,10 +12437,7 @@
 
     async function loadCorchoItemsList() {
       const container = document.getElementById('corcho-items-modal-list');
-      if (!container) {
-        alert('DEBUG: container corcho-items-modal-list NO existe');
-        return;
-      }
+      if (!container) return;
       try {
         const [itemsRes, econRes] = await Promise.all([
           resilientFetch('/api/corcho/items').then(r => r.json()),
@@ -12498,7 +12496,6 @@
         `;
         }).join('');
       } catch (e) {
-        alert('DEBUG CATCH: ' + e.message);
         console.error('Error abriendo catálogo do Corcho:', e);
         container.innerHTML = '<p style="font-size:12px; color:var(--wine); text-align:center;">Error cargando catálogo.</p>';
       }
