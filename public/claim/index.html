@@ -4177,27 +4177,30 @@
     const isStandalone = (('standalone' in window.navigator) && (window.navigator.standalone)) || window.matchMedia('(display-mode: standalone)').matches;
     const _restoreParam = new URLSearchParams(window.location.search).get('restore');
     const _hadExistingWallet = !!localStorage.getItem('furancho_wallet_address');
+
+    function _getCookie(n) { const m = document.cookie.match('(^|;)\\s*' + n + '=([^;]*)'); return m ? decodeURIComponent(m[2]) : null; }
+    function _setWalletCookie(addr) { document.cookie = 'furancho_wallet=' + encodeURIComponent(addr) + ';path=/;max-age=31536000;SameSite=Lax'; }
+
+    const _cookieWallet = _getCookie('furancho_wallet');
+    const _fallbackAddr = _restoreParam || _cookieWallet;
     const _isQrRestore = !!(
-      _restoreParam && /^0x[a-fA-F0-9]{40}$/.test(_restoreParam) && !_hadExistingWallet
+      _fallbackAddr && /^0x[a-fA-F0-9]{40}$/.test(_fallbackAddr) && !_hadExistingWallet
     );
     if (_isQrRestore) {
-      localStorage.setItem('furancho_wallet_address', _restoreParam);
+      localStorage.setItem('furancho_wallet_address', _fallbackAddr);
       if (!localStorage.getItem('furancho_account_created_at')) {
         localStorage.setItem('furancho_account_created_at', new Date().toISOString());
       }
     }
     if (_hadExistingWallet || _isQrRestore) {
-      // Mantener la URL (y por tanto el manifest al "añadir a inicio") sincronizada
-      // con la cuenta real: limpia en standalone, o apuntando siempre a la wallet vigente.
       const currentWallet = localStorage.getItem('furancho_wallet_address');
-      const urlParams = new URLSearchParams(window.location.search);
-      if (isStandalone) {
-        urlParams.delete('restore');
-      } else if (currentWallet) {
+      if (currentWallet) {
+        _setWalletCookie(currentWallet);
+        const urlParams = new URLSearchParams(window.location.search);
         urlParams.set('restore', currentWallet);
+        const search = urlParams.toString();
+        history.replaceState(null, '', window.location.pathname + (search ? '?' + search : ''));
       }
-      const search = urlParams.toString();
-      history.replaceState(null, '', window.location.pathname + (search ? '?' + search : ''));
     }
 
     // Variables de la billetera local
@@ -4253,13 +4256,14 @@
           userWalletPrivateKey = data.privateKey;
           localStorage.setItem('furancho_wallet_address', userWalletAddress);
           localStorage.setItem('furancho_wallet_private_key', userWalletPrivateKey);
+          _setWalletCookie(userWalletAddress);
           if (!localStorage.getItem('furancho_account_created_at')) {
             localStorage.setItem('furancho_account_created_at', new Date().toISOString());
           }
           if (data.mnemonic) {
             localStorage.setItem('furancho_wallet_mnemonic', data.mnemonic);
           }
-          
+
           // Actualizar URL con restore param para que añadir a inicio funcione inmediatamente
           const urlParams = new URLSearchParams(window.location.search);
           urlParams.set('restore', userWalletAddress);
@@ -4369,6 +4373,7 @@
           userWalletPrivateKey = data.privateKey;
           localStorage.setItem('furancho_wallet_address', userWalletAddress);
           localStorage.setItem('furancho_wallet_private_key', userWalletPrivateKey);
+          _setWalletCookie(userWalletAddress);
           if (!localStorage.getItem('furancho_account_created_at')) {
             localStorage.setItem('furancho_account_created_at', new Date().toISOString());
           }
@@ -6638,6 +6643,7 @@
         if (data.walletAddress && data.walletAddress !== userWalletAddress) {
           userWalletAddress = data.walletAddress;
           localStorage.setItem('furancho_wallet_address', userWalletAddress);
+          _setWalletCookie(userWalletAddress);
         }
 
         // Actualizar historial y mostrar perfil
@@ -7648,6 +7654,7 @@
       if (match && match[1]) {
         const restoredAddress = match[1];
         localStorage.setItem('furancho_wallet_address', restoredAddress);
+        _setWalletCookie(restoredAddress);
         localStorage.setItem('furancho_account_created_at', new Date().toISOString());
         if (btn) btn.innerText = '✅ ¡Recuperado! Redirigiendo...';
         input.value = '';
@@ -7693,6 +7700,7 @@
       if (data.address) {
         localStorage.setItem('furancho_wallet_address', data.address);
         localStorage.setItem('furancho_wallet_private_key', data.privateKey);
+        _setWalletCookie(data.address);
         localStorage.setItem('furancho_wallet_mnemonic', words.join(' '));
         if (!localStorage.getItem('furancho_account_created_at')) {
           localStorage.setItem('furancho_account_created_at', new Date().toISOString());
