@@ -13947,8 +13947,8 @@
           const activeWallet = userWalletAddress || localStorage.getItem('furancho_wallet_address') || '';
           const hdrs = { 'wallet-address': activeWallet };
           const res = await fetch('/api/minigames/rasca/status', { headers: hdrs });
-          const data = await res.json();
-          if (data.entryCost !== undefined) document.getElementById('rasca-cost').textContent = data.entryCost;
+          const rascaCostEl = document.getElementById('rasca-cost');
+          if (rascaCostEl && data.entryCost !== undefined) rascaCostEl.textContent = data.entryCost;
           if (!res.ok || data.error) {
             document.getElementById('rasca-status-text').textContent = data.error || 'Error al conectar.';
           } else if (data.enabled === false) {
