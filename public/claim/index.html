@@ -11451,14 +11451,11 @@
         </div>
       </div>
 
-      <!-- Restaurar cuenta anterior -->
-      <div id="id-restore-section" style="background:rgba(22,163,74,0.06); border:1.5px solid rgba(22,163,74,0.25); border-radius:14px; padding:14px; margin-bottom:16px; text-align:left;">
-        <p style="font-size:12px; font-weight:700; color:#15803d; margin:0 0 6px;">🔗 ¿Esta no es tu cuenta?</p>
-        <p style="font-size:11px; color:var(--text-muted); margin:0 0 10px; line-height:1.4;">Pega tu dirección 0x… para recuperar tu cuenta real:</p>
-        <div style="display:flex; gap:6px;">
-          <input id="id-restore-input" type="text" placeholder="0x5efd6c90..." style="flex:1; padding:9px 10px; border:1.5px solid rgba(22,163,74,0.3); border-radius:10px; font-family:monospace; font-size:12px; box-sizing:border-box;" />
-          <button onclick="restoreByAddress(document.getElementById('id-restore-input').value)" style="padding:9px 14px; background:#16a34a; color:#fff; border:none; border-radius:10px; font-size:12px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; white-space:nowrap;">Restaurar</button>
-        </div>
+      <!-- Restaurar pase (enlace a 12 palabras) -->
+      <div style="margin-bottom:16px; text-align:center;">
+        <button onclick="closeIdModal(); openRestoreFlow();" style="background:none; border:none; color:var(--text-muted); font-size:12.5px; font-weight:600; text-decoration:underline; cursor:pointer; font-family:'Outfit',sans-serif;">
+          🔑 Restaurar pase con mis 12 palabras
+        </button>
       </div>
 
       <button onclick="closeIdModal()"
