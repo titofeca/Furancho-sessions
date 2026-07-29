@@ -2577,7 +2577,7 @@
             <!-- Botones Corcho (Resto en 1 línea) -->
             <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin:4px 0 8px;">
               <!-- Tienda -->
-              <button onclick="openCorchoItemsModal()" style="background:linear-gradient(165deg, rgba(22,163,74,0.08), rgba(21,128,61,0.03)); border:1.5px solid rgba(22,163,74,0.3); border-radius:14px; padding:12px 4px 10px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(22,163,74,0.08);" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'" ontouchend="this.style.transform='scale(1)'">
+              <button onclick="openCorchoItemsModal()" style="background:linear-gradient(165deg, rgba(22,163,74,0.08), rgba(21,128,61,0.03)); border:1.5px solid rgba(22,163,74,0.3); border-radius:14px; padding:12px 4px 10px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(22,163,74,0.08);" >
                 <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
                   <line x1="3" y1="6" x2="21" y2="6"/>
@@ -2587,7 +2587,7 @@
               </button>
 
               <!-- Recargar -->
-              <button onclick="openCorchoPacksModal()" style="background:linear-gradient(165deg, rgba(212,175,55,0.08), rgba(169,123,31,0.03)); border:1.5px solid rgba(212,175,55,0.3); border-radius:14px; padding:12px 4px 10px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(212,175,55,0.08);" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'" ontouchend="this.style.transform='scale(1)'">
+              <button onclick="openCorchoPacksModal()" style="background:linear-gradient(165deg, rgba(212,175,55,0.08), rgba(169,123,31,0.03)); border:1.5px solid rgba(212,175,55,0.3); border-radius:14px; padding:12px 4px 10px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(212,175,55,0.08);" >
                 <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#a97b1f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                   <rect x="2" y="5" width="20" height="14" rx="2"/>
                   <line x1="2" y1="10" x2="22" y2="10"/>
@@ -2597,7 +2597,7 @@
               </button>
 
               <!-- Traspasar -->
-              <button onclick="openCorchoTransferModal()" style="background:linear-gradient(165deg, rgba(42,21,9,0.08), rgba(42,21,9,0.02)); border:1.5px solid rgba(42,21,9,0.2); border-radius:14px; padding:12px 4px 10px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(42,21,9,0.06);" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'" ontouchend="this.style.transform='scale(1)'">
+              <button onclick="openCorchoTransferModal()" style="background:linear-gradient(165deg, rgba(42,21,9,0.08), rgba(42,21,9,0.02)); border:1.5px solid rgba(42,21,9,0.2); border-radius:14px; padding:12px 4px 10px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(42,21,9,0.06);" >
                 <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="rgba(42,21,9,0.85)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M17 1l4 4-4 4"/>
                   <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
@@ -12130,8 +12130,8 @@
   </div>
 
   <!-- MODAL: A CHAVE VIRTUAL -->
-  <div id="chave-modal" style="display:none; position:fixed; inset:0; z-index:2500; background:rgba(0,0,0,0.85); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); align-items:center; justify-content:center; flex-direction:column; padding:18px;">
-    <button onclick="document.getElementById('chave-modal').style.display='none'" style="position:absolute; top:16px; right:16px; background:rgba(255,255,255,0.1); border:none; border-radius:50%; width:32px; height:32px; color:#fff; cursor:pointer; font-size:18px; z-index:10;">✕</button>
+  <div id="chave-virtual-modal" style="display:none; position:fixed; inset:0; z-index:2500; background:rgba(0,0,0,0.85); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); align-items:center; justify-content:center; flex-direction:column; padding:18px;">
+    <button onclick="document.getElementById('chave-virtual-modal').style.display='none'" style="position:absolute; top:16px; right:16px; background:rgba(255,255,255,0.1); border:none; border-radius:50%; width:32px; height:32px; color:#fff; cursor:pointer; font-size:18px; z-index:10;">✕</button>
     <div style="background:linear-gradient(135deg, #f0fdf4, #dcfce7); border:2px solid #22c55e; width:100%; max-width:340px; border-radius:16px; padding:24px; text-align:center; box-shadow:0 20px 40px rgba(34,197,94,0.3); position:relative;">
       <h3 style="margin:0 0 8px; color:#166534; font-size:22px; font-weight:900;">🎯 A Chave Virtual</h3>
       <p id="chave-status-text" style="font-size:13px; color:#15803d; margin-bottom:16px;"></p>
@@ -13845,7 +13845,7 @@
               if (data.prize > 0) {
                 document.getElementById('rasca-msg').textContent = `¡Felicidades! Has ganado ${data.prize} $CORCHO 🎉`;
                 document.getElementById('rasca-msg').style.color = '#16a34a';
-                refreshBank();
+                loadCorchoBalance();
               } else {
                 document.getElementById('rasca-msg').textContent = 'Suerte en la próxima rascada 😅';
               }
@@ -13917,7 +13917,7 @@
             if (data.prize > 0) {
               document.getElementById('traga-msg').textContent = `¡Ganas ${data.prize} $CORCHO! 🎉`;
               document.getElementById('traga-msg').style.color = '#16a34a';
-              refreshBank();
+              loadCorchoBalance();
             } else {
               document.getElementById('traga-msg').textContent = '¡Vaya! No ha habido suerte.';
             }
@@ -13934,7 +13934,7 @@
       // 3. A CHAVE VIRTUAL
       let chaveInterval = null, chavePos = 0, chaveDir = 1;
       window.openChaveModal = async function() {
-        document.getElementById('chave-modal').style.display = 'flex';
+        document.getElementById('chave-virtual-modal').style.display = 'flex';
         document.getElementById('chave-msg').textContent = '';
         document.getElementById('chave-throw-btn').style.display = 'none';
         document.getElementById('chave-status-text').textContent = 'Cargando...';
@@ -13988,7 +13988,7 @@
             document.getElementById('chave-icon').textContent = '💨';
             document.getElementById('chave-msg').textContent = '¡Has fallado! Agua.';
           }
-          if (data.prize > 0) refreshBank();
+          if (data.prize > 0) loadCorchoBalance();
           setTimeout(() => { document.getElementById('chave-icon').textContent = '🗝️'; openChaveModal(); }, 3000);
 
         } catch (e) {
@@ -14100,7 +14100,7 @@
           if (won) {
             document.getElementById('trivial-msg').textContent = `¡Has acertado todas! Ganas ${data.prize} $CORCHO 🎉`;
             document.getElementById('trivial-msg').style.color = '#16a34a';
-            if (data.prize > 0) refreshBank();
+            if (data.prize > 0) loadCorchoBalance();
           } else {
             document.getElementById('trivial-msg').textContent = `¡Lástima! ${reason}.`;
             document.getElementById('trivial-msg').style.color = '#ef4444';
