@@ -10102,6 +10102,22 @@
         }
       }
     });
+
+    // Heartbeat 30s: refresca history/sorteos si la app está VISIBLE y el SSE NO está OPEN.
+    // Cuando el SSE va bien los cambios llegan solos, así que no gastamos peticiones.
+    // Cubre el hueco: móvil dormido reactivado, red inestable, banco $CORCHO tras validación
+    // del staff (que puede llegar sin evento SSE si se acredita al fichar entrada).
+    setInterval(() => {
+      if (!userWalletAddress) return;
+      if (document.visibilityState !== 'visible') return;
+      const sseOpen = _evtSource && _evtSource.readyState === EventSource.OPEN;
+      if (sseOpen) return;
+      Promise.all([
+        typeof checkUserHistoryAndAdjustLevel === 'function' ? checkUserHistoryAndAdjustLevel() : Promise.resolve(),
+        typeof loadWeeklyRaffle === 'function' ? loadWeeklyRaffle() : Promise.resolve(),
+        typeof renderPrizes === 'function' ? renderPrizes() : Promise.resolve()
+      ]).catch(() => {});
+    }, 30000);
   });
 
   // Función de actualización manual (refresco en vivo de visitas, sesión, sorteos y agenda)
