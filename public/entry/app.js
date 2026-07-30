@@ -1,5 +1,7 @@
 // Timer global para poder cancelar la creación automática si el usuario quiere restaurar
 window._autoEntryTimeout = null;
+function _getCookie(n) { const m = document.cookie.match('(^|;)\\s*' + n + '=([^;]*)'); return m ? decodeURIComponent(m[2]) : null; }
+function _setWalletCookie(addr) { document.cookie = 'furancho_wallet=' + encodeURIComponent(addr) + ';path=/;max-age=31536000;SameSite=Lax'; }
 
 async function autoCreateEntryWalletSilently() {
   if (typeof ethers === 'undefined') {
@@ -15,6 +17,7 @@ async function autoCreateEntryWalletSilently() {
     localStorage.setItem('furancho_wallet_address', data.address);
     localStorage.setItem('furancho_wallet_private_key', data.privateKey);
     if (data.mnemonic) localStorage.setItem('furancho_wallet_mnemonic', data.mnemonic);
+    _setWalletCookie(data.address);
     if (!localStorage.getItem('furancho_account_created_at')) {
       localStorage.setItem('furancho_account_created_at', new Date().toISOString());
     }
@@ -62,18 +65,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   let walletAddress = localStorage.getItem('furancho_wallet_address');
   const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
 
-  // Restauración por URL (?restore=0x...): el QR personal de recuperación también
-  // sirve para fichar entrada directamente sin pasar por el onboarding
+  // Buscar wallet por TODOS los medios antes de plantear crear/recuperar:
+  // 1. localStorage (fuente primaria)
+  // 2. ?restore= en la URL (QR de recuperación personal)
+  // 3. Cookie furancho_wallet (backup compartido entre PWA y navegador en el mismo dominio)
   if (!walletAddress) {
     const restoreParam = new URLSearchParams(window.location.search).get('restore');
     if (restoreParam && /^0x[a-fA-F0-9]{40}$/.test(restoreParam)) {
       walletAddress = restoreParam;
+    } else {
+      const cookieWallet = _getCookie('furancho_wallet');
+      if (cookieWallet && /^0x[a-fA-F0-9]{40}$/.test(cookieWallet)) {
+        walletAddress = cookieWallet;
+      }
+    }
+    if (walletAddress) {
       localStorage.setItem('furancho_wallet_address', walletAddress);
+      _setWalletCookie(walletAddress);
       if (!localStorage.getItem('furancho_account_created_at')) {
         localStorage.setItem('furancho_account_created_at', new Date().toISOString());
       }
     }
   } else {
+    _setWalletCookie(walletAddress);
     // Si ya tiene wallet, nos aseguramos de que el restore esté siempre en la URL si no es standalone
     if (!isStandalone) {
       const urlParams = new URLSearchParams(window.location.search);
@@ -83,12 +97,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   if (!walletAddress) {
-    // Mostrar el botón de restaurar en la pantalla de carga
-    const recoveryOption = document.getElementById('loading-recovery-option');
-    if (recoveryOption) recoveryOption.style.display = 'block';
-
-    // Dar un margen de 1.5s antes de auto-crear la cuenta para permitir al usuario pulsar "Restaurar"
-    window._autoEntryTimeout = setTimeout(autoCreateEntryWalletSilently, 1500);
+    // No hay wallet por ningún medio: mostrar onboarding INMEDIATAMENTE
+    // (no auto-crear cuenta duplicada; que el usuario decida crear o recuperar)
+    document.getElementById('screen-loading').style.display = 'none';
+    document.getElementById('screen-onboarding').style.display = 'flex';
+    // Si estamos en navegador (no PWA), avisar de que quizás ya tienen la app
+    if (!isStandalone) {
+      const warningEl = document.getElementById('pwa-browser-warning');
+      if (warningEl) warningEl.style.display = 'block';
+    }
+    buildEntryRestoreInputs();
     return;
   }
 
@@ -296,6 +314,7 @@ async function onboardingNew() {
     localStorage.setItem('furancho_wallet_address', data.address);
     localStorage.setItem('furancho_wallet_private_key', data.privateKey);
     if (data.mnemonic) localStorage.setItem('furancho_wallet_mnemonic', data.mnemonic);
+    _setWalletCookie(data.address);
     if (!localStorage.getItem('furancho_account_created_at')) {
       localStorage.setItem('furancho_account_created_at', new Date().toISOString());
     }
@@ -366,6 +385,7 @@ async function submitEntryRestore() {
       localStorage.setItem('furancho_wallet_address', data.address);
       localStorage.setItem('furancho_wallet_private_key', data.privateKey);
       localStorage.setItem('furancho_wallet_mnemonic', words.join(' '));
+      _setWalletCookie(data.address);
       if (!localStorage.getItem('furancho_account_created_at')) {
         localStorage.setItem('furancho_account_created_at', new Date().toISOString());
       }
@@ -410,6 +430,7 @@ async function handleQrFileUpload(input) {
     if (match && match[1]) {
       const restoredAddress = match[1];
       localStorage.setItem('furancho_wallet_address', restoredAddress);
+      _setWalletCookie(restoredAddress);
       localStorage.setItem('furancho_account_created_at', new Date().toISOString());
       if (btn) btn.innerText = '✅ ¡Recuperado! Fichando...';
       input.value = '';
@@ -422,6 +443,87 @@ async function handleQrFileUpload(input) {
     console.error(err);
     alert('No se pudo encontrar ningún código QR en la imagen. Asegúrate de subir la captura de pantalla de tu QR de recuperación.');
     if (btn) { btn.disabled = false; btn.innerText = originalText; }
+  }
+}
+
+// Pegar wallet directamente y fichar
+async function entryRestoreByAddress() {
+  const input = document.getElementById('entry-restore-wallet-input');
+  const addr = (input?.value || '').trim();
+  if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
+    alert('Dirección no válida. Debe empezar por 0x y tener 42 caracteres.');
+    return;
+  }
+  localStorage.setItem('furancho_wallet_address', addr);
+  _setWalletCookie(addr);
+  if (!localStorage.getItem('furancho_account_created_at')) {
+    localStorage.setItem('furancho_account_created_at', new Date().toISOString());
+  }
+  await doEntry(addr);
+}
+
+// Escáner con cámara para el QR de recuperación en pantalla de entrada
+let _entryRestoreQrScanner = null;
+async function startEntryRestoreQrCamera() {
+  const zone = document.getElementById('entry-restore-qr-camera-zone');
+  const btn = document.getElementById('entry-restore-qr-camera-btn');
+  if (!zone || !btn) return;
+  zone.style.display = 'block';
+  btn.textContent = '⏹ Detener cámara';
+  btn.onclick = stopEntryRestoreQrCamera;
+  try {
+    _entryRestoreQrScanner = new Html5Qrcode('entry-restore-qr-camera-zone');
+    const config = {
+      fps: 10,
+      qrbox: { width: 200, height: 200 },
+      aspectRatio: 1.0,
+      experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+    };
+    const success = async (decodedText) => {
+      const match = decodedText.match(/[?&]restore=(0x[a-fA-F0-9]{40})/);
+      if (match && match[1]) {
+        await stopEntryRestoreQrCamera();
+        const addr = match[1];
+        localStorage.setItem('furancho_wallet_address', addr);
+        _setWalletCookie(addr);
+        if (!localStorage.getItem('furancho_account_created_at')) {
+          localStorage.setItem('furancho_account_created_at', new Date().toISOString());
+        }
+        await doEntry(addr);
+      }
+    };
+    const devices = await Html5Qrcode.getCameras();
+    let cameraId = null;
+    if (devices && devices.length > 0) {
+      const back = devices.find(d => {
+        const l = (d.label || '').toLowerCase();
+        return l.includes('back') || l.includes('rear') || l.includes('trasera') || l.includes('environment');
+      });
+      cameraId = back ? back.id : (devices.length > 1 ? devices[devices.length - 1].id : devices[0].id);
+    }
+    if (cameraId) {
+      await _entryRestoreQrScanner.start(cameraId, config, success, () => {});
+    } else {
+      await _entryRestoreQrScanner.start({ facingMode: 'environment' }, config, success, () => {});
+    }
+  } catch (err) {
+    console.error('Error cámara recuperación:', err);
+    alert('No se pudo abrir la cámara. Prueba con "Subir foto del QR" o pega tu dirección.');
+    stopEntryRestoreQrCamera();
+  }
+}
+
+async function stopEntryRestoreQrCamera() {
+  const zone = document.getElementById('entry-restore-qr-camera-zone');
+  const btn = document.getElementById('entry-restore-qr-camera-btn');
+  if (_entryRestoreQrScanner) {
+    try { await _entryRestoreQrScanner.stop(); } catch (e) {}
+    _entryRestoreQrScanner = null;
+  }
+  if (zone) zone.style.display = 'none';
+  if (btn) {
+    btn.textContent = '📷 Escanear QR con la cámara';
+    btn.onclick = startEntryRestoreQrCamera;
   }
 }
 
