@@ -254,6 +254,24 @@
     .header-logo-row img {
       height: 36px;
       border-radius: 6px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Logo de verano / vacaciones — ocupa la pantalla de izquierda a derecha */
+    .header-logo-row img.logo-verano,
+    body.theme-summer .header-logo-row img {
+      width: 100% !important;
+      max-width: 100% !important;
+      height: auto !important;
+      max-height: 110px !important;
+      object-fit: contain !important;
+      border-radius: 12px !important;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+    }
+
+    body.theme-summer .header-logo-row {
+      padding: 10px 16px 8px;
+      background: rgba(254, 250, 240, 0.94);
     }
 
     .nft-image-container {
@@ -4557,6 +4575,7 @@
           raffleRequireSse = !!data.raffleRequireSse;
         }
         window.isVacationMode = !!data.vacationMode;
+        applySummerLogoState();
         // Mostrar/ocultar botón Marcho según sesión activa
         setActiveSession(data.hasActiveSession);
         updateFicharButtons();
@@ -5017,6 +5036,7 @@
 
       // No aplicar tema oscuro en el perfil — mantener fondo crema siempre
       document.body.className = window.isVacationMode ? 'theme-summer' : '';
+      applySummerLogoState();
       if (window.isVacationMode) {
         spawnSummerParticles();
       } else {
@@ -7239,6 +7259,22 @@
       evtSource.addEventListener('prize_collected', () => {
         hideAcceptBanner();
         renderPrizes();
+      });
+
+      // Cambio de Modo Vacaciones / Verano en vivo
+      evtSource.addEventListener('vacation_mode_toggle', (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          window.isVacationMode = !!data.vacationMode;
+          document.body.className = window.isVacationMode ? 'theme-summer' : '';
+          applySummerLogoState();
+          if (window.isVacationMode) {
+            spawnSummerParticles();
+          } else {
+            const summerContainer = document.getElementById('summer-particles');
+            if (summerContainer) summerContainer.innerHTML = '';
+          }
+        } catch (_) {}
       });
 
       // ── CHAVE SEMANAL: sorteo realizado ──────────────────────────────────────
@@ -14001,7 +14037,24 @@
         }
       }
 
-      window.spawnSummerParticles = function() {
+      window.applySummerLogoState = function() {
+      const isSummer = !!window.isVacationMode;
+      document.querySelectorAll('.header-logo-row img').forEach(img => {
+        if (isSummer) {
+          if (!img.src.includes('/assets/logo_verano.jpg')) {
+            img.src = '/assets/logo_verano.jpg';
+          }
+          img.classList.add('logo-verano');
+        } else {
+          if (img.src.includes('/assets/logo_verano.jpg')) {
+            img.src = '/assets/logo.png';
+          }
+          img.classList.remove('logo-verano');
+        }
+      });
+    };
+
+    window.spawnSummerParticles = function() {
         const container = document.getElementById('summer-particles');
         if (!container) return;
         container.innerHTML = '';
