@@ -88,6 +88,65 @@
       <div class="footer-link"><button onclick="logout()">Cambiar código / salir</button></div>
     </div>
 
+    <!-- GUÍA RÁPIDA: lo que puede hacer el camarero -->
+    <div class="card" id="staff-guide-card" style="display:none; margin-top:18px;">
+      <div onclick="toggleStaffGuide()" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none;">
+        <h2 style="font-size:17px; margin:0;">📋 Qué puedes hacer</h2>
+        <span id="guide-chevron" style="font-size:15px; color:var(--text-muted);">▼</span>
+      </div>
+      <div id="guide-body" style="display:none; margin-top:12px;">
+        <div style="display:flex; flex-direction:column; gap:8px;">
+
+          <div style="background:#fff; border:1.5px solid rgba(139,25,24,0.15); border-radius:12px; padding:10px 12px;">
+            <p style="margin:0; font-size:13px; font-weight:800; color:var(--wine);">📷 Escanear clientes</p>
+            <p style="margin:3px 0 0; font-size:11.5px; color:var(--text-muted); line-height:1.4;">Apunta al QR del socio. Si hay evento → ficha entrada (sorteos + nivel). Si no hay evento pero la terraza está abierta → suma punto al Reto de los 5.</p>
+          </div>
+
+          <div style="background:#fff; border:1.5px solid rgba(139,25,24,0.15); border-radius:12px; padding:10px 12px;">
+            <p style="margin:0; font-size:13px; font-weight:800; color:var(--wine);">⭐ Reservas VIP</p>
+            <p style="margin:3px 0 0; font-size:11.5px; color:var(--text-muted); line-height:1.4;">Ve las mesas de hoy (abajo, desplegable). Cuando llega el grupo confirma la mesa — le llega el aviso al cliente al momento.</p>
+          </div>
+
+          <div style="background:#fff; border:1.5px solid rgba(139,25,24,0.15); border-radius:12px; padding:10px 12px;">
+            <p style="margin:0; font-size:13px; font-weight:800; color:var(--wine);">🪙 Vender $CORCHO</p>
+            <p style="margin:3px 0 0; font-size:11.5px; color:var(--text-muted); line-height:1.4;">Dos formas: <b>1)</b> El cliente pide desde su app → te aparece en la bandeja "🪙 $CORCHO por validar", cobras en € y confirmas. <b>2)</b> Escaneas al cliente → al final del resultado aparecen los paquetes de recarga directa.</p>
+          </div>
+
+          <div style="background:#fff; border:1.5px solid rgba(139,25,24,0.15); border-radius:12px; padding:10px 12px;">
+            <p style="margin:0; font-size:13px; font-weight:800; color:var(--wine);">🎁 Canjear vales de consumición</p>
+            <p style="margin:3px 0 0; font-size:11.5px; color:var(--text-muted); line-height:1.4;">El cliente canjea $CORCHO en su app → te aparece un vale en la bandeja. Entrégale lo que pide y pulsa "✓ Entregado".</p>
+          </div>
+
+          <div style="background:#fff; border:1.5px solid rgba(139,25,24,0.15); border-radius:12px; padding:10px 12px;">
+            <p style="margin:0; font-size:13px; font-weight:800; color:var(--wine);">🏆 Entregar premios de sorteo</p>
+            <p style="margin:3px 0 0; font-size:11.5px; color:var(--text-muted); line-height:1.4;">Escanea al ganador → ves su bono aceptado con el nombre del premio. Pulsa "✓ Entregar premio" al dárselo. Si el premio son $CORCHO, pulsa "🪙 Dar $CORCHO".</p>
+          </div>
+
+          <div style="background:#fff; border:1.5px solid rgba(139,25,24,0.15); border-radius:12px; padding:10px 12px;">
+            <p style="margin:0; font-size:13px; font-weight:800; color:var(--wine);">🏅 Entregar NFTs ganados</p>
+            <p style="margin:3px 0 0; font-size:11.5px; color:var(--text-muted); line-height:1.4;">Escanea al ganador de un NFT (Chave Dourada, etc.) → banner dorado con botón "Entregarle el NFT ahora". El admin lo confirma después.</p>
+          </div>
+
+          <div style="background:#fff; border:1.5px solid rgba(139,25,24,0.15); border-radius:12px; padding:10px 12px;">
+            <p style="margin:0; font-size:13px; font-weight:800; color:var(--wine);">🎟️ Privilexio tapa e cunca</p>
+            <p style="margin:3px 0 0; font-size:11.5px; color:var(--text-muted); line-height:1.4;">El socio con NFT tiene tapa+cunca gratis al día. Al escanearlo te aparece un botón dorado por cada NFT que tenga. Dale la tapa y pulsa. 1 uso por NFT y día.</p>
+          </div>
+
+          <div style="background:#fff; border:1.5px solid rgba(139,25,24,0.15); border-radius:12px; padding:10px 12px;">
+            <p style="margin:0; font-size:13px; font-weight:800; color:var(--wine);">🎭 Meme VIP</p>
+            <p style="margin:3px 0 0; font-size:11.5px; color:var(--text-muted); line-height:1.4;">Si el cliente compró el meme y le quedan tapas, xarra o camiseta, al escanearlo ves qué le debes. Pulsa "✓ Dar" al entregar cada cosa.</p>
+          </div>
+
+          <div style="background:#fff; border:1.5px solid rgba(139,25,24,0.15); border-radius:12px; padding:10px 12px;">
+            <p style="margin:0; font-size:13px; font-weight:800; color:var(--wine);">🕐 Horario de la terraza</p>
+            <p style="margin:3px 0 0; font-size:11.5px; color:var(--text-muted); line-height:1.4;">Abre/cierra días de la semana y pon horarios. Lo que guardes aquí lo ven los clientes al momento en su app.</p>
+          </div>
+
+        </div>
+        <p style="font-size:10.5px; color:var(--text-muted); margin:12px 0 0; text-align:center; line-height:1.4;">Todo lo que ves al escanear al cliente sale automático — no tienes que buscarlo. Los avisos de $CORCHO llegan en vivo a la bandeja de abajo.</p>
+      </div>
+    </div>
+
     <!-- RANKING campaña (solo visible durante el Reto de los 5) -->
     <div class="camp-rank" id="camp-rank" style="display:none;">
       <h3>👑 Reto de los 5 — Ranking</h3>
@@ -407,10 +466,18 @@
       btn.disabled = false; btn.textContent = 'Guardar horario';
     }
 
+    function toggleStaffGuide(){
+      const body = document.getElementById('guide-body');
+      const open = body.style.display !== 'none';
+      body.style.display = open ? 'none' : 'block';
+      document.getElementById('guide-chevron').textContent = open ? '▼' : '▲';
+    }
+
     async function startScanner(){
       document.getElementById('gate').style.display = 'none';
       document.getElementById('scanner').style.display = 'block';
       document.getElementById('result').style.display = 'none';
+      document.getElementById('staff-guide-card').style.display = 'block'; // guía de capacidades (plegado)
       document.getElementById('terraza-card').style.display = 'block'; // editor de horario (plegado)
       document.getElementById('vip-card').style.display = 'block';     // reservas de hoy (plegado)
       const status = document.getElementById('scan-status');
