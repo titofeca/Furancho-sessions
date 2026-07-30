@@ -2864,7 +2864,7 @@ router.get('/corcho/pending', requireAuth, (req, res) => {
   }
 });
 
-// POST /api/admin/corcho/pack/:id/confirm — confirmar pago de una compra (acredita)
+// POST /api/admin/corcho/pack/:id/confirm — confirmar cobro de un paquete de $CORCHO en la barra
 router.post('/corcho/pack/:id/confirm', requireAuth, (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (!id) return res.status(400).json({ error: 'Solicitud no válida' });
@@ -2872,6 +2872,16 @@ router.post('/corcho/pack/:id/confirm', requireAuth, (req, res) => {
     const { confirmCorchoPackRequest } = require('../db/database');
     const result = confirmCorchoPackRequest(id, 'admin');
     if (!result.ok) return res.status(400).json({ error: result.error });
+
+    try {
+      const { broadcastToAdmins, broadcastToStaff, broadcast } = require('./raffle');
+      broadcastToAdmins('corcho_updated', { kind: 'pack_confirm', id });
+      broadcastToStaff('corcho_updated', { kind: 'pack_confirm', id });
+      if (result.request && result.request.wallet_address) {
+        broadcast('corcho_balance_update', { wallet: result.request.wallet_address, newBalance: result.newBalance }, result.request.wallet_address);
+      }
+    } catch (_) {}
+
     res.json({ success: true, already: !!result.already, newBalance: result.newBalance });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -2886,6 +2896,13 @@ router.post('/corcho/pack/:id/cancel', requireAuth, (req, res) => {
     const { cancelCorchoPackRequest } = require('../db/database');
     const result = cancelCorchoPackRequest(id, 'admin');
     if (!result.ok) return res.status(400).json({ error: result.error });
+
+    try {
+      const { broadcastToAdmins, broadcastToStaff } = require('./raffle');
+      broadcastToAdmins('corcho_updated', { kind: 'pack_cancel', id });
+      broadcastToStaff('corcho_updated', { kind: 'pack_cancel', id });
+    } catch (_) {}
+
     res.json({ success: true, already: !!result.already });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -2900,6 +2917,16 @@ router.post('/corcho/voucher/:code/validate', requireAuth, (req, res) => {
     const { validateRedemptionVoucher } = require('../db/database');
     const result = validateRedemptionVoucher(code, 'admin');
     if (!result.ok) return res.status(400).json({ error: result.error });
+
+    try {
+      const { broadcastToAdmins, broadcastToStaff, broadcast } = require('./raffle');
+      broadcastToAdmins('corcho_updated', { kind: 'voucher_validate', code });
+      broadcastToStaff('corcho_updated', { kind: 'voucher_validate', code });
+      if (result.voucher && result.voucher.wallet_address) {
+        broadcast('corcho_balance_update', { wallet: result.voucher.wallet_address }, result.voucher.wallet_address);
+      }
+    } catch (_) {}
+
     res.json({ success: true, already: !!result.already });
   } catch (e) {
     res.status(500).json({ error: e.message });

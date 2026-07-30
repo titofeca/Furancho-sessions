@@ -436,6 +436,16 @@ router.post('/corcho-pack/:id/confirm', staffLimiter, requireStaff, (req, res) =
       }[result.error] || 'No se pudo confirmar la compra';
       return res.status(400).json({ error: msg });
     }
+
+    try {
+      const { broadcastToAdmins, broadcastToStaff, broadcast } = require('./raffle');
+      broadcastToAdmins('corcho_updated', { kind: 'pack_confirm', id });
+      broadcastToStaff('corcho_updated', { kind: 'pack_confirm', id });
+      if (result.request && result.request.wallet_address) {
+        broadcast('corcho_balance_update', { wallet: result.request.wallet_address, newBalance: result.newBalance }, result.request.wallet_address);
+      }
+    } catch (_) {}
+
     res.json({
       success: true, already: !!result.already,
       coins: result.request ? result.request.coins : null,
@@ -448,9 +458,30 @@ router.post('/corcho-pack/:id/confirm', staffLimiter, requireStaff, (req, res) =
   }
 });
 
+// POST /api/staff/corcho-pack/:id/cancel — el camarero anula una recarga pendiente (no cobrada)
+router.post('/corcho-pack/:id/cancel', staffLimiter, requireStaff, (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: 'Solicitud de compra no válida' });
+  try {
+    const { cancelCorchoPackRequest } = require('../db/database');
+    const result = cancelCorchoPackRequest(id, getStaffName(req));
+    if (!result.ok) return res.status(400).json({ error: 'No se pudo anular la solicitud de compra' });
+
+    try {
+      const { broadcastToAdmins, broadcastToStaff } = require('./raffle');
+      broadcastToAdmins('corcho_updated', { kind: 'pack_cancel', id });
+      broadcastToStaff('corcho_updated', { kind: 'pack_cancel', id });
+    } catch (_) {}
+
+    res.json({ success: true, already: !!result.already, message: 'Solicitud de recarga anulada.' });
+  } catch (e) {
+    console.error('Error en /staff/corcho-pack/cancel:', e.message);
+    res.status(500).json({ error: 'Error anulando la recarga' });
+  }
+});
+
 // POST /api/staff/corcho-voucher/:code/validate — el camarero valida el vale de
-// canje al entregar la consumición. Idempotente y anti-caducidad (los $CORCHO ya
-// se descontaron al canjear; aquí solo se marca la entrega).
+// canje al entregar la consumición. Idempotente y anti-caducidad.
 router.post('/corcho-voucher/:code/validate', staffLimiter, requireStaff, (req, res) => {
   const code = req.params.code;
   if (!code) return res.status(400).json({ error: 'Falta el código del vale' });
@@ -466,6 +497,16 @@ router.post('/corcho-voucher/:code/validate', staffLimiter, requireStaff, (req, 
       }[result.error] || 'No se pudo validar el vale';
       return res.status(400).json({ error: msg });
     }
+
+    try {
+      const { broadcastToAdmins, broadcastToStaff, broadcast } = require('./raffle');
+      broadcastToAdmins('corcho_updated', { kind: 'voucher_validate', code });
+      broadcastToStaff('corcho_updated', { kind: 'voucher_validate', code });
+      if (result.voucher && result.voucher.wallet_address) {
+        broadcast('corcho_balance_update', { wallet: result.voucher.wallet_address }, result.voucher.wallet_address);
+      }
+    } catch (_) {}
+
     res.json({
       success: true, already: !!result.already,
       item: result.voucher ? `${result.voucher.item_emoji} ${result.voucher.item_name}` : null,
@@ -474,6 +515,36 @@ router.post('/corcho-voucher/:code/validate', staffLimiter, requireStaff, (req, 
   } catch (e) {
     console.error('Error en /staff/corcho-voucher/validate:', e.message);
     res.status(500).json({ error: 'Error validando el vale' });
+  }
+});
+
+// POST /api/staff/corcho-voucher/:code/cancel — el camarero anula un vale y reembolsa los $CORCHO
+router.post('/corcho-voucher/:code/cancel', staffLimiter, requireStaff, (req, res) => {
+  const code = req.params.code;
+  if (!code) return res.status(400).json({ error: 'Falta el código del vale' });
+  try {
+    const { cancelRedemptionVoucher } = require('../db/database');
+    const result = cancelRedemptionVoucher(code, getStaffName(req), true);
+    if (!result.ok) return res.status(400).json({ error: 'No se pudo anular el vale' });
+
+    try {
+      const { broadcastToAdmins, broadcastToStaff, broadcast } = require('./raffle');
+      broadcastToAdmins('corcho_updated', { kind: 'voucher_cancel', code });
+      broadcastToStaff('corcho_updated', { kind: 'voucher_cancel', code });
+      if (result.voucher && result.voucher.wallet_address) {
+        broadcast('corcho_balance_update', { wallet: result.voucher.wallet_address }, result.voucher.wallet_address);
+      }
+    } catch (_) {}
+
+    res.json({
+      success: true,
+      already: !!result.already,
+      refunded: !!result.refunded,
+      message: result.refunded ? 'Vale anulado y $CORCHO devueltos al cliente.' : 'Vale anulado.'
+    });
+  } catch (e) {
+    console.error('Error en /staff/corcho-voucher/cancel:', e.message);
+    res.status(500).json({ error: 'Error anulando el vale' });
   }
 });
 

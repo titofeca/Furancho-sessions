@@ -13093,6 +13093,7 @@
       }
     }
 
+    let _activeCorchoPacks = [];
     async function openCorchoPacksModal() {
       document.getElementById('corcho-packs-modal').style.display = 'flex';
       const container = document.getElementById('corcho-packs-modal-list');
@@ -13100,18 +13101,19 @@
       try {
         const res = await resilientFetch('/api/corcho/packs').then(r => r.json());
         const packs = res.packs || [];
+        _activeCorchoPacks = packs;
         if (!packs.length) {
           container.innerHTML = '<p style="font-size:12px; color:var(--text-muted); text-align:center;">De momento no hay paquetes de recarga activos.</p>';
           return;
         }
         container.innerHTML = packs.map(p => `
-          <div onclick="buyCorchoPack('${p.id}')" style="padding:14px; border-radius:14px; border:${p.badge ? '2px solid var(--gold)' : '1.5px solid rgba(196,151,58,0.4)'}; background:${p.badge ? 'linear-gradient(135deg,rgba(196,151,58,0.1),#fff)' : '#fff'}; cursor:pointer; display:flex; align-items:center; justify-content:space-between; position:relative;">
+          <div onclick="buyCorchoPack('${p.id}')" style="padding:14px; border-radius:14px; border:${p.badge ? '2px solid var(--gold)' : '1.5px solid rgba(196,151,58,0.4)'}; background:${p.badge ? 'linear-gradient(135deg,rgba(196,151,58,0.1),#fff)' : '#fff'}; cursor:pointer; display:flex; align-items:center; justify-content:space-between; position:relative; transition:transform 0.15s, box-shadow 0.15s;" onmouseover="this.style.transform='scale(1.01)';this.style.boxShadow='0 4px 14px rgba(0,0,0,0.06)';" onmouseout="this.style.transform='none';this.style.boxShadow='none';">
             ${p.badge ? `<span style="position:absolute; top:-8px; right:14px; background:var(--gold); color:#fff; font-size:9px; font-weight:800; padding:2px 8px; border-radius:10px; text-transform:uppercase;">${esc(p.badge)}</span>` : ''}
             <div>
               <div style="font-weight:800; color:var(--wine); font-size:14px;">${p.coins.toLocaleString()} $CORCHO</div>
               <div style="font-size:11px; color:var(--text-muted);">${esc(p.name)}</div>
             </div>
-            <button style="padding:8px 16px; background:${p.badge ? 'var(--gold)' : 'var(--wine)'}; color:#fff; border:none; border-radius:20px; font-weight:800; font-size:13px;">${p.price_eur} €</button>
+            <button style="padding:8px 16px; background:${p.badge ? 'var(--gold)' : 'var(--wine)'}; color:#fff; border:none; border-radius:20px; font-weight:800; font-size:13px; cursor:pointer;">${p.price_eur} €</button>
           </div>
         `).join('');
       } catch (e) {
@@ -13123,12 +13125,30 @@
       document.getElementById('corcho-packs-modal').style.display = 'none';
     }
 
-
     async function buyCorchoPack(packId) {
       if (!userWalletAddress) {
         await corchoAlert({ icon: '🔐', title: 'Conecta tu wallet', body: 'Necesitas conectar tu wallet primero para poder recargar saldo.' });
         return;
       }
+
+      const pack = (_activeCorchoPacks || []).find(p => String(p.id) === String(packId));
+      const packName = pack ? pack.name : 'Pack de Corchos';
+      const priceEur = pack ? pack.price_eur : '';
+      const coins = pack ? pack.coins : 0;
+
+      // Confirmación de 2º clic para evitar compras accidentales
+      const confirmed = await corchoConfirm({
+        icon: '💳',
+        title: 'Confirmar Recarga de $CORCHO',
+        body: `¿Deseas solicitar el paquete <strong>${esc(packName)}</strong> por <strong>${priceEur} €</strong>?`,
+        amount: `+${coins ? coins.toLocaleString() : ''} $CORCHO`,
+        sub: '📌 Acércate a la taquilla para abonar en efectivo/tarjeta. El staff te lo validará al instante.',
+        okText: '💳 Confirmar y Solicitar',
+        okStyle: 'primary'
+      });
+
+      if (!confirmed) return;
+
       try {
         const r = await fetch('/api/corcho/buy-pack', {
           method: 'POST',
@@ -13143,7 +13163,7 @@
 
         closeCorchoPacksModal();
         await corchoAlert({
-          icon: '💳',
+          icon: '✅',
           title: 'Solicitud Registrada en Taquilla',
           body: d.message || 'Acércate a la taquilla para abonar tu paquete. El staff te lo validará al instante.',
           okText: 'Entendido 🍷'
