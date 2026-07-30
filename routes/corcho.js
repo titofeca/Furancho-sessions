@@ -337,6 +337,56 @@ router.post('/redeem-item', (req, res) => {
   }
 });
 
+// POST /api/corcho/cancel-pack-request — el cliente anula su solicitud de recarga pendiente
+router.post('/cancel-pack-request', (req, res) => {
+  const { walletAddress, requestId } = req.body || {};
+  const id = parseInt(requestId, 10);
+  if (!walletAddress || !id) return res.status(400).json({ error: 'Datos no válidos' });
+  try {
+    const { db, cancelCorchoPackRequest } = require('../db/database');
+    const packReq = db.prepare(`SELECT * FROM corcho_pack_requests WHERE id = ?`).get(id);
+    if (!packReq) return res.status(404).json({ error: 'Solicitud no encontrada' });
+    if (packReq.wallet_address.toLowerCase() !== walletAddress.toLowerCase()) {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+    const result = cancelCorchoPackRequest(id, 'client');
+    if (!result.ok) return res.status(400).json({ error: 'No se pudo anular la solicitud' });
+    try {
+      const { broadcastToAdmins, broadcastToStaff } = require('./raffle');
+      broadcastToAdmins('corcho_updated', { kind: 'pack_cancel', id });
+      broadcastToStaff('corcho_updated', { kind: 'pack_cancel', id });
+    } catch (_) {}
+    res.json({ success: true, message: 'Solicitud de recarga anulada' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/corcho/cancel-voucher — el cliente anula un vale pendiente y recibe reembolso de $CORCHO
+router.post('/cancel-voucher', (req, res) => {
+  const { walletAddress, code } = req.body || {};
+  if (!walletAddress || !code) return res.status(400).json({ error: 'Datos no válidos' });
+  try {
+    const { getRedemptionByCode, cancelRedemptionVoucher } = require('../db/database');
+    const v = getRedemptionByCode(code);
+    if (!v) return res.status(404).json({ error: 'Vale no encontrado' });
+    if (v.wallet_address.toLowerCase() !== walletAddress.toLowerCase()) {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+    const result = cancelRedemptionVoucher(code, 'client', true);
+    if (!result.ok) return res.status(400).json({ error: 'No se pudo anular el vale' });
+    try {
+      const { broadcastToAdmins, broadcastToStaff, broadcast } = require('./raffle');
+      broadcastToAdmins('corcho_updated', { kind: 'voucher_cancel', code });
+      broadcastToStaff('corcho_updated', { kind: 'voucher_cancel', code });
+      broadcast('corcho_balance_update', { wallet: walletAddress }, walletAddress);
+    } catch (_) {}
+    res.json({ success: true, refunded: !!result.refunded, message: 'Vale anulado y $CORCHO devueltos' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;
 
 // ── PASAPORTE DE VERANO ──────────────────────────────────────────────────────
