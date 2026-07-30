@@ -1097,6 +1097,30 @@
       }
     }
 
+    async function cancelCorchoPack(btn, id) {
+      if (!confirm('¿Anular esta solicitud de recarga?')) return;
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = 'Anulando…';
+      try {
+        const r = await fetch(`/api/staff/corcho-pack/${id}/cancel`, {
+          method:'POST', headers: staffHeaders({ 'Content-Type':'application/json' })
+        });
+        const d = await r.json().catch(()=>({}));
+        if (r.ok && d.success){
+          btn.style.background = '#c0392b';
+          btn.textContent = '✕ Anulada';
+          if (typeof loadStaffCorchoInbox === 'function') setTimeout(() => loadStaffCorchoInbox(), 900);
+        } else {
+          btn.disabled = false; btn.textContent = original;
+          corchoAlert('⚠️ ' + (d.error || 'No se pudo anular'));
+        }
+      } catch(e){
+        btn.disabled = false; btn.textContent = original;
+        corchoAlert('⚠️ Error de red.');
+      }
+    }
+
     // Entrega del premio de sorteo al ganador presente: el camarero cierra el bono
     // aquí mismo (ya escaneó al cliente, así que la wallet está verificada). El
     // servidor comprueba que sea el ganador → a prueba de capturas ajenas. Idempotente.
@@ -1168,6 +1192,30 @@
         } else {
           btn.disabled = false; btn.textContent = original;
           corchoAlert('⚠️ ' + (d.error || 'No se pudo validar'));
+        }
+      } catch(e){
+        btn.disabled = false; btn.textContent = original;
+        corchoAlert('⚠️ Error de red.');
+      }
+    }
+
+    async function cancelCorchoVoucher(btn, code) {
+      if (!confirm('¿Anular este vale y reembolsar los $CORCHO al cliente?')) return;
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = 'Reembolsando…';
+      try {
+        const r = await fetch(`/api/staff/corcho-voucher/${encodeURIComponent(code)}/cancel`, {
+          method:'POST', headers: staffHeaders({ 'Content-Type':'application/json' })
+        });
+        const d = await r.json().catch(()=>({}));
+        if (r.ok && d.success){
+          btn.style.background = '#c0392b';
+          btn.textContent = '✕ Reembolsado';
+          if (typeof loadStaffCorchoInbox === 'function') setTimeout(() => loadStaffCorchoInbox(), 900);
+        } else {
+          btn.disabled = false; btn.textContent = original;
+          corchoAlert('⚠️ ' + (d.error || 'No se pudo reembolsar'));
         }
       } catch(e){
         btn.disabled = false; btn.textContent = original;
@@ -1358,7 +1406,10 @@
               <p style="margin:0; font-size:14px; font-weight:800; color:var(--text);">💳 ${Number(p.coins).toLocaleString()} $CORCHO</p>
               <p style="margin:0; font-size:10.5px; color:var(--text-muted);">${esc(p.walletMasked)} · ${esc(p.packName)} · cobra <strong>${esc(String(p.priceEur))}€</strong></p>
             </div>
-            <button type="button" onclick="confirmCorchoPack(this, ${p.id})" style="padding:11px 15px; background:linear-gradient(135deg, #16a34a, #0f7a37); color:#fff; border:none; border-radius:12px; font-size:13px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif; white-space:nowrap;">✓ Cobrado</button>
+            <div style="display:flex; gap:4px; flex-shrink:0;">
+              <button type="button" onclick="confirmCorchoPack(this, ${p.id})" style="padding:9px 12px; background:linear-gradient(135deg, #16a34a, #0f7a37); color:#fff; border:none; border-radius:10px; font-size:12px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif; white-space:nowrap;">✓ Cobrado</button>
+              <button type="button" onclick="cancelCorchoPack(this, ${p.id})" title="Anular solicitud" style="padding:9px 10px; background:rgba(192,57,43,0.1); color:#c0392b; border:1px solid rgba(192,57,43,0.3); border-radius:10px; font-size:12px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif;">✕</button>
+            </div>
           </div>`;
         });
         vouchers.forEach(v => {
@@ -1367,7 +1418,10 @@
               <p style="margin:0; font-size:14px; font-weight:800; color:var(--text);">${esc(v.itemEmoji)} ${esc(v.itemName)}</p>
               <p style="margin:0; font-size:10.5px; color:var(--text-muted);">${esc(v.walletMasked)} · <span style="font-family:monospace;">${esc(v.code)}</span></p>
             </div>
-            <button type="button" onclick="validateCorchoVoucher(this, '${esc(v.code)}')" style="padding:11px 15px; background:linear-gradient(135deg, var(--gold), #a97b1f); color:#fff; border:none; border-radius:12px; font-size:13px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif; white-space:nowrap;">✓ Entregado</button>
+            <div style="display:flex; gap:4px; flex-shrink:0;">
+              <button type="button" onclick="validateCorchoVoucher(this, '${esc(v.code)}')" style="padding:9px 12px; background:linear-gradient(135deg, var(--gold), #a97b1f); color:#fff; border:none; border-radius:10px; font-size:12px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif; white-space:nowrap;">✓ Entregado</button>
+              <button type="button" onclick="cancelCorchoVoucher(this, '${esc(v.code)}')" title="Anular y reembolsar corchos" style="padding:9px 10px; background:rgba(192,57,43,0.1); color:#c0392b; border:1px solid rgba(192,57,43,0.3); border-radius:10px; font-size:12px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif;">✕</button>
+            </div>
           </div>`;
         });
         memeReqs.forEach(m => {

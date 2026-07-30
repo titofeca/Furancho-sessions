@@ -384,9 +384,9 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
     broadcastToStaff('raffle_winner', resultData);
     
     try {
-      const aliasRow = db.prepare(`SELECT alias FROM wallets WHERE LOWER(address) = LOWER(?)`).get(winnerWallet);
+      const aliasRow = db.prepare(`SELECT alias FROM user_profiles WHERE LOWER(wallet_address) = LOWER(?)`).get(winnerWallet);
       const aliasStr = aliasRow && aliasRow.alias ? aliasRow.alias : winnerMasked;
-      const msg = `🎉 ¡La suerte está echada! \${aliasStr} acaba de ganar un Sorteo Chave Furancheira.`;
+      const msg = `🎉 ¡La suerte está echada! ${aliasStr} acaba de ganar "${prize}".`;
       const { injectSystemMuroMessage } = require('../db/database');
       injectSystemMuroMessage(msg);
     } catch(e) {}
