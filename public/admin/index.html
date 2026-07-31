@@ -4996,8 +4996,13 @@
     const sel = document.getElementById('manual-mint-nft');
     if (!sel) return;
     try {
-      const data = await fetch('/api/achievements/admin/list', { headers: authHeaders() }).then(r => r.json());
-      const list = (data && data.achievements) || [];
+      let list = [];
+      const data = await fetch('/api/achievements/admin/list', { headers: authHeaders() }).then(r => r.json()).catch(() => null);
+      list = (data && data.achievements) || [];
+      if (!list.length) {
+        const cat = await fetch('/api/achievements/catalog').then(r => r.json()).catch(() => []);
+        list = Array.isArray(cat) ? cat : [];
+      }
       if (!list.length) { sel.innerHTML = '<option value="">No hay NFTs en el catálogo</option>'; return; }
       sel.innerHTML = '<option value="">— Elige un NFT / logro —</option>' +
         list.map(a => `<option value="${a.id}">${a.name}${a.tokenId ? ' (token ' + a.tokenId + ')' : ''}</option>`).join('');
@@ -10920,16 +10925,23 @@
       barsEl.innerHTML = past.map(e => {
         const d = new Date(e.event_date + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short' });
         const wPct = Math.round(e.attendees / maxAtt * 100);
-        const nuevosW = e.attendees > 0 ? Math.round(e.nuevos / e.attendees * 100) : 0;
+        const appW = e.attendees > 0 ? Math.round((e.app_attendees || e.attendees) / e.attendees * 100) : 0;
         const stay = e.avg_stay != null ? `${e.avg_stay} min` : '—';
+        const breakdownBadge = e.covers != null
+          ? `<span style="font-size:10px;background:rgba(46,204,113,0.12);color:#15803d;padding:1px 6px;border-radius:6px;font-weight:700;margin-left:6px;">📱 ${e.app_attendees||0} con App · 👥 ${e.sin_app||0} sin App</span>`
+          : `<span style="font-size:10px;color:var(--text-muted);margin-left:6px;">📱 ${e.app_attendees||e.attendees} con App</span>`;
+
         return `<div style="margin-bottom:12px;">
-          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
-            <span style="font-size:12px;font-weight:700;color:var(--text);text-transform:capitalize;">${d}</span>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;flex-wrap:wrap;gap:4px;">
+            <div>
+              <span style="font-size:12px;font-weight:700;color:var(--text);text-transform:capitalize;">${d}</span>
+              ${breakdownBadge}
+            </div>
             <span style="font-size:11px;color:var(--text-muted);">👥 <b style="color:var(--wine);font-size:14px;">${e.attendees}</b> · 🆕 ${e.nuevos} · 📈 pico ${e.peak_inside} · ⏱ ${stay}</span>
           </div>
-          <div style="height:18px;border-radius:9px;background:rgba(42,21,9,0.06);overflow:hidden;display:flex;width:${Math.max(wPct,6)}%;min-width:40px;">
-            <div title="${e.nuevos} nuevos" style="width:${nuevosW}%;background:var(--gold);"></div>
-            <div title="${e.recurrentes} recurrentes" style="flex:1;background:var(--wine);"></div>
+          <div style="height:18px;border-radius:9px;background:rgba(42,21,9,0.06);overflow:hidden;display:flex;width:${Math.max(wPct,6)}%;min-width:40px;" title="${e.attendees} asistentes (${e.app_attendees||0} con App, ${e.sin_app||0} sin App)">
+            <div title="${e.app_attendees||0} con App" style="width:${appW}%;background:var(--wine);"></div>
+            <div title="${e.sin_app||0} sin App" style="flex:1;background:#d97706;"></div>
           </div>
         </div>`;
       }).join('');
@@ -10941,7 +10953,14 @@
   }
 
   // Tarjeta "Crecimiento de comunidad" — altas nuevas CUALQUIER día (≠ asistencia).
+  let communityRangeLimit = 21;
+  function setCommunityFilter(daysLimit) {
+    communityRangeLimit = daysLimit;
+    if (window._lastCommunityData) renderCommunityGrowth(window._lastCommunityData);
+  }
+
   function renderCommunityGrowth(c) {
+    window._lastCommunityData = c;
     const totalsEl = document.getElementById('comunidad-totals');
     const barsEl = document.getElementById('comunidad-bars');
     if (!totalsEl || !barsEl) return;
@@ -10956,20 +10975,31 @@
       <div class="analytics-kpi" style="padding:10px;"><div class="kpi-value" style="font-size:22px;color:var(--text-muted);">${c.new_last_month ?? '—'}</div><div class="kpi-label">Mes anterior</div></div>
     `;
 
-    const days = (c.new_by_day || []).slice(0, 21).reverse(); // cronológico para la barra
+    const allDays = (c.new_by_day || []);
+    const days = (communityRangeLimit > 0 ? allDays.slice(0, communityRangeLimit) : allDays).slice().reverse(); // cronológico para la barra
     if (!days.length) {
       barsEl.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:16px;">Aún no hay altas registradas</div>';
       return;
     }
     const maxC = Math.max(...days.map(d => d.count), 1);
-    barsEl.innerHTML = `
+
+    const filterControls = `
+      <div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px;font-size:11px;">
+        <button onclick="setCommunityFilter(7)" style="padding:3px 8px;border-radius:6px;border:1px solid rgba(0,0,0,0.1);background:${communityRangeLimit===7?'var(--wine)':'#fff'};color:${communityRangeLimit===7?'#fff':'var(--text)'};cursor:pointer;font-weight:700;">7 días</button>
+        <button onclick="setCommunityFilter(14)" style="padding:3px 8px;border-radius:6px;border:1px solid rgba(0,0,0,0.1);background:${communityRangeLimit===14?'var(--wine)':'#fff'};color:${communityRangeLimit===14?'#fff':'var(--text)'};cursor:pointer;font-weight:700;">14 días</button>
+        <button onclick="setCommunityFilter(21)" style="padding:3px 8px;border-radius:6px;border:1px solid rgba(0,0,0,0.1);background:${communityRangeLimit===21?'var(--wine)':'#fff'};color:${communityRangeLimit===21?'#fff':'var(--text)'};cursor:pointer;font-weight:700;">21 días</button>
+        <button onclick="setCommunityFilter(30)" style="padding:3px 8px;border-radius:6px;border:1px solid rgba(0,0,0,0.1);background:${communityRangeLimit===30?'var(--wine)':'#fff'};color:${communityRangeLimit===30?'#fff':'var(--text)'};cursor:pointer;font-weight:700;">30 días</button>
+        <button onclick="setCommunityFilter(0)" style="padding:3px 8px;border-radius:6px;border:1px solid rgba(0,0,0,0.1);background:${communityRangeLimit===0?'var(--wine)':'#fff'};color:${communityRangeLimit===0?'#fff':'var(--text)'};cursor:pointer;font-weight:700;">Histórico</button>
+      </div>`;
+
+    barsEl.innerHTML = filterControls + `
       <div style="display:flex;align-items:flex-end;gap:4px;height:90px;">
         ${days.map(d => {
           const h = Math.max(4, Math.round(d.count / maxC * 80));
           const lbl = new Date(d.day + 'T12:00:00').toLocaleDateString('es-ES', { day:'numeric', month:'short' });
           return `<div title="${lbl}: ${d.count} alta(s)" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;min-width:0;">
-            <span style="font-size:10px;font-weight:700;color:#15803d;">${d.count}</span>
-            <div style="width:100%;max-width:26px;height:${h}px;background:#15803d;border-radius:4px 4px 0 0;"></div>
+            <span style="font-size:9px;font-weight:700;color:${d.count>0?'#15803d':'var(--text-muted)'};">${d.count}</span>
+            <div style="width:100%;max-width:26px;height:${h}px;background:${d.count>0?'#15803d':'rgba(0,0,0,0.06)'};border-radius:4px 4px 0 0;"></div>
           </div>`;
         }).join('')}
       </div>

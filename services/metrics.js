@@ -170,8 +170,11 @@ function analyze() {
 }
 
 // Métricas agregadas de un evento a partir de su bucket.
-function summarizeEvent(ev, bucket, walletFirstDate) {
-  const attendees = bucket.walletSpans.size;
+function summarizeEvent(ev, bucket, walletFirstDate, coversMap = new Map()) {
+  const appAttendees = bucket.walletSpans.size;
+  const covers = coversMap.get(ev.id) != null ? coversMap.get(ev.id) : null;
+  const totalAttendees = covers != null ? Math.max(covers, appAttendees) : appAttendees;
+  const sinApp = covers != null ? Math.max(0, covers - appAttendees) : 0;
   let nuevos = 0;
   const stays = [];
   for (const [wallet, span] of bucket.walletSpans) {
@@ -189,9 +192,12 @@ function summarizeEvent(ev, bucket, walletFirstDate) {
     title: ev.title,
     start_time: ev.start_time,
     end_time: ev.end_time,
-    attendees,
+    attendees: totalAttendees,
+    app_attendees: appAttendees,
+    covers: covers,
+    sin_app: sinApp,
     nuevos,
-    recurrentes: attendees - nuevos,
+    recurrentes: Math.max(0, totalAttendees - nuevos),
     avg_stay: avgStay,
     peak_inside: peakInside
   };
@@ -217,10 +223,14 @@ function computePeak(spans) {
 // Resumen por evento + globales. Alimenta el panel y otros endpoints.
 function getOverview() {
   const { events, byDate, walletFirstDate } = analyze();
-  const perEvent = events.map(ev => summarizeEvent(ev, byDate.get(ev.event_date), walletFirstDate));
+  const coversRows = db.prepare(`SELECT event_id, covers FROM event_finances WHERE covers IS NOT NULL`).all();
+  const coversMap = new Map();
+  coversRows.forEach(r => coversMap.set(r.event_id, r.covers));
 
-  // Solo eventos que ya ocurrieron (tienen al menos una asistencia) para los totales.
-  const withData = perEvent.filter(e => e.attendees > 0);
+  const perEvent = events.map(ev => summarizeEvent(ev, byDate.get(ev.event_date), walletFirstDate, coversMap));
+
+  // Solo eventos que ya ocurrieron (tienen al menos una asistencia o datos manuales) para los totales.
+  const withData = perEvent.filter(e => e.attendees > 0 || (e.covers != null && e.covers > 0));
 
   const totalUniqueAttendees = walletFirstDate.size;
   const todayMadrid = madridParts(Date.now()).date;
@@ -442,7 +452,7 @@ function _prevMonth(monthStr) {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
-function getCommunityGrowth() {
+function getCommunityGrowth(from, to) {
   const rows = db.prepare(`
     SELECT wallet, MIN(ts) AS first_seen FROM (
       SELECT LOWER(wallet_address) AS wallet, minted_at AS ts FROM mints WHERE status != 'failed' AND wallet_address IS NOT NULL
@@ -454,7 +464,11 @@ function getCommunityGrowth() {
     ) GROUP BY wallet
   `).all();
 
-  const monthStr = madridParts(Date.now()).date.slice(0, 7);
+  const todayMadrid = madridParts(Date.now()).date;
+  const targetTo = (to && /^\d{4}-\d{2}-\d{2}$/.test(to)) ? to : todayMadrid;
+  const targetFrom = (from && /^\d{4}-\d{2}-\d{2}$/.test(from)) ? from : null;
+
+  const monthStr = todayMadrid.slice(0, 7);
   const prevStr = _prevMonth(monthStr);
   const byDay = {}, byMonth = {};
   let total = 0, thisMonth = 0, lastMonth = 0;
@@ -470,9 +484,29 @@ function getCommunityGrowth() {
     if (mo === monthStr) thisMonth++; else if (mo === prevStr) lastMonth++;
   });
 
-  const new_by_day = Object.entries(byDay)
+  // Generar secuencias de fechas continuas desde el inicio hasta targetTo
+  let startDate = targetFrom;
+  if (!startDate) {
+    const sortedDays = Object.keys(byDay).sort();
+    const minDay = sortedDays.length ? sortedDays[0] : '2026-01-01';
+    const dTo = new Date(targetTo + 'T12:00:00');
+    const d30 = new Date(dTo.getTime() - 30 * 86400000).toISOString().slice(0, 10);
+    startDate = minDay < d30 ? minDay : d30;
+  }
+
+  const fullByDay = {};
+  const cur = new Date(startDate + 'T12:00:00');
+  const end = new Date(targetTo + 'T12:00:00');
+  while (cur <= end) {
+    const ymd = cur.toISOString().slice(0, 10);
+    fullByDay[ymd] = byDay[ymd] || 0;
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  const new_by_day = Object.entries(fullByDay)
     .map(([day, count]) => ({ day, count }))
     .sort((a, b) => (a.day < b.day ? 1 : -1));
+
   const new_by_month = Object.entries(byMonth)
     .map(([month, count]) => ({ month, count }))
     .sort((a, b) => (a.month < b.month ? 1 : -1));
@@ -483,7 +517,9 @@ function getCommunityGrowth() {
     new_last_month: lastMonth,
     growth_pct: lastMonth > 0 ? Math.round((thisMonth - lastMonth) / lastMonth * 100) : null,
     new_by_day,
-    new_by_month
+    new_by_month,
+    from: startDate,
+    to: targetTo
   };
 }
 

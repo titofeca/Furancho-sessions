@@ -738,7 +738,9 @@ router.get('/funnel', requireAuth, (req, res) => {
       )
     `).get();
 
-    // 3. Clientes en zona de riesgo (última visita hace 30-45 días — aún rescatables)
+    // 3. Clientes en zona de riesgo (congelado en periodos de vacaciones/sin eventos)
+    const lastEventRow = db.prepare(`SELECT MAX(event_date) as last_event FROM events WHERE active = 1 AND event_date <= date('now', 'localtime')`).get();
+    const refDate = (lastEventRow && lastEventRow.last_event) ? lastEventRow.last_event : "now";
     const churnRiskRow = db.prepare(`
       SELECT COUNT(*) as churn_risk
       FROM (
@@ -749,8 +751,8 @@ router.get('/funnel', requireAuth, (req, res) => {
           SELECT LOWER(wallet_address) as wallet_address, date(visited_at) as visit_date, visited_at as visit_time FROM visits
         ) GROUP BY w
       )
-      WHERE CAST(julianday('now') - julianday(last_visit) AS INTEGER) BETWEEN 30 AND 45
-    `).get();
+      WHERE CAST(julianday(?) - julianday(last_visit) AS INTEGER) BETWEEN 30 AND 45
+    `).get(refDate);
 
     // 4. Tasa de upgrade: % de clientes que escalaron de Nv1 a Nv2 o superior
     const upgradeRow = db.prepare(`
@@ -2687,9 +2689,12 @@ router.get('/referral/stats', requireAuth, (req, res) => {
     const { db } = require('../db/database');
     const stats = db.prepare(`
       WITH friend_visits AS (
-        SELECT DISTINCT wallet_address FROM visits
-        UNION
-        SELECT DISTINCT wallet_address FROM sessions WHERE counted_as_visit = 1
+        SELECT DISTINCT LOWER(s.wallet_address) as wallet_address
+        FROM sessions s
+        JOIN events e ON e.active = 1 AND (
+          date(s.entry_time) = e.event_date OR date(s.entry_time, '+2 hours') = e.event_date
+        )
+        WHERE s.counted_as_visit = 1
       ),
       referrer_stats AS (
         SELECT 
@@ -2712,11 +2717,10 @@ router.get('/referral/stats', requireAuth, (req, res) => {
     const details = stats.map(s => {
       const friends = db.prepare(`
         WITH friend_visits_count AS (
-          SELECT LOWER(wallet_address) as wallet_address, COUNT(*) as visit_count
-          FROM (
-            SELECT LOWER(wallet_address) as wallet_address FROM visits
-            UNION ALL
-            SELECT LOWER(wallet_address) as wallet_address FROM sessions WHERE counted_as_visit = 1
+          SELECT LOWER(s.wallet_address) as wallet_address, COUNT(*) as visit_count
+          FROM sessions s
+          JOIN events e ON e.active = 1 AND (
+            date(s.entry_time) = e.event_date OR date(s.entry_time, '+2 hours') = e.event_date
           )
           GROUP BY wallet_address
         )

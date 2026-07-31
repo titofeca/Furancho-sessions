@@ -1317,8 +1317,8 @@ function getVisitCount(walletAddress) {
 // Fuente ÚNICA del "amigo referido activo" (Plan Amigo). Un referido cuenta SOLO si
 // ASISTIÓ a un Furancho DESPUÉS de ser referido: una sesión con counted_as_visit=1,
 // que openSession marca únicamente dentro de la ventana de un EVENTO. Estricto y
-// ligado a evento a rajatabla: NO vale una visita de terraza (Reto de los 5) ni la
-// tabla legacy `visits` (no atada a evento). Antes esto estaba duplicado en 4 sitios.
+// ligado a evento a rajatabla: NO vale una visita de terraza ni visitas sin evento.
+// La sesión del amigo referido DEBE ocurrir en un día de evento Furancho activo (events active=1) y tras el registro del referido.
 function countActiveReferredFriends(referrerWallet) {
   if (!referrerWallet) return 0;
   const row = db.prepare(`
@@ -1327,6 +1327,9 @@ function countActiveReferredFriends(referrerWallet) {
     WHERE LOWER(r.referrer_wallet) = LOWER(?)
       AND EXISTS (
         SELECT 1 FROM sessions s
+        JOIN events e ON e.active = 1 AND (
+          date(s.entry_time) = e.event_date OR date(s.entry_time, '+2 hours') = e.event_date
+        )
         WHERE LOWER(s.wallet_address) = LOWER(r.referred_wallet)
           AND s.counted_as_visit = 1
           AND s.entry_time >= r.created_at
