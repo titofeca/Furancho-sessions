@@ -6349,9 +6349,9 @@
                 ${(() => {
                   if (!r.people && !r.validity && !r.days && !r.hours && !endDateStr) return '';
                   return `
-                    <div style="margin-top:6px; background:rgba(0,0,0,0.02); border:1px solid rgba(0,0,0,0.05); border-radius:8px; padding:8px; font-size:11px; color:var(--text-muted); text-align:left; max-width:280px;">
-                      <p style="font-size:9px; font-weight:800; color:var(--wine); letter-spacing:0.8px; margin:0 0 4px; text-transform:uppercase;">Condiciones de validez:</p>
-                      <div style="display:grid; grid-template-columns:1fr; gap:3px; font-size:11px;">
+                    <div style="margin-top:8px; background:rgba(0,0,0,0.03); border:1px solid rgba(0,0,0,0.08); border-radius:10px; padding:10px 12px; text-align:left;">
+                      <p style="font-size:11.5px; font-weight:800; color:var(--wine); letter-spacing:0.8px; margin:0 0 6px; text-transform:uppercase;">Condiciones de validez:</p>
+                      <div style="display:grid; grid-template-columns:1fr; gap:5px; font-size:13.5px;">
                         ${r.people ? `<div>👥 <strong>Personas:</strong> ${r.people}</div>` : ''}
                         ${r.validity ? `<div>📅 <strong>Validez:</strong> <span style="color:var(--wine); font-weight:700;">${r.validity}</span></div>` : ''}
                         ${endDateStr ? `<div>⛔ <strong>Fecha límite:</strong> <span style="color:var(--wine); font-weight:700;">${endDateStr}</span></div>` : ''}
@@ -6363,31 +6363,31 @@
                 })()}
                 ${isNftPrize ? `
                   <div style="margin-top:10px; padding:14px; background:linear-gradient(135deg, rgba(var(--gold-rgb),0.18), rgba(var(--wine-rgb),0.08)); border:1.5px solid var(--gold); border-radius:12px; text-align:center;">
-                    <div style="font-size:12px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--wine); margin-bottom:6px;">🏅 Premio NFT ganado</div>
+                    <div style="font-size:13px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--wine); margin-bottom:6px;">🏅 Premio NFT ganado</div>
                     ${isNftGranted
-                      ? '<p style="margin:0; font-size:13px; color:var(--wine); font-weight:700;">✅ Ya recogido — pendiente de confirmar por admin, luego llega a tu wallet.</p>'
-                      : '<p style="margin:0; font-size:13px; color:var(--text); line-height:1.5;">Pásate por el furancho y enséñale tu <strong>🪪 ID Socio (QR)</strong> al camarero. Te lo entrega en persona ahí mismo.</p>'}
+                      ? '<p style="margin:0; font-size:14px; color:var(--wine); font-weight:700;">✅ Ya recogido — pendiente de confirmar por admin, luego llega a tu wallet.</p>'
+                      : '<p style="margin:0; font-size:14px; color:var(--text); line-height:1.5;">Pásate por el furancho y enséñale tu <strong>🪪 ID Socio (QR)</strong> al camarero. Te lo entrega en persona ahí mismo.</p>'}
                   </div>
                 ` : ''}
-                ${!isNftPrize && !isCollected && !isExpired && r.verification_code ? `<div style="font-family:monospace; font-size:18px; font-weight:800; letter-spacing:4px; color:var(--wine); margin-top:5px; background:rgba(var(--wine-rgb),0.06); border-radius:8px; padding:4px 8px; display:inline-block;">${r.verification_code}</div>` : ''}
+                ${!isNftPrize && !isCollected && !isExpired && r.verification_code ? `<div style="font-family:monospace; font-size:20px; font-weight:800; letter-spacing:4px; color:var(--wine); margin-top:8px; background:rgba(var(--wine-rgb),0.08); border-radius:8px; padding:6px 12px; display:inline-block;">${r.verification_code}</div>` : ''}
                 ${isCollected ? `
-                  <div style="margin-top:8px; display:flex; align-items:center; gap:8px; background:rgba(22,163,74,0.1); border:1.5px solid rgba(22,163,74,0.4); border-radius:10px; padding:8px 12px;">
-                    <span style="font-size:20px;">✅</span>
+                  <div style="margin-top:8px; display:flex; align-items:center; gap:8px; background:rgba(22,163,74,0.1); border:1.5px solid rgba(22,163,74,0.4); border-radius:10px; padding:10px 12px;">
+                    <span style="font-size:22px;">✅</span>
                     <div style="text-align:left;">
-                      <p style="font-size:12px; font-weight:800; color:#16a34a; margin:0; letter-spacing:0.5px;">YA CANJEADO</p>
-                      ${collectedStr ? `<p style="font-size:10px; color:var(--text-muted); margin:1px 0 0;">Entregado el ${collectedStr}</p>` : ''}
+                      <p style="font-size:13.5px; font-weight:800; color:#16a34a; margin:0; letter-spacing:0.5px;">YA CANJEADO</p>
+                      ${collectedStr ? `<p style="font-size:12px; color:var(--text-muted); margin:2px 0 0;">Entregado el ${collectedStr}</p>` : ''}
                     </div>
                   </div>` : ''}
                 ${isRedeemable ? `
-                  <div style="margin-top:8px;">
-                    <div style="display:flex; align-items:center; gap:5px; font-size:10px; color:#16a34a; font-weight:700; margin-bottom:6px;">
-                      <span style="width:7px; height:7px; border-radius:50%; background:#16a34a; animation:furanchoPulse 1.6s infinite;"></span>
+                  <div style="margin-top:10px;">
+                    <div style="display:flex; align-items:center; gap:6px; font-size:12.5px; color:#16a34a; font-weight:800; margin-bottom:6px;">
+                      <span style="width:8px; height:8px; border-radius:50%; background:#16a34a; animation:furanchoPulse 1.6s infinite;"></span>
                       BONO EN VIVO · <span class="furancho-live-clock" style="font-variant-numeric:tabular-nums;">--:--:--</span>
                     </div>
-                    <button onclick="redeemPrize(${r.id})" style="width:100%; box-sizing:border-box; padding:11px; background:linear-gradient(135deg,#16a34a,#15803d); color:#fff; border:none; border-radius:10px; font-family:'Outfit',sans-serif; font-size:13px; font-weight:800; cursor:pointer; box-shadow:0 3px 10px rgba(22,163,74,0.3);">
+                    <button onclick="redeemPrize(${r.id})" style="width:100%; box-sizing:border-box; padding:13px 16px; background:linear-gradient(135deg,#16a34a,#15803d); color:#fff; border:none; border-radius:12px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:800; cursor:pointer; box-shadow:0 4px 12px rgba(22,163,74,0.3);">
                       ✅ Entregar premio (staff del local)
                     </button>
-                    <p style="font-size:9.5px; color:var(--text-muted); margin:5px 0 0; line-height:1.35; text-align:center;">Lo pulsa el camarero al entregarlo. Cierra el bono para que no se pueda usar dos veces.</p>
+                    <p style="font-size:11.5px; color:var(--text-muted); margin:6px 0 0; line-height:1.4; text-align:center;">Lo pulsa el camarero al entregarlo. Cierra el bono para que no se pueda usar dos veces.</p>
                   </div>` : ''}
                 ${isExpired ? `
                   <div style="margin-top:8px; display:flex; align-items:center; gap:8px; background:rgba(var(--wine-rgb),0.07); border:1.5px solid rgba(var(--wine-rgb),0.3); border-radius:10px; padding:8px 12px;">
@@ -8093,12 +8093,12 @@
 
     return `<div class="taboleiro-nota" style="transform: rotate(${rotation}deg);">
       ${pinHtml}
-      ${wasUnread ? '<div style="position:absolute; top:8px; right:8px; background:var(--gold); color:#fff; font-size:9px; font-weight:900; padding:2px 6px; border-radius:100px; text-transform:uppercase; letter-spacing:0.5px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">📌 Nova!</div>' : ''}
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:6px;">
-        <p style="font-family:'Playfair Display',serif; font-size:14.5px; font-weight:700; color:var(--text); flex:1; min-width:0; overflow-wrap:anywhere; margin:0; line-height:1.35;">${m.subject}</p>
-        <p style="font-size:10px; color:var(--text-muted); flex-shrink:0; white-space:nowrap; margin:2px 0 0;">${new Date(m.sent_at).toLocaleDateString('es-ES')}</p>
+      ${wasUnread ? '<div style="position:absolute; top:10px; right:10px; background:var(--gold); color:#fff; font-size:11.5px; font-weight:900; padding:3px 9px; border-radius:100px; text-transform:uppercase; letter-spacing:0.5px; box-shadow:0 1px 4px rgba(0,0,0,0.15);">📌 Nova!</div>' : ''}
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:8px;">
+        <p style="font-family:'Playfair Display',serif; font-size:18px; font-weight:800; color:var(--text); flex:1; min-width:0; overflow-wrap:anywhere; margin:0; line-height:1.35;">${m.subject}</p>
+        <p style="font-size:12px; color:var(--text-muted); flex-shrink:0; white-space:nowrap; margin:2px 0 0; font-weight:700;">${new Date(m.sent_at).toLocaleDateString('es-ES')}</p>
       </div>
-      <p style="font-size:12.5px; color:#4a3728; line-height:1.5; margin-bottom:12px; white-space:pre-line; overflow-wrap:anywhere;">${m.body}</p>
+      <p style="font-size:15.5px; color:#1C0E06; line-height:1.6; margin-bottom:14px; white-space:pre-line; overflow-wrap:anywhere; font-weight:500;">${m.body}</p>
       ${rsvpWidget}
       <div style="display:flex; gap:6px; flex-wrap:wrap;">${reactionBar}</div>
     </div>`;
@@ -10693,12 +10693,12 @@
     if (!container) {
       container = document.createElement('div');
       container.id = 'toast-container';
-      container.style.cssText = 'position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:9999; display:flex; flex-direction:column; gap:8px; width:90%; max-width:360px; pointer-events:none;';
+      container.style.cssText = 'position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:9999; display:flex; flex-direction:column; gap:8px; width:92%; max-width:400px; pointer-events:none;';
       document.body.appendChild(container);
     }
     
     const toast = document.createElement('div');
-    toast.style.cssText = 'background:rgba(28,12,5,0.95); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:1.5px solid rgba(var(--gold-rgb),0.3); color:#F2EDE3; padding:14px 20px; border-radius:16px; font-size:13px; font-weight:600; text-align:center; box-shadow:0 10px 35px rgba(0,0,0,0.4); pointer-events:auto; opacity:0; transform:translateY(15px); transition:all 0.35s cubic-bezier(0.22, 1, 0.36, 1); line-height:1.4;';
+    toast.style.cssText = 'background:rgba(28,12,5,0.96); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1.5px solid rgba(var(--gold-rgb),0.4); color:#F2EDE3; padding:14px 22px; border-radius:16px; font-size:15px; font-weight:700; text-align:center; box-shadow:0 12px 40px rgba(0,0,0,0.45); pointer-events:auto; opacity:0; transform:translateY(15px); transition:all 0.35s cubic-bezier(0.22, 1, 0.36, 1); line-height:1.45;';
     toast.innerHTML = msg;
     
     container.appendChild(toast);
@@ -11491,9 +11491,9 @@
   </div>
 
   <!-- Botón flotante mensajes -->
-  <div id="msg-fab" style="display:none; position:fixed; bottom:82px; right:18px; z-index:900; align-items:center; justify-content:center; width:48px; height:48px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); border-radius:50%; box-shadow:0 4px 16px rgba(var(--wine-rgb),0.4); cursor:pointer; border:none;" onclick="openMsgPanel()">
-    <span style="font-size:20px;">✉️</span>
-    <span id="msg-fab-badge" style="display:none; position:absolute; top:-4px; right:-4px; background:var(--gold); color:#fff; font-size:10px; font-weight:900; width:18px; height:18px; border-radius:50%; align-items:center; justify-content:center; font-family:'Outfit',sans-serif;"></span>
+  <div id="msg-fab" style="display:none; position:fixed; bottom:84px; right:18px; z-index:900; align-items:center; justify-content:center; width:54px; height:54px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); border-radius:50%; box-shadow:0 6px 20px rgba(var(--wine-rgb),0.45); cursor:pointer; border:2px solid rgba(212,175,55,0.4);" onclick="openMsgPanel()">
+    <span style="font-size:24px;">✉️</span>
+    <span id="msg-fab-badge" style="display:none; position:absolute; top:-4px; right:-4px; background:var(--gold); color:#fff; font-size:12.5px; font-weight:900; width:22px; height:22px; border-radius:50%; align-items:center; justify-content:center; font-family:'Outfit',sans-serif; box-shadow:0 2px 6px rgba(0,0,0,0.3);"></span>
   </div>
 
   <!-- Panel deslizante mensajes -->
@@ -11502,24 +11502,24 @@
       <div style="padding:14px 20px 0; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
         <div style="width:36px; height:4px; background:rgba(255,255,255,0.25); border-radius:100px; margin:0 auto;"></div>
       </div>
-      <div style="padding:12px 20px 10px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; border-bottom:1.5px dashed rgba(255,255,255,0.15);">
+      <div style="padding:14px 20px 10px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; border-bottom:1.5px dashed rgba(255,255,255,0.15);">
         <div style="display:flex; align-items:center; gap:8px;">
-          <span style="font-size:20px;">🏛️</span>
-          <span style="font-family:'Playfair Display',serif; font-size:18px; font-weight:700; color:#f3f4f6;">O Taboleiro do Furancho</span>
+          <span style="font-size:22px;">🏛️</span>
+          <span style="font-family:'Playfair Display',serif; font-size:20px; font-weight:800; color:#f3f4f6;">O Taboleiro do Furancho</span>
         </div>
         <div style="display:flex; align-items:center; gap:8px;">
           <!-- Botón Silenciar -->
-          <button id="inbox-mute-btn" onclick="toggleInboxMute()" style="background:rgba(255,255,255,0.1); border:none; border-radius:8px; padding:6px 10px; font-size:11px; cursor:pointer; color:rgba(255,255,255,0.8); display:flex; align-items:center; gap:4px; font-family:'Outfit',sans-serif;">
+          <button id="inbox-mute-btn" onclick="toggleInboxMute()" style="background:rgba(255,255,255,0.12); border:none; border-radius:10px; padding:7px 12px; font-size:12.5px; font-weight:700; cursor:pointer; color:rgba(255,255,255,0.9); display:flex; align-items:center; gap:5px; font-family:'Outfit',sans-serif;">
             <span id="inbox-mute-icon">🔔</span> <span id="inbox-mute-text">Activas</span>
           </button>
-          <button onclick="closeMsgPanel()" style="background:rgba(255,255,255,0.1); border:none; border-radius:50%; width:32px; height:32px; font-size:16px; cursor:pointer; color:rgba(255,255,255,0.75); display:flex; align-items:center; justify-content:center;">✕</button>
+          <button onclick="closeMsgPanel()" style="background:rgba(255,255,255,0.12); border:none; border-radius:50%; width:36px; height:36px; font-size:18px; cursor:pointer; color:rgba(255,255,255,0.85); display:flex; align-items:center; justify-content:center;">✕</button>
         </div>
       </div>
 
       <!-- Selector de Pestañas -->
-      <div style="display:flex; background:rgba(255,255,255,0.08); border-radius:12px; margin: 10px 20px 8px; padding:3px; flex-shrink:0;">
-        <button id="tab-btn-msgs" onclick="switchMsgPanelTab('msgs')" style="flex:1; padding:8px; border:none; border-radius:10px; background:#d4af37; color:#120904; font-family:'Outfit',sans-serif; font-size:12px; font-weight:800; cursor:pointer; transition:all 0.2s;">📢 Mensajes / DMs</button>
-        <button id="tab-btn-muro" onclick="switchMsgPanelTab('muro')" style="flex:1; padding:8px; border:none; border-radius:10px; background:transparent; color:#f3f4f6; font-family:'Outfit',sans-serif; font-size:12px; font-weight:800; cursor:pointer; transition:all 0.2s;">💬 Muro en Vivo</button>
+      <div style="display:flex; background:rgba(255,255,255,0.08); border-radius:14px; margin: 12px 20px 10px; padding:4px; flex-shrink:0;">
+        <button id="tab-btn-msgs" onclick="switchMsgPanelTab('msgs')" style="flex:1; padding:10px 12px; border:none; border-radius:10px; background:#d4af37; color:#120904; font-family:'Outfit',sans-serif; font-size:14.5px; font-weight:800; cursor:pointer; transition:all 0.2s;">📢 Mensajes / DMs</button>
+        <button id="tab-btn-muro" onclick="switchMsgPanelTab('muro')" style="flex:1; padding:10px 12px; border:none; border-radius:10px; background:transparent; color:#f3f4f6; font-family:'Outfit',sans-serif; font-size:14.5px; font-weight:800; cursor:pointer; transition:all 0.2s;">💬 Muro en Vivo</button>
       </div>
 
       <!-- SECCIÓN 1: MENSAJES Y DMs -->
@@ -11527,27 +11527,27 @@
         <div id="msg-panel-list" style="padding:14px 20px 14px; display:flex; flex-direction:column; gap:18px; overflow-y:auto;"></div>
         
         <!-- DM con el patrón -->
-        <div style="padding:16px 20px; border-top:1.5px dashed rgba(255,255,255,0.15); background:rgba(0,0,0,0.2); flex-shrink:0;">
-          <p style="font-size:11px; font-weight:800; color:#d4af37; text-transform:uppercase; letter-spacing:1px; margin:0 0 6px 0;">💬 Escríbele al patrón (Mensaje Directo)</p>
+        <div style="padding:16px 20px; border-top:1.5px dashed rgba(255,255,255,0.15); background:rgba(0,0,0,0.25); flex-shrink:0;">
+          <p style="font-size:12.5px; font-weight:800; color:#d4af37; text-transform:uppercase; letter-spacing:1px; margin:0 0 8px 0;">💬 Escríbele al patrón (Mensaje Directo)</p>
           <div style="display:flex; gap:8px;">
-            <textarea id="dm-input" placeholder="Pregunta, sugiere o comenta algo en privado..." rows="1" style="flex:1; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:12px; padding:10px 12px; color:#fff; font-family:'Outfit',sans-serif; font-size:13px; resize:none; outline:none;"></textarea>
-            <button onclick="sendDmToAdmin()" style="background:#d4af37; border:none; border-radius:12px; padding:0 16px; color:#120904; font-family:'Outfit',sans-serif; font-size:13px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center;">Enviar</button>
+            <textarea id="dm-input" placeholder="Pregunta, sugiere o comenta algo en privado..." rows="2" style="flex:1; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25); border-radius:12px; padding:12px 14px; color:#fff; font-family:'Outfit',sans-serif; font-size:15px; resize:none; outline:none; line-height:1.4;"></textarea>
+            <button onclick="sendDmToAdmin()" style="background:#d4af37; border:none; border-radius:12px; padding:0 18px; color:#120904; font-family:'Outfit',sans-serif; font-size:15px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center;">Enviar</button>
           </div>
         </div>
       </div>
 
       <!-- SECCIÓN 2: MURO EN VIVO -->
       <div id="muro-panel-list-wrap" style="display:none; flex-direction:column; overflow-y:auto; flex:1;">
-        <div id="muro-panel-list" style="padding:14px 20px 14px; display:flex; flex-direction:column; gap:12px; overflow-y:auto; flex:1;"></div >
+        <div id="muro-panel-list" style="padding:14px 20px 14px; display:flex; flex-direction:column; gap:12px; overflow-y:auto; flex:1;"></div>
         
         <!-- Publicar en el muro -->
-        <div id="muro-input-wrap" style="padding:16px 20px; border-top:1.5px dashed rgba(255,255,255,0.15); background:rgba(0,0,0,0.2); flex-shrink:0;">
-          <p style="font-size:11px; font-weight:800; color:#d4af37; text-transform:uppercase; letter-spacing:1px; margin:0 0 6px 0;">✍️ Publicar en el Muro Público</p>
+        <div id="muro-input-wrap" style="padding:16px 20px; border-top:1.5px dashed rgba(255,255,255,0.15); background:rgba(0,0,0,0.25); flex-shrink:0;">
+          <p style="font-size:12.5px; font-weight:800; color:#d4af37; text-transform:uppercase; letter-spacing:1px; margin:0 0 8px 0;">✍️ Publicar en el Muro Público</p>
           <div style="display:flex; gap:8px;">
-            <input type="text" id="muro-input" placeholder="Di algo a los demás... (máx 150 car.)" maxlength="150" style="flex:1; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:12px; padding:10px 12px; color:#fff; font-family:'Outfit',sans-serif; font-size:13px; outline:none;" />
-            <button onclick="postToMuro()" style="background:#d4af37; border:none; border-radius:12px; padding:0 16px; color:#120904; font-family:'Outfit',sans-serif; font-size:13px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center;">Publicar</button>
+            <input type="text" id="muro-input" placeholder="Di algo a los demás... (máx 150 car.)" maxlength="150" style="flex:1; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25); border-radius:12px; padding:12px 14px; color:#fff; font-family:'Outfit',sans-serif; font-size:15px; outline:none;" />
+            <button onclick="postToMuro()" style="background:#d4af37; border:none; border-radius:12px; padding:0 18px; color:#120904; font-family:'Outfit',sans-serif; font-size:15px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center;">Publicar</button>
           </div>
-          <p style="font-size:10px; color:rgba(255,255,255,0.4); margin:6px 0 0 0; line-height:1.3;">⚠️ Debes haber fichado entrada hoy para poder participar.</p>
+          <p style="font-size:11.5px; color:rgba(255,255,255,0.5); margin:6px 0 0 0; line-height:1.35;">⚠️ Debes haber fichado entrada hoy para poder participar.</p>
         </div>
       </div>
 
