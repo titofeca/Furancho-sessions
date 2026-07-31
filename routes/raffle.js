@@ -2107,3 +2107,17 @@ router.get('/admin/redemptions', requireAuth, (req, res) => {
   }
 });
 
+// POST /api/raffle/admin/cancel/:id (ADMIN ONLY)
+// Cancela/Anula un premio (directo o de sorteo) por parte del administrador.
+router.post('/admin/cancel/:id', requireAuth, (req, res) => {
+  try {
+    const { rejectRaffle } = require('../db/database');
+    const id = parseInt(req.params.id, 10);
+    const reason = req.body.reason || 'Cancelado por el administrador';
+    rejectRaffle(id, reason);
+    res.json({ success: true, message: 'Premio cancelado correctamente.' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+

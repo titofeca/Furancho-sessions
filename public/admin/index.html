@@ -8631,6 +8631,7 @@
                   <div style="display:flex; gap:4px; flex-shrink:0;">
                     <button onclick="openAdminBlob('/api/pdf/premio/${r.id}/admin')" style="padding:4px 8px; background:rgba(196,151,58,0.15); border:1px solid rgba(196,151,58,0.4); border-radius:6px; font-size:10.5px; font-weight:700; color:var(--gold); cursor:pointer;">📄 PDF bono</button>
                     <button onclick="collectHistoric(${r.id}, this)" style="padding:4px 8px; background:linear-gradient(135deg,#16a34a,#15803d); border:none; border-radius:6px; font-size:10.5px; font-weight:800; color:#fff; cursor:pointer;">Entregar ✓</button>
+                    <button onclick="cancelPrize2Step(${r.id}, this)" style="padding:4px 8px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:6px; font-size:10.5px; font-weight:700; color:#dc2626; cursor:pointer;" data-step="1" title="Anular este premio en 2 clics">🚫 Cancelar</button>
                   </div>
                 </div>
               </div>`;
@@ -8670,6 +8671,55 @@
     } catch (e) {
       listEl.innerHTML = '<p style="font-size:12px; color:#ef4444; text-align:center; padding:8px 0;">Error cargando historial de canjes</p>';
     }
+  }
+
+  function cancelPrize2Step(id, btn) {
+    const step = btn.getAttribute('data-step') || '1';
+    if (step === '1') {
+      btn.setAttribute('data-step', '2');
+      btn.innerHTML = '⚠️ ¿Confirmar cancelación?';
+      btn.style.background = '#dc2626';
+      btn.style.color = '#ffffff';
+      btn.style.borderColor = '#dc2626';
+      btn.style.fontWeight = '800';
+
+      if (btn._resetTimeout) clearTimeout(btn._resetTimeout);
+      btn._resetTimeout = setTimeout(() => {
+        btn.setAttribute('data-step', '1');
+        btn.innerHTML = '🚫 Cancelar';
+        btn.style.background = 'rgba(239,68,68,0.1)';
+        btn.style.color = '#dc2626';
+        btn.style.borderColor = 'rgba(239,68,68,0.3)';
+        btn.style.fontWeight = '700';
+      }, 5000);
+      return;
+    }
+
+    if (btn._resetTimeout) clearTimeout(btn._resetTimeout);
+    btn.disabled = true;
+    btn.innerHTML = 'Anulando...';
+
+    fetch(`/api/raffle/admin/cancel/${id}`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: 'Cancelado por el administrador' })
+    }).then(r => r.json()).then(res => {
+      if (res.success) {
+        showToast('🚫 Premio cancelado correctamente');
+        loadRaffleHistory();
+        loadRedemptionsHistory();
+      } else {
+        showToast(res.error || 'Error al cancelar premio', true);
+        btn.disabled = false;
+        btn.setAttribute('data-step', '1');
+        btn.innerHTML = '🚫 Cancelar';
+      }
+    }).catch(e => {
+      showToast('Error de conexión', true);
+      btn.disabled = false;
+      btn.setAttribute('data-step', '1');
+      btn.innerHTML = '🚫 Cancelar';
+    });
   }
 
   async function grantCorchoFromRaffle(raffleId, btn) {
@@ -8717,13 +8767,12 @@
       const renderRow = (r) => {
         const statusIcon = r.status === 'collected' ? '✅' : r.status === 'rejected' ? '✕' : r.status === 'accepted' ? '🏆' : '⏳';
         const statusColor = r.status === 'collected' ? '#15803d' : r.status === 'rejected' ? 'var(--text-muted)' : r.status === 'accepted' ? 'var(--gold)' : 'var(--text-muted)';
-        // Premio NFT: sin código canjeable — la entrega es presencial y se hace con
-        // el botón "Entregar NFT" (marca la entrega, cierra el bono y encola el mint).
         const isNft = !!r.nft_achievement_id;
         const canCollect = r.status === 'accepted' && !isNft;
         const canGrantNft = isNft && !r.nft_granted_at && (r.status === 'accepted' || r.status === 'pending_acceptance');
         const canPdf = r.status !== 'rejected' && r.verification_code && !isNft;
         const canCorcho = r.status !== 'rejected' && !r.is_weekly && r.winner_wallet;
+        const canCancel = r.status !== 'rejected' && r.status !== 'collected';
         const when = new Date(r.created_at).toLocaleString('es-ES', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
         const t = r.type || 'night';
         const imgHtml = r.prize_image ? `<img src="${r.prize_image}" style="width:36px;height:36px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0;" />` : `<div style="flex-shrink:0; width:36px; height:36px; border-radius:50%; background:rgba(42,21,9,0.05); display:flex; align-items:center; justify-content:center; font-size:15px;">${statusIcon}</div>`;
@@ -8755,6 +8804,10 @@
                 style="padding:5px 10px; background:rgba(196,151,58,0.12); border:1px solid rgba(196,151,58,0.3); border-radius:8px; font-size:11px; font-weight:700; color:var(--gold); cursor:pointer; font-family:'Outfit',sans-serif;"
                 title="Bono con premio, código, caducidad e instrucciones para enviar al local">
                 📄 PDF bono</button>` : ''}
+              ${canCancel ? `<button onclick="cancelPrize2Step(${r.id}, this)"
+                style="padding:5px 10px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:8px; font-size:11px; font-weight:700; color:#dc2626; cursor:pointer; font-family:'Outfit',sans-serif;"
+                data-step="1" title="Anular este premio en 2 clics">
+                🚫 Cancelar</button>` : ''}
               ${canCorcho ? `<button onclick="grantCorchoFromRaffle(${r.id}, this)"
                 style="padding:5px 10px; background:rgba(196,151,58,0.08); border:1px solid rgba(196,151,58,0.25); border-radius:8px; font-size:11px; font-weight:700; color:var(--gold); cursor:pointer; font-family:'Outfit',sans-serif;"
                 title="Acreditar $CORCHO al ganador">
