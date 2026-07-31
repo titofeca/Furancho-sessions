@@ -374,7 +374,7 @@ router.get('/premio/:id', async (req, res) => {
   try {
     const { db } = require('../db/database');
     const raffle = db.prepare(`
-      SELECT id, prize, winner_wallet, verification_code, created_at, status,
+      SELECT id, prize, winner_wallet, verification_code, created_at, status, collected_at,
              prize_details, prize_image, establishment, type,
              validity, people, hours, days, validity_end_date
       FROM raffles WHERE id = ? AND status IN ('accepted','collected')
@@ -726,7 +726,7 @@ router.get('/premio/:id/admin', requireAuth, async (req, res) => {
   try {
     const { db } = require('../db/database');
     const raffle = db.prepare(`
-      SELECT id, prize, winner_wallet, verification_code, created_at, status,
+      SELECT id, prize, winner_wallet, verification_code, created_at, status, collected_at,
              prize_details, prize_image, establishment, type,
              validity, people, hours, days, validity_end_date
       FROM raffles WHERE id = ?

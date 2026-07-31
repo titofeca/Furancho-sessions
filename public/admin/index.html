@@ -8539,10 +8539,14 @@
       }).then(r => r.json());
 
       if (res.success) {
-        showToast(`🎁 ¡Premio otorgado a ${wallet.slice(0,8)}...!`);
+        showToast(`🎁 ¡Premio otorgado a ${wallet.slice(0,8)}...! Abriendo PDF del bono...`);
         ['direct-prize-wallet','direct-prize-name','direct-prize-establishment','direct-prize-details','direct-prize-people','direct-prize-validity','direct-prize-days','direct-prize-hours','direct-prize-end-date']
           .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        loadRaffleHistory();
         loadRedemptionsHistory();
+        if (res.id) {
+          try { openAdminBlob(`/api/pdf/premio/${res.id}/admin`); } catch(e){}
+        }
       } else {
         showToast(res.error || 'Error al otorgar premio', true);
       }
