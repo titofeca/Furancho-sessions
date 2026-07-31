@@ -865,6 +865,37 @@ try {
 // Las visitas de terraza deben vivir SOLO en campaign_visits (aisladas de sessions).
 // Corrector de datos ya afectados: scripts/fix-terraza-sessions.js
 
+// Corrección ONE-TIME (31 jul 2026), guarded por flag: limpia los datos que ese
+// bloque dejó ANTES de eliminarlo. Corre UNA sola vez (no cada boot), es idempotente
+// y NO toca datos legítimos (campaign_visits, $CORCHO y sellos válidos se conservan):
+//   1) Borra las sesiones FANTASMA de terraza (entrada exacta 18:00 los 19/22/26 jul,
+//      sin salida, contadas como visita) que el script retroactivo insertó a TODAS las
+//      carteras e inflaban el Kilometraje (+3 visitas por socio). Una visita de terraza
+//      NO es fichaje de entrada; su crédito de campaña sigue en campaign_visits.
+//   2) Deja 1 sello de Pasaporte de Verano por cartera y día (regla 1/día): borra los
+//      duplicados del mismo día, conservando el más antiguo.
+// Equivale a scripts/fix-terraza-sessions.js + scripts/dedupe-summer-stamps.js.
+try {
+  const _MIG_FLAG = 'migration_2026_07_31_fix_terraza_stamps';
+  if (getSetting(_MIG_FLAG, null) === null) {
+    let sessN = 0, stampN = 0;
+    try {
+      const badTimes = ['2026-07-19 18:00:00', '2026-07-22 18:00:00', '2026-07-26 18:00:00'];
+      const ph = badTimes.map(() => '?').join(',');
+      sessN = db.prepare(
+        `DELETE FROM sessions WHERE entry_time IN (${ph}) AND exit_time IS NULL AND counted_as_visit = 1`
+      ).run(...badTimes).changes;
+    } catch (e) { console.error('[Migración 31jul] sesiones:', e.message); }
+    try {
+      stampN = db.prepare(
+        `DELETE FROM summer_stamps WHERE id NOT IN (SELECT MIN(id) FROM summer_stamps GROUP BY LOWER(wallet_address), stamp_date)`
+      ).run().changes;
+    } catch (e) { console.error('[Migración 31jul] sellos:', e.message); }
+    setSetting(_MIG_FLAG, new Date().toISOString());
+    console.log(`[Migración 31jul] Sesiones terraza fantasma borradas: ${sessN} · sellos duplicados borrados: ${stampN}`);
+  }
+} catch (e) { console.error('[Migración 31jul] error:', e.message); }
+
 // Vales de consumición: registro server-side para validación por staff/admin
 try {
   db.exec(`CREATE TABLE IF NOT EXISTS corcho_redemptions (
