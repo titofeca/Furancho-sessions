@@ -12706,14 +12706,18 @@
         const items = itemsRes.items || [];
         _corchoItemsCache = items;
         const isStoreOpen = econRes.storeOpenForItems !== false;
+        const isVacation = econRes.vacationMode === true;
 
         const userLvlText = document.getElementById('profile-card-level-tag')?.textContent || 'NIVEL 1';
         const userLvlNum = parseInt(userLvlText.replace(/\D/g, ''), 10) || 1;
 
         let htmlHeader = '';
         if (!isStoreOpen) {
+          const msg = isVacation
+            ? '🏖️ O local está de <b>vacacións</b>: os canxes de consumición están pechados ata a volta. Podes seguir usando o teu $CORCHO na pestana <b>"NFTs"</b> (traspasar ou mercar).'
+            : '🔒 A tienda de consumicións está pechada esta semana porque non hai evento de Furancho programado. O tempo corre para a quema FIFO a os 3 meses. Puedes usar $CORCHO na pestana <b>"NFTs" (Meme VIP)</b>.';
           htmlHeader = `<div style="padding:12px; background:rgba(239,68,68,0.08); border:1.5px solid rgba(239,68,68,0.25); border-radius:14px; color:#b91c1c; font-size:12.5px; font-weight:700; text-align:center; margin-bottom:12px; line-height:1.4;">
-            🔒 A tienda de consumicións está pechada esta semana porque non hai evento de Furancho programado. O tempo corre para a quema FIFO a os 3 meses. Puedes usar $CORCHO na pestana <b>"NFTs" (Meme VIP)</b>.
+            ${msg}
           </div>`;
         }
 

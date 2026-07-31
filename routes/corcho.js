@@ -207,10 +207,14 @@ router.get('/economy-info', (req, res) => {
     }
 
     const supply = getCorchoGlobalSupply();
-    const isStoreOpen = isCorchoStoreEventScheduledThisWeek();
+    // En Modo Vacaciones el local está cerrado: la tienda de consumiciones no abre
+    // (aunque haya evento). La de NFTs (traspaso/compra) sigue abierta siempre.
+    const vacationMode = !!corcho.getEconomySettings().vacationMode;
+    const isStoreOpen = isCorchoStoreEventScheduledThisWeek() && !vacationMode;
 
     res.json({
       storeOpenForItems: isStoreOpen,
+      vacationMode,
       globalSupply: supply.currentSupply,
       totalEarned: supply.totalEarned,
       totalBurned: supply.totalBurned,
@@ -241,6 +245,17 @@ router.post('/redeem-item', (req, res) => {
 
   try {
     const { db, spendCorchoCoins, createRedemptionVoucher, corchoItemCategory, sessionCanjeCount, decrementCorchoItemStock, isCorchoStoreEventScheduledThisWeek } = require('../db/database');
+
+    // 0. Modo Vacaciones: el local está cerrado → NO se canjean consumiciones
+    //    (tapas/cuncas). El traspaso y la compra de NFTs (meme, etc.) siguen activos.
+    try {
+      if (require('../services/corcho').getEconomySettings().vacationMode) {
+        return res.status(400).json({
+          error: '🏖️ O local está de vacacións: os canxes de consumición están pechados ata a volta. Podes seguir traspasando ou mercando NFTs co teu $CORCHO.',
+          vacationClosed: true
+        });
+      }
+    } catch (_) {}
 
     // 1. Verificar si hay evento de Furancho esta semana para abrir la tienda de consumiciones
     if (!isCorchoStoreEventScheduledThisWeek()) {
