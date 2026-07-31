@@ -854,64 +854,16 @@ try {
   }
 } catch (_) {}
 
-// Migración automática: Acreditar 3 visitas retroactivas (19, 22, 26 Julio 18:00) y entregar premio a billetera objetivo
-try {
-  const retroDates = [
-    { dateStr: '2026-07-19', dbTime: '2026-07-19 18:00:00' },
-    { dateStr: '2026-07-22', dbTime: '2026-07-22 18:00:00' },
-    { dateStr: '2026-07-26', dbTime: '2026-07-26 18:00:00' }
-  ];
-
-  const targetWallets = [
-    '0x6fc50fbf91ae0b5791dd8458455ece015e25394b',
-    '0xd5202bb504a1e22cde3a4a818844501f4e806465'
-  ];
-
-  // Limpieza inicial: eliminar cualquier visita que no sea de estas 2 billeteras objetivo
-  db.prepare(`
-    DELETE FROM campaign_visits 
-    WHERE LOWER(wallet_address) NOT IN (${targetWallets.map(w => "'" + w.toLowerCase() + "'").join(',')})
-  `).run();
-
-  for (const w of targetWallets) {
-    if (!w || !/^0x[a-fA-F0-9]{40}$/i.test(w)) continue;
-    for (const item of retroDates) {
-      // 1. Session visit
-      const existsSess = db.prepare(`SELECT id FROM sessions WHERE LOWER(wallet_address) = ? AND date(entry_time) = ?`).get(w, item.dateStr);
-      if (!existsSess) {
-        db.prepare(`INSERT INTO sessions (wallet_address, entry_time, counted_as_visit) VALUES (?, ?, 1)`).run(w, item.dbTime);
-      }
-      // 2. Campaign visit (Reto de los 5)
-      const existsCamp = db.prepare(`SELECT id FROM campaign_visits WHERE LOWER(wallet_address) = ? AND visit_date = ?`).get(w, item.dateStr);
-      if (!existsCamp) {
-        db.prepare(`INSERT INTO campaign_visits (wallet_address, campaign_id, visit_date) VALUES (?, 'reto_5_verano_2026', ?)`).run(w, item.dbTime);
-      }
-    }
-  }
-
-  // 3. Asignar el premio no reclamado del "Menú Almuerzo para 2 personas" a 0x6fc50fbf91ae0b5791dd8458455ece015e25394b
-  try {
-    const targetW = '0x6fc50fbf91ae0b5791dd8458455ece015e25394b';
-    const menuRaffle = db.prepare(`SELECT id FROM raffles WHERE prize LIKE '%Menú Almuerzo%' OR prize LIKE '%Menú%'`).get();
-    if (menuRaffle) {
-      db.prepare(`
-        UPDATE raffles 
-        SET winner_wallet = ?, status = 'accepted', accepted_at = datetime('now')
-        WHERE id = ?
-      `).run(targetW, menuRaffle.id);
-    } else {
-      db.prepare(`
-        INSERT INTO raffles (prize, winner_wallet, status, created_at, accepted_at, verification_code)
-        VALUES ('Menú Almuerzo para 2 personas /prev reserva', ?, 'accepted', '2026-07-30 20:33:00', datetime('now'), 'MENU2P')
-      `).run(targetW);
-    }
-  } catch (e) {
-    console.error('Error reasignando premio de menú:', e.message);
-  }
-
-} catch (e) {
-  console.error('Error en migración de visitas y entrega de premios:', e.message);
-}
+// [ELIMINADO 2026-07-31] Bloque de "migración automática de visitas retroactivas".
+// Corría en CADA arranque del módulo db y causaba daño recurrente:
+//   1) DELETE de campaign_visits de TODOS menos 2 wallets → borraba el progreso del
+//      Reto de los 5 de los demás clientes en cada deploy.
+//   2) INSERT de sesiones de TERRAZA (19/22/26 jul 18:00) con counted_as_visit=1 →
+//      inflaba el "Kilometraje Furancheiro" (una visita de terraza NO es fichaje de
+//      entrada) y dejaba sesiones abiertas huérfanas.
+//   3) Reasignaba un premio de sorteo en cada boot.
+// Las visitas de terraza deben vivir SOLO en campaign_visits (aisladas de sessions).
+// Corrector de datos ya afectados: scripts/fix-terraza-sessions.js
 
 // Vales de consumición: registro server-side para validación por staff/admin
 try {

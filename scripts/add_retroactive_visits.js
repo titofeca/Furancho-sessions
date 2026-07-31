@@ -26,27 +26,15 @@ walletsSet.add('0x6fc50fbf91ae0b5791dd8458455ece015e25394b');
 const wallets = Array.from(walletsSet);
 console.log(`Processing ${wallets.length} wallets for retroactive visits on July 19, 22, and 26 at 18:00...`);
 
-let totalSessionsAdded = 0;
 let totalCampaignVisitsAdded = 0;
 
 for (const walletAddress of wallets) {
   for (const item of targetDates) {
-    const dbTime = `${item.dateStr} ${item.timeStr}`;
-    
-    // 1. Insert session if not exists for this wallet and date
-    const existingSession = db.prepare(`
-      SELECT id FROM sessions 
-      WHERE LOWER(wallet_address) = LOWER(?) 
-        AND date(entry_time) = ?
-    `).get(walletAddress, item.dateStr);
-
-    if (!existingSession) {
-      db.prepare(`
-        INSERT INTO sessions (wallet_address, entry_time, counted_as_visit) 
-        VALUES (?, ?, 1)
-      `).run(walletAddress, dbTime);
-      totalSessionsAdded++;
-    }
+    // IMPORTANTE: una visita de TERRAZA (Reto de los 5) NO es un fichaje de
+    // entrada y NO debe crear sesiones en `sessions`. Solo cuenta para la campaña
+    // (campaign_visits) y da su $CORCHO. Meter sesiones aquí infla el "Kilometraje
+    // Furancheiro" y deja sesiones abiertas huérfanas. NO reañadir el INSERT en
+    // sessions. (Corrector de datos ya afectados: scripts/fix-terraza-sessions.js)
 
     // 2. Insert campaign visit (Reto de los 5)
     try {
@@ -71,4 +59,4 @@ for (const walletAddress of wallets) {
   } catch (e) {}
 }
 
-console.log(`Done! Added ${totalSessionsAdded} sessions and ${totalCampaignVisitsAdded} campaign visits across ${wallets.length} wallets.`);
+console.log(`Done! Added ${totalCampaignVisitsAdded} campaign visits across ${wallets.length} wallets (sin tocar sessions).`);
