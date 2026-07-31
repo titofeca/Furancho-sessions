@@ -389,7 +389,7 @@ router.post('/cancel-voucher', (req, res) => {
 
 module.exports = router;
 
-// ── PASAPORTE DE VERANO ──────────────────────────────────────────────────────
+// ── PASAPORTE DE VERANO (Hasta 2 sellos al día) ──────────────────────────────
 
 router.get('/summer/status', (req, res) => {
   const { walletAddress } = req.query;
@@ -399,22 +399,22 @@ router.get('/summer/status', (req, res) => {
 
   try {
     const { db } = require('../db/database');
-    const stamps = db.prepare(`SELECT stamp_date FROM summer_stamps WHERE LOWER(wallet_address) = LOWER(?) ORDER BY stamp_date ASC`).all(walletAddress);
+    const stamps = db.prepare(`SELECT stamp_date FROM summer_stamps WHERE LOWER(wallet_address) = LOWER(?) ORDER BY id ASC`).all(walletAddress);
     const totalStamps = stamps.length;
     
     // Check if they won
     const winner = db.prepare(`SELECT position, prize_granted FROM summer_passport_winners WHERE LOWER(wallet_address) = LOWER(?)`).get(walletAddress);
 
-    // Can they claim today?
+    // Can they claim today? Max 2 stamps per day
     const today = new Date().toISOString().slice(0, 10);
-    const hasStampedToday = stamps.some(s => s.stamp_date === today);
-    // Passport starts July 31st 2026
-    const canClaimToday = (today >= '2026-07-31') && !hasStampedToday && totalStamps < 20;
+    const todayStamps = stamps.filter(s => s.stamp_date === today).length;
+    const canClaimToday = (today >= '2026-07-31') && (todayStamps < 2) && (totalStamps < 20);
 
     res.json({
       success: true,
       totalStamps,
-      hasStampedToday,
+      todayStamps,
+      maxDailyStamps: 2,
       canClaimToday,
       winnerInfo: winner || null
     });
@@ -442,16 +442,15 @@ router.post('/summer/stamp', (req, res) => {
       return res.status(400).json({ error: 'Ya has completado tu pasaporte (20 sellos).' });
     }
 
-    try {
-      db.prepare(`INSERT INTO summer_stamps (wallet_address, stamp_date) VALUES (?, ?)`).run(walletAddress, today);
-    } catch (err) {
-      if (err.message.includes('UNIQUE')) {
-        return res.status(400).json({ error: 'Ya has puesto tu sello de hoy. Vuelve mañana.' });
-      }
-      throw err;
+    const todayStamps = db.prepare(`SELECT COUNT(*) as c FROM summer_stamps WHERE LOWER(wallet_address) = LOWER(?) AND stamp_date = ?`).get(walletAddress, today).c;
+    if (todayStamps >= 2) {
+      return res.status(400).json({ error: 'Ya has puesto tus 2 sellos de hoy. Vuelve mañana.' });
     }
 
+    db.prepare(`INSERT INTO summer_stamps (wallet_address, stamp_date) VALUES (?, ?)`).run(walletAddress, today);
+
     const newTotal = stamps + 1;
+    const newTodayStamps = todayStamps + 1;
     let justCompleted = false;
     let position = null;
 
@@ -468,8 +467,9 @@ router.post('/summer/stamp', (req, res) => {
 
     res.json({
       success: true,
-      message: '¡Sello estampado con éxito!',
-      newTotal,
+      totalStamps: newTotal,
+      todayStamps: newTodayStamps,
+      maxDailyStamps: 2,
       justCompleted,
       position
     });

@@ -94,42 +94,6 @@
 
           const f1 = document.createElement('div'); f1.className = 'flower-overlay tl'; document.body.appendChild(f1);
           const f2 = document.createElement('div'); f2.className = 'flower-overlay br'; document.body.appendChild(f2);
-          // Eliminada la 3a flor
-
-          // Cambiar logos estáticos por el vídeo animado de flores
-          document.querySelectorAll('.header-logo-row img').forEach(img => {
-            img.style.display = 'none'; // Ocultar imagen estática
-            
-            const video = document.createElement('video');
-            video.src = '/assets/flores.mp4';
-            video.autoplay = true;
-            video.loop = true;
-            video.muted = true;
-            video.playsInline = true;
-            // Hacer el contenedor padre del logo (header-logo-row) de ancho completo
-            img.parentNode.style.maxWidth = '100vw';
-            img.parentNode.style.width = '100vw';
-            img.parentNode.style.padding = '0';
-            img.parentNode.style.background = 'transparent';
-            img.parentNode.style.backdropFilter = 'none';
-            img.parentNode.style.border = 'none';
-            img.parentNode.style.display = 'block'; // Quitar flex para evitar problemas de centrado
-            
-            // Hacer el vídeo gigante ocupando todo el ancho de la pantalla (edge-to-edge)
-            video.style.width = '100vw';
-            video.style.maxWidth = '100vw';
-            video.style.height = 'auto'; // Mantener proporciones
-            video.style.display = 'block';
-            video.style.margin = '0'; // Ya no hace falta el hack del margin negativo porque el padre es 100%
-            video.style.objectFit = 'contain';
-            video.style.pointerEvents = 'none';
-            video.style.borderRadius = '0px'; // Sin bordes para que toque los extremos
-            video.style.boxShadow = '0 10px 30px rgba(217, 70, 239, 0.15)';
-            video.style.position = 'relative'; // Para que respete el z-index
-            video.style.zIndex = '10'; // Explicitly behind the flowers (9000)
-            
-            img.parentNode.insertBefore(video, img);
-          });
         });
       }
     })();
@@ -2482,7 +2446,7 @@
           <div style="position:absolute; bottom:-10px; left:-10px; font-size:40px; opacity:0.1; transform:rotate(-20deg);">🌴</div>
           
           <h3 style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:var(--wine); margin:0 0 4px; line-height:1.1;">☀️ Pasaporte de Verano</h3>
-          <p style="font-size:11.5px; color:var(--text-muted); margin:0 0 12px; line-height:1.4;">Ficha cada día y colecciona 20 sellos. ¡Los 3 primeros se llevan un premio gordo a la vuelta!</p>
+          <p style="font-size:11.5px; color:var(--text-muted); margin:0 0 12px; line-height:1.4;">Ficha cada día y colecciona sellos (hasta 2 al día). ¡Los 3 primeros en llegar a 20 se llevan premio gordo!</p>
           
           <div style="display:flex; justify-content:center; align-items:center; margin-bottom:12px; gap:8px;">
             <div style="font-size:24px; font-weight:900; color:#d85a30; font-family:monospace;" id="passport-stamp-count">0/20</div>
@@ -5141,9 +5105,12 @@
             claimBtn.style.display = 'block';
             claimMsg.style.display = 'none';
             waitMsg.style.display = 'none';
+            const stampNum = (data.todayStamps || 0) + 1;
+            claimBtn.innerHTML = `📍 Estampar Sello #${stampNum} de Hoy (${data.todayStamps || 0}/2 hoy)`;
           } else {
             claimBtn.style.display = 'none';
             claimMsg.style.display = 'block';
+            claimMsg.textContent = '✅ 2/2 sellos estampados hoy. ¡Vuelve mañana!';
             waitMsg.style.display = 'none';
           }
         }

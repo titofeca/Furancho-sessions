@@ -170,10 +170,27 @@ try {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       wallet_address TEXT NOT NULL,
       stamp_date TEXT NOT NULL,
-      created_at TEXT DEFAULT (datetime('now')),
-      UNIQUE(wallet_address, stamp_date)
+      created_at TEXT DEFAULT (datetime('now'))
     )
   `);
+  // Migración para eliminar restricción UNIQUE si existía
+  try {
+    const indices = db.prepare(`PRAGMA index_list('summer_stamps')`).all();
+    if (indices.some(i => i.unique === 1)) {
+      db.exec(`
+        CREATE TABLE summer_stamps_v2 (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          wallet_address TEXT NOT NULL,
+          stamp_date TEXT NOT NULL,
+          created_at TEXT DEFAULT (datetime('now'))
+        );
+        INSERT INTO summer_stamps_v2 (id, wallet_address, stamp_date, created_at)
+        SELECT id, wallet_address, stamp_date, created_at FROM summer_stamps;
+        DROP TABLE summer_stamps;
+        ALTER TABLE summer_stamps_v2 RENAME TO summer_stamps;
+      `);
+    }
+  } catch (_) {}
 } catch (_) {}
 
 try {
