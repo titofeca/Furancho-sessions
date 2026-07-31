@@ -1856,6 +1856,64 @@ router.post('/mints/:id/reject', requireAuth, (req, res) => {
   }
 });
 
+// POST /api/admin/mints/notify-pending — envía mensaje a O Taboleiro / Push a todos los clientes con NFTs pendientes de mintear
+router.post('/mints/notify-pending', requireAuth, (req, res) => {
+  try {
+    const { insertMessage, getPendingApprovalMints, getPendingApprovalAchievements } = require('../db/database');
+    const pendingLevels = getPendingApprovalMints ? getPendingApprovalMints() : [];
+    const pendingAchievements = getPendingApprovalAchievements ? getPendingApprovalAchievements() : [];
+
+    const targets = new Set();
+    pendingLevels.forEach(m => { if (m.wallet_address) targets.add(m.wallet_address.toLowerCase()); });
+    pendingAchievements.forEach(m => { if (m.wallet_address) targets.add(m.wallet_address.toLowerCase()); });
+
+    if (targets.size === 0) {
+      return res.json({ success: true, count: 0, message: 'No hay clientes con NFTs pendientes por recordar.' });
+    }
+
+    const subject = '🎨 ¡Tienes un NFT esperándote en tu Museo!';
+    const body = `¡Hola, furancheiro/a! Tienes un logro/NFT pendiente de reclamar (${targets.size} socios). Entra en tu Museo do Furancho en la App y pulsa Reclamar/Mintear para recibirlo en tu wallet 🚀.`;
+    
+    insertMessage({
+      subject,
+      body,
+      levelFilter: 'all',
+      recipientCount: targets.size,
+      actionType: 'nft_reminder'
+    });
+
+    res.json({ success: true, count: targets.size, message: `¡Enviado recordatorio a ${targets.size} socio(s) con NFTs pendientes!` });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/mints/:id/notify-user — envía aviso individual a un cliente concreto
+router.post('/mints/:id/notify-user', requireAuth, (req, res) => {
+  try {
+    const { insertMessage } = require('../db/database');
+    const wallet = req.body.walletAddress;
+    const label = req.body.label || 'NFT';
+
+    if (!wallet) return res.status(400).json({ error: 'Falta walletAddress' });
+
+    const subject = `🎨 ¡Tu NFT "${label}" te está esperando!`;
+    const body = `Hola! Tienes tu NFT "${label}" listo para ser minteado. Entra en tu Museo do Furancho en la App para recibirlo en tu wallet 🍷.`;
+
+    insertMessage({
+      subject,
+      body,
+      levelFilter: 'all',
+      recipientCount: 1,
+      actionType: 'nft_reminder'
+    });
+
+    res.json({ success: true, message: `Recordatorio enviado a ${wallet.slice(0, 8)}...` });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── CAMPAÑA "RETO DE LOS 5" ─────────────────────────────────────────────────
 
 // GET /api/admin/campaign/stats — resumen de la campaña + ranking + pendientes de aprobar.

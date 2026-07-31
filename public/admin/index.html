@@ -3590,11 +3590,14 @@
 
       <!-- Pendientes de aprobación -->
       <div class="glass-card" style="margin-bottom:16px;">
-        <div class="card-header" style="margin-bottom:12px;">
-          <span class="card-title">⏳ Pendientes de aprobar</span>
-          <span id="nft-pending-count" style="background:#f59e0b; color:#000; font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; margin-left:8px; display:none;"></span>
+        <div class="card-header" style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; align-items:center;">
+            <span class="card-title">⏳ Pendientes de aprobar</span>
+            <span id="nft-pending-count" style="background:#f59e0b; color:#000; font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; margin-left:8px; display:none;"></span>
+          </div>
+          <button onclick="notifyAllPendingMints()" style="background:rgba(196,151,58,0.15); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:800; cursor:pointer;" title="Enviar recordatorio en O Taboleiro / Push a todos los clientes pendientes de NFT">📢 Recordar a todos por Mensaje</button>
         </div>
-        <p style="font-size:13px; color:var(--text-muted); margin:0 0 14px;">Cuando un cliente llega a Nv3 (4 visitas), Nv4 (12 visitas) o gana un logro/NFT especial (eventos/sorteos/campañas), aparece aquí. Aprueba para que reciba su NFT real en Polygon.</p>
+        <p style="font-size:13px; color:var(--text-muted); margin:0 0 14px;">Cuando un cliente llega a Nv3 (4 visitas), Nv4 (12 visitas) o gana un logro/NFT especial (eventos/sorteos/campañas), aparece aquí. Aprueba para que reciba su NFT real en Polygon o envíale un aviso.</p>
         <div id="nfts-pending-list" style="display:flex; flex-direction:column; gap:10px;">
           <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Cargando...</div>
         </div>
@@ -4988,19 +4991,54 @@
         const isAch = m.type === 'achievement';
         const col = isAch ? '#C4973A' : (levelColors[m.level] || '#888');
         const badgeText = isAch ? `🏅 Logro: ${m.achievement_name}` : `Nv${m.level} — ${m.level_name}`;
+        const walletAddr = m.wallet_address || '';
         return `<div style="background:var(--bg); border:1px solid ${col}44; border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
           <span style="background:${col}22; color:${col}; border:1px solid ${col}44; border-radius:100px; padding:3px 10px; font-size:10px; font-weight:700; white-space:nowrap;">${badgeText}</span>
           <span style="font-family:monospace; font-size:11px; color:var(--text-muted); flex:1;">${m.wallet_masked}</span>
           <span style="font-size:11px; color:var(--text-muted); white-space:nowrap;">${m.visit_count} visitas</span>
           <span style="font-size:10px; color:var(--text-muted); flex-shrink:0;">${m.minted_at ? m.minted_at.slice(0, 16) : '—'}</span>
-          <div style="display:flex; gap:6px; flex-shrink:0; width:100%; justify-content:flex-end;">
-            <button onclick="approvePendingMint(${m.id}, '${m.type}')" style="background:#22c55e; color:#fff; border:none; border-radius:8px; padding:8px 18px; font-size:13px; font-weight:600; cursor:pointer;">✅ Aprobar mint</button>
-            <button onclick="rejectPendingMint(${m.id}, '${m.type}')" style="background:#ef4444; color:#fff; border:none; border-radius:8px; padding:8px 18px; font-size:13px; font-weight:600; cursor:pointer;">❌ Rechazar</button>
+          <div style="display:flex; gap:6px; flex-shrink:0; width:100%; justify-content:flex-end; flex-wrap:wrap;">
+            <button onclick="notifyUserMint(${m.id}, '${walletAddr}', '${badgeText}')" style="background:rgba(196,151,58,0.15); border:1px solid rgba(196,151,58,0.4); color:var(--gold); border-radius:8px; padding:8px 14px; font-size:12px; font-weight:700; cursor:pointer;" title="Enviar recordatorio a este socio por O Taboleiro">📩 Avisar socio</button>
+            <button onclick="approvePendingMint(${m.id}, '${m.type}')" style="background:#22c55e; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer;">✅ Aprobar mint</button>
+            <button onclick="rejectPendingMint(${m.id}, '${m.type}')" style="background:#ef4444; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer;">❌ Rechazar</button>
           </div>
         </div>`;
       }).join('');
     } catch (e) {
       if (container) container.innerHTML = `<div style="text-align:center; color:#ef4444; font-size:13px; padding:16px;">Error cargando pendientes</div>`;
+    }
+  }
+
+  async function notifyAllPendingMints() {
+    if (!confirm('¿Enviar un recordatorio en O Taboleiro a todos los clientes que tienen un NFT o logro pendiente por reclamar?')) return;
+    try {
+      showToast('Enviando recordatorios...');
+      const res = await fetch('/api/admin/mints/notify-pending', { method: 'POST', headers: authHeaders() }).then(r => r.json());
+      if (res.success) {
+        showToast(res.message || '¡Recordatorios enviados!');
+      } else {
+        showToast(res.error || 'Error al enviar avisos', true);
+      }
+    } catch(e) {
+      showToast('Error de red al enviar avisos', true);
+    }
+  }
+
+  async function notifyUserMint(id, walletAddress, label) {
+    try {
+      showToast('Enviando aviso...');
+      const res = await fetch(`/api/admin/mints/${id}/notify-user`, {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress, label })
+      }).then(r => r.json());
+      if (res.success) {
+        showToast(res.message || 'Aviso enviado al socio');
+      } else {
+        showToast(res.error || 'Error al avisar', true);
+      }
+    } catch(e) {
+      showToast('Error de red al avisar', true);
     }
   }
 
