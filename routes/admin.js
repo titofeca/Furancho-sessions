@@ -2805,6 +2805,10 @@ router.post('/corcho/settings', requireAuth, (req, res) => {
   try {
     const corcho = require('../services/corcho');
     const updated = corcho.saveEconomySettings(req.body || {});
+    try {
+      const { broadcast } = require('./raffle');
+      broadcast('vacation_mode_toggle', { vacationMode: !!updated.vacationMode });
+    } catch (_) {}
     res.json({ success: true, message: 'Tarifas del Banco do Corcho actualizadas', settings: updated });
   } catch (e) {
     res.status(500).json({ error: e.message });

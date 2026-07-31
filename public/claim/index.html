@@ -14071,9 +14071,12 @@
         }
       }
 
-      window.applySummerLogoState = function() {
+    window.applySummerLogoState = function() {
       const isSummer = !!window.isVacationMode;
-      document.querySelectorAll('.header-logo-row img').forEach(img => {
+      document.body.className = isSummer ? 'theme-summer' : '';
+
+      // Intercambio de logo (logo de verano con sombrillas vs logo habitual)
+      document.querySelectorAll('.header-logo-row img, img[alt*="Logo"]').forEach(img => {
         if (isSummer) {
           if (!img.src.includes('/assets/logo_verano.jpg')) {
             img.src = '/assets/logo_verano.jpg';
@@ -14086,6 +14089,22 @@
           img.classList.remove('logo-verano');
         }
       });
+
+      // Partículas y pasaporte en modo verano
+      if (isSummer) {
+        if (typeof spawnSummerParticles === 'function') spawnSummerParticles();
+      } else {
+        const summerContainer = document.getElementById('summer-particles');
+        if (summerContainer) summerContainer.innerHTML = '';
+        const passportCard = document.getElementById('summer-passport-card');
+        if (passportCard) passportCard.style.display = 'none';
+      }
+
+      // Ocultar/Mostrar sección de agenda/eventos según el modo
+      const agendaSection = document.getElementById('agenda-section');
+      if (agendaSection && isSummer) {
+        agendaSection.style.display = 'none';
+      }
     };
 
     window.spawnSummerParticles = function() {
