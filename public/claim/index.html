@@ -230,21 +230,38 @@
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    /* Logo de verano / vacaciones — ocupa la pantalla de izquierda a derecha */
+    /* Logo de verano / vacaciones — ocupa la pantalla de BORDE A BORDE.
+       Ancho 100% sin padding lateral, sin esquinas redondeadas y altura
+       automática (sin max-height que lo encoja y deje huecos a los lados). */
     .header-logo-row img.logo-verano,
     body.theme-summer .header-logo-row img {
+      display: block !important;
       width: 100% !important;
       max-width: 100% !important;
       height: auto !important;
-      max-height: 110px !important;
+      max-height: none !important;
       object-fit: contain !important;
-      border-radius: 12px !important;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
     }
 
     body.theme-summer .header-logo-row {
-      padding: 10px 16px 8px;
+      padding: 0 0 4px !important;
       background: rgba(254, 250, 240, 0.94);
+    }
+    /* Al hacer scroll, la cabecera de verano tampoco mete padding lateral */
+    body.theme-summer .header-logo-row.scrolled {
+      padding: 0 0 4px !important;
+    }
+    /* El botón ↻ va a la esquina superior (el logo ancho ocupa el centro) con
+       fondo legible por encima del logo de verano. */
+    body.theme-summer .header-logo-row > button {
+      top: 8px !important;
+      right: 8px !important;
+      transform: none !important;
+      background: rgba(255, 255, 255, 0.92) !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+      z-index: 2 !important;
     }
 
     /* Logo de verano en la pantalla de INICIO — ocupa el ancho de la pantalla
