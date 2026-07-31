@@ -265,6 +265,11 @@ function recordVisitByStaff(walletAddress, d = new Date()) {
   return recordVisit(walletAddress, d);
 }
 
+function recordVisitByDate(walletAddress, dateStr) {
+  if (!walletAddress || !dateStr) return { counted: false };
+  return _doRecordVisit(walletAddress, dateStr);
+}
+
 // Progreso del cliente (para su app). No escribe nada.
 function getProgress(walletAddress) {
   const visits = getCampaignVisitCount(walletAddress);

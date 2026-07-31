@@ -2760,14 +2760,14 @@ function getMyWins(walletAddress) {
 function getPendingNftPrizes(walletAddress) {
   if (!walletAddress) return [];
   const lower = String(walletAddress).toLowerCase();
+  const parseObj = (s) => { try { const o = JSON.parse(s || '{}'); return (o && typeof o === 'object') ? o : {}; } catch (_) { return {}; } };
 
   // 1) Sorteos normales (tabla raffles): ganador único por fila.
   const raffleRows = db.prepare(`
     SELECT id, prize, nft_achievement_id, prize_image, created_at
     FROM raffles
     WHERE LOWER(winner_wallet) = LOWER(?)
-      AND nft_achievement_id IS NOT NULL
-      AND nft_granted_at IS NULL
+      AND (nft_granted_at IS NULL OR status = 'accepted')
       AND status IN ('accepted','collected','pending_acceptance')
     ORDER BY created_at DESC
   `).all(walletAddress).map(r => ({
@@ -2775,17 +2775,15 @@ function getPendingNftPrizes(walletAddress) {
     prize: r.prize, nft_achievement_id: r.nft_achievement_id, prize_image: r.prize_image
   }));
 
-  // 2) Chave Semanal (tabla weekly_raffles): winner_wallet es un array JSON de ganadores;
-  //    nft_granted_wallets es un mapa JSON { wallet: ts } de a quién ya se le entregó.
+  // 2) Chave Semanal (tabla weekly_raffles): ganador único o múltiples ganadores (array JSON).
   const weeklyRows = db.prepare(`
-    SELECT claimed_week, prize, nft_achievement_id, winner_wallet, nft_granted_wallets, forfeited_wallets, drawn_at
+    SELECT claimed_week, prize, nft_achievement_id, winner_wallet, nft_granted_wallets, collected_wallets, forfeited_wallets, verification_code, drawn_at
     FROM weekly_raffles
-    WHERE nft_achievement_id IS NOT NULL
-      AND status = 'completed'
-      AND winner_wallet IS NOT NULL
+    WHERE winner_wallet IS NOT NULL
+      AND status IN ('completed', 'drawn')
     ORDER BY drawn_at DESC
   `).all();
-  const parseObj = (s) => { try { const o = JSON.parse(s || '{}'); return (o && typeof o === 'object') ? o : {}; } catch (_) { return {}; } };
+
   const weeklyPending = [];
   for (const r of weeklyRows) {
     let winners = [];
@@ -2793,15 +2791,34 @@ function getPendingNftPrizes(walletAddress) {
     catch (_) { winners = r.winner_wallet ? [r.winner_wallet] : []; }
     const isWinner = winners.some(w => w && w.toLowerCase() === lower);
     if (!isWinner) continue;
+
     const granted = parseObj(r.nft_granted_wallets);
+    const collected = parseObj(r.collected_wallets);
     const forfeited = parseObj(r.forfeited_wallets);
-    // Ya entregado a esta wallet, o esta wallet perdió su plazo → no pendiente.
-    const grantedKey = Object.keys(granted).find(k => k.toLowerCase() === lower);
-    const forfeitedKey = Object.keys(forfeited).find(k => k.toLowerCase() === lower);
-    if (grantedKey || forfeitedKey) continue;
+
+    // Si esta wallet ya cobró/recibió el premio o caducó → no está pendiente
+    const isGranted = Object.keys(granted).some(k => k.toLowerCase() === lower);
+    const isCollected = Object.keys(collected).some(k => k.toLowerCase() === lower);
+    const isForfeited = Object.keys(forfeited).some(k => k.toLowerCase() === lower);
+
+    if (isGranted || isCollected || isForfeited) continue;
+
+    let code = r.verification_code || '—';
+    try {
+      const codeObj = JSON.parse(r.verification_code);
+      if (codeObj && typeof codeObj === 'object') {
+        code = codeObj[lower] || Object.values(codeObj)[0] || '—';
+      }
+    } catch (_) {}
+
     weeklyPending.push({
-      source: 'weekly', raffleId: null, week: r.claimed_week,
-      prize: r.prize, nft_achievement_id: r.nft_achievement_id, prize_image: null
+      source: 'weekly',
+      raffleId: null,
+      week: r.claimed_week,
+      prize: r.prize,
+      code: code,
+      nft_achievement_id: r.nft_achievement_id,
+      prize_image: null
     });
   }
 

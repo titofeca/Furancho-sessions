@@ -306,8 +306,16 @@ function performCheckin(walletAddress, ipAddress, isSelfCheckin = false) {
     const { getPendingNftPrizes } = require('../db/database');
     const achievements = require('../services/achievements');
     pendingNftPrizes = (getPendingNftPrizes(walletAddress) || []).map(r => {
-      const a = achievements.getById(r.nft_achievement_id);
-      return { prize: r.prize, name: a ? a.name : r.prize, image: a ? a.image : null };
+      const a = r.nft_achievement_id ? achievements.getById(r.nft_achievement_id) : null;
+      return {
+        source: r.source,
+        raffleId: r.raffleId,
+        week: r.week,
+        prize: r.prize,
+        code: r.code || null,
+        achievementName: a ? a.name : (r.prize || 'Premio de Sorteo'),
+        achievementImage: a ? a.image : (r.prize_image || null)
+      };
     });
   } catch (_) {}
 

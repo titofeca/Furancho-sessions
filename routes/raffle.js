@@ -1628,19 +1628,35 @@ function grantCorchoPrizeHandler(req, res, grantedBy) {
   try {
     const { addCorchoCoins } = require('../db/database');
     const title = prizeName ? `🎉 Premio de sorteo: ${prizeName}` : '🎉 Premio de sorteo do Furancho';
-    const ref = raffleId ? `raffle_prize_${raffleId}`
-              : (week ? `raffle_prize_week_${week}` : `raffle_grant_${Date.now()}`);
-    
+
     let successCount = 0;
     let alreadyCount = 0;
 
     for (const wallet of wallets) {
+      const lowerWallet = wallet.toLowerCase();
+      const ref = raffleId
+        ? `raffle_prize_${raffleId}_${lowerWallet}`
+        : (week ? `raffle_prize_week_${week}_${lowerWallet}` : `raffle_grant_${lowerWallet}_${Date.now()}`);
+
       const result = addCorchoCoins(wallet, qty, 'raffle_prize', title, ref);
       if (result && result.alreadyGranted) {
         alreadyCount++;
         continue;
       }
       successCount++;
+
+      // Si es de sorteo semanal, registrar la entrega en collected_wallets para esta wallet
+      if (week) {
+        try {
+          const row = db.prepare(`SELECT collected_wallets FROM weekly_raffles WHERE claimed_week = ?`).get(week);
+          let collectedMap = {};
+          try { collectedMap = JSON.parse((row && row.collected_wallets) || '{}'); } catch (_) {}
+          collectedMap[lowerWallet] = new Date().toISOString();
+          db.prepare(`UPDATE weekly_raffles SET collected_wallets = ? WHERE claimed_week = ?`).run(JSON.stringify(collectedMap), week);
+        } catch (e) {
+          console.error('Error registrando entrega semanal:', e.message);
+        }
+      }
       try {
         sendPushToWallet(
           wallet,

@@ -647,7 +647,7 @@
       }
     }
 
-    // Pinta los premios NFT pendientes de entrega presencial (chave dourada, etc.).
+    // Pinta los premios (NFT, $CORCHO, etc.) pendientes de entrega presencial (chave dourada, etc.).
     // Devuelve true si había premios y hemos parado el auto-cierre.
     function renderNftPrizes(prizes, wallet){
       const wrap = document.getElementById('result-nft-prizes');
@@ -655,27 +655,73 @@
       if (!prizes || !prizes.length){ wrap.style.display = 'none'; wrap.innerHTML = ''; return false; }
       wrap.style.display = 'block';
       wrap.innerHTML = prizes.map((p, idx) => {
-        // Guardamos cada premio en una lista global para que el botón lo recupere por índice
-        // (así soportamos source raffle|weekly sin meter comillas raras en el onclick).
         window._nftPrizeQueue = window._nftPrizeQueue || {};
         window._nftPrizeQueue[wallet + ':' + idx] = p;
+        const codeBadge = p.code ? `<div style="display:inline-block; background:rgba(139,25,24,0.1); border:1px dashed var(--wine); border-radius:6px; padding:2px 8px; font-size:12px; font-family:monospace; font-weight:800; color:var(--wine); margin-top:4px;">🔑 Código: ${p.code}</div>` : '';
         return `
         <div style="padding:16px; background:linear-gradient(135deg, rgba(196,151,58,0.22), rgba(139,25,24,0.10)); border:2px solid var(--gold); border-radius:16px; margin-bottom:10px; box-shadow:0 4px 16px rgba(196,151,58,0.25);">
           <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
             ${p.achievementImage ? `<img src="${p.achievementImage}" alt="" style="width:56px; height:56px; border-radius:12px; object-fit:cover; border:2px solid var(--gold); background:#fff;" />` : '<span style="font-size:40px;">🏅</span>'}
             <div style="flex:1;">
-              <p style="margin:0; font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--wine);">🏅 GANÓ ESTE NFT${p.source === 'weekly' ? ' · CHAVE SEMANAL' : ''}</p>
-              <p style="margin:2px 0 0; font-size:16px; font-weight:900; color:var(--wine); font-family:'Playfair Display',serif;">${p.achievementName}</p>
+              <p style="margin:0; font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--wine);">🏆 GANADOR DE PREMIO${p.source === 'weekly' ? ' · CHAVE SEMANAL' : ''}</p>
+              <p style="margin:2px 0 0; font-size:16px; font-weight:900; color:var(--wine); font-family:'Playfair Display',serif;">${p.achievementName || p.prize}</p>
               ${p.prize ? `<p style="margin:2px 0 0; font-size:11px; color:var(--text-muted);">Sorteo: ${p.prize}</p>` : ''}
+              ${codeBadge}
             </div>
           </div>
-          <button type="button" onclick="grantNftPrize(this, '${wallet}', '${wallet + ':' + idx}')"
-                  style="width:100%; padding:14px; background:linear-gradient(135deg, var(--gold), #a97b1f); color:#fff; border:none; border-radius:12px; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 3px 12px rgba(196,151,58,0.4); font-family:'Outfit',sans-serif;">
-            🏅 Entregarle el NFT ahora
-          </button>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <button type="button" onclick="grantCorchoPrizeFromStaffModal(this, '${wallet}', '${wallet + ':' + idx}')"
+                    style="width:100%; padding:12px; background:linear-gradient(135deg, var(--gold), #a97b1f); color:#2A1509; border:none; border-radius:12px; font-size:13px; font-weight:800; cursor:pointer; box-shadow:0 3px 12px rgba(196,151,58,0.4); font-family:'Outfit',sans-serif;">
+              🪙 Acreditar $CORCHO a este Ganador
+            </button>
+            <button type="button" onclick="grantNftPrize(this, '${wallet}', '${wallet + ':' + idx}')"
+                    style="width:100%; padding:11px; background:rgba(139,25,24,0.1); color:var(--wine); border:1.5px solid var(--wine); border-radius:12px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">
+              ✅ Marcar Premio/NFT Entregado
+            </button>
+          </div>
         </div>`;
       }).join('');
       return true;
+    }
+
+    async function grantCorchoPrizeFromStaffModal(btn, wallet, queueKey) {
+      const p = (window._nftPrizeQueue || {})[queueKey];
+      if (!p) { corchoAlert('No encuentro el premio.'); return; }
+      const amountStr = prompt(`¿Cuántas CorchoCoins ($CORCHO) deseas acreditar a ${wallet.slice(0,6)}... por ${p.prize || 'Premio Sorteo'}?`, '500');
+      if (!amountStr || isNaN(parseInt(amountStr, 10))) return;
+      const amount = parseInt(amountStr, 10);
+
+      btn.disabled = true;
+      const prevText = btn.textContent;
+      btn.textContent = 'Acreditando...';
+
+      try {
+        const r = await fetch('/api/raffle/grant-corcho-prize', {
+          method: 'POST',
+          headers: staffHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({
+            walletAddress: wallet,
+            amount: amount,
+            prizeName: p.prize || p.achievementName || 'Premio Sorteo',
+            raffleId: p.raffleId || null,
+            week: p.week || null
+          })
+        });
+        const d = await r.json();
+        if (r.ok && (d.success || d.alreadyGranted)) {
+          btn.style.background = 'rgba(22,163,74,0.9)';
+          btn.style.color = '#fff';
+          btn.textContent = `✅ ${amount} $CORCHO Acreditados`;
+        } else {
+          btn.disabled = false;
+          btn.textContent = prevText;
+          corchoAlert(d.error || 'No se pudo acreditar');
+        }
+      } catch (e) {
+        btn.disabled = false;
+        btn.textContent = prevText;
+        corchoAlert('Error de red');
+      }
     }
 
     async function grantNftPrize(btn, wallet, queueKey){

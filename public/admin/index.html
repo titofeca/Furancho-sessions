@@ -8655,27 +8655,47 @@
         if (winnerInfo) winnerInfo.style.display = 'block';
         if (winnerAddress) {
           let parsedCollected = {};
+          let parsedForfeited = {};
           try { parsedCollected = JSON.parse(data.collectedWallets || '{}'); } catch(_) {}
+          try { parsedForfeited = JSON.parse(data.forfeitedWallets || '{}'); } catch(_) {}
           try {
             const wallets = JSON.parse(data.winnerWallet);
             const codes = JSON.parse(data.verificationCode || "{}");
             const isMultiple = wallets.length > 1;
             let html = '';
-            wallets.forEach(w => {
+            wallets.forEach((w, idx) => {
+              const lowerW = w.toLowerCase();
               const pdfLink = data.confirmedAt
-                ? `<a href="/api/pdf/weekly/${selectedWeek}?wallet=${encodeURIComponent(w)}" target="_blank" style="padding:2px 6px; background:rgba(196,151,58,0.12); border:1px solid rgba(196,151,58,0.3); border-radius:6px; font-size:10px; font-weight:700; color:var(--gold); cursor:pointer; text-decoration:none; margin-left:8px;">📄 PDF</a>`
+                ? `<a href="/api/pdf/weekly/${selectedWeek}?wallet=${encodeURIComponent(w)}" target="_blank" style="padding:2px 6px; background:rgba(196,151,58,0.12); border:1px solid rgba(196,151,58,0.3); border-radius:6px; font-size:10px; font-weight:700; color:var(--gold); cursor:pointer; text-decoration:none; margin-left:6px;">📄 PDF</a>`
                 : '';
               const chatBtn = `<button onclick="openWeeklyChatModal('${w}','${selectedWeek}')" style="padding:2px 8px; background:rgba(139,25,24,0.08); border:1px solid rgba(139,25,24,0.25); border-radius:6px; font-size:10px; font-weight:700; color:var(--wine); cursor:pointer; margin-left:6px; font-family:'Outfit',sans-serif;">💬 Chat</button>`;
-              const isWinnerCollected = !!parsedCollected[w];
-              const deliverBtn = isMultiple && !data.forfeitedAt && data.status !== 'forfeited'
-                ? (isWinnerCollected
-                    ? `<span style="font-size:11px; font-weight:700; color:#15803d; white-space:nowrap;">✅ Entregado</span>`
-                    : `<button onclick="collectWeeklyWinnerPrize('${w}')" style="padding:4px 10px; background:linear-gradient(135deg,#4ade80,#16a34a); color:#fff; border:none; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap; font-family:'Outfit',sans-serif;">Entregar</button>`)
-                : '';
-              html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid rgba(0,0,0,0.05); gap:8px; flex-wrap:wrap;"><span style="font-family:monospace; font-size:12px; display:flex; align-items:center; gap:4px;">${w}${pdfLink}${chatBtn}</span><span style="font-weight:bold; color:var(--wine); font-size:14px;">${codes[w] || '—'}</span>${deliverBtn}</div>`;
+              const isWinnerCollected = !!parsedCollected[lowerW];
+              const isWinnerForfeited = !!parsedForfeited[lowerW];
+
+              let actionHtml = '';
+              if (isWinnerCollected) {
+                actionHtml = `<span style="font-size:11.5px; font-weight:800; color:#15803d;">✅ Premio Entregado / Acreditado</span>`;
+              } else if (isWinnerForfeited) {
+                actionHtml = `<span style="font-size:11.5px; font-weight:800; color:var(--text-muted);">⌛ Premio Caducado</span>`;
+              } else {
+                actionHtml = `
+                  <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">
+                    <button onclick="grantCorchoPrizeToIndividualWinner('${w}', '${selectedWeek}', '${(data.prize || '').replace(/'/g, "\\'")}')" style="padding:6px 12px; background:linear-gradient(135deg,var(--gold),#a47d2c); color:#2A1509; border:none; border-radius:8px; font-size:11.5px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif;">🪙 Acreditar $CORCHO</button>
+                    <button onclick="collectWeeklyWinnerPrize('${w}', '${selectedWeek}')" style="padding:6px 12px; background:linear-gradient(135deg,#4ade80,#16a34a); color:#fff; border:none; border-radius:8px; font-size:11.5px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif;">✅ Marcar Entregado</button>
+                  </div>`;
+              }
+
+              const codeVal = codes[w] || codes[lowerW] || Object.values(codes)[idx] || '—';
+              html += `
+              <div style="background:rgba(255,255,255,0.7); border:1.5px solid rgba(196,151,58,0.3); border-radius:12px; padding:10px 12px; margin-bottom:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px;">
+                  <span style="font-family:monospace; font-size:12.5px; font-weight:700; color:var(--text);">${w.slice(0,8)}...${w.slice(-6)} ${pdfLink} ${chatBtn}</span>
+                  <span style="font-family:monospace; font-size:15px; font-weight:900; color:var(--wine); background:rgba(139,25,24,0.08); padding:2px 8px; border-radius:6px; border:1px dashed rgba(139,25,24,0.3);">🔑 ${codeVal}</span>
+                </div>
+                ${actionHtml}
+              </div>`;
             });
             winnerAddress.innerHTML = html;
-            // Guardar flag para la lógica de botón global más abajo
             winnerAddress._isMultiple = isMultiple;
           } catch(e) {
             const pdfLink = data.confirmedAt && data.winnerWallet && data.winnerWallet !== '—'
@@ -9046,18 +9066,15 @@
     }
   }
 
-  async function grantCorchoPrizeToWeeklyWinner() {
-    const addressEl = document.getElementById('weekly-winner-address');
-    const wallet = addressEl ? addressEl.textContent.trim() : '';
+  async function grantCorchoPrizeToIndividualWinner(wallet, weekStr, defaultPrizeName) {
     if (!wallet || !/^0x[a-fA-F0-9]{40}$/i.test(wallet)) {
       return showToast('No hay una wallet de ganador válida seleccionada.', true);
     }
-    const amountStr = prompt(`¿Cuántas CorchoCoins ($CORCHO) deseas acreditar a ${wallet.slice(0,6)}…${wallet.slice(-4)}?`, '1000');
+    const amountStr = prompt(`¿Cuántas CorchoCoins ($CORCHO) deseas acreditar a ${wallet.slice(0,6)}…${wallet.slice(-4)}?`, '500');
     if (!amountStr || isNaN(parseInt(amountStr, 10))) return;
     const amount = parseInt(amountStr, 10);
-    const prizeName = prompt('Nombre/Concepto del sorteo (ej: Premio Sorteo Chave Semanal):', 'Premio Sorteo Chave') || 'Premio Sorteo Chave';
-    // week para que el crédito sea idempotente (no se dobla si se pulsa dos veces)
-    const week = (document.getElementById('weekly-admin-week-select') || {}).value || undefined;
+    const prizeName = prompt('Nombre/Concepto del sorteo (ej: Premio Sorteo Chave Semanal):', defaultPrizeName || 'Premio Sorteo Chave') || 'Premio Sorteo Chave';
+    const week = weekStr || (document.getElementById('weekly-admin-week-select') || {}).value || undefined;
 
     try {
       const res = await fetch('/api/raffle/grant-corcho-prize', {
@@ -9066,12 +9083,19 @@
         body: JSON.stringify({ walletAddress: wallet, amount, prizeName, week })
       }).then(r => r.json());
 
-      if (res.success) {
-        showToast(res.message);
+      if (res.success || res.alreadyGranted) {
+        showToast(res.message || 'Corchos acreditados con éxito');
+        loadWeeklyRaffleAdmin();
       } else {
         showToast('Error: ' + (res.error || 'No se pudo acreditar'), true);
       }
     } catch (e) { showToast('Error de conexión', true); }
+  }
+
+  async function grantCorchoPrizeToWeeklyWinner() {
+    const addressEl = document.getElementById('weekly-winner-address');
+    const firstWallet = addressEl ? (addressEl.querySelector('span') ? addressEl.querySelector('span').textContent.trim().slice(0,42) : '') : '';
+    grantCorchoPrizeToIndividualWinner(firstWallet);
   }
 
   async function drawWeeklyRaffleAdmin() {
