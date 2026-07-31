@@ -530,6 +530,30 @@ router.post('/:id/reject', requireAuth, (req, res) => {
   }
 });
 
+// POST /api/raffle/admin/reassign — reasignar y aceptar premio de sorteo a otra billetera (admin)
+router.post('/admin/reassign', requireAuth, (req, res) => {
+  const { id, walletAddress } = req.body || {};
+  if (!id || !walletAddress) return res.status(400).json({ error: 'Falta id de rifa o walletAddress' });
+  const ethRegex = /^0x[a-fA-F0-9]{40}$/i;
+  if (!ethRegex.test(walletAddress)) return res.status(400).json({ error: 'Wallet inválida' });
+
+  try {
+    const { db } = require('../db/database');
+    const raffle = db.prepare(`SELECT * FROM raffles WHERE id = ?`).get(id);
+    if (!raffle) return res.status(404).json({ error: 'Premio no encontrado' });
+
+    db.prepare(`
+      UPDATE raffles 
+      SET winner_wallet = ?, status = 'accepted', accepted_at = datetime('now')
+      WHERE id = ?
+    `).run(walletAddress.toLowerCase(), id);
+
+    res.json({ success: true, message: `Premio '${raffle.prize}' reasignado con éxito a ${walletAddress}.` });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/raffle/eligible-check?wallet=0x... — público, sesión hoy + sorteos de esta noche
 router.get('/eligible-check', (req, res) => {
   const { wallet } = req.query;

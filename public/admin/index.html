@@ -8493,6 +8493,32 @@
     }
   }
 
+  window.reassignRafflePrize = async function(raffleId) {
+    const wallet = prompt('Escribe el ID de Socio / Wallet (0x...) del cliente al que quieres asignarle este premio:');
+    if (!wallet) return;
+    const ethRegex = /^0x[a-fA-F0-9]{40}$/i;
+    if (!ethRegex.test(wallet.trim())) {
+      showToast('Wallet no válida', true);
+      return;
+    }
+    try {
+      const res = await fetch('/api/raffle/admin/reassign', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: raffleId, walletAddress: wallet.trim() })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('✅ Premio reasignado y activado para el cliente');
+        loadRaffleHistory();
+      } else {
+        showToast(data.error || 'Error reasignando premio', true);
+      }
+    } catch (e) {
+      showToast('Error de red al reasignar premio', true);
+    }
+  };
+
   function getClientYearWeek(d = new Date()) {
     const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
     date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
