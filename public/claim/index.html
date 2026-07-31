@@ -238,6 +238,20 @@
       background: rgba(254, 250, 240, 0.94);
     }
 
+    /* Logo de verano en la pantalla de INICIO — ocupa el ancho de la pantalla
+       como hacía el de flores. Solo en modo vacaciones. */
+    body.theme-summer #onboarding-logo.logo-verano {
+      width: 100% !important;
+      max-width: 100% !important;
+      height: auto !important;
+      max-height: 210px !important;
+      margin-bottom: 22px !important;
+      opacity: 1 !important;
+      object-fit: contain !important;
+      border-radius: 18px !important;
+      box-shadow: 0 10px 30px rgba(216, 90, 48, 0.18) !important;
+    }
+
     .nft-image-container {
       width: 100%;
       max-width: 420px;
@@ -1981,7 +1995,7 @@
   <!-- ==================== PANTALLA: ONBOARDING ==================== -->
   <div class="screen active" id="screen-onboarding" style="justify-content:center; padding:40px 24px;">
     <div style="width:100%; max-width:380px; text-align:center;">
-      <img src="/assets/logo.png" alt="Furancho Sessions" style="height:52px; border-radius:10px; margin-bottom:32px; opacity:0.9;" />
+      <img id="onboarding-logo" src="/assets/logo.png" alt="Furancho Sessions" style="height:52px; border-radius:10px; margin-bottom:32px; opacity:0.9;" />
       <h1 style="font-family:'Playfair Display',serif; font-size:30px; font-weight:900; color:var(--text); margin-bottom:6px; letter-spacing:-0.3px;">Furancho Sessions</h1>
       <p style="font-size:14px; color:var(--text-muted); margin-bottom:36px; line-height:1.6; font-weight:300;">Afterwork · Viño, Tapas y Leria ochentera</p>
  
@@ -4999,7 +5013,7 @@
       qrLink.href = qrUrl;
 
       // No aplicar tema oscuro en el perfil — mantener fondo crema siempre
-      document.body.className = window.isVacationMode ? 'theme-summer' : '';
+      document.body.classList.toggle('theme-summer', !!window.isVacationMode);
       applySummerLogoState();
       if (window.isVacationMode) {
         spawnSummerParticles();
@@ -7233,7 +7247,7 @@
         try {
           const data = JSON.parse(e.data);
           window.isVacationMode = !!data.vacationMode;
-          document.body.className = window.isVacationMode ? 'theme-summer' : '';
+          document.body.classList.toggle('theme-summer', !!window.isVacationMode);
           applySummerLogoState();
           if (window.isVacationMode) {
             spawnSummerParticles();
@@ -10063,7 +10077,22 @@
   }
 
   // Manejador del toggle de la guía para cambiar el texto del botón
+  // Estado de Modo Vacaciones al ARRANCAR — independiente de wallet.
+  // Persistente: lee la config guardada por el admin en el servidor, así el
+  // tema verano (colores + logo a pantalla completa) se ve en cualquier
+  // pantalla, incluido el onboarding, desde el primer instante.
+  async function loadVacationState() {
+    try {
+      const rates = await fetch('/api/corcho/rates').then(r => r.json()).catch(() => null);
+      if (rates && Object.prototype.hasOwnProperty.call(rates, 'vacationMode')) {
+        window.isVacationMode = !!rates.vacationMode;
+        if (typeof applySummerLogoState === 'function') applySummerLogoState();
+      }
+    } catch (_) { /* silencioso: si falla la red, se aplica luego con el history */ }
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
+    loadVacationState();
     const guideCard = document.querySelector('.guide-card');
     if (guideCard) {
       guideCard.addEventListener('toggle', (e) => {
@@ -14073,10 +14102,13 @@
 
     window.applySummerLogoState = function() {
       const isSummer = !!window.isVacationMode;
-      document.body.className = isSummer ? 'theme-summer' : '';
+      // toggle en vez de sobrescribir className para no borrar otras clases del body
+      document.body.classList.toggle('theme-summer', isSummer);
 
-      // Intercambio de logo (logo de verano con sombrillas vs logo habitual)
-      document.querySelectorAll('.header-logo-row img, img[alt*="Logo"]').forEach(img => {
+      // Intercambio de logo (logo de verano con sombrillas vs logo habitual).
+      // Incluye el logo de la pantalla de inicio (#onboarding-logo) para que el
+      // modo vacaciones se vea desde el primer arranque, sin necesidad de wallet.
+      document.querySelectorAll('.header-logo-row img, img[alt*="Logo"], #onboarding-logo').forEach(img => {
         if (isSummer) {
           if (!img.src.includes('/assets/logo_verano.jpg')) {
             img.src = '/assets/logo_verano.jpg';
