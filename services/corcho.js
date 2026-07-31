@@ -16,7 +16,7 @@ const DEFAULT_RATES = {
   level3: 250,             // Recompensa por alcanzar Nivel 3 (O Larpeiro)
   level4: 500,             // Recompensa por alcanzar Nivel 4 (O Presidente)
   referral: 75,            // Recompensa para ambos por Plan Amigo
-  campaignVisit: 30,       // Recompensa por visita a la Terraza de verano
+  campaignVisit: 2,        // Recompensa por visita a la Terraza de verano (2 $CORCHO por día sin evento)
   campaignCompleted: 300,  // Recompensa por completar el Reto de los 5
   nftTransferFee: 150,     // Peaje en $CORCHO por traspasar un NFT entre wallets
   rsvpShowup: 15,          // Recompensa por cumplir RSVP ("Me apetece") y asistir
@@ -179,30 +179,71 @@ function saveEconomySettings(rates = {}) {
   return getEconomySettings();
 }
 
-// Recompensa por fichaje de entrada
-function rewardCheckin(walletAddress, eventIdOrDate) {
+// Recompensa por fichaje de entrada (SOLO en día de evento Furancho activo y dentro de horario)
+function rewardCheckin(walletAddress, customRefId) {
   const amount = getRate('checkin');
-  return addCorchoCoins(
-    walletAddress,
-    amount,
-    'checkin',
-    `🍷 Fichaje no Furancho (+${amount} $CORCHO)`,
-    eventIdOrDate || 'checkin_event'
-  );
+  if (!amount || amount <= 0) return { added: false, error: 'rate_zero' };
+
+  try {
+    const { getActiveEventWindow } = require('../db/database');
+    const win = getActiveEventWindow();
+    if (!win || !win.event) {
+      return { added: false, error: 'no_active_event' };
+    }
+
+    // Verificar que la hora actual esté dentro de la ventana del evento (startMs - 60 min early margin a endMs)
+    const marginMs = 60 * 60 * 1000;
+    if (win.nowMs < (win.startMs - marginMs) || win.nowMs > win.endMs) {
+      return { added: false, error: 'outside_event_hours' };
+    }
+
+    // Clave deduplicada única por usuario, evento y fecha (máximo 1 entrada recompensada por día de evento)
+    const refId = customRefId || `entry_event_${win.event.id}_${win.eventDayStr}_${walletAddress.toLowerCase()}`;
+
+    return addCorchoCoins(
+      walletAddress,
+      amount,
+      'checkin',
+      `🍷 Fichaje no Furancho (+${amount} $CORCHO)`,
+      refId
+    );
+  } catch (e) {
+    return { added: false, error: e.message };
+  }
 }
 
-// Recompensa por fichar SALIDA. Idempotente por sesión: cada salida cerrada da una
-// sola vez su recompensa (refId = id de la sesión), tanto en vivo como en el backfill.
+// Recompensa por fichaje de SALIDA (SOLO en día de evento Furancho activo y dentro de horario)
 function rewardExit(walletAddress, sessionId) {
   const amount = getRate('exit');
-  if (!amount || amount <= 0) return { added: false };
-  return addCorchoCoins(
-    walletAddress,
-    amount,
-    'exit',
-    `🚪 Fichaje de salida (+${amount} $CORCHO)`,
-    `exit_session_${sessionId}`
-  );
+  if (!amount || amount <= 0) return { added: false, error: 'rate_zero' };
+
+  try {
+    const { getActiveEventWindow } = require('../db/database');
+    const win = getActiveEventWindow();
+    if (!win || !win.event) {
+      return { added: false, error: 'no_active_event' };
+    }
+
+    // Permite fichar salida durante la ventana del evento o hasta 2 horas después de su cierre
+    const postMarginMs = 2 * 60 * 60 * 1000;
+    const marginMs = 60 * 60 * 1000;
+    if (win.nowMs < (win.startMs - marginMs) || win.nowMs > (win.endMs + postMarginMs)) {
+      return { added: false, error: 'outside_event_hours' };
+    }
+
+    // Clave deduplicada única por usuario, evento y fecha (máximo 1 salida recompensada por día de evento)
+    const refId = `exit_event_${win.event.id}_${win.eventDayStr}_${walletAddress.toLowerCase()}`;
+
+    return addCorchoCoins(
+      walletAddress,
+      amount,
+      'exit',
+      `🚪 Fichaje de salida (+${amount} $CORCHO)`,
+      refId
+    );
+  } catch (e) {
+    return { added: false, error: e.message };
+  }
 }
 
 // Recompensa por cumplir RSVP ("Me apetece") y asistir
@@ -246,12 +287,12 @@ function rewardLevelAward(walletAddress, level) {
 }
 
 // Recompensa por visita de campaña. La refId se normaliza SIEMPRE a `camp_<fecha>`
-// (aquí dentro), para que el registro EN VIVO y el backfill produzcan la misma clave
-// y no se acredite dos veces la misma visita. Acepta que le pasen la fecha ya con
-// prefijo (idempotente) o sin él.
+// Recompensa por visita de campaña/Terraza (SOLO días sin evento Furancho).
+// Otorga exactamente 2 $CORCHO por día de visita a la Terraza, máximo 1 vez al día por wallet.
 function rewardCampaignVisit(walletAddress, visitDate) {
-  const amount = getRate('campaignVisit');
-  const key = String(visitDate || '').startsWith('camp_') ? visitDate : `camp_${visitDate}`;
+  const amount = getRate('campaignVisit') || 2;
+  const rawDate = String(visitDate || '').replace(/^camp_/, '');
+  const key = `camp_${rawDate}_${walletAddress.toLowerCase()}`;
   return addCorchoCoins(
     walletAddress,
     amount,

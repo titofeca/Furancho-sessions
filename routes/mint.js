@@ -247,12 +247,7 @@ function performCheckin(walletAddress, ipAddress, isSelfCheckin = false) {
 
     try {
       const corcho = require('../services/corcho');
-      // refId por DÍA (UTC) — MISMO esquema que el backfill (sessions.entry_time y
-      // visits.event_date son UTC). Antes el vivo usaba event_<id> y el backfill
-      // event_<fecha>: al no coincidir, la MISMA visita se acreditaba dos veces
-      // (100 en vivo + 100 en el backfill). Con la misma clave se deduplica → 1 vez.
-      const refId = `event_${new Date().toISOString().slice(0, 10)}`;
-      corchoReward = corcho.rewardCheckin(walletAddress, refId);
+      corchoReward = corcho.rewardCheckin(walletAddress);
 
       // Recompensas por compromiso: RSVP y VIP Show-up
       const { getActiveEventWindow, db } = require('../db/database');
