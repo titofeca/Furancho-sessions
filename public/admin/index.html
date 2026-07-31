@@ -5881,13 +5881,15 @@
 
 
   async function saveCorchoAdminSettings() {
-    const getVal = id => parseInt(document.getElementById(id).value, 10) || 0;
+    // null-safe: un input ausente devuelve 0 en vez de tumbar TODO el guardado
+    // (un getElementById(null).value rompía el save entero → nada persistía,
+    // incluido el Modo Vacaciones).
+    const getVal = id => { const el = document.getElementById(id); return el ? (parseInt(el.value, 10) || 0) : 0; };
     const body = {
       checkin: getVal('rate-checkin'),
       exit: getVal('rate-exit'),
       rsvpShowup: getVal('rate-rsvp'),
       vipShowup: getVal('rate-vip'),
-      nftTransferFee: getVal('rate-nftTransferFee'),
       level1: getVal('rate-level1'),
       level2: getVal('rate-level2'),
       level3: getVal('rate-level3'),
@@ -12668,6 +12670,7 @@
   // Pendientes de dar: tapas por consumir, camisetas sin stock, etc.
   function renderMemePending(list) {
     const el = document.getElementById('meme-pending-list');
+    if (!el) return; // contenedor ausente tras la reorg: evita reventar el timer y llenar la consola
     if (!list || !list.length) {
       el.innerHTML = `<div style="font-size:12px; color:var(--text-muted); padding:10px; background:rgba(42,21,9,0.04); border-radius:10px;">Nada pendiente: a todos los memes vendidos se les ha dado lo suyo. 🍷</div>`;
       return;
