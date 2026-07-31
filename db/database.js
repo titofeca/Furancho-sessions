@@ -2617,6 +2617,18 @@ function madridToUTC(madridDateStr, madridTimeStr) {
 // Cierre automático de sesiones: ocurre cuando TERMINA el horario del evento de la agenda
 // (no a una hora fija). Se llama cada minuto desde server.js; sólo actúa al pasar la hora de cierre.
 function autoCloseSessionsAfterEvent() {
+  // Cierre automático de seguridad para cualquier sesión abierta con más de 4 horas de antigüedad
+  try {
+    db.prepare(`
+      UPDATE sessions
+      SET exit_time = datetime(entry_time, '+2 hours'),
+          auto_closed = 1,
+          duration_minutes = 120
+      WHERE exit_time IS NULL
+        AND entry_time < datetime('now', '-4 hours')
+    `).run();
+  } catch (_) {}
+
   const now = new Date();
   const madridNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
   const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

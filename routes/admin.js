@@ -1268,9 +1268,23 @@ router.get('/wallet-detail/:address', requireAuth, (req, res) => {
       LIMIT 40
     `).all(address);
 
+    // Auto-cierre preventivo de sesiones caducadas (+4h)
+    try {
+      db.prepare(`
+        UPDATE sessions
+        SET exit_time = datetime(entry_time, '+2 hours'),
+            auto_closed = 1,
+            duration_minutes = 120
+        WHERE exit_time IS NULL
+          AND entry_time < datetime('now', '-4 hours')
+      `).run();
+    } catch (_) {}
+
     const activeSession = db.prepare(`
       SELECT entry_time FROM sessions
-      WHERE LOWER(wallet_address) = LOWER(?) AND exit_time IS NULL
+      WHERE LOWER(wallet_address) = LOWER(?)
+        AND exit_time IS NULL
+        AND entry_time >= datetime('now', '-4 hours')
       ORDER BY entry_time DESC LIMIT 1
     `).get(address);
 
