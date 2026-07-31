@@ -1581,22 +1581,41 @@ router.get('/corcho/fraud-check', requireAuth, (req, res) => {
       GROUP BY LOWER(t.wallet_address)
     `).all());
 
-    // Verdad de campo (actividad real). Las visitas viven en DOS tablas según el flujo
-    // (histórico en `visits`, actual en `sessions`), así que se unen las dos para no
-    // marcar en rojo una visita legítima que solo esté en una de ellas.
+    // Verdad de campo (actividad real). Se sincronizan visitas de sessions, visits y transacciones de $CORCHO
+    // para evitar falsos positivos por discrepancia de tablas.
     const visitDays = mapOf(db.prepare(`
       SELECT w, COUNT(DISTINCT day) c FROM (
-        SELECT LOWER(wallet_address) w, date(entry_time) day FROM sessions WHERE counted_as_visit = 1
+        SELECT LOWER(wallet_address) w, date(entry_time) day FROM sessions
         UNION
         SELECT LOWER(wallet_address) w, COALESCE(event_date, date(visited_at)) day FROM visits
+        UNION
+        SELECT LOWER(wallet_address) w, substr(reference_id, 7) day FROM corcho_transactions WHERE type = 'checkin' AND reference_id LIKE 'event_%'
       ) GROUP BY w
     `).all());
-    const closedSessions = mapOf(db.prepare(`SELECT LOWER(wallet_address) w, COUNT(*) c FROM sessions WHERE counted_as_visit = 1 AND exit_time IS NOT NULL GROUP BY LOWER(wallet_address)`).all());
+
+    const closedSessions = mapOf(db.prepare(`
+      SELECT w, COUNT(DISTINCT s) c FROM (
+        SELECT LOWER(wallet_address) w, CAST(id AS TEXT) s FROM sessions WHERE exit_time IS NOT NULL
+        UNION
+        SELECT LOWER(wallet_address) w, COALESCE(event_date, date(visited_at)) s FROM visits
+        UNION
+        SELECT LOWER(wallet_address) w, reference_id s FROM corcho_transactions WHERE type = 'exit'
+      ) GROUP BY w
+    `).all());
+
     const levelMints = mapOf(db.prepare(`SELECT LOWER(wallet_address) w, COUNT(DISTINCT level) c FROM mints WHERE status = 'success' GROUP BY LOWER(wallet_address)`).all());
     const asReferrer = mapOf(db.prepare(`SELECT LOWER(referrer_wallet) w, COUNT(*) c FROM referrals GROUP BY LOWER(referrer_wallet)`).all());
     const referredSet = new Set(db.prepare(`SELECT DISTINCT LOWER(referred_wallet) w FROM referrals`).all().map(r => r.w));
     let campaignVisits = {};
-    try { campaignVisits = mapOf(db.prepare(`SELECT LOWER(wallet_address) w, COUNT(*) c FROM campaign_visits GROUP BY LOWER(wallet_address)`).all()); } catch (_) {}
+    try {
+      campaignVisits = mapOf(db.prepare(`
+        SELECT w, COUNT(DISTINCT ref) c FROM (
+          SELECT LOWER(wallet_address) w, CAST(id AS TEXT) ref FROM campaign_visits
+          UNION
+          SELECT LOWER(wallet_address) w, COALESCE(reference_id, CAST(id AS TEXT)) ref FROM corcho_transactions WHERE type = 'campaign_visit'
+        ) GROUP BY w
+      `).all());
+    } catch (_) {}
 
     const KNOWN = new Set([
       'checkin', 'exit', 'level_award', 'campaign_visit', 'referral',
