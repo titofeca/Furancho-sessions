@@ -389,7 +389,8 @@ router.post('/cancel-voucher', (req, res) => {
 
 module.exports = router;
 
-// ── PASAPORTE DE VERANO (Hasta 2 sellos al día) ──────────────────────────────
+// ── PASAPORTE DE VERANO (1 sello al día) ─────────────────────────────────────
+const SUMMER_MAX_DAILY_STAMPS = 1;
 
 router.get('/summer/status', (req, res) => {
   const { walletAddress } = req.query;
@@ -405,16 +406,16 @@ router.get('/summer/status', (req, res) => {
     // Check if they won
     const winner = db.prepare(`SELECT position, prize_granted FROM summer_passport_winners WHERE LOWER(wallet_address) = LOWER(?)`).get(walletAddress);
 
-    // Can they claim today? Max 2 stamps per day
+    // Can they claim today? 1 sello por día
     const today = new Date().toISOString().slice(0, 10);
     const todayStamps = stamps.filter(s => s.stamp_date === today).length;
-    const canClaimToday = (today >= '2026-07-31') && (todayStamps < 2) && (totalStamps < 20);
+    const canClaimToday = (today >= '2026-07-31') && (todayStamps < SUMMER_MAX_DAILY_STAMPS) && (totalStamps < 20);
 
     res.json({
       success: true,
       totalStamps,
       todayStamps,
-      maxDailyStamps: 2,
+      maxDailyStamps: SUMMER_MAX_DAILY_STAMPS,
       canClaimToday,
       winnerInfo: winner || null
     });
@@ -443,8 +444,8 @@ router.post('/summer/stamp', (req, res) => {
     }
 
     const todayStamps = db.prepare(`SELECT COUNT(*) as c FROM summer_stamps WHERE LOWER(wallet_address) = LOWER(?) AND stamp_date = ?`).get(walletAddress, today).c;
-    if (todayStamps >= 2) {
-      return res.status(400).json({ error: 'Ya has puesto tus 2 sellos de hoy. Vuelve mañana.' });
+    if (todayStamps >= SUMMER_MAX_DAILY_STAMPS) {
+      return res.status(400).json({ error: 'Ya has puesto tu sello de hoy. Vuelve mañana.' });
     }
 
     db.prepare(`INSERT INTO summer_stamps (wallet_address, stamp_date) VALUES (?, ?)`).run(walletAddress, today);
@@ -469,7 +470,7 @@ router.post('/summer/stamp', (req, res) => {
       success: true,
       totalStamps: newTotal,
       todayStamps: newTodayStamps,
-      maxDailyStamps: 2,
+      maxDailyStamps: SUMMER_MAX_DAILY_STAMPS,
       justCompleted,
       position
     });

@@ -2460,7 +2460,7 @@
           <div style="position:absolute; bottom:-10px; left:-10px; font-size:40px; opacity:0.1; transform:rotate(-20deg);">🌴</div>
           
           <h3 style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:var(--wine); margin:0 0 4px; line-height:1.1;">☀️ Pasaporte de Verano</h3>
-          <p style="font-size:11.5px; color:var(--text-muted); margin:0 0 12px; line-height:1.4;">Ficha cada día y colecciona sellos (hasta 2 al día). ¡Los 3 primeros en llegar a 20 se llevan premio gordo!</p>
+          <p style="font-size:11.5px; color:var(--text-muted); margin:0 0 12px; line-height:1.4;">Ficha cada día y colecciona sellos (uno al día). ¡Los 3 primeros en llegar a 20 se llevan premio gordo!</p>
           
           <div style="display:flex; justify-content:center; align-items:center; margin-bottom:12px; gap:8px;">
             <div style="font-size:24px; font-weight:900; color:#d85a30; font-family:monospace;" id="passport-stamp-count">0/20</div>
@@ -5119,12 +5119,17 @@
             claimBtn.style.display = 'block';
             claimMsg.style.display = 'none';
             waitMsg.style.display = 'none';
-            const stampNum = (data.todayStamps || 0) + 1;
-            claimBtn.innerHTML = `📍 Estampar Sello #${stampNum} de Hoy (${data.todayStamps || 0}/2 hoy)`;
+            const maxDaily = data.maxDailyStamps || 1;
+            claimBtn.innerHTML = maxDaily > 1
+              ? `📍 Estampar Sello #${(data.todayStamps || 0) + 1} de Hoy (${data.todayStamps || 0}/${maxDaily} hoy)`
+              : `📍 Estampar Sello de Hoy`;
           } else {
             claimBtn.style.display = 'none';
             claimMsg.style.display = 'block';
-            claimMsg.textContent = '✅ 2/2 sellos estampados hoy. ¡Vuelve mañana!';
+            const maxDaily = data.maxDailyStamps || 1;
+            claimMsg.textContent = maxDaily > 1
+              ? `✅ ${data.todayStamps || maxDaily}/${maxDaily} sellos estampados hoy. ¡Vuelve mañana!`
+              : '✅ Sello de hoy estampado. ¡Vuelve mañana!';
             waitMsg.style.display = 'none';
           }
         }
