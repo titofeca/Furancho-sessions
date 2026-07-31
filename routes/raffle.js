@@ -2078,11 +2078,20 @@ router.post('/admin/grant-direct', requireAuth, (req, res) => {
 });
 
 // GET /api/raffle/admin/redemptions (ADMIN ONLY)
-// Devuelve el historial de premios entregados/canjeados en local con su timestamp exacto.
+// Devuelve tanto los premios directos/locales pendientes de canje como los ya canjeados con su timestamp exacto.
 router.get('/admin/redemptions', requireAuth, (req, res) => {
   try {
     const { db } = require('../db/database');
-    const rows = db.prepare(`
+    const pendingDirect = db.prepare(`
+      SELECT id, prize, winner_wallet, verification_code, created_at, status,
+             prize_details, establishment, validity, people, hours, days, validity_end_date
+      FROM raffles
+      WHERE status = 'accepted' AND (type = 'local' OR winner_wallet IS NOT NULL)
+      ORDER BY created_at DESC
+      LIMIT 100
+    `).all();
+
+    const redemptions = db.prepare(`
       SELECT id, prize, winner_wallet, verification_code, created_at, status,
              collected_at, collected_by, prize_details, establishment, validity,
              people, hours, days, validity_end_date
@@ -2092,7 +2101,7 @@ router.get('/admin/redemptions', requireAuth, (req, res) => {
       LIMIT 100
     `).all();
 
-    res.json({ redemptions: rows });
+    res.json({ pendingDirect, redemptions });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
