@@ -2737,6 +2737,15 @@ function insertRaffle(prize, winnerWallet, verificationCode, participantWallets 
   return id;
 }
 
+function insertDirectWalletPrize({ prize, winnerWallet, prizeDetails = null, prizeImage = null, establishment = null, validity = null, people = null, hours = null, days = null, validityEndDate = null, type = 'local' }) {
+  const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+  const id = db.prepare(`
+    INSERT INTO raffles (prize, winner_wallet, verification_code, status, accepted_at, prize_details, prize_image, establishment, type, validity, people, hours, days, validity_end_date)
+    VALUES (?, ?, ?, 'accepted', datetime('now'), ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(prize, winnerWallet.toLowerCase(), code, prizeDetails || null, prizeImage || null, establishment || null, type || 'local', validity || null, people || null, hours || null, days || null, validityEndDate || null).lastInsertRowid;
+  return { id, verificationCode: code };
+}
+
 function acceptRaffle(raffleId, walletAddress) {
   const raffle = db.prepare(`SELECT winner_wallet, status, target_level, prize FROM raffles WHERE id = ?`).get(raffleId);
   if (!raffle) throw new Error('Sorteo no encontrado');
@@ -3533,6 +3542,7 @@ module.exports = {
   autoCloseSessionsAfterEvent,
 
   insertRaffle,
+  insertDirectWalletPrize,
   collectRaffle,
   redeemRaffleByWinner,
   getRaffleHistory,

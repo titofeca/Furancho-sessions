@@ -2150,6 +2150,73 @@
         </div>
       </div>
 
+      <!-- Entrega Directa de Premio a Billetera Específica -->
+      <div class="glass-card" style="margin-bottom:16px; border:2px solid var(--gold);">
+        <div class="card-header" style="margin-bottom:12px;">
+          <span class="card-title">🎁 Entrega Directa de Premio a Billetera</span>
+        </div>
+        <p style="font-size:12px; color:var(--text-muted); margin:0 0 12px; line-height:1.4;">
+          Asigna un premio directamente a la billetera de un cliente específico (fidelización, compensación o premios especiales). Le aparecerá inmediatamente en su app en "Mis Premios" listo para canjear.
+        </p>
+
+        <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--wine); margin-bottom:4px;">👤 Wallet del destinatario</label>
+        <input type="text" class="input-field" id="direct-prize-wallet" placeholder="0x... wallet del cliente" style="margin-bottom:10px; font-size:14px;" />
+
+        <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">🎁 Nombre del premio</label>
+        <input type="text" class="input-field" id="direct-prize-name" placeholder="Ej: Cena para 2 personas en A Cova, Botella Mencía..." style="margin-bottom:10px; font-size:14px;" />
+
+        <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">🏪 Local del premio / Establecimiento</label>
+        <input type="text" class="input-field" id="direct-prize-establishment" placeholder="Ej: Taberna A Cova, Furancho Sessions..." style="margin-bottom:10px; font-size:14px;" />
+
+        <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">📝 Condiciones y Normas del Premio</label>
+        <textarea class="input-field" id="direct-prize-details" placeholder="Ej: Vale por 1 cena para 2 personas. Incluye bebida. No acumulable." rows="2" style="font-size:13px; resize:vertical; font-family:'Outfit',sans-serif; margin-bottom:10px;"></textarea>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
+          <div>
+            <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">👥 Personas</label>
+            <input type="text" class="input-field" id="direct-prize-people" placeholder="Ej: 2 personas" style="margin:0; font-size:13px;" />
+          </div>
+          <div>
+            <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">📅 Validez</label>
+            <input type="text" class="input-field" id="direct-prize-validity" placeholder="Ej: 30 días" style="margin:0; font-size:13px;" />
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
+          <div>
+            <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">🗓️ Días válidos</label>
+            <input type="text" class="input-field" id="direct-prize-days" placeholder="Ej: Jue a Dom" style="margin:0; font-size:13px;" />
+          </div>
+          <div>
+            <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">🕒 Horario</label>
+            <input type="text" class="input-field" id="direct-prize-hours" placeholder="Ej: 20:00 a 23:00" style="margin:0; font-size:13px;" />
+          </div>
+        </div>
+
+        <div style="margin-bottom:12px;">
+          <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(42,21,9,0.5); margin-bottom:4px;">⛔ Fecha límite de canje (opcional)</label>
+          <input type="date" class="input-field" id="direct-prize-end-date" style="margin:0; font-size:13px;" />
+        </div>
+
+        <button onclick="grantDirectWalletPrize()" style="width:100%; background:linear-gradient(135deg,var(--wine),#6b1010); color:#fff; border:none; border-radius:12px; padding:12px; font-size:13.5px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif; box-shadow:0 4px 12px rgba(139,25,24,0.25);">
+          🎁 Otorgar Premio Directo a Billetera
+        </button>
+      </div>
+
+      <!-- Historial de Canjes en Local -->
+      <div class="glass-card" style="margin-bottom:16px;">
+        <div class="card-header" style="margin-bottom:12px;">
+          <span class="card-title">📋 Historial de Canjes en Local</span>
+          <button class="btn-download" onclick="loadRedemptionsHistory()" style="font-size:11px; padding:6px 12px;">↻</button>
+        </div>
+        <p style="font-size:12px; color:var(--text-muted); margin:0 0 12px; line-height:1.4;">
+          Registro oficial de entregas de bonos/premios validados en el establecimiento con fecha y hora de canje.
+        </p>
+        <div id="redemptions-history-list" style="display:flex; flex-direction:column; gap:8px;">
+          <p style="font-size:12px; color:var(--text-muted); text-align:center; padding:8px 0;">Cargando historial...</p>
+        </div>
+      </div>
+
       <!-- Lanzar sorteo -->
       <div class="message-form">
         <!-- Estado: participantes y contador -->
@@ -4120,7 +4187,7 @@
       loadAnalyticsPage();
       loadEventFinanceStats();
     }
-    if (pageId === 'raffles') { loadAchievementFilterOptions(); loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); loadScheduled(); loadWeeklyRaffleAdmin(); loadWeeklyTemplates(); loadChaveAppPolicy(); loadPartnersAdmin(); populateSchedEstablishmentSelect(); }
+    if (pageId === 'raffles') { loadAchievementFilterOptions(); loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); loadScheduled(); loadWeeklyRaffleAdmin(); loadWeeklyTemplates(); loadChaveAppPolicy(); loadPartnersAdmin(); populateSchedEstablishmentSelect(); loadRedemptionsHistory(); }
     if (pageId === 'nfts') { loadNftsPage(); loadAchievementStats(); loadAchievementManager(); loadCampaignAdmin(); loadManualMintNftOptions(); }
     if (pageId === 'qrcodes') { stopScanner(); document.getElementById('scanner-result').style.display='none'; document.getElementById('scanner-status').textContent=''; loadStaffCode(); loadEntryQrDates(); }
     if (pageId !== 'qrcodes') { try { stopScanner(); } catch(e){} }
@@ -8444,6 +8511,75 @@
       if (data.success) { showToast('Fecha corregida'); loadRaffleHistory(); }
       else showToast(data.error || 'Error', true);
     } catch(e) { showToast('Error', true); }
+  }
+
+  async function grantDirectWalletPrize() {
+    const wallet = document.getElementById('direct-prize-wallet')?.value.trim();
+    const prize = document.getElementById('direct-prize-name')?.value.trim();
+    if (!wallet) return showToast('Introduce la wallet del cliente', true);
+    if (!prize) return showToast('Introduce el nombre del premio', true);
+
+    const establishment = document.getElementById('direct-prize-establishment')?.value.trim() || null;
+    const prizeDetails = document.getElementById('direct-prize-details')?.value.trim() || null;
+    const people = document.getElementById('direct-prize-people')?.value.trim() || null;
+    const validity = document.getElementById('direct-prize-validity')?.value.trim() || null;
+    const days = document.getElementById('direct-prize-days')?.value.trim() || null;
+    const hours = document.getElementById('direct-prize-hours')?.value.trim() || null;
+    const validityEndDate = document.getElementById('direct-prize-end-date')?.value || null;
+
+    if (!confirm(`¿Otorgar directamente el premio «${prize}» a\n${wallet}?`)) return;
+
+    try {
+      const res = await fetch('/api/raffle/admin/grant-direct', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          winnerWallet: wallet, prize, prizeDetails, establishment, validity, people, hours, days, validityEndDate
+        })
+      }).then(r => r.json());
+
+      if (res.success) {
+        showToast(`🎁 ¡Premio otorgado a ${wallet.slice(0,8)}...!`);
+        ['direct-prize-wallet','direct-prize-name','direct-prize-establishment','direct-prize-details','direct-prize-people','direct-prize-validity','direct-prize-days','direct-prize-hours','direct-prize-end-date']
+          .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        loadRedemptionsHistory();
+      } else {
+        showToast(res.error || 'Error al otorgar premio', true);
+      }
+    } catch (e) {
+      showToast('Error de red al otorgar premio', true);
+    }
+  }
+
+  async function loadRedemptionsHistory() {
+    const listEl = document.getElementById('redemptions-history-list');
+    if (!listEl) return;
+    try {
+      const res = await fetch('/api/raffle/admin/redemptions', { headers: authHeaders() }).then(r => r.json());
+      const list = res.redemptions || [];
+      if (!list.length) {
+        listEl.innerHTML = '<p style="font-size:12px; color:var(--text-muted); text-align:center; padding:12px 0;">No hay canjes registrados aún.</p>';
+        return;
+      }
+      listEl.innerHTML = list.map(r => {
+        const colDate = r.collected_at
+          ? new Date(r.collected_at.replace(' ', 'T') + 'Z').toLocaleString('es-ES', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
+          : '—';
+        const wm = r.winner_wallet ? (r.winner_wallet.slice(0,6) + '...' + r.winner_wallet.slice(-4)) : '—';
+        return `<div style="background:rgba(22,163,74,0.06); border:1px solid rgba(22,163,74,0.2); border-radius:10px; padding:10px 12px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;">
+            <span style="font-size:13px; font-weight:700; color:var(--text);">${r.prize}</span>
+            <span style="font-size:11px; font-weight:700; color:#16a34a; background:rgba(22,163,74,0.15); padding:2px 6px; border-radius:6px;">✅ CANJEADO</span>
+          </div>
+          <div style="font-size:11px; color:var(--text-muted); line-height:1.4;">
+            🏢 Local: <strong>${r.establishment || 'Furancho Sessions'}</strong> · 👤 Cliente: <code style="font-size:10px; background:rgba(0,0,0,0.05); padding:1px 4px; border-radius:4px;">${wm}</code><br>
+            🔑 Código: <strong style="color:var(--wine);">${r.verification_code || '—'}</strong> · 📅 Entregado el: <strong style="color:#16a34a;">${colDate}</strong>
+          </div>
+        </div>`;
+      }).join('');
+    } catch (e) {
+      listEl.innerHTML = '<p style="font-size:12px; color:#ef4444; text-align:center; padding:8px 0;">Error cargando historial de canjes</p>';
+    }
   }
 
   async function grantCorchoFromRaffle(raffleId, btn) {

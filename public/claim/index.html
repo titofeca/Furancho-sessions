@@ -6312,6 +6312,8 @@
         if (isWeekly && r.verification_code && r.weekly_week) {
           // Ganador de la Chave Semanal: bono PDF con el premio y su código
           bonoBtn = `<a href="/api/pdf/weekly/${encodeURIComponent(r.weekly_week)}?wallet=${encodeURIComponent(userWalletAddress)}" target="_blank" style="${bonoStyle}">📄 Descargar bono PDF</a>`;
+        } else if (r.verification_code && (r.status === 'accepted' || r.status === 'collected')) {
+          bonoBtn = `<a href="/api/pdf/premio/${r.id}?wallet=${encodeURIComponent(userWalletAddress)}" target="_blank" style="${bonoStyle}">📄 Descargar bono PDF</a>`;
         }
 
         return `

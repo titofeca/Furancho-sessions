@@ -2044,3 +2044,57 @@ setInterval(() => {
   }
 }, 20000);
 
+// POST /api/raffle/admin/grant-direct (ADMIN ONLY)
+// Entrega directa de premio a una billetera específica (sin sorteo aleatorio).
+router.post('/admin/grant-direct', requireAuth, (req, res) => {
+  try {
+    const { winnerWallet, prize, prizeDetails, establishment, validity, people, hours, days, validityEndDate, prizeImage } = req.body || {};
+    if (!winnerWallet || !/^(0x)?[0-9a-fA-F]{40}$/.test(winnerWallet.trim())) {
+      return res.status(400).json({ error: 'Dirección de wallet no válida' });
+    }
+    if (!prize || !prize.trim()) {
+      return res.status(400).json({ error: 'El nombre del premio es obligatorio' });
+    }
+
+    const { insertDirectWalletPrize } = require('../db/database');
+    const result = insertDirectWalletPrize({
+      winnerWallet: winnerWallet.trim(),
+      prize: prize.trim(),
+      prizeDetails: (prizeDetails || '').trim() || null,
+      establishment: (establishment || '').trim() || null,
+      validity: (validity || '').trim() || null,
+      people: (people || '').trim() || null,
+      hours: (hours || '').trim() || null,
+      days: (days || '').trim() || null,
+      validityEndDate: (validityEndDate || '').trim() || null,
+      prizeImage: (prizeImage || '').trim() || null,
+      type: 'local'
+    });
+
+    res.json({ success: true, id: result.id, verificationCode: result.verificationCode });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/raffle/admin/redemptions (ADMIN ONLY)
+// Devuelve el historial de premios entregados/canjeados en local con su timestamp exacto.
+router.get('/admin/redemptions', requireAuth, (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const rows = db.prepare(`
+      SELECT id, prize, winner_wallet, verification_code, created_at, status,
+             collected_at, collected_by, prize_details, establishment, validity,
+             people, hours, days, validity_end_date
+      FROM raffles
+      WHERE status = 'collected' OR collected_at IS NOT NULL
+      ORDER BY collected_at DESC, created_at DESC
+      LIMIT 100
+    `).all();
+
+    res.json({ redemptions: rows });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+

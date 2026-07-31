@@ -679,8 +679,11 @@ function buildPremioPdf(doc, raffle, opts) {
     y += 4;
 
     // ── Estado ───────────────────────────────────────────────────────────────────
+    const colDateStr = raffle.collected_at
+      ? new Date(raffle.collected_at.replace(' ', 'T') + 'Z').toLocaleString('es-ES', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
+      : null;
     const estadoTxt = preview ? 'VISTA PREVIA — no válido como bono'
-      : (raffle.status === 'collected' ? 'Premio entregado' : 'Pendiente de recoger');
+      : (raffle.status === 'collected' ? `Premio entregado en local${colDateStr ? ' el ' + colDateStr : ''}` : 'Pendiente de recoger');
     const estadoColor = preview ? GOLD : (raffle.status === 'collected' ? '#22c55e' : WINE);
     doc.fillColor(estadoColor).fontSize(10).font('Helvetica-Bold')
        .text(estadoTxt, 0, y, { align: 'center', width: W });
