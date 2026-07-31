@@ -72,51 +72,24 @@ function isQrFresh(tsSeconds, d = new Date()) {
 
 // Obtener la tabla de privilegios dinámica (leyendo overrides de app_settings para +5 y +10).
 function getPrivilegeTiers() {
-  const { getSetting, getCampaignStats } = require('../db/database');
+  const { getSetting } = require('../db/database');
   
-  let perks5 = ['NFT Furancho Legend 2026 (requiere aprobación admin)', 'Descuento en la primera consumición de septiembre'];
-  let perks10 = ['Mesa VIP garantizada en el 1er Furancho de septiembre', 'Botella de albariño de bienvenida', 'Mención especial en el tablón del Furancho'];
-
-  // Calcular las plazas restantes para el descuento de las 5 visitas (solo 5 primeros)
-  let discountText = '🎟️ Descuento en tu primera consumición de septiembre';
-  try {
-    const stats5 = getCampaignStats(5, CAMPAIGN.id);
-    const completed5 = stats5 ? stats5.completed : 0;
-    const remaining5 = Math.max(0, 5 - completed5);
-    if (remaining5 > 0) {
-      discountText = `🎟️ Descuento en consumición en septiembre (¡solo quedan ${remaining5} plaza${remaining5 !== 1 ? 's' : ''}!)`;
-    } else {
-      discountText = `🎟️ Descuento de consumición agotado (5/5 reclamados)`;
-    }
-  } catch (e) {}
-
-  // Reemplazar el texto base del descuento
-  const idxDesc = perks5.findIndex(p => p.includes('Descuento en la primera consumición'));
-  if (idxDesc !== -1) perks5[idxDesc] = discountText;
-
-  // Calcular las plazas restantes para la cata en 10 visitas (solo 1º primero)
-  let tastingText = '🍷 Plaza garantizada para la cata exclusiva (¡solo 1 plaza!)';
-  try {
-    const stats10 = getCampaignStats(10, CAMPAIGN.id);
-    const completed10 = stats10 ? stats10.completed : 0;
-    const remaining10 = Math.max(0, 1 - completed10);
-    if (remaining10 > 0) {
-      tastingText = `🍷 Plaza para cata exclusiva (¡solo queda ${remaining10} plaza!)`;
-    } else {
-      tastingText = `🍷 Plazas de cata agotadas (1/1 cubiertas)`;
-    }
-  } catch (e) {}
-
-  perks10.unshift(tastingText);
-  perks10.unshift('NFT Furancho Legend Oro 2026');
+  let perks5 = [
+    '🎟️ Descuento en consumición en septiembre',
+    'NFT Furancho Legend 2026 (requiere aprobación admin)'
+  ];
+  let perks10 = [
+    '🍷 Plaza para cata exclusiva (¡solo queda 1 plaza!)',
+    'Mesa VIP garantizada en el 1er Furancho de septiembre',
+    'NFT Furancho Legend Oro 2026'
+  ];
 
   try {
     const raw5 = getSetting('campaign_privileges_5');
     if (raw5) {
       const parsed = JSON.parse(raw5);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Mantenemos la lógica viva
-        perks5 = [discountText, ...parsed.filter(p => !p.includes('Descuento en la primera consumición'))];
+        perks5 = parsed;
       }
     }
   } catch (_) {}
@@ -126,8 +99,7 @@ function getPrivilegeTiers() {
     if (raw10) {
       const parsed = JSON.parse(raw10);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Mantenemos la lógica viva
-        perks10 = [tastingText, ...parsed.filter(p => !p.includes('cata exclusiva'))];
+        perks10 = parsed;
       }
     }
   } catch (_) {}
