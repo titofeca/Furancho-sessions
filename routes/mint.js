@@ -433,7 +433,14 @@ router.post('/admin-checkin', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'Dirección de wallet no válida' });
   }
   try {
-    const result = performCheckin(walletAddress, req.ip);
+    // Solo se abre SESIÓN (fichaje de entrada) si HOY hay un Furancho en la agenda.
+    // En día de solo terraza (Reto de los 5), escanear NO es entrada/salida: no se
+    // abre sesión, solo suma el punto de campaña. Igual que el móvil del camarero.
+    const { getActiveEventWindow } = require('../db/database');
+    const hasFuranchoToday = !!getActiveEventWindow();
+    const result = hasFuranchoToday
+      ? performCheckin(walletAddress, req.ip)
+      : { checkin: false, noFuranchoToday: true };
     // "Reto de los 5": el panel cuenta la visita igual que el móvil del camarero,
     // con la MISMA exigencia de QR en vivo (services/campaign.js). Si el admin
     // escanea el ID Socio de siempre en vez del QR del reto, no suma — y el panel

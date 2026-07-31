@@ -52,11 +52,21 @@ router.post('/checkin', staffLimiter, requireStaff, (req, res) => {
   }
   try {
     const { performCheckin } = require('./mint');
-    const result = performCheckin(walletAddress, req.ip);
+    const { getActiveEventWindow } = require('../db/database');
+
+    // Solo se ABRE SESIÓN (fichaje de entrada) si HOY hay un Furancho en la agenda.
+    // En día de solo terraza (Reto de los 5), escanear NO es entrada/salida: no se
+    // abre sesión — únicamente se suma el punto de campaña. Evita sesiones huérfanas
+    // e inflar el Kilometraje. En noche de Furancho el fichaje sigue igual.
+    const hasFuranchoToday = !!getActiveEventWindow();
+    const result = hasFuranchoToday
+      ? performCheckin(walletAddress, req.ip)
+      : { checkin: false, noFuranchoToday: true };
 
     // ── Campaña "Reto de los 5" ──────────────────────────────────────────────
     // Regla (anti-captura incluida) en services/campaign.js: la misma que aplica el
     // Escáner del panel, para que fichar por camarero o por admin cuente igual.
+    // Idempotente: 1 visita/día; en día de Furancho no computa (viene a la sesión).
     const campaign = require('../services/campaign');
     if (campaignTs) {
       result.campaign = campaign.recordVisitFromScan(walletAddress, campaignTs);

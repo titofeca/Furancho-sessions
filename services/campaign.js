@@ -183,7 +183,11 @@ function _doRecordVisit(walletAddress, dateStr) {
 
 // Registra una visita de campaña para el cliente (idempotente por día).
 // Si es día de Furancho, no cuenta — ese día el cliente viene a la sesión.
-function recordVisit(walletAddress, d = new Date()) {
+// opts.ignoreTerrazaHours: las vías de STAFF/ADMIN (camarero presente, cliente
+// delante) no dependen del horario configurado de la terraza — si ese horario no
+// está puesto, bloquearía TODAS las visitas. El staff es de confianza y ve al
+// cliente; por eso puede dar el punto aunque el horario no esté configurado.
+function recordVisit(walletAddress, d = new Date(), opts = {}) {
   if (!isCampaignActive(d)) {
     return { active: false, counted: false, totalVisits: getCampaignVisitCount(walletAddress) };
   }
@@ -197,17 +201,19 @@ function recordVisit(walletAddress, d = new Date()) {
       privilege: getPrivilegeTier(totalVisits)
     };
   }
-  
-  const { isTerrazaOpenAt } = require('./terraza');
-  if (!isTerrazaOpenAt(d)) {
-    const totalVisits = getCampaignVisitCount(walletAddress);
-    return {
-      active: true, counted: false, totalVisits,
-      required: CAMPAIGN.requiredVisits, completed: totalVisits >= CAMPAIGN.requiredVisits,
-      claimStatus: null, campaignName: CAMPAIGN.name,
-      error: 'terraza_closed',   // <── la terraza no está abierta hoy
-      privilege: getPrivilegeTier(totalVisits)
-    };
+
+  if (!opts.ignoreTerrazaHours) {
+    const { isTerrazaOpenAt } = require('./terraza');
+    if (!isTerrazaOpenAt(d)) {
+      const totalVisits = getCampaignVisitCount(walletAddress);
+      return {
+        active: true, counted: false, totalVisits,
+        required: CAMPAIGN.requiredVisits, completed: totalVisits >= CAMPAIGN.requiredVisits,
+        claimStatus: null, campaignName: CAMPAIGN.name,
+        error: 'terraza_closed',   // <── la terraza no está abierta hoy
+        privilege: getPrivilegeTier(totalVisits)
+      };
+    }
   }
 
   return _doRecordVisit(walletAddress, madridDateStr(d));
@@ -223,7 +229,8 @@ function recordVisitFromScan(walletAddress, campaignTs, d = new Date()) {
   if (!isQrFresh(campaignTs, d)) {
     return { active: true, counted: false, error: 'qr_expired' };
   }
-  return recordVisit(walletAddress, d);
+  // QR en vivo + camarero delante: no lo bloquea el horario configurado de terraza.
+  return recordVisit(walletAddress, d, { ignoreTerrazaHours: true });
 }
 
 // Fichaje manual por staff (sin QR en vivo). Solo para el camarero con código válido.
@@ -234,7 +241,8 @@ function recordVisitByStaff(walletAddress, d = new Date()) {
     return { active: false, counted: false, totalVisits: getCampaignVisitCount(walletAddress) };
   }
   // Días de Furancho siguen sin contar, incluso si el staff lo solicita.
-  return recordVisit(walletAddress, d);
+  // Staff de confianza (ve al cliente): no lo bloquea el horario de terraza.
+  return recordVisit(walletAddress, d, { ignoreTerrazaHours: true });
 }
 
 function recordVisitByDate(walletAddress, dateStr) {
