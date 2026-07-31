@@ -854,6 +854,107 @@ try {
   }
 } catch (_) {}
 
+// Migración automática: Acreditar 3 visitas retroactivas (19, 22, 26 Julio 18:00) y entregar premio a billetera objetivo
+try {
+  const retroDates = [
+    { dateStr: '2026-07-19', dbTime: '2026-07-19 18:00:00' },
+    { dateStr: '2026-07-22', dbTime: '2026-07-22 18:00:00' },
+    { dateStr: '2026-07-26', dbTime: '2026-07-26 18:00:00' }
+  ];
+
+  const profileRows = db.prepare(`
+    SELECT DISTINCT LOWER(wallet_address) as w FROM user_profiles 
+    UNION SELECT DISTINCT LOWER(wallet_address) as w FROM sessions
+    UNION SELECT DISTINCT LOWER(wallet_address) as w FROM corcho_balances
+  `).all();
+  
+  const knownWallets = [
+    '0x6fc50fbf91ae0b5791dd8458455ece015e25394b',
+    '0xbd0051143b69a7073700f427636a2eac84650897',
+    '0x1d1903ccb091aea53ce8ee9097b39670e5625645',
+    '0x0571d72ac20455a205cfb5539edca79987c1ad9e'
+  ];
+  
+  const allWalletsSet = new Set(profileRows.map(p => p.w));
+  knownWallets.forEach(w => allWalletsSet.add(w.toLowerCase()));
+
+  for (const w of allWalletsSet) {
+    if (!w || !/^0x[a-fA-F0-9]{40}$/i.test(w)) continue;
+    for (const item of retroDates) {
+      // 1. Session visit
+      const existsSess = db.prepare(`SELECT id FROM sessions WHERE LOWER(wallet_address) = ? AND date(entry_time) = ?`).get(w, item.dateStr);
+      if (!existsSess) {
+        db.prepare(`INSERT INTO sessions (wallet_address, entry_time, counted_as_visit) VALUES (?, ?, 1)`).run(w, item.dbTime);
+      }
+      // 2. Campaign visit (Reto de los 5)
+      const existsCamp = db.prepare(`SELECT id FROM campaign_visits WHERE LOWER(wallet_address) = ? AND visit_date = ?`).get(w, item.dateStr);
+      if (!existsCamp) {
+        db.prepare(`INSERT INTO campaign_visits (wallet_address, campaign_id, visit_date) VALUES (?, 'reto_5_verano_2026', ?)`).run(w, item.dateStr);
+      }
+    }
+  }
+
+  // 3. Crear / Asegurar el sorteo semanal 2026-W30 y entregar/acreditar el premio a 0x6fc50fbf91ae0b5791dd8458455ece015e25394b
+  const existingWeekly = db.prepare(`SELECT * FROM weekly_raffles WHERE claimed_week = '2026-W30'`).get();
+  const winnersList = [
+    '0x6fc50fbf91ae0b5791dd8458455ece015e25394b',
+    '0xbd0051143b69a7073700f427636a2eac84650897',
+    '0x1d1903ccb091aea53ce8ee9097b39670e5625645'
+  ];
+  const collectedMap = {
+    '0x6fc50fbf91ae0b5791dd8458455ece015e25394b': new Date().toISOString()
+  };
+  const codesMap = {
+    '0x6fc50fbf91ae0b5791dd8458455ece015e25394b': 'CHAVE-9999',
+    '0xbd0051143b69a7073700f427636a2eac84650897': 'CHAVE-CECO',
+    '0x1d1903ccb091aea53ce8ee9097b39670e5625645': 'CHAVE-G7L2'
+  };
+
+  if (!existingWeekly) {
+    db.prepare(`
+      INSERT INTO weekly_raffles (claimed_week, prize, winner_wallet, status, drawn_at, winners_count, verification_code, collected_wallets)
+      VALUES ('2026-W30', 'Premio Especial Sorteo Chave Semanal + $CORCHO', ?, 'completed', datetime('now'), 3, ?, ?)
+    `).run(JSON.stringify(winnersList), JSON.stringify(codesMap), JSON.stringify(collectedMap));
+  } else {
+    let currentCollected = {};
+    try { currentCollected = JSON.parse(existingWeekly.collected_wallets || '{}'); } catch (_) {}
+    currentCollected['0x6fc50fbf91ae0b5791dd8458455ece015e25394b'] = new Date().toISOString();
+    
+    db.prepare(`
+      UPDATE weekly_raffles
+      SET status = 'completed',
+          collected_wallets = ?
+      WHERE claimed_week = '2026-W30'
+    `).run(JSON.stringify(currentCollected));
+  }
+
+  // Acreditar 100 $CORCHO directos a la billetera 0x6fc50fbf91ae0b5791dd8458455ece015e25394b
+  try {
+    const targetW = '0x6fc50fbf91ae0b5791dd8458455ece015e25394b';
+    const txExists = db.prepare(`SELECT id FROM corcho_transactions WHERE LOWER(wallet_address) = ? AND reference_id = 'retro_chave_prize_0x6fc5'`).get(targetW);
+    if (!txExists) {
+      db.prepare(`
+        INSERT INTO corcho_balances (wallet_address, balance, total_earned)
+        VALUES (?, 100, 100)
+        ON CONFLICT(wallet_address) DO UPDATE SET
+          balance = balance + 100,
+          total_earned = total_earned + 100,
+          updated_at = datetime('now')
+      `).run(targetW);
+
+      db.prepare(`
+        INSERT INTO corcho_transactions (wallet_address, amount, type, description, reference_id)
+        VALUES (?, 100, 'raffle_prize', 'Premio Sorteo Chave Semanal entregado', 'retro_chave_prize_0x6fc5')
+      `).run(targetW);
+    }
+  } catch (e) {
+    console.error('Error acreditando corchos:', e.message);
+  }
+
+} catch (e) {
+  console.error('Error en migración de visitas y entrega de premios:', e.message);
+}
+
 // Vales de consumición: registro server-side para validación por staff/admin
 try {
   db.exec(`CREATE TABLE IF NOT EXISTS corcho_redemptions (

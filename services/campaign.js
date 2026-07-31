@@ -23,7 +23,7 @@ const achievements = require('./achievements');
 const CAMPAIGN = {
   id: 'reto_5_verano_2026',
   name: 'El Reto de los 5',
-  startDate: '2026-07-22',   // inclusive
+  startDate: '2026-07-01',   // inclusive (cubre todas las visitas de julio)
   endDate: '2026-09-20',     // inclusive
   requiredVisits: 5,
   achievementId: 'furancho_legend_2026'
