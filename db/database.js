@@ -1314,6 +1314,27 @@ function getVisitCount(walletAddress) {
   return row ? row.count : 0;
 }
 
+// Fuente ÚNICA del "amigo referido activo" (Plan Amigo). Un referido cuenta SOLO si
+// ASISTIÓ a un Furancho DESPUÉS de ser referido: una sesión con counted_as_visit=1,
+// que openSession marca únicamente dentro de la ventana de un EVENTO. Estricto y
+// ligado a evento a rajatabla: NO vale una visita de terraza (Reto de los 5) ni la
+// tabla legacy `visits` (no atada a evento). Antes esto estaba duplicado en 4 sitios.
+function countActiveReferredFriends(referrerWallet) {
+  if (!referrerWallet) return 0;
+  const row = db.prepare(`
+    SELECT COUNT(DISTINCT r.referred_wallet) AS count
+    FROM referrals r
+    WHERE LOWER(r.referrer_wallet) = LOWER(?)
+      AND EXISTS (
+        SELECT 1 FROM sessions s
+        WHERE LOWER(s.wallet_address) = LOWER(r.referred_wallet)
+          AND s.counted_as_visit = 1
+          AND s.entry_time >= r.created_at
+      )
+  `).get(referrerWallet);
+  return row ? row.count : 0;
+}
+
 function checkAndApplyLevelDecay(walletAddress) {
   if (!walletAddress) return;
   // Solo aplicamos si el usuario tiene un mint (está registrado)
@@ -3169,25 +3190,7 @@ function registerDailyTapaClaim({ walletAddress, nftType, nftId, serial, sig, st
     `).get(walletAddress, today);
     if (refToday) throw new Error('Ya canjeó su bono Plan Amigo de hoy.');
 
-    const activeReferredFriendsRow = db.prepare(`
-      SELECT COUNT(DISTINCT r.referred_wallet) as count
-      FROM referrals r
-      WHERE LOWER(r.referrer_wallet) = LOWER(?)
-        AND (
-          EXISTS (
-            SELECT 1 FROM visits v
-            WHERE LOWER(v.wallet_address) = LOWER(r.referred_wallet)
-              AND v.visited_at >= r.created_at
-          )
-          OR EXISTS (
-            SELECT 1 FROM sessions s
-            WHERE LOWER(s.wallet_address) = LOWER(r.referred_wallet)
-              AND s.counted_as_visit = 1
-              AND s.entry_time >= r.created_at
-          )
-        )
-    `).get(walletAddress);
-    const activeReferredFriends = activeReferredFriendsRow ? activeReferredFriendsRow.count : 0;
+    const activeReferredFriends = countActiveReferredFriends(walletAddress);
     const referralCredits = Math.floor(activeReferredFriends / 15);
     const referralClaimsRow = db.prepare(`
       SELECT COUNT(*) as count FROM daily_tapa_claims
@@ -3521,6 +3524,7 @@ module.exports = {
   grantWeeklyNftPrize,
   insertVisit,
   getVisitCount,
+  countActiveReferredFriends,
   getEligibleRaffleParticipants,
   autoCloseSessionsAt23,
   autoCloseSessionsAfterEvent,

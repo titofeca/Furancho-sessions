@@ -9,7 +9,7 @@
 //  cliente): hay que haber asistido (visita contada) al día del evento.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const { db } = require('../db/database');
+const { db, countActiveReferredFriends } = require('../db/database');
 const APP_URL = process.env.APP_URL || 'https://furancho-sessions-production.up.railway.app';
 
 // El Meme VIP se COMPRA (único NFT que se vende) y su tirada es irreversible.
@@ -348,26 +348,9 @@ function walletMeetsRule(wallet, rule) {
     return (row ? row.c : 0) >= (rule.requiredCount || 2);
   }
   if (rule.type === 'referrals') {
-    // Desbloqueo por acumular N amigos NUEVOS que visitaron después de ser referidos.
-    const row = db.prepare(`
-      SELECT COUNT(DISTINCT r.referred_wallet) as count
-      FROM referrals r
-      WHERE LOWER(r.referrer_wallet) = LOWER(?)
-        AND (
-          EXISTS (
-            SELECT 1 FROM visits v
-            WHERE LOWER(v.wallet_address) = LOWER(r.referred_wallet)
-              AND v.visited_at >= r.created_at
-          )
-          OR EXISTS (
-            SELECT 1 FROM sessions s
-            WHERE LOWER(s.wallet_address) = LOWER(r.referred_wallet)
-              AND s.counted_as_visit = 1
-              AND s.entry_time >= r.created_at
-          )
-        )
-    `).get(wallet);
-    return (row ? row.count : 0) >= (rule.requiredCount || 15);
+    // Desbloqueo por acumular N amigos NUEVOS que ASISTIERON a un Furancho después de
+    // ser referidos (fuente única, estricto y ligado a evento).
+    return countActiveReferredFriends(wallet) >= (rule.requiredCount || 15);
   }
   return false;
 }

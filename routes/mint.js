@@ -109,13 +109,13 @@ router.post('/entry', mintLimiter, async (req, res) => {
         const tooMany = referrerCount && referrerCount.c >= 100;
 
         if (!hadPriorVisit && !isCircular && !tooMany) {
-          const info = db.prepare(`
+          // Solo se REGISTRA la relación. El premio de $CORCHO (padrino + bienvenida)
+          // NO se da aquí: se paga cuando el amigo ASISTE de verdad a un Furancho
+          // (a rajatabla, ligado a evento) — ver rewardReferral en performCheckin.
+          db.prepare(`
             INSERT OR IGNORE INTO referrals (referrer_wallet, referred_wallet)
             VALUES (?, ?)
           `).run(refWallet, newWallet);
-          if (info.changes > 0) {
-            try { require('../services/corcho').rewardReferral(refWallet, newWallet); } catch (_) {}
-          }
         }
       } catch (err) {
         console.error('Error al registrar referido:', err.message);
@@ -244,6 +244,17 @@ function performCheckin(walletAddress, ipAddress, isSelfCheckin = false) {
   if (result.counted) {
     try { levelUp = awardLevelByVisits({ walletAddress, visitCount, ipAddress }); }
     catch (e) { console.error('Error otorgando nivel en check-in:', e.message); }
+
+    // Plan Amigo (a rajatabla): si este socio fue REFERIDO, el premio de referido
+    // (padrino + bienvenida) se paga AHORA, al asistir de verdad a un Furancho, no al
+    // crear la cuenta. Idempotente por referenceId: solo se paga una vez.
+    try {
+      const { db } = require('../db/database');
+      const ref = db.prepare(`SELECT referrer_wallet FROM referrals WHERE LOWER(referred_wallet) = LOWER(?)`).get(walletAddress);
+      if (ref && ref.referrer_wallet) {
+        require('../services/corcho').rewardReferral(ref.referrer_wallet, walletAddress);
+      }
+    } catch (e) { console.error('Error premiando referido en check-in:', e.message); }
 
     try {
       const corcho = require('../services/corcho');
@@ -793,28 +804,9 @@ router.get('/history', (req, res) => {
       `).get(wallet);
       const referredCount = referredCountRow ? referredCountRow.count : 0;
 
-      // 2. Contar cuántos de esos amigos vinieron al furancho POR PRIMERA VEZ después de
-      //    ser referidos (garantía de cliente nuevo). Se requiere que la visita sea
-      //    posterior a la fecha del referral (r.created_at).
-      const activeReferredFriendsRow = db.prepare(`
-        SELECT COUNT(DISTINCT r.referred_wallet) as count
-        FROM referrals r
-        WHERE LOWER(r.referrer_wallet) = LOWER(?)
-          AND (
-            EXISTS (
-              SELECT 1 FROM visits v
-              WHERE LOWER(v.wallet_address) = LOWER(r.referred_wallet)
-                AND v.visited_at >= r.created_at
-            )
-            OR EXISTS (
-              SELECT 1 FROM sessions s
-              WHERE LOWER(s.wallet_address) = LOWER(r.referred_wallet)
-                AND s.counted_as_visit = 1
-                AND s.entry_time >= r.created_at
-            )
-          )
-      `).get(wallet);
-      const activeReferredFriends = activeReferredFriendsRow ? activeReferredFriendsRow.count : 0;
+      // 2. Amigos que ASISTIERON a un Furancho tras ser referidos (fuente única,
+      //    estricto y ligado a evento: solo cuenta la asistencia a un evento real).
+      const activeReferredFriends = require('../db/database').countActiveReferredFriends(wallet);
 
       // 3. Créditos de bonos totales ganados (1 bono cada 15 amigos nuevos activos)
       const referralCredits = Math.floor(activeReferredFriends / 15);
@@ -1030,27 +1022,9 @@ function computeDailyTapaStatus(wallet) {
       }
     });
 
-    // 2.2. ¿Tiene créditos de Plan Amigo? Solo cuentan amigos NUEVOS que vinieron
-    //      después de ser referidos (anti-trampa).
-    const activeReferredFriendsRow = db.prepare(`
-      SELECT COUNT(DISTINCT r.referred_wallet) as count
-      FROM referrals r
-      WHERE LOWER(r.referrer_wallet) = LOWER(?)
-        AND (
-          EXISTS (
-            SELECT 1 FROM visits v
-            WHERE LOWER(v.wallet_address) = LOWER(r.referred_wallet)
-              AND v.visited_at >= r.created_at
-          )
-          OR EXISTS (
-            SELECT 1 FROM sessions s
-            WHERE LOWER(s.wallet_address) = LOWER(r.referred_wallet)
-              AND s.counted_as_visit = 1
-              AND s.entry_time >= r.created_at
-          )
-        )
-    `).get(wallet);
-    const activeReferredFriends = activeReferredFriendsRow ? activeReferredFriendsRow.count : 0;
+    // 2.2. ¿Tiene créditos de Plan Amigo? Solo cuentan amigos NUEVOS que ASISTIERON
+    //      a un Furancho tras ser referidos (fuente única, estricto, ligado a evento).
+    const activeReferredFriends = require('../db/database').countActiveReferredFriends(wallet);
     const referralCredits = Math.floor(activeReferredFriends / 15);
 
     const referralClaimsRow = db.prepare(`
