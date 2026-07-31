@@ -1645,14 +1645,23 @@ function grantCorchoPrizeHandler(req, res, grantedBy) {
       }
       successCount++;
 
-      // Si es de sorteo semanal, registrar la entrega en collected_wallets para esta wallet
+      // Si es de sorteo semanal, registrar la entrega en collected_wallets y limpiar de forfeited_wallets
       if (week) {
         try {
-          const row = db.prepare(`SELECT collected_wallets FROM weekly_raffles WHERE claimed_week = ?`).get(week);
+          const row = db.prepare(`SELECT collected_wallets, forfeited_wallets FROM weekly_raffles WHERE claimed_week = ?`).get(week);
           let collectedMap = {};
+          let forfeitedMap = {};
           try { collectedMap = JSON.parse((row && row.collected_wallets) || '{}'); } catch (_) {}
+          try { forfeitedMap = JSON.parse((row && row.forfeited_wallets) || '{}'); } catch (_) {}
+
           collectedMap[lowerWallet] = new Date().toISOString();
-          db.prepare(`UPDATE weekly_raffles SET collected_wallets = ? WHERE claimed_week = ?`).run(JSON.stringify(collectedMap), week);
+          delete forfeitedMap[lowerWallet];
+
+          db.prepare(`
+            UPDATE weekly_raffles
+            SET collected_wallets = ?, forfeited_wallets = ?, status = 'completed'
+            WHERE claimed_week = ?
+          `).run(JSON.stringify(collectedMap), JSON.stringify(forfeitedMap), week);
         } catch (e) {
           console.error('Error registrando entrega semanal:', e.message);
         }

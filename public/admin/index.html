@@ -8675,14 +8675,15 @@
               let actionHtml = '';
               if (isWinnerCollected) {
                 actionHtml = `<span style="font-size:11.5px; font-weight:800; color:#15803d;">✅ Premio Entregado / Acreditado</span>`;
-              } else if (isWinnerForfeited) {
-                actionHtml = `<span style="font-size:11.5px; font-weight:800; color:var(--text-muted);">⌛ Premio Caducado</span>`;
               } else {
                 actionHtml = `
                   <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">
                     <button onclick="grantCorchoPrizeToIndividualWinner('${w}', '${selectedWeek}', '${(data.prize || '').replace(/'/g, "\\'")}')" style="padding:6px 12px; background:linear-gradient(135deg,var(--gold),#a47d2c); color:#2A1509; border:none; border-radius:8px; font-size:11.5px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif;">🪙 Acreditar $CORCHO</button>
-                    <button onclick="collectWeeklyWinnerPrize('${w}', '${selectedWeek}')" style="padding:6px 12px; background:linear-gradient(135deg,#4ade80,#16a34a); color:#fff; border:none; border-radius:8px; font-size:11.5px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif;">✅ Marcar Entregado</button>
+                    <button onclick="collectWeeklyWinnerPrize('${w}', '${selectedWeek}')" style="padding:6px 12px; background:linear-gradient(135deg,#4ade80,#16a34a); color:#fff; border:none; border-radius:8px; font-size:11.5px; font-weight:800; cursor:pointer; font-family:'Outfit',sans-serif;">✅ Marcar Entregado (Revalidar)</button>
                   </div>`;
+                if (isWinnerForfeited) {
+                  actionHtml += `<div style="font-size:10.5px; color:var(--wine); font-weight:700; margin-top:4px;">⚠️ Figuraba como caducado: al hacer clic en cualquier botón se revalida y entrega automáticamente.</div>`;
+                }
               }
 
               const codeVal = codes[w] || codes[lowerW] || Object.values(codes)[idx] || '—';

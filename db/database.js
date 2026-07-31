@@ -4037,24 +4037,41 @@ function collectWeeklyRaffle(weekStr) {
 
 function collectWeeklyWinner(weekStr, walletAddress) {
   const raffle = db.prepare(`SELECT * FROM weekly_raffles WHERE claimed_week = ?`).get(weekStr);
-  if (!raffle || raffle.status !== 'completed') throw new Error('Sorteo no encontrado o no completado.');
+  if (!raffle) throw new Error('Sorteo no encontrado.');
+  if (raffle.status !== 'completed' && raffle.status !== 'forfeited' && raffle.status !== 'drawn') {
+    throw new Error('El sorteo no está en estado válido para entrega.');
+  }
   let winners = [];
   try {
     const parsed = JSON.parse(raffle.winner_wallet);
     winners = Array.isArray(parsed) ? parsed : [parsed];
-  } catch (_) { winners = [raffle.winner_wallet]; }
-  const found = winners.find(w => w && w.toLowerCase() === walletAddress.toLowerCase());
+  } catch (_) { winners = raffle.winner_wallet ? [raffle.winner_wallet] : []; }
+
+  const lowerTarget = String(walletAddress || '').toLowerCase();
+  const found = winners.find(w => w && w.toLowerCase() === lowerTarget);
   if (!found) throw new Error('Esta wallet no es ganadora de esta semana.');
+
   let collected = {};
   try { collected = JSON.parse(raffle.collected_wallets || '{}'); } catch (_) {}
-  collected[found] = new Date().toISOString().replace('T', ' ').slice(0, 19);
-  const allCollected = winners.every(w => collected[w]);
-  if (allCollected) {
-    db.prepare(`UPDATE weekly_raffles SET collected_wallets = ?, collected_at = datetime('now') WHERE claimed_week = ?`).run(JSON.stringify(collected), weekStr);
-  } else {
-    db.prepare(`UPDATE weekly_raffles SET collected_wallets = ? WHERE claimed_week = ?`).run(JSON.stringify(collected), weekStr);
-  }
-  return { allCollected };
+  collected[lowerTarget] = new Date().toISOString().replace('T', ' ').slice(0, 19);
+
+  let forfeited = {};
+  try { forfeited = JSON.parse(raffle.forfeited_wallets || '{}'); } catch (_) {}
+  delete forfeited[lowerTarget];
+
+  const allCollected = winners.every(w => collected[w.toLowerCase()]);
+
+  db.prepare(`
+    UPDATE weekly_raffles
+    SET collected_wallets = ?,
+        forfeited_wallets = ?,
+        status = 'completed',
+        forfeited_at = CASE WHEN ? THEN NULL ELSE forfeited_at END,
+        collected_at = datetime('now')
+    WHERE claimed_week = ?
+  `).run(JSON.stringify(collected), JSON.stringify(forfeited), allCollected ? 1 : 0, weekStr);
+
+  return { allCollected, collected };
 }
 
 // Dar por perdido: el premio no se recogió a tiempo. Queda registrado (en la cuenta del ganador
