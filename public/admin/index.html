@@ -10025,6 +10025,7 @@
     if (!date) { showToast('Elige una fecha'); return; }
 
     try {
+      let eventId = currentEventId;
       if (currentEventId) {
         const res = await fetch(`/api/events/${currentEventId}`, {
           method: 'PATCH',
@@ -10032,7 +10033,6 @@
           body: JSON.stringify({ date, title, description, active, startTime, endTime, dressCode })
         });
         if (!res.ok) { const d = await res.json().catch(() => ({})); return showToast(d.error || 'Error al guardar', true); }
-        showToast('✅ Evento guardado');
       } else {
         const res = await fetch('/api/events', {
           method: 'POST',
@@ -10040,10 +10040,17 @@
           body: JSON.stringify({ date, title, description, startTime, endTime, dressCode })
         });
         if (!res.ok) { const d = await res.json().catch(() => ({})); return showToast(d.error || 'Error al crear', true); }
-        showToast('✅ Evento creado');
+        const created = await res.json().catch(() => ({}));
+        eventId = created.id || null;
       }
+      // "Guardar cambios" guarda TODO: también la facturación y los costes del evento,
+      // para que las gráficas se actualicen sin tener que pulsar el otro botón.
+      let finOk = true;
+      try { if (eventId) finOk = await postEventFinance(eventId); } catch (_) { finOk = false; }
+      showToast(finOk ? '✅ Evento y facturación guardados' : '✅ Evento guardado (⚠️ revisa los costes)', !finOk);
       closeEventModal();
       loadAgenda();
+      if (typeof loadEventFinanceStats === 'function') loadEventFinanceStats();
     } catch(e) {
       showToast('Error de red al guardar — reintenta', true);
     }
@@ -10103,27 +10110,39 @@
     hint.innerHTML = [parts.length ? '📊 ' + parts.join(' · ') : '', line2].filter(Boolean).join('<br>');
   }
 
+  // Lee los campos de facturación/costes del modal (vacío si el input no existe).
+  function _readEventFinancePayload() {
+    const v = (id) => { const e = document.getElementById(id); return e ? e.value : ''; };
+    return {
+      revenue:  v('fin-revenue'),
+      covers:   v('fin-covers'),
+      tables:   v('fin-tables'),
+      vipCount: v('fin-vip'),
+      notes:    v('fin-notes'),
+      costStaff: v('fin-cost-staff'),
+      costDj:    v('fin-cost-dj'),
+      costBand:  v('fin-cost-band'),
+      costFnb:   v('fin-cost-fnb'),
+      costDecor: v('fin-cost-decor'),
+      costOther: v('fin-cost-other'),
+      costOtherLabel: v('fin-cost-other-label')
+    };
+  }
+
+  // Guarda la facturación/costes de un evento. Devuelve true si fue OK.
+  async function postEventFinance(eventId) {
+    if (!eventId) return false;
+    const res = await fetch(`/api/admin/event-finances/${eventId}`, {
+      method: 'POST', headers: authHeaders(), body: JSON.stringify(_readEventFinancePayload())
+    });
+    return res.ok;
+  }
+
   async function saveEventFinance() {
     if (!currentEventId) return;
-    const payload = {
-      revenue:  document.getElementById('fin-revenue').value,
-      covers:   document.getElementById('fin-covers').value,
-      tables:   document.getElementById('fin-tables').value,
-      vipCount: document.getElementById('fin-vip').value,
-      notes:    document.getElementById('fin-notes').value,
-      costStaff: document.getElementById('fin-cost-staff').value,
-      costDj:    document.getElementById('fin-cost-dj').value,
-      costBand:  document.getElementById('fin-cost-band').value,
-      costFnb:   document.getElementById('fin-cost-fnb').value,
-      costDecor: document.getElementById('fin-cost-decor').value,
-      costOther: document.getElementById('fin-cost-other').value,
-      costOtherLabel: document.getElementById('fin-cost-other-label').value
-    };
     try {
-      const res = await fetch(`/api/admin/event-finances/${currentEventId}`, {
-        method: 'POST', headers: authHeaders(), body: JSON.stringify(payload)
-      });
-      if (!res.ok) { const d = await res.json().catch(() => ({})); return showToast(d.error || 'Error al guardar facturación', true); }
+      const ok = await postEventFinance(currentEventId);
+      if (!ok) return showToast('Error al guardar facturación', true);
       showToast('💶 Facturación guardada');
       if (typeof loadEventFinanceStats === 'function') loadEventFinanceStats();
     } catch (e) {
