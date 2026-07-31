@@ -3547,6 +3547,18 @@
           <button onclick="manualMint(3)" style="padding:9px 4px; border-radius:10px; border:1.5px solid rgba(42,21,9,0.15); background:transparent; color:var(--text-muted); font-family:'Outfit',sans-serif; font-size:11px; font-weight:700; cursor:pointer;">🌿<br>Nv3</button>
           <button onclick="manualMint(4)" style="padding:9px 4px; border-radius:10px; border:1.5px solid rgba(196,151,58,0.5); background:rgba(196,151,58,0.08); color:var(--gold); font-family:'Outfit',sans-serif; font-size:11px; font-weight:700; cursor:pointer;">👑<br>Nv4</button>
         </div>
+
+        <!-- Mintear un NFT / logro directamente (misma wallet de arriba) -->
+        <div style="border-top:1px solid rgba(42,21,9,0.1); margin:4px 0 12px; padding-top:12px;">
+          <p style="font-size:12px; color:var(--text-muted); margin:0 0 8px; line-height:1.4;">…o mintea directamente un <strong>NFT / logro</strong> a esa misma wallet:</p>
+          <div style="display:flex; gap:8px; align-items:stretch;">
+            <select id="manual-mint-nft" class="input-field" style="font-size:13px; flex:1; min-width:0; margin:0;">
+              <option value="">Cargando NFTs…</option>
+            </select>
+            <button onclick="manualMintNft()" style="padding:9px 16px; border-radius:10px; border:none; background:var(--wine); color:#fff; font-family:'Outfit',sans-serif; font-size:12px; font-weight:800; cursor:pointer; white-space:nowrap;">🏅 Mintear NFT</button>
+          </div>
+        </div>
+
         <div id="manual-mint-result" style="display:none; background:rgba(196,151,58,0.12); border:1.5px solid #C4973A; border-radius:12px; padding:12px; font-size:13px; color:#7A5A00; font-weight:600;"></div>
       </div>
 
@@ -4109,7 +4121,7 @@
       loadEventFinanceStats();
     }
     if (pageId === 'raffles') { loadAchievementFilterOptions(); loadEligibleParticipants(); loadRaffleHistory(); loadPrizePresets(); loadScheduled(); loadWeeklyRaffleAdmin(); loadWeeklyTemplates(); loadChaveAppPolicy(); loadPartnersAdmin(); populateSchedEstablishmentSelect(); }
-    if (pageId === 'nfts') { loadNftsPage(); loadAchievementStats(); loadAchievementManager(); loadCampaignAdmin(); }
+    if (pageId === 'nfts') { loadNftsPage(); loadAchievementStats(); loadAchievementManager(); loadCampaignAdmin(); loadManualMintNftOptions(); }
     if (pageId === 'qrcodes') { stopScanner(); document.getElementById('scanner-result').style.display='none'; document.getElementById('scanner-status').textContent=''; loadStaffCode(); loadEntryQrDates(); }
     if (pageId !== 'qrcodes') { try { stopScanner(); } catch(e){} }
   }
@@ -4977,6 +4989,55 @@
         resultEl.style.display = 'block';
       }
     } catch(e) { showToast('Error de conexión', true); }
+  }
+
+  // Rellena el selector de NFTs del minteo manual con el catálogo de logros.
+  async function loadManualMintNftOptions() {
+    const sel = document.getElementById('manual-mint-nft');
+    if (!sel) return;
+    try {
+      const data = await fetch('/api/achievements/admin/list', { headers: authHeaders() }).then(r => r.json());
+      const list = (data && data.achievements) || [];
+      if (!list.length) { sel.innerHTML = '<option value="">No hay NFTs en el catálogo</option>'; return; }
+      sel.innerHTML = '<option value="">— Elige un NFT / logro —</option>' +
+        list.map(a => `<option value="${a.id}">${a.name}${a.tokenId ? ' (token ' + a.tokenId + ')' : ''}</option>`).join('');
+    } catch (e) {
+      sel.innerHTML = '<option value="">Error cargando NFTs</option>';
+    }
+  }
+
+  // Mintea directamente el NFT/logro elegido a la wallet del minteo manual.
+  async function manualMintNft() {
+    const wallet = document.getElementById('manual-mint-wallet')?.value.trim();
+    if (!wallet) return showToast('Introduce la wallet primero', true);
+    const sel = document.getElementById('manual-mint-nft');
+    const achievementId = sel && sel.value;
+    if (!achievementId) return showToast('Elige un NFT del desplegable', true);
+    const nftName = sel.options[sel.selectedIndex]?.text || achievementId;
+    if (!confirm(`¿Mintear el NFT «${nftName}» para\n${wallet}?`)) return;
+    const resultEl = document.getElementById('manual-mint-result');
+    try {
+      const data = await fetch('/api/admin/grant-achievement', {
+        method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: wallet, achievementId })
+      }).then(r => r.json());
+      if (data.success) {
+        const already = data.alreadyGranted ? ' (ya lo tenía)' : '';
+        resultEl.style.background = 'rgba(74,222,128,0.08)';
+        resultEl.style.borderColor = 'rgba(74,222,128,0.3)';
+        resultEl.style.color = '#15803d';
+        resultEl.innerHTML = `✅ NFT «${nftName}» minteado a <strong>${wallet.slice(0,10)}...</strong>${already}`;
+        resultEl.style.display = 'block';
+        showToast(`🏅 NFT minteado${already}`);
+        loadNftsPage();
+      } else {
+        resultEl.style.background = 'rgba(239,68,68,0.08)';
+        resultEl.style.borderColor = 'rgba(239,68,68,0.3)';
+        resultEl.style.color = '#ef4444';
+        resultEl.innerHTML = `❌ ${data.error || 'No se pudo mintear'}`;
+        resultEl.style.display = 'block';
+      }
+    } catch (e) { showToast('Error de conexión', true); }
   }
 
   async function approvePendingMint(id, type = 'level') {
