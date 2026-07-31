@@ -445,7 +445,7 @@ router.post('/admin-checkin', requireAuth, (req, res) => {
 
 // POST /api/mint/admin-manual-checkin — Fichaje retroactivo (manual por el admin)
 router.post('/admin-manual-checkin', requireAuth, (req, res) => {
-  const { walletAddress, dateStr, timeStr } = req.body;
+  const { walletAddress, dateStr, timeStr, checkinType } = req.body;
   if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
     return res.status(400).json({ error: 'Dirección de wallet no válida' });
   }
@@ -455,12 +455,41 @@ router.post('/admin-manual-checkin', requireAuth, (req, res) => {
 
   try {
     const { db, getVisitCount } = require('../db/database');
+    const corcho = require('../services/corcho');
+    const campaign = require('../services/campaign');
     
-    // Convertir a UTC básico asumiendo que el admin introduce la hora de España (aprox -2h)
-    // Para simplificar, guardamos directamente el string. La fecha es lo crucial para el refId.
+    // Auto-detectar si no se especifica o si es 'auto':
+    // ¿Hubo evento de Furancho activo en la agenda ese día?
+    let targetType = checkinType || 'auto';
+    if (targetType === 'auto') {
+      const hasEventOnDate = db.prepare(`SELECT 1 FROM events WHERE active = 1 AND event_date = ?`).get(dateStr);
+      targetType = hasEventOnDate ? 'event' : 'reto';
+    }
+
+    if (targetType === 'reto') {
+      // ── FICHAJE RETROACTIVO DE CAMPAÑA / RETO DE LOS 5 / TERRAZA (+2 $CORCHO) ──
+      const result = campaign.recordVisitByDate(walletAddress, dateStr);
+      let corchoReward = null;
+      if (result && result.counted) {
+        try {
+          corchoReward = corcho.rewardCampaignVisit(walletAddress, dateStr);
+        } catch (_) {}
+      }
+      return res.json({
+        success: true,
+        type: 'reto',
+        typeName: '☀️ Punto del Reto de los 5 / Terraza',
+        counted: !!(result && result.counted),
+        totalVisits: (result && result.totalVisits) || campaign.getCampaignVisitCount(walletAddress),
+        completed: !!(result && result.completed),
+        corchoReward: corchoReward && corchoReward.added ? corchoReward : { amount: 2, added: true }
+      });
+    }
+
+    // ── FICHAJE RETROACTIVO DE EVENTO / SESIÓN FURANCHO (+100 $CORCHO) ──
     const dbTime = `${dateStr} ${timeStr}:00`;
     
-    // 1. Insertar la visita
+    // 1. Insertar la visita de sesión
     db.prepare(`INSERT INTO sessions (wallet_address, entry_time, counted_as_visit) VALUES (?, ?, 1)`).run(walletAddress, dbTime);
 
     // 2. Calcular el nivel por si subió
@@ -472,15 +501,28 @@ router.post('/admin-manual-checkin', requireAuth, (req, res) => {
       console.error('Error otorgando nivel en manual check-in:', e.message);
     }
 
-    // 3. Dar los corchos correspondientes a ese día retroactivo
+    // 3. Dar los corchos correspondientes a ese día retroactivo de evento
     let corchoReward = null;
     try {
-      const corcho = require('../services/corcho');
-      const refId = `event_${dateStr}`;
-      corchoReward = corcho.rewardCheckin(walletAddress, refId);
+      const refId = `entry_manual_${dateStr}_${walletAddress.toLowerCase()}`;
+      const amount = corcho.getRate('checkin') || 100;
+      corchoReward = require('../db/database').addCorchoCoins(
+        walletAddress,
+        amount,
+        'checkin',
+        `🍷 Fichaje retroactivo no Furancho (+${amount} $CORCHO)`,
+        refId
+      );
     } catch (e) {}
 
-    return res.json({ success: true, visitCount, levelUp, corchoReward });
+    return res.json({
+      success: true,
+      type: 'event',
+      typeName: '🍷 Visita de Evento Furancho',
+      visitCount,
+      levelUp,
+      corchoReward
+    });
   } catch (error) {
     console.error('Error en /admin-manual-checkin:', error.message);
     res.status(500).json({ error: 'Error procesando entrada manual' });

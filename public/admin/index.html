@@ -3077,6 +3077,13 @@
         <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Wallet del cliente</label>
         <input id="manual-checkin-wallet" type="text" placeholder="0x..." style="width:100%; background:#fff; color:var(--text); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:11px 13px; font-size:13px; font-family:'Outfit',sans-serif; box-sizing:border-box; margin-bottom:12px;" />
         
+        <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Tipo de Visita / Fichaje Retroactivo</label>
+        <select id="manual-checkin-type" style="width:100%; background:#fff; color:var(--text); border:1.5px solid rgba(42,21,9,0.12); border-radius:12px; padding:10px 12px; font-size:13px; font-family:'Outfit',sans-serif; margin-bottom:12px;">
+          <option value="auto">✨ Auto-detectar (Evento en agenda vs Terraza)</option>
+          <option value="event">🍷 Visita de Evento Furancho (Suma Nivel + 100 $CORCHO)</option>
+          <option value="reto">☀️ Punto del Reto de los 5 / Terraza (+2 $CORCHO)</option>
+        </select>
+
         <div style="display:flex; gap:10px; margin-bottom:14px;">
           <div style="flex:1;">
             <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Día de la visita</label>
@@ -11538,12 +11545,14 @@
     const walletAddress = document.getElementById('manual-checkin-wallet').value.trim();
     const dateStr = document.getElementById('manual-checkin-date').value;
     const timeStr = document.getElementById('manual-checkin-time').value;
+    const checkinType = document.getElementById('manual-checkin-type').value;
 
     if (!walletAddress || !dateStr || !timeStr) {
       alert('Debes rellenar la wallet, la fecha y la hora.');
       return;
     }
-    if (!confirm(`¿Fichar entrada para ${walletAddress.slice(0,6)}... el día ${dateStr} a las ${timeStr}?`)) return;
+    const typeLabel = checkinType === 'reto' ? 'Punto del Reto de los 5 (+2 $CORCHO)' : checkinType === 'event' ? 'Visita de Evento Furancho (+100 $CORCHO)' : 'Auto-detectar por fecha';
+    if (!confirm(`¿Fichar (${typeLabel}) para ${walletAddress.slice(0,6)}... el día ${dateStr} a las ${timeStr}?`)) return;
 
     try {
       const btn = document.querySelector('button[onclick="submitManualCheckin()"]');
@@ -11554,7 +11563,7 @@
       const r = await fetch('/api/mint/admin-manual-checkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress, dateStr, timeStr })
+        body: JSON.stringify({ walletAddress, dateStr, timeStr, checkinType })
       });
       const data = await r.json();
       
@@ -11566,12 +11575,18 @@
         return;
       }
 
-      let msg = `¡Fichaje manual registrado con éxito!\n\nVisitas totales: ${data.visitCount}\n`;
-      if (data.levelUp) {
-        msg += `🌟 ¡Ha subido al nivel ${data.levelUp.level} (${data.levelUp.name})!\n`;
+      let msg = `¡Fichaje manual registrado con éxito!\n\nTipo: ${data.typeName || data.type}\n`;
+      if (data.type === 'reto') {
+        msg += `☀️ Visitas acumuladas en el Reto de los 5: ${data.totalVisits}\n`;
+        if (data.completed) msg += `👑 ¡Ha completado el Reto de los 5 (Furancho Legend)!\n`;
+      } else {
+        msg += `Visitas totales de sesión: ${data.visitCount}\n`;
+        if (data.levelUp) {
+          msg += `🌟 ¡Ha subido al nivel ${data.levelUp.level} (${data.levelUp.name})!\n`;
+        }
       }
-      if (data.corchoReward) {
-        msg += `🍷 Se le han otorgado ${data.corchoReward.amount} $CORCHO.\n`;
+      if (data.corchoReward && data.corchoReward.amount) {
+        msg += `🪙 Se le han otorgado ${data.corchoReward.amount} $CORCHO.\n`;
       }
       
       alert(msg);

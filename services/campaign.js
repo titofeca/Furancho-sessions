@@ -325,8 +325,8 @@ module.exports = {
   recordVisit,
   recordVisitFromScan,
   recordVisitByStaff,
+  recordVisitByDate,
   getProgress,
   getLeaderboard,
   getStats
 };
-
