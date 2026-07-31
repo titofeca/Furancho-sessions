@@ -70,21 +70,35 @@
       <div class="err" id="gate-err"></div>
     </div>
 
-    <!-- SCANNER -->
+    <!-- MENÚ PRINCIPAL STAFF -->
+    <div id="staff-top-nav" style="display:none; gap:6px; margin-bottom:16px; background:rgba(255,255,255,0.7); border:1px solid rgba(42,21,9,0.1); border-radius:14px; padding:4px; box-shadow:0 4px 12px rgba(42,21,9,0.05); flex-wrap:wrap;">
+      <button class="staff-tab-btn" onclick="switchStaffTab('scan')" id="tab-btn-scan" style="flex:1 1 45%; padding:10px 8px; border:none; border-radius:10px; font-weight:800; font-size:12.5px; cursor:pointer; background:var(--wine); color:#fff; font-family:'Outfit',sans-serif;">📷 1. Escáner QR</button>
+      <button class="staff-tab-btn" onclick="switchStaffTab('terraza')" id="tab-btn-terraza" style="flex:1 1 45%; padding:10px 8px; border:none; border-radius:10px; font-weight:800; font-size:12.5px; cursor:pointer; background:transparent; color:var(--text); font-family:'Outfit',sans-serif;">🕐 2. Horario Terraza</button>
+      <button class="staff-tab-btn" onclick="switchStaffTab('inbox')" id="tab-btn-inbox" style="flex:1 1 45%; padding:10px 8px; border:none; border-radius:10px; font-weight:800; font-size:12.5px; cursor:pointer; background:transparent; color:var(--text); font-family:'Outfit',sans-serif;">🪙 3. Pendientes / Chave</button>
+      <button class="staff-tab-btn" onclick="switchStaffTab('guide')" id="tab-btn-guide" style="flex:1 1 45%; padding:10px 8px; border:none; border-radius:10px; font-weight:800; font-size:12.5px; cursor:pointer; background:transparent; color:var(--text); font-family:'Outfit',sans-serif;">📋 4. Guía y Ayuda</button>
+    </div>
+
+    <!-- SECCIÓN 1: SCANNER -->
     <div id="scanner" class="card" style="display:none;">
       <!-- Banner campaña (solo visible durante el Reto de los 5) -->
       <div class="camp-banner" id="camp-banner" style="display:none;">
         👑 <b>Reto de los 5 activo</b> — 📍 <b>Terraza do Finisterre</b>. Escanea SOLO el QR que el cliente enseña <b>en vivo</b> desde su app. Las capturas de pantalla no valen y caducan solas.
       </div>
-      <h2 style="text-align:center;">📷 Escanea al cliente</h2>
-      <p class="lead" style="text-align:center;">Pídele que abra su app y te enseñe su <strong>🪪 ID Socio (QR)</strong>. Apunta y se ficha solo.</p>
-      <div id="reader"></div>
-      <div class="scan-status" id="scan-status"></div>
-      <!-- Respaldo si la cámara no enfoca (algunos Android): sacar foto al QR del cliente -->
-      <p class="scan-hint" style="margin-bottom:6px;">¿La cámara no enfoca? Sácale una foto al QR del cliente 👇</p>
-      <label for="staff-photo-input" style="display:block; box-sizing:border-box; border-radius:14px; padding:12px; width:100%; text-align:center; background:rgba(196,151,58,0.14); border:1.5px solid var(--gold); color:#8B6914; font-weight:700; cursor:pointer;">📸 Sacar foto al QR</label>
+      <h2 style="text-align:center;">📷 Escáner QR de Clientes</h2>
+      <p class="lead" style="text-align:center;">Encender cámara para escanear el <strong>🪪 QR Socio</strong> del cliente.</p>
+
+      <div style="margin-bottom:14px; text-align:center;">
+        <button id="cam-toggle-btn" onclick="toggleCameraScanner()" style="width:100%; padding:14px; border:none; border-radius:50px; background:linear-gradient(135deg,#16a34a,#15803d); color:#fff; font-weight:800; font-size:15px; cursor:pointer; font-family:'Outfit',sans-serif; box-shadow:0 6px 16px rgba(22,163,74,0.3);">
+          📷 Encender Cámara Escáner
+        </button>
+      </div>
+
+      <div id="reader" style="display:none;"></div>
+      <div class="scan-status" id="scan-status" style="margin-bottom:10px;">⏸️ Cámara pausada (presiona Encender para escanear)</div>
+
+      <!-- Respaldo si la cámara no enfoca: foto al QR -->
+      <label for="staff-photo-input" style="display:block; box-sizing:border-box; border-radius:14px; padding:11px; width:100%; text-align:center; background:rgba(196,151,58,0.14); border:1.5px solid var(--gold); color:#8B6914; font-weight:700; cursor:pointer;">📸 Sacar foto al QR</label>
       <input type="file" id="staff-photo-input" accept="image/*" capture="environment" style="display:none;" onchange="checkinFromPhoto(this)" />
-      <p class="scan-hint" style="margin-top:12px;">Cada escaneo ficha la <strong>entrada</strong> del cliente para que entre en los sorteos.</p>
       <div class="footer-link"><button onclick="logout()">Cambiar código / salir</button></div>
     </div>
 
@@ -473,23 +487,55 @@
       document.getElementById('guide-chevron').textContent = open ? '▼' : '▲';
     }
 
-    async function startScanner(){
-      document.getElementById('gate').style.display = 'none';
-      document.getElementById('scanner').style.display = 'block';
-      document.getElementById('result').style.display = 'none';
-      document.getElementById('staff-guide-card').style.display = 'block'; // guía de capacidades (plegado)
-      document.getElementById('terraza-card').style.display = 'block'; // editor de horario (plegado)
-      document.getElementById('vip-card').style.display = 'block';     // reservas de hoy (plegado)
+    let isCameraActive = false;
+
+    function switchStaffTab(tabName) {
+      document.querySelectorAll('.staff-tab-btn').forEach(btn => {
+        btn.style.background = 'transparent';
+        btn.style.color = 'var(--text)';
+      });
+      const activeBtn = document.getElementById('tab-btn-' + tabName);
+      if (activeBtn) {
+        activeBtn.style.background = 'var(--wine)';
+        activeBtn.style.color = '#fff';
+      }
+
+      document.getElementById('scanner').style.display = tabName === 'scan' ? 'block' : 'none';
+      document.getElementById('terraza-card').style.display = tabName === 'terraza' ? 'block' : 'none';
+      document.getElementById('corcho-inbox-card').style.display = tabName === 'inbox' ? 'block' : 'none';
+      document.getElementById('staff-guide-card').style.display = tabName === 'guide' ? 'block' : 'none';
+
+      if (tabName !== 'scan') {
+        stopCameraScanner();
+      }
+    }
+
+    function toggleCameraScanner() {
+      if (isCameraActive) {
+        stopCameraScanner();
+      } else {
+        startCameraScanner();
+      }
+    }
+
+    async function startCameraScanner() {
+      const readerDiv = document.getElementById('reader');
+      const btn = document.getElementById('cam-toggle-btn');
       const status = document.getElementById('scan-status');
-      status.textContent = 'Abriendo cámara…';
-      try{
-        if (scanner){ try { await scanner.stop(); } catch(e){} }
+      if (readerDiv) readerDiv.style.display = 'block';
+      if (btn) {
+        btn.style.background = 'linear-gradient(135deg, #dc2626, #b91c1c)';
+        btn.textContent = '🛑 Apagar Cámara';
+      }
+      if (status) status.textContent = 'Abriendo cámara…';
+
+      try {
+        if (scanner) { try { await scanner.stop(); } catch(e){} }
         scanner = new Html5Qrcode('reader');
         const config = {
           fps: 10,
           qrbox: { width: 240, height: 240 },
           aspectRatio: 1.0,
-          // Detector nativo del móvil si existe: enfoca/decodifica mucho mejor en Android.
           experimentalFeatures: { useBarCodeDetectorIfSupported: true }
         };
         const onScan = (decoded) => {
@@ -498,37 +544,54 @@
           if (!parsed) { status.textContent = '⚠️ Ese QR no es de un cliente Furancho'; return; }
           const { wallet, campaignTs } = parsed;
           if (processing) return;
-          if (wallet === lastWallet && (now - lastAt) < 6000) return; // anti-doble del mismo cliente
+          if (wallet === lastWallet && (now - lastAt) < 6000) return;
           processing = true; lastWallet = wallet; lastAt = now;
           handleParsedQr(parsed);
         };
-        // Elegir cámara trasera para evitar errores en Android
-        let started = false;
-        try{
-          const cams = await Html5Qrcode.getCameras();
-          if (cams && cams.length){
-            let id = cams[cams.length - 1].id;
-            const back = cams.find(c => /back|rear|trasera|environment/i.test(c.label || ''));
-            if (back) id = back.id;
-            await scanner.start(id, config, onScan, ()=>{});
-            started = true;
-          }
-        }catch(e){ /* fallback abajo */ }
-        if (!started) await scanner.start({ facingMode:'environment' }, config, onScan, ()=>{});
-        status.textContent = '';
-        // Forzar enfoque continuo (mejora el foco en muchos Android). Best-effort.
-        setTimeout(() => {
-          try {
-            const v = document.querySelector('#reader video');
-            const tr = v && v.srcObject && v.srcObject.getVideoTracks && v.srcObject.getVideoTracks()[0];
-            if (tr && tr.applyConstraints) tr.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(()=>{});
-          } catch(_) {}
-        }, 800);
-      }catch(err){
-        status.innerHTML = '⚠️ No se pudo abrir la cámara. Permite el acceso a cámara en el navegador y recarga.';
+
+        try {
+          await scanner.start({ facingMode: { exact: "environment" } }, config, onScan);
+          isCameraActive = true;
+          if (status) status.textContent = '🟢 Cámara activa · Apunta al QR';
+        } catch (_) {
+          await scanner.start({ facingMode: "environment" }, config, onScan);
+          isCameraActive = true;
+          if (status) status.textContent = '🟢 Cámara activa · Apunta al QR';
+        }
+      } catch (err) {
+        isCameraActive = false;
+        if (status) status.textContent = '⚠️ No se pudo acceder a la cámara. Usa "📸 Sacar foto al QR"';
       }
+    }
+
+    async function stopCameraScanner() {
+      const readerDiv = document.getElementById('reader');
+      const btn = document.getElementById('cam-toggle-btn');
+      const status = document.getElementById('scan-status');
+      if (btn) {
+        btn.style.background = 'linear-gradient(135deg, #16a34a, #15803d)';
+        btn.textContent = '📷 Encender Cámara Escáner';
+      }
+      if (scanner && isCameraActive) {
+        try { await scanner.stop(); } catch(e){}
+        isCameraActive = false;
+      }
+      if (readerDiv) readerDiv.style.display = 'none';
+      if (status) status.textContent = '⏸️ Cámara pausada (presiona Encender para escanear)';
+    }
+
+    async function startScanner(){
+      document.getElementById('gate').style.display = 'none';
+      document.getElementById('staff-top-nav').style.display = 'flex';
+      document.getElementById('result').style.display = 'none';
+      
+      switchStaffTab('scan');
+      loadTerraza();
+      loadVipReservations();
+      loadCampaignLeaderboard();
+      checkStaffTimecard();
+      loadStaffCorchoInbox();
       loadCampaign();   // banner + ranking del Reto de los 5 (si está activo)
-      loadStaffCorchoInbox();   // bandeja de $CORCHO por validar
       connectStaffSse();        // aviso en vivo de compras/canjes
       if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
         try { Notification.requestPermission(); } catch(_){}
