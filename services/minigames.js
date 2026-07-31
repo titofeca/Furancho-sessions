@@ -86,7 +86,8 @@ function startEnxebre(wallet) {
     return { sessionStarted: true, resumed: true };
   }
 
-  const entryCost = settings.enxebreEntryCost || 0;
+  const baseEntryCost = settings.enxebreEntryCost || 0;
+  const entryCost = settings.vacationMode ? 0 : baseEntryCost; // En vacaciones, gratis 🏖️
   if (entryCost > 0) {
     const { spendCorchoCoins } = require('./corcho');
     const res = spendCorchoCoins(wallet, entryCost, 'minigame_enxebre_entry', `🎮 O Enxebre: entrada (-${entryCost} $CORCHO)`);
@@ -279,7 +280,8 @@ function spinRuleta(wallet) {
   const plays = db.prepare(`SELECT COUNT(*) as c FROM ruleta_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
   if (plays.c >= settings.ruletaMaxPlays) throw new Error('Ya has agotado tus tiradas de hoy');
 
-  const entryCost = settings.ruletaEntryCost;
+  const baseRuletaCost = settings.ruletaEntryCost;
+  const entryCost = settings.vacationMode ? 0 : baseRuletaCost; // En vacaciones, gratis 🏖️
   if (entryCost > 0) {
     const { spendCorchoCoins } = require('./corcho');
     const res = spendCorchoCoins(wallet, entryCost, 'minigame_ruleta_entry', `🐙 Ruleta do Pulpo: entrada (-${entryCost} $CORCHO)`);
@@ -339,7 +341,8 @@ function startQueimada(wallet) {
   const plays = db.prepare(`SELECT COUNT(*) as c FROM queimada_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
   if (plays.c >= settings.queimadaMaxPlays) throw new Error('Ya has agotado tus queimadas de hoy');
 
-  const entryCost = settings.queimadaEntryCost;
+  const baseQueimadaCost = settings.queimadaEntryCost;
+  const entryCost = settings.vacationMode ? 0 : baseQueimadaCost; // En vacaciones, gratis 🏖️
   if (entryCost > 0) {
     const { spendCorchoCoins } = require('./corcho');
     const res = spendCorchoCoins(wallet, entryCost, 'minigame_queimada_entry', `🔥 A Queimada: entrada (-${entryCost} $CORCHO)`);
@@ -358,20 +361,22 @@ function drawIngredient() {
 function resolveQueimada(wallet, ingredients, totalScore) {
   const settings = corcho.getEconomySettings();
   const today = new Date().toISOString().slice(0, 10);
-  const entryCost = settings.queimadaEntryCost;
+  // En vacaciones, el coste es 0 pero el premio se calcula sobre el coste base configurado
+  const baseCostForPrize = settings.queimadaEntryCost || 1;
+  const entryCost = settings.vacationMode ? 0 : baseCostForPrize;
 
   let result, prize = 0;
   if (totalScore > 21) {
     result = 'burned';
   } else if (totalScore === 21) {
     result = 'perfect';
-    prize = entryCost * (settings.queimadaMult21 || 3);
+    prize = baseCostForPrize * (settings.queimadaMult21 || 3);
   } else if (totalScore >= 18) {
     result = 'great';
-    prize = entryCost * (settings.queimadaMult1820 || 2);
+    prize = baseCostForPrize * (settings.queimadaMult1820 || 2);
   } else if (totalScore >= 15) {
     result = 'good';
-    prize = entryCost * (settings.queimadaMult1517 || 1);
+    prize = baseCostForPrize * (settings.queimadaMult1517 || 1);
   } else {
     result = 'weak';
   }

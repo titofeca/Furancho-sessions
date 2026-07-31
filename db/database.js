@@ -518,6 +518,13 @@ db.exec(`
     visible INTEGER DEFAULT 1,
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS user_daily_streaks (
+    wallet_address TEXT PRIMARY KEY,
+    current_streak INTEGER DEFAULT 0,
+    last_claimed_date TEXT,
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 // Pre-poblar locales colaboradores iniciales si la tabla está vacía

@@ -20,13 +20,17 @@ function checkAndCharge(wallet, gameId, entryCost, maxPlays) {
   const plays = db.prepare(`SELECT COUNT(*) as c FROM minigame_plays WHERE LOWER(wallet_address) = LOWER(?) AND game_id = ? AND play_date = ?`).get(wallet, gameId, today).c;
   if (plays >= maxPlays) throw new Error('Límite diario alcanzado');
 
-  if (entryCost > 0) {
+  // En modo vacaciones los juegos son GRATIS 🏖️
+  const settings = corcho.getEconomySettings();
+  const effectiveCost = settings.vacationMode ? 0 : entryCost;
+
+  if (effectiveCost > 0) {
     const { getCorchoBalance, spendCorchoCoins } = require('./corcho');
     const balance = getCorchoBalance(wallet);
-    if (balance < entryCost) throw new Error('Saldo insuficiente');
-    spendCorchoCoins(wallet, entryCost, `minigame_${gameId}_entry`, `Entrada a ${gameId}`);
+    if (balance < effectiveCost) throw new Error('Saldo insuficiente');
+    spendCorchoCoins(wallet, effectiveCost, `minigame_${gameId}_entry`, `Entrada a ${gameId}`);
   }
-  return { playsToday: plays, today };
+  return { playsToday: plays, today, effectiveCost };
 }
 
 function recordPlayAndReward(wallet, gameId, today, entryCost, rawPrize, prizeDesc) {

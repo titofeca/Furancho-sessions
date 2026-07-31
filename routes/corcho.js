@@ -495,3 +495,150 @@ router.post('/summer/stamp', (req, res) => {
   }
 });
 
+// GET /api/corcho/leaderboard — ranking público de $CORCHO para competir entre socios
+router.get('/leaderboard', (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const userWallet = (req.query.wallet || '').toLowerCase();
+    
+    // Top 20 por saldo $CORCHO
+    const topRows = db.prepare(`
+      SELECT b.wallet_address, b.balance,
+             p.alias,
+             (SELECT MAX(level) FROM mints WHERE LOWER(wallet_address) = LOWER(b.wallet_address) AND status = 'success') as level
+      FROM corcho_balances b
+      LEFT JOIN user_profiles p ON LOWER(p.wallet_address) = LOWER(b.wallet_address)
+      WHERE b.balance > 0
+      ORDER BY b.balance DESC, b.wallet_address ASC
+      LIMIT 20
+    `).all();
+
+    const leaderboard = topRows.map((r, i) => {
+      const w = r.wallet_address.toLowerCase();
+      const shortW = `${w.slice(0, 6)}…${w.slice(-4)}`;
+      return {
+        rank: i + 1,
+        walletAddress: w,
+        walletMasked: shortW,
+        displayName: r.alias ? `${r.alias}` : `Socio ${shortW}`,
+        balance: r.balance,
+        level: r.level || 1,
+        isMe: userWallet ? (w === userWallet) : false
+      };
+    });
+
+    let userRank = null;
+    if (userWallet) {
+      const foundIdx = leaderboard.findIndex(x => x.isMe);
+      if (foundIdx >= 0) {
+        userRank = foundIdx + 1;
+      } else {
+        const myBal = db.prepare(`SELECT balance FROM corcho_balances WHERE LOWER(wallet_address) = LOWER(?)`).get(userWallet);
+        if (myBal && myBal.balance > 0) {
+          const ahead = db.prepare(`SELECT COUNT(*) as c FROM corcho_balances WHERE balance > ?`).get(myBal.balance);
+          userRank = (ahead ? ahead.c : 0) + 1;
+        }
+      }
+    }
+
+    res.json({ leaderboard, userRank });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/corcho/daily-streak/status — estado de racha diaria y recompensa disponible
+router.get('/daily-streak/status', (req, res) => {
+  const walletAddress = (req.query.wallet || '').toLowerCase();
+  if (!walletAddress) return res.status(400).json({ error: 'Falta wallet' });
+  try {
+    const { db } = require('../db/database');
+    const corcho = require('../services/corcho');
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const row = db.prepare(`SELECT current_streak, last_claimed_date FROM user_daily_streaks WHERE LOWER(wallet_address) = LOWER(?)`).get(walletAddress);
+    
+    let streak = row ? row.current_streak : 0;
+    const lastDate = row ? row.last_claimed_date : null;
+    const alreadyClaimed = (lastDate === todayStr);
+
+    if (lastDate && !alreadyClaimed) {
+      const yesterday = new Date(Date.now() - 24 * 3600 * 1000).toISOString().slice(0, 10);
+      if (lastDate !== yesterday) {
+        streak = 0;
+      }
+    }
+
+    const vacationMode = !!corcho.getEconomySettings().vacationMode;
+    const rewardAmount = vacationMode ? 2 : (streak >= 7 ? 3 : streak >= 3 ? 2 : 1);
+
+    res.json({
+      streak,
+      alreadyClaimed,
+      rewardAmount,
+      vacationMode,
+      vacationMessage: vacationMode ? '🏖️ ¡Estamos de vacaciones disfrutando del sol y la playa! Conéctate a diario para mantener tu racha y ganar tus +2 $CORCHO diarios 🍷☀️' : null
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/corcho/daily-streak/claim — reclamar recompensa de racha diaria
+router.post('/daily-streak/claim', (req, res) => {
+  const walletAddress = (req.body.walletAddress || '').toLowerCase();
+  if (!walletAddress) return res.status(400).json({ error: 'Falta walletAddress' });
+  try {
+    const { db } = require('../db/database');
+    const corcho = require('../services/corcho');
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const yesterdayStr = new Date(Date.now() - 24 * 3600 * 1000).toISOString().slice(0, 10);
+
+    const row = db.prepare(`SELECT current_streak, last_claimed_date FROM user_daily_streaks WHERE LOWER(wallet_address) = LOWER(?)`).get(walletAddress);
+    
+    if (row && row.last_claimed_date === todayStr) {
+      return res.status(400).json({ error: 'Ya has reclamado tu recompensa de hoy. ¡Vuelve mañana para continuar tu racha!' });
+    }
+
+    let newStreak = 1;
+    if (row && row.last_claimed_date === yesterdayStr) {
+      newStreak = (row.current_streak || 0) + 1;
+    }
+
+    const vacationMode = !!corcho.getEconomySettings().vacationMode;
+    const rewardAmount = vacationMode ? 2 : (newStreak >= 7 ? 3 : newStreak >= 3 ? 2 : 1);
+
+    db.prepare(`
+      INSERT INTO user_daily_streaks (wallet_address, current_streak, last_claimed_date, updated_at)
+      VALUES (?, ?, ?, datetime('now'))
+      ON CONFLICT(wallet_address) DO UPDATE SET
+        current_streak = excluded.current_streak,
+        last_claimed_date = excluded.last_claimed_date,
+        updated_at = datetime('now')
+    `).run(walletAddress, newStreak, todayStr);
+
+    corcho.addCorchoTransaction({
+      walletAddress,
+      amount: rewardAmount,
+      type: 'daily_streak',
+      description: `🔥 Recompensa Racha Diaria (${newStreak} día${newStreak > 1 ? 's' : ''})`,
+      referenceId: `streak_${todayStr}_${walletAddress}`
+    });
+
+    try {
+      const { broadcast } = require('./raffle');
+      broadcast('corcho_balance_update', { wallet: walletAddress }, walletAddress);
+    } catch (_) {}
+
+    res.json({
+      success: true,
+      streak: newStreak,
+      rewardAmount,
+      message: vacationMode
+        ? `🏖️ ¡+${rewardAmount} $CORCHO añadidos! Estás de vacaciones acumulando racha de ${newStreak} día${newStreak > 1 ? 's' : ''} seguidos 🍷☀️`
+        : `🔥 ¡+${rewardAmount} $CORCHO añadidos! Racha de ${newStreak} día${newStreak > 1 ? 's' : ''} seguidos.`
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+

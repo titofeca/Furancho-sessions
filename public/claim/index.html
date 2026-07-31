@@ -2674,6 +2674,25 @@
         </div>
       </div>
 
+      <!-- 🏆 RANKING DE $CORCHO — Top Furancheiros -->
+      <div class="profile-progress-card" id="corcho-leaderboard-card" style="padding:16px 18px; margin-bottom:20px; background:linear-gradient(135deg, rgba(255,255,255,0.88) 0%, rgba(245,236,216,0.60) 100%); border:1.5px solid rgba(196,151,58,0.4); box-shadow:0 10px 30px -10px rgba(42,21,9,0.08); position:relative; overflow:hidden;">
+        <div style="position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,#f59e0b,#dc2626,#f59e0b);"></div>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:26px; line-height:1;">🏆</span>
+            <div>
+              <h3 style="font-family:'Playfair Display',serif; font-size:16px; font-weight:900; color:var(--wine); margin:0;">Top Furancheiros</h3>
+              <p style="font-size:10.5px; color:var(--text-muted); margin:2px 0 0; font-weight:600;">Ranking de $CORCHO en vivo</p>
+            </div>
+          </div>
+          <button onclick="loadCorchoLeaderboard()" style="background:none; border:1px solid rgba(196,151,58,0.35); border-radius:8px; padding:4px 8px; font-size:10.5px; font-weight:700; color:var(--gold); cursor:pointer;">↻ Actualizar</button>
+        </div>
+        <div id="corcho-leaderboard-list" style="display:flex; flex-direction:column; gap:6px;">
+          <p style="font-size:12px; color:var(--text-muted); text-align:center; padding:12px 0;">Cargando ranking…</p>
+        </div>
+        <div id="corcho-leaderboard-me" style="display:none; margin-top:10px; padding:8px 12px; background:linear-gradient(135deg,rgba(196,151,58,0.15),rgba(139,25,24,0.06)); border:1.5px solid rgba(196,151,58,0.5); border-radius:12px; font-size:12.5px; font-weight:800; color:var(--wine); text-align:center;"></div>
+      </div>
+
       <!-- ①bis EL RETO DE LOS 5 (campaña de verano) -->
       <div class="profile-progress-card" id="campaign-card" style="display:none; padding:22px; margin-bottom:20px; background:linear-gradient(135deg,rgba(255,255,255,.75) 0%,rgba(245,236,216,.55) 100%); border:1.5px solid rgba(var(--gold-rgb),.35); box-shadow:0 10px 30px -10px rgba(42,21,9,.08);">
 
@@ -2786,9 +2805,12 @@
 
           <!-- ESTADO C: MODO VACACIONES (A partir de agosto) -->
           <div id="vacation-mode-state" style="display:none; text-align:center;">
-            <span style="font-size:36px;">🏖️</span>
-            <h3 style="font-family:'Playfair Display',serif; font-size:21px; font-weight:900; color:var(--wine); margin:8px 0 6px;">¡Gracias por estas 9 sesiones, ho!</h3>
-            <p style="font-size:15px; color:#2A1509; line-height:1.6; margin:0; font-weight:500;">Gracias por venir y darnos la oportunidad de compartir noches de viño, tapas y boa xente. Fueron 9 sesiones que no olvidaremos. <strong>En septiembre volvemos con ideas nuevas</strong> y muchas ganas. ¡Cuidaos este verano! 🍷</p>
+            <span style="font-size:40px; display:block; margin-bottom:8px;">🏖️</span>
+            <h3 style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:var(--wine); margin:0 0 10px; line-height:1.3;">¡Estamos de vacaciones disfrutando del sol, la playa y la buena mesa!</h3>
+            <p style="font-size:15px; color:#2A1509; line-height:1.65; margin:0 0 12px; font-weight:500;">Mientras el furancho descansa para volver con más fuerza en septiembre, <strong>los juegos son gratis</strong> y puedes ganar hasta <strong>+2 $CORCHO al día</strong> jugando. ¡Compite en el ranking y sube posiciones antes de que volvamos! 🍷☀️</p>
+            <div style="background:linear-gradient(135deg,rgba(196,151,58,0.18),rgba(139,25,24,0.08)); border:1px solid rgba(196,151,58,0.4); border-radius:12px; padding:10px 14px; font-size:13px; font-weight:700; color:var(--wine);">
+              🎮 Juegos gratuitos · 🪙 Máx. 2 $CORCHO/día · 📅 Volvemos en septiembre
+            </div>
           </div>
 
           <!-- EL TERMÓMETRO (Común para todos) -->
@@ -13123,10 +13145,56 @@
         }
 
         loadCorchoPending();
+        loadCorchoLeaderboard();
       } catch (e) {
         console.error('Error cargando Banco do Corcho:', e);
       }
     }
+
+    async function loadCorchoLeaderboard() {
+      const listEl = document.getElementById('corcho-leaderboard-list');
+      const meEl = document.getElementById('corcho-leaderboard-me');
+      if (!listEl) return;
+      try {
+        const url = userWalletAddress
+          ? `/api/corcho/leaderboard?wallet=${encodeURIComponent(userWalletAddress)}`
+          : '/api/corcho/leaderboard';
+        const data = await resilientFetch(url).then(r => r.json());
+        const { leaderboard = [], userRank } = data;
+
+        const medals = ['🥇', '🥈', '🥉'];
+        if (!leaderboard.length) {
+          listEl.innerHTML = '<p style="font-size:12px; color:var(--text-muted); text-align:center; padding:8px 0;">Aún no hay socios en el ranking.</p>';
+        } else {
+          listEl.innerHTML = leaderboard.map((entry, i) => {
+            const medal = medals[i] || `<span style="font-size:10px; font-weight:900; color:var(--text-muted);">#${entry.rank}</span>`;
+            const isMe = entry.isMe;
+            return `<div style="display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:12px; border:1px solid ${isMe ? 'rgba(196,151,58,0.55)' : 'rgba(42,21,9,0.07)'}; background:${isMe ? 'linear-gradient(135deg,rgba(196,151,58,0.14),rgba(139,25,24,0.05))' : 'rgba(255,255,255,0.6)'};">
+              <span style="font-size:${i < 3 ? '20px' : '13px'}; min-width:24px; text-align:center;">${medal}</span>
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:13px; font-weight:${isMe ? '900' : '700'}; color:${isMe ? 'var(--wine)' : 'var(--text)'}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${entry.displayName}${isMe ? ' <span style="font-size:9.5px; color:var(--gold); font-weight:900; vertical-align:middle;">← Tú</span>' : ''}</div>
+                <div style="font-size:9.5px; color:var(--text-muted);">${entry.walletMasked}</div>
+              </div>
+              <div style="font-family:'Playfair Display',serif; font-size:14px; font-weight:900; color:var(--wine); white-space:nowrap;">${Number(entry.balance).toLocaleString()} <span style="font-size:9px; font-weight:700; color:var(--gold);">$CORCHO</span></div>
+            </div>`;
+          }).join('');
+        }
+
+        if (meEl) {
+          if (userRank && !leaderboard.find(e => e.isMe)) {
+            meEl.style.display = 'block';
+            meEl.innerHTML = `🏆 Tu posición en el ranking: <strong>#${userRank}</strong>`;
+          } else if (!userWalletAddress) {
+            meEl.style.display = 'none';
+          } else {
+            meEl.style.display = 'none';
+          }
+        }
+      } catch (e) {
+        if (listEl) listEl.innerHTML = '<p style="font-size:12px; color:var(--text-muted); text-align:center;">Error cargando ranking</p>';
+      }
+    }
+    window.loadCorchoLeaderboard = loadCorchoLeaderboard;
 
     function openCorchoTransferModal() {
       if (!userWalletAddress) { alert('Conecta tu wallet primero'); return; }
