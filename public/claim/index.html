@@ -5389,14 +5389,31 @@
         if (!events.length) return;
         const section = document.getElementById('agenda-section');
         const list = document.getElementById('agenda-list');
-        section.style.display = 'block';
         const days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
         const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
         const today = new Date(new Date().toDateString());
 
-        // El primer evento futuro (o el primero si todos pasaron) se expande por defecto
-        const nextIdx = events.findIndex(ev => new Date(ev.event_date + 'T00:00:00') >= today);
-        const firstOpenId = events[nextIdx >= 0 ? nextIdx : 0]?.id;
+        // Filtrar eventos futuros o de hoy
+        const futureEvents = events.filter(ev => new Date(ev.event_date + 'T00:00:00') >= today);
+
+        if (!futureEvents.length) {
+          if (section && list) {
+            section.style.display = 'block';
+            list.innerHTML = `
+              <div style="text-align:center; padding:18px 14px; background:linear-gradient(135deg,rgba(196,151,58,0.12),rgba(139,25,24,0.06)); border:1.5px dashed rgba(196,151,58,0.4); border-radius:16px;">
+                <span style="font-size:32px; display:block; margin-bottom:8px;">🏖️</span>
+                <h4 style="font-family:'Playfair Display',serif; font-size:17px; font-weight:900; color:var(--wine); margin:0 0 6px;">Próxima Temporada de Furancho</h4>
+                <p style="font-size:13px; color:var(--text-muted); margin:0; line-height:1.5; font-weight:500;">Estamos preparando la reapertura de septiembre. Muy pronto anunciaremos las nuevas fechas de sesión.</p>
+              </div>
+            `;
+          }
+          return;
+        }
+
+        section.style.display = 'block';
+
+        // El primer evento futuro se expande por defecto
+        const firstOpenId = futureEvents[0]?.id;
 
         const buildCard = (ev, hidden) => {
           const d = new Date(ev.event_date + 'T00:00:00');
