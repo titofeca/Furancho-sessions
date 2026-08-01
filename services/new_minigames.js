@@ -46,6 +46,11 @@ function recordPlayAndReward(wallet, gameId, today, entryCost, rawPrize, prizeDe
     const desc = prizeDesc ? `${prizeDesc} (+${finalPrize} $CORCHO)` : `Premio ${gameId} (+${finalPrize} $CORCHO)`;
     addCorchoCoins(wallet, finalPrize, `minigame_${gameId}`, desc, `${gameId}_${Date.now()}`);
   }
+  // Otorgar 1 boleto automático por cada partida jugada para el sorteo de reapertura
+  try {
+    const { grantReopeningTicket } = require('./corcho');
+    grantReopeningTicket(wallet, `minigame_${gameId}`);
+  } catch (_) {}
   return finalPrize;
 }
 

@@ -311,6 +311,12 @@ function spinRuleta(wallet) {
     addCorchoCoins(wallet, prize, 'minigame_ruleta', `🐙 Ruleta do Pulpo: ${slice.name} (+${prize} $CORCHO)`, `ruleta_${today}_${plays.c}`);
   }
 
+  // Otorgar 1 boleto para el sorteo de reapertura por cada tirada
+  try {
+    const { grantReopeningTicket } = require('./corcho');
+    grantReopeningTicket(wallet, 'minigame_ruleta');
+  } catch (_) {}
+
   return { sliceIndex, sliceName: slice.name, prize, playsLeft: effectiveMaxPlays - plays.c - 1 };
 }
 
@@ -418,6 +424,12 @@ function resolveQueimada(wallet, ingredients, totalScore) {
     const { addCorchoCoins } = require('./corcho');
     addCorchoCoins(wallet, prize, 'minigame_queimada', `🔥 A Queimada: ${result === 'perfect' ? '¡Perfecta!' : result === 'great' ? 'Casi perfecta' : 'Pasable'} (+${prize} $CORCHO)`, `queimada_${today}_${Date.now()}`);
   }
+
+  // Otorgar 1 boleto para el sorteo de reapertura por cada partida
+  try {
+    const { grantReopeningTicket } = require('./corcho');
+    grantReopeningTicket(wallet, 'minigame_queimada');
+  } catch (_) {}
 
   const plays = db.prepare(`SELECT COUNT(*) as c FROM queimada_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
 

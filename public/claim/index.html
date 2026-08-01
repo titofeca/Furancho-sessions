@@ -2674,40 +2674,6 @@
         </div>
       </div>
 
-      <!-- 🔥 RACHA DIARIA DE VERANO & 🎟️ BOLETOS DE REAPERTURA -->
-      <div class="profile-progress-card" id="daily-streak-card" style="padding:16px 18px; margin-bottom:20px; background:linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(245,236,216,0.70) 100%); border:1.5px solid rgba(196,151,58,0.45); box-shadow:0 10px 30px -10px rgba(42,21,9,0.08); position:relative; overflow:hidden;">
-        <div style="position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,#f59e0b,#dc2626,#f59e0b);"></div>
-        
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-          <div style="display:flex; align-items:center; gap:10px;">
-            <span style="font-size:26px; line-height:1;">🔥</span>
-            <div>
-              <h3 style="font-family:'Playfair Display',serif; font-size:16px; font-weight:900; color:var(--wine); margin:0;">Racha Diaria de Verano</h3>
-              <p style="font-size:10.5px; color:var(--text-muted); margin:2px 0 0; font-weight:600;" id="streak-subtitle">Entra cada día y gana +2 $CORCHO</p>
-            </div>
-          </div>
-          <div style="text-align:right;">
-            <span id="streak-badge-count" style="font-size:14px; font-weight:900; color:var(--wine); font-family:'Playfair Display',serif;">0 días</span>
-            <div style="font-size:9.5px; color:var(--gold); font-weight:800; letter-spacing:0.5px;">🔥 RACHA</div>
-          </div>
-        </div>
-
-        <div style="background:rgba(196,151,58,0.08); border:1px solid rgba(196,151,58,0.25); border-radius:12px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:20px;">🎟️</span>
-            <div>
-              <div style="font-size:12px; font-weight:800; color:var(--wine);">Boletos para el Sorteo de Reapertura</div>
-              <div style="font-size:10.5px; color:var(--text-muted);" id="reopening-tickets-count">Acumulados: 0 boletos</div>
-            </div>
-          </div>
-          <span style="font-size:10px; font-weight:900; color:var(--wine); background:rgba(196,151,58,0.2); padding:3px 8px; border-radius:100px;">SEPT. 2026</span>
-        </div>
-
-        <button id="btn-claim-streak" onclick="claimDailyStreakUI()" style="width:100%; padding:12px; background:linear-gradient(135deg, #7f1d1d, #991b1b); color:#fff; border:none; border-radius:14px; font-family:'Playfair Display',serif; font-size:14.5px; font-weight:900; cursor:pointer; box-shadow:0 4px 15px rgba(127,29,29,0.3); transition:transform 0.1s;">
-          🎁 RECLAMAR +2 $CORCHO Y BOLETO DE HOY
-        </button>
-      </div>
-
       <!-- 🏆 RANKING DE MINIJUEGOS — Top 3 Furancheiros -->
       <div class="profile-progress-card" id="corcho-leaderboard-card" style="padding:16px 18px; margin-bottom:20px; background:linear-gradient(135deg, rgba(255,255,255,0.88) 0%, rgba(245,236,216,0.60) 100%); border:1.5px solid rgba(196,151,58,0.4); box-shadow:0 10px 30px -10px rgba(42,21,9,0.08); position:relative; overflow:hidden;">
         <div style="position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,#f59e0b,#dc2626,#f59e0b);"></div>
@@ -2734,6 +2700,18 @@
           <span style="font-size:30px;">👑</span>
           <h3 style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:var(--wine); margin:4px 0 2px;">El Reto de los 5</h3>
           <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0 0 8px;">Ven a la terraza este verano y construye tu rango. <strong>5 visitas = NFT Furancho Legend 2026.</strong> Cuantas más vengas, más privilegios a la vuelta en septiembre.</p>
+
+          <!-- Boletos para el Sorteo de Reapertura -->
+          <div style="margin-top:10px; margin-bottom:12px; background:rgba(196,151,58,0.08); border:1px solid rgba(196,151,58,0.25); border-radius:12px; padding:10px 14px; display:flex; align-items:center; justify-content:space-between;">
+            <div style="display:flex; align-items:center; gap:8px; text-align:left;">
+              <span style="font-size:20px;">🎟️</span>
+              <div>
+                <div style="font-size:12px; font-weight:800; color:var(--wine);">Boletos Sorteo de Reapertura</div>
+                <div style="font-size:10.5px; color:var(--text-muted);" id="reopening-tickets-count">Acumulados: 0 boletos</div>
+              </div>
+            </div>
+            <span style="font-size:10px; font-weight:900; color:var(--wine); background:rgba(196,151,58,0.2); padding:3px 8px; border-radius:100px;">SEPT. 2026</span>
+          </div>
 
           <!-- Aviso: día de Furancho no cuenta -->
           <div id="campaign-furancho-day-warn" style="display:none; margin:0 0 8px; padding:6px 12px; background:rgba(var(--wine-rgb),.08); border:1px solid rgba(var(--wine-rgb),.2); border-radius:12px; font-size:11.5px; color:var(--wine); font-weight:600;">

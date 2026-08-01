@@ -394,6 +394,31 @@ function syncRetroactiveCorchoCoins() {
 // Ejecutar sincronización retroactiva al inicializar
 setTimeout(syncRetroactiveCorchoCoins, 1000);
 
+function grantReopeningTicket(walletAddress, sourcePrefix = 'minigame') {
+  if (!walletAddress) return;
+  try {
+    const { db } = require('../db/database');
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const uniqueSource = `${sourcePrefix}_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS reopening_tickets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        wallet_address TEXT NOT NULL,
+        earned_date TEXT NOT NULL,
+        source TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now')),
+        UNIQUE(wallet_address, earned_date, source)
+      )
+    `).run();
+    db.prepare(`
+      INSERT INTO reopening_tickets (wallet_address, earned_date, source)
+      VALUES (?, ?, ?)
+    `).run(walletAddress.toLowerCase(), todayStr, uniqueSource);
+  } catch (e) {
+    console.error('Error otorgando boleto de reapertura:', e);
+  }
+}
+
 module.exports = {
   DEFAULT_RATES,
   getRate,
@@ -412,6 +437,7 @@ module.exports = {
   addCorchoCoins,
   spendCorchoCoins,
   getCorchoHistory,
-  transferNftWithFee
+  transferNftWithFee,
+  grantReopeningTicket
 };
 

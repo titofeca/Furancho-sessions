@@ -940,12 +940,116 @@ router.post('/prizes', requireAuth, (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-// DELETE /api/raffle/prizes/:id — eliminar preset
-router.delete('/prizes/:id', requireAuth, (req, res) => {
+// GET /api/raffle/admin/reopening-stats — Estadísticas de la bombona de reapertura
+router.get('/admin/reopening-stats', requireAuth, (req, res) => {
   try {
-    deletePrizePreset(parseInt(req.params.id));
-    res.json({ success: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    const { db } = require('../db/database');
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS reopening_tickets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        wallet_address TEXT NOT NULL,
+        earned_date TEXT NOT NULL,
+        source TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now')),
+        UNIQUE(wallet_address, earned_date, source)
+      )
+    `).run();
+
+    const totalTickets = db.prepare(`SELECT COUNT(*) as c FROM reopening_tickets`).get().c;
+    const totalParticipants = db.prepare(`SELECT COUNT(DISTINCT LOWER(wallet_address)) as c FROM reopening_tickets`).get().c;
+    
+    const topHolders = db.prepare(`
+      SELECT LOWER(t.wallet_address) as wallet_address, COUNT(*) as ticket_count, p.alias
+      FROM reopening_tickets t
+      LEFT JOIN user_profiles p ON LOWER(p.wallet_address) = LOWER(t.wallet_address)
+      GROUP BY LOWER(t.wallet_address)
+      ORDER BY ticket_count DESC
+      LIMIT 10
+    `).all().map(h => ({
+      walletAddress: h.wallet_address,
+      walletMasked: `${h.wallet_address.slice(0, 6)}…${h.wallet_address.slice(-4)}`,
+      alias: h.alias || null,
+      ticketCount: h.ticket_count,
+      probability: totalTickets > 0 ? ((h.ticket_count / totalTickets) * 100).toFixed(1) + '%' : '0%'
+    }));
+
+    res.json({ totalTickets, totalParticipants, topHolders });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/raffle/admin/draw-reopening — Realizar extracción aleatoria ponderada del Sorteo de Reapertura
+router.post('/admin/draw-reopening', requireAuth, (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const prizeName = req.body.prize || '🎉 Gran Premio Reapertura VIP 2026';
+    
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS reopening_tickets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        wallet_address TEXT NOT NULL,
+        earned_date TEXT NOT NULL,
+        source TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now')),
+        UNIQUE(wallet_address, earned_date, source)
+      )
+    `).run();
+
+    const allTickets = db.prepare(`SELECT wallet_address FROM reopening_tickets`).all();
+    if (!allTickets.length) {
+      return res.status(400).json({ error: 'La bombona está vacía. No hay boletos registrados para el sorteo.' });
+    }
+
+    // Extracción aleatoria ponderada (cada boleto es una papeleta)
+    const winningTicket = allTickets[Math.floor(Math.random() * allTickets.length)];
+    const winnerWallet = winningTicket.wallet_address.toLowerCase();
+
+    // Contar boletos del ganador
+    const winnerCount = db.prepare(`SELECT COUNT(*) as c FROM reopening_tickets WHERE LOWER(wallet_address) = ?`).get(winnerWallet).c;
+    const profile = db.prepare(`SELECT alias FROM user_profiles WHERE LOWER(wallet_address) = ?`).get(winnerWallet);
+    const winnerAlias = profile ? profile.alias : `Socio ${winnerWallet.slice(0, 6)}…${winnerWallet.slice(-4)}`;
+    
+    // Código de verificación de 4 letras/números
+    const verificationCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+
+    // Registrar en BD con status 'claimed' para que aparezca en la lista de Premios Canjeables del socio
+    const now = new Date().toISOString();
+    const result = db.prepare(`
+      INSERT INTO raffles (prize_name, winner_wallet, total_participants, status, created_at, verification_code)
+      VALUES (?, ?, ?, 'claimed', ?, ?)
+    `).run(`${prizeName} (${winnerCount} boletos de reapertura)`, winnerWallet, allTickets.length, now, verificationCode);
+
+    // Emitir difusión SSE a todos los clientes
+    broadcast('reopening_raffle_winner', {
+      prize: prizeName,
+      winnerWallet,
+      winnerAlias,
+      winnerTickets: winnerCount,
+      totalTickets: allTickets.length,
+      verificationCode,
+      message: `🎉 ¡TENEMOS GANADOR DEL SORTEO DE REAPERTURA! ${winnerAlias} ha ganado ${prizeName} con ${winnerCount} boletos.`
+    });
+
+    // Enviar Push a todos
+    try {
+      const { sendPushToAll } = require('../services/push');
+      sendPushToAll('🎉 ¡Ganador del Sorteo de Reapertura!', `${winnerAlias} ha ganado el ${prizeName} con sus ${winnerCount} boletos. ¡Enhorabuena!`, { url: '/claim' }).catch(console.error);
+    } catch (_) {}
+
+    res.json({
+      success: true,
+      raffleId: result.lastInsertRowid,
+      prize: prizeName,
+      winnerWallet,
+      winnerAlias,
+      winnerTickets: winnerCount,
+      totalTickets: allTickets.length,
+      verificationCode
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ── PLANTILLAS CHAVE SEMANAL ────────────────────────────────────────────────
