@@ -14,6 +14,23 @@ db.prepare(`
 `).run();
 
 const DAILY_MESSAGES_CATALOG = [
+  // 👑 CATEGORÍA: EL RETO DE LOS 5 (PASAPORTE DE VERANO)
+  {
+    category: 'reto5',
+    title: '👑 ¿Llevas tu Reto de los 5 a medias?',
+    body: '¡Buenos días! No dejes tu pasaporte a medias. Completa tus 5 visitas a la terraza este verano y asegura tu NFT Furancho Legend para septiembre.'
+  },
+  {
+    category: 'reto5',
+    title: '📍 ¡Sumando sellos para el NFT Legend!',
+    body: 'Recuerda que cada visita a la terraza en verano suma un sello a tu Reto de los 5. ¡Consigue tus 5 sellos antes de abrir en septiembre!'
+  },
+  {
+    category: 'reto5',
+    title: '🍷 ¡Completa el Reto de los 5!',
+    body: '¡Buenos días! Pásate a sellar tu visita por la terraza. 5 visitas = NFT Furancho Legend + ventajas exclusivas para el reencuentro de vuelta.'
+  },
+
   // 🍷 CATEGORÍA 1: MUSEO DO FURANCHO / PREMIOS
   {
     category: 'museum',

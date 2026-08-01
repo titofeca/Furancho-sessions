@@ -663,9 +663,22 @@ router.post('/daily-streak/claim', (req, res) => {
       referenceId: `streak_${todayStr}_${walletAddress}`
     });
 
+    // Conceder boleto para el sorteo de reapertura de septiembre
     try {
-      const { broadcast } = require('./raffle');
-      broadcast('corcho_balance_update', { wallet: walletAddress }, walletAddress);
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS reopening_tickets (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          wallet_address TEXT NOT NULL,
+          earned_date TEXT NOT NULL,
+          source TEXT NOT NULL,
+          created_at TEXT DEFAULT (datetime('now')),
+          UNIQUE(wallet_address, earned_date, source)
+        )
+      `).run();
+      db.prepare(`
+        INSERT OR IGNORE INTO reopening_tickets (wallet_address, earned_date, source)
+        VALUES (?, ?, 'daily_streak')
+      `).run(walletAddress.toLowerCase(), todayStr);
     } catch (_) {}
 
     res.json({
@@ -673,8 +686,39 @@ router.post('/daily-streak/claim', (req, res) => {
       streak: newStreak,
       rewardAmount,
       message: vacationMode
-        ? `🏖️ ¡+${rewardAmount} $CORCHO añadidos! Estás de vacaciones acumulando racha de ${newStreak} día${newStreak > 1 ? 's' : ''} seguidos 🍷☀️`
+        ? `🏖️ ¡+${rewardAmount} $CORCHO y +1 Boleto de Reapertura añadidos! Estás de vacaciones acumulando racha de ${newStreak} día${newStreak > 1 ? 's' : ''} seguidos 🍷☀️`
         : `🔥 ¡+${rewardAmount} $CORCHO añadidos! Racha de ${newStreak} día${newStreak > 1 ? 's' : ''} seguidos.`
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/corcho/reopening-tickets — boletos acumulados para el gran sorteo de reapertura de septiembre
+router.get('/reopening-tickets', (req, res) => {
+  const walletAddress = (req.query.wallet || '').toLowerCase();
+  if (!walletAddress) return res.status(400).json({ error: 'Falta wallet' });
+  try {
+    const { db } = require('../db/database');
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS reopening_tickets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        wallet_address TEXT NOT NULL,
+        earned_date TEXT NOT NULL,
+        source TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now')),
+        UNIQUE(wallet_address, earned_date, source)
+      )
+    `).run();
+
+    const totalRow = db.prepare(`SELECT COUNT(*) as c FROM reopening_tickets WHERE LOWER(wallet_address) = LOWER(?)`).get(walletAddress);
+    const todayRow = db.prepare(`SELECT COUNT(*) as c FROM reopening_tickets WHERE LOWER(wallet_address) = LOWER(?) AND earned_date = ?`).get(walletAddress, todayStr);
+
+    res.json({
+      totalTickets: totalRow ? totalRow.c : 0,
+      earnedToday: todayRow ? (todayRow.c > 0) : false
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
