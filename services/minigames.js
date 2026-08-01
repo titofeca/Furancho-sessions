@@ -263,7 +263,7 @@ function getRuletaStatus(wallet) {
   const today = new Date().toISOString().slice(0, 10);
   const plays = db.prepare(`SELECT COUNT(*) as c FROM ruleta_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
   const vacation = !!settings.vacationMode;
-  const effectiveMaxPlays = vacation ? 1 : (settings.ruletaMaxPlays || 1);
+  const effectiveMaxPlays = vacation ? 3 : (settings.ruletaMaxPlays || 1);
   const effectiveCost = vacation ? 0 : (settings.ruletaEntryCost || 0);
   return {
     enabled: true,
@@ -283,9 +283,9 @@ function spinRuleta(wallet) {
   const today = new Date().toISOString().slice(0, 10);
   const plays = db.prepare(`SELECT COUNT(*) as c FROM ruleta_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
   const vacation = !!settings.vacationMode;
-  const effectiveMaxPlays = vacation ? 1 : (settings.ruletaMaxPlays || 1);
+  const effectiveMaxPlays = vacation ? 3 : (settings.ruletaMaxPlays || 1);
   if (plays.c >= effectiveMaxPlays) {
-    throw new Error(vacation ? '🏖️ Modo Vacaciones: Solo puedes girar 1 vez al día' : 'Ya has agotado tus tiradas de hoy');
+    throw new Error(vacation ? '🏖️ Modo Vacaciones: Solo puedes girar 3 veces al día' : 'Ya has agotado tus tiradas de hoy');
   }
 
   const baseRuletaCost = settings.ruletaEntryCost;
@@ -333,7 +333,7 @@ function getQueimadaStatus(wallet) {
   const today = new Date().toISOString().slice(0, 10);
   const plays = db.prepare(`SELECT COUNT(*) as c FROM queimada_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
   const vacation = !!settings.vacationMode;
-  const effectiveMaxPlays = vacation ? 1 : (settings.queimadaMaxPlays || 1);
+  const effectiveMaxPlays = vacation ? 3 : (settings.queimadaMaxPlays || 1);
   const effectiveCost = vacation ? 0 : (settings.queimadaEntryCost || 0);
   return {
     enabled: true,
@@ -352,9 +352,9 @@ function startQueimada(wallet) {
   const today = new Date().toISOString().slice(0, 10);
   const plays = db.prepare(`SELECT COUNT(*) as c FROM queimada_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
   const vacation = !!settings.vacationMode;
-  const effectiveMaxPlays = vacation ? 1 : (settings.queimadaMaxPlays || 1);
+  const effectiveMaxPlays = vacation ? 3 : (settings.queimadaMaxPlays || 1);
   if (plays.c >= effectiveMaxPlays) {
-    throw new Error(vacation ? '🏖️ Modo Vacaciones: Solo puedes hacer 1 queimada al día' : 'Ya has agotado tus queimadas de hoy');
+    throw new Error(vacation ? '🏖️ Modo Vacaciones: Solo puedes hacer 3 queimadas al día' : 'Ya has agotado tus queimadas de hoy');
   }
 
   const baseQueimadaCost = settings.queimadaEntryCost;

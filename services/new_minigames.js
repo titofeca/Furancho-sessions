@@ -21,9 +21,9 @@ function checkAndCharge(wallet, gameId, entryCost, maxPlays) {
   const plays = db.prepare(`SELECT COUNT(*) as c FROM minigame_plays WHERE LOWER(wallet_address) = LOWER(?) AND game_id = ? AND play_date = ?`).get(wallet, gameId, today).c;
 
   const vacation = !!settings.vacationMode;
-  const effectiveMaxPlays = vacation ? 1 : maxPlays;
+  const effectiveMaxPlays = vacation ? 3 : maxPlays;
   if (plays >= effectiveMaxPlays) {
-    throw new Error(vacation ? '🏖️ Modo Vacaciones: Solo se puede jugar 1 vez al día a cada juego' : 'Límite diario alcanzado');
+    throw new Error(vacation ? '🏖️ Modo Vacaciones: Solo se puede jugar hasta 3 veces al día a cada juego' : 'Límite diario alcanzado');
   }
 
   // En modo vacaciones los juegos son GRATIS 🏖️
@@ -141,7 +141,7 @@ function getStatus(wallet, gameId) {
   const plays = db.prepare(`SELECT COUNT(*) as c FROM minigame_plays WHERE LOWER(wallet_address) = LOWER(?) AND game_id = ? AND play_date = ?`).get(wallet, gameId, today).c;
   
   const vacation = !!settings.vacationMode;
-  const effectiveMaxPlays = vacation ? 1 : (settings[`${gameId}MaxPlays`] || 1);
+  const effectiveMaxPlays = vacation ? 3 : (settings[`${gameId}MaxPlays`] || 1);
   const effectiveCost = vacation ? 0 : (settings[`${gameId}EntryCost`] || 0);
 
   return {
