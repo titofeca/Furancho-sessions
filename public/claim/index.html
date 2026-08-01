@@ -9007,6 +9007,7 @@
       if (!card) return;
       if (!p.active && (!p.visits || p.visits === 0)) { card.style.display = 'none'; return; }
       card.style.display = 'block';
+      if (typeof loadReopeningTicketsUI === 'function') loadReopeningTicketsUI();
 
       // ── Aviso día de Furancho ─────────────────────────────────────────────
       const warnEl = document.getElementById('campaign-furancho-day-warn');
@@ -13174,7 +13175,7 @@
 
         loadCorchoPending();
         loadCorchoLeaderboard();
-        loadDailyStreakUI();
+        loadReopeningTicketsUI();
       } catch (e) {
         console.error('Error cargando Banco do Corcho:', e);
       }
@@ -13221,66 +13222,19 @@
     }
     window.loadCorchoLeaderboard = loadCorchoLeaderboard;
 
-    async function loadDailyStreakUI() {
+    async function loadReopeningTicketsUI() {
       if (!userWalletAddress) return;
+      const ticketEl = document.getElementById('reopening-tickets-count');
+      if (!ticketEl) return;
       try {
-        const [streakData, ticketData] = await Promise.all([
-          resilientFetch(`/api/corcho/daily-streak/status?wallet=${encodeURIComponent(userWalletAddress)}`).then(r => r.json()),
-          resilientFetch(`/api/corcho/reopening-tickets?wallet=${encodeURIComponent(userWalletAddress)}`).then(r => r.json())
-        ]);
-
-        const badgeEl = document.getElementById('streak-badge-count');
-        const subEl = document.getElementById('streak-subtitle');
-        const btnEl = document.getElementById('btn-claim-streak');
-        const ticketEl = document.getElementById('reopening-tickets-count');
-
-        if (badgeEl) badgeEl.textContent = `${streakData.streak || 0} día${(streakData.streak || 0) !== 1 ? 's' : ''}`;
-        if (ticketEl) ticketEl.textContent = `Acumulados: ${ticketData.totalTickets || 0} boleto${(ticketData.totalTickets || 0) !== 1 ? 's' : ''}`;
-
-        if (btnEl) {
-          if (streakData.alreadyClaimed) {
-            btnEl.disabled = true;
-            btnEl.style.opacity = '0.65';
-            btnEl.style.background = '#64748b';
-            btnEl.innerHTML = `✅ RECOMPENSA DE HOY RECLAMADA (${streakData.streak} DÍAS)`;
-          } else {
-            btnEl.disabled = false;
-            btnEl.style.opacity = '1';
-            btnEl.style.background = 'linear-gradient(135deg, #7f1d1d, #991b1b)';
-            btnEl.innerHTML = `🎁 RECLAMAR +${streakData.rewardAmount} $CORCHO Y BOLETO DE HOY`;
-          }
-        }
+        const data = await resilientFetch(`/api/corcho/reopening-tickets?wallet=${encodeURIComponent(userWalletAddress)}`).then(r => r.json());
+        const count = data.totalTickets || 0;
+        ticketEl.textContent = `Acumulados: ${count} boleto${count !== 1 ? 's' : ''}`;
       } catch (e) {
-        console.error('Error cargando Racha Diaria:', e);
+        console.error('Error cargando boletos de reapertura:', e);
       }
     }
-    window.loadDailyStreakUI = loadDailyStreakUI;
-
-    async function claimDailyStreakUI() {
-      if (!userWalletAddress) { alert('Conecta tu wallet primero'); return; }
-      const btnEl = document.getElementById('btn-claim-streak');
-      if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = 'Reclamando…'; }
-      try {
-        const res = await fetch('/api/corcho/daily-streak/claim', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ walletAddress: userWalletAddress })
-        });
-        const data = await res.json();
-        if (!res.ok || data.error) {
-          showToast(data.error || 'Error al reclamar racha', true);
-        } else {
-          showToast(data.message || '¡Recompensa de racha reclamada con éxito!');
-          if (typeof loadBancodoCorcho === 'function') loadBancodoCorcho();
-          loadDailyStreakUI();
-        }
-      } catch (e) {
-        showToast('Error de conexión', true);
-      } finally {
-        if (btnEl && !btnEl.disabled) btnEl.disabled = false;
-      }
-    }
-    window.claimDailyStreakUI = claimDailyStreakUI;
+    window.loadReopeningTicketsUI = loadReopeningTicketsUI;
 
     function openCorchoTransferModal() {
       if (!userWalletAddress) { alert('Conecta tu wallet primero'); return; }
