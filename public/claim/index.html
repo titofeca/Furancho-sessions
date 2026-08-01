@@ -13465,7 +13465,8 @@
         .then(r => r.json()).then(data => {
           if (data.enabled && data.canPlay) {
             document.getElementById('mg-ruleta-card').style.display = 'block';
-            document.getElementById('mg-ruleta-desc').textContent = `Gira la ruleta (${data.entryCost} $CORCHO). Te quedan ${data.maxPlays - data.playsToday} tiradas hoy.`;
+            const costStr = data.vacationMode ? '🏖️ Gratis (Vacaciones)' : `${data.entryCost} $CORCHO`;
+            document.getElementById('mg-ruleta-desc').textContent = `Gira la ruleta (${costStr}). Te quedan ${data.maxPlays - data.playsToday} tiradas hoy.`;
           }
         }).catch(console.error);
 
@@ -13473,17 +13474,32 @@
         .then(r => r.json()).then(data => {
           if (data.enabled && data.canPlay) {
             document.getElementById('mg-queimada-card').style.display = 'block';
-            document.getElementById('mg-queimada-desc').textContent = `Prepara la queimada perfecta (${data.entryCost} $CORCHO). Te quedan ${data.maxPlays - data.playsToday} partidas hoy.`;
+            const costStr = data.vacationMode ? '🏖️ Gratis (Vacaciones)' : `${data.entryCost} $CORCHO`;
+            document.getElementById('mg-queimada-desc').textContent = `Prepara la queimada (${costStr}). Te quedan ${data.maxPlays - data.playsToday} partidas hoy.`;
           }
         }).catch(console.error);
 
-      // New Minigames
+      // New Minigames (Rasca, Tragaperras, A Chave, Trivial)
+      const gameDescs = {
+        rasca: 'Raspa y descubre 3 símbolos iguales.',
+        traga: 'Gira los rodillos y saca 3 iguales.',
+        chave: 'Demuestra tu puntería milimétrica.',
+        trivial: 'Responde a las preguntas de hoy.'
+      };
+
       ['rasca', 'traga', 'chave', 'trivial'].forEach(game => {
-        document.getElementById(`mg-${game}-card`).style.display = 'none';
+        const card = document.getElementById(`mg-${game}-card`);
+        if (card) card.style.display = 'none';
         fetch(`/api/minigames/${game}/status`, { headers: hdrs })
           .then(r => r.json()).then(data => {
             if (data.enabled && data.playsLeft > 0) {
-              document.getElementById(`mg-${game}-card`).style.display = 'block';
+              if (card) card.style.display = 'block';
+              const descEl = document.getElementById(`mg-${game}-desc`);
+              if (descEl) {
+                const costStr = data.vacationMode ? '🏖️ Gratis' : `${data.entryCost} $CORCHO`;
+                const baseText = gameDescs[game] || '';
+                descEl.textContent = `${baseText} (${costStr} · Te quedan ${data.playsLeft} hoy)`;
+              }
             }
           }).catch(console.error);
       });

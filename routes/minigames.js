@@ -189,7 +189,7 @@ router.post('/chave/throw', requireWallet, (req, res) => {
 router.get('/trivial/status', requireWallet, (req, res) => {
   try {
     const status = newMinigames.getStatus(req.walletAddress, 'trivial');
-    res.json({ ...status, questions: newMinigames.getTrivialQuestions() });
+    res.json({ ...status, questions: newMinigames.getTrivialQuestions(req.walletAddress) });
   }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
