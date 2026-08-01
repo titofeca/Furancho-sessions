@@ -377,6 +377,16 @@ function drawIngredient() {
 function resolveQueimada(wallet, ingredients, totalScore) {
   const settings = corcho.getEconomySettings();
   const today = new Date().toISOString().slice(0, 10);
+
+  // Recalcular puntuación real servidor para prevenir manipulación del totalScore desde la red
+  let verifiedScore = 0;
+  if (Array.isArray(ingredients)) {
+    verifiedScore = ingredients.reduce((acc, ing) => acc + (parseInt(ing.value, 10) || 0), 0);
+  } else {
+    verifiedScore = parseInt(totalScore, 10) || 0;
+  }
+  totalScore = verifiedScore;
+
   // En vacaciones, el coste es 0 pero el premio se calcula sobre el coste base configurado
   const baseCostForPrize = settings.queimadaEntryCost || 1;
   const entryCost = settings.vacationMode ? 0 : baseCostForPrize;

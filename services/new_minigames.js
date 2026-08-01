@@ -184,14 +184,25 @@ function getTrivialQuestions(walletAddress) {
   return selected;
 }
 
-function submitTrivial(wallet, won) {
+function submitTrivial(wallet, userParam) {
   const settings = corcho.getEconomySettings();
   if (!settings.trivialEnabled) throw new Error('Trivial desactivado');
   const { today } = checkAndCharge(wallet, 'trivial', settings.trivialEntryCost, settings.trivialMaxPlays);
   
+  let won = false;
+  if (Array.isArray(userParam)) {
+    const questions = getTrivialQuestions(wallet);
+    won = (userParam.length === questions.length) && questions.every((q, idx) => Number(userParam[idx]) === q._a);
+  } else if (userParam && typeof userParam === 'object' && Array.isArray(userParam.answers)) {
+    const questions = getTrivialQuestions(wallet);
+    won = (userParam.answers.length === questions.length) && questions.every((q, idx) => Number(userParam.answers[idx]) === q._a);
+  } else if (typeof userParam === 'boolean') {
+    won = userParam;
+  }
+
   let rawPrize = won ? settings.trivialPrize : 0;
   const finalPrize = recordPlayAndReward(wallet, 'trivial', today, settings.trivialEntryCost, rawPrize, '🧠 Trivial');
-  return { prize: finalPrize, rawPrize };
+  return { prize: finalPrize, rawPrize, won };
 }
 
 function getStatus(wallet, gameId) {
