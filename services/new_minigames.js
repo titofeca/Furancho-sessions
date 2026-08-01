@@ -16,13 +16,18 @@ function applyVacationModeCap(wallet, basePrize) {
 
 // Helper genérico para registro y validación
 function checkAndCharge(wallet, gameId, entryCost, maxPlays) {
+  const settings = corcho.getEconomySettings();
   const today = new Date().toISOString().slice(0, 10);
   const plays = db.prepare(`SELECT COUNT(*) as c FROM minigame_plays WHERE LOWER(wallet_address) = LOWER(?) AND game_id = ? AND play_date = ?`).get(wallet, gameId, today).c;
-  if (plays >= maxPlays) throw new Error('Límite diario alcanzado');
+
+  const vacation = !!settings.vacationMode;
+  const effectiveMaxPlays = vacation ? 1 : maxPlays;
+  if (plays >= effectiveMaxPlays) {
+    throw new Error(vacation ? '🏖️ Modo Vacaciones: Solo se puede jugar 1 vez al día a cada juego' : 'Límite diario alcanzado');
+  }
 
   // En modo vacaciones los juegos son GRATIS 🏖️
-  const settings = corcho.getEconomySettings();
-  const effectiveCost = settings.vacationMode ? 0 : entryCost;
+  const effectiveCost = vacation ? 0 : entryCost;
 
   if (effectiveCost > 0) {
     const { getCorchoBalance, spendCorchoCoins } = require('./corcho');
@@ -135,12 +140,17 @@ function getStatus(wallet, gameId) {
   const today = new Date().toISOString().slice(0, 10);
   const plays = db.prepare(`SELECT COUNT(*) as c FROM minigame_plays WHERE LOWER(wallet_address) = LOWER(?) AND game_id = ? AND play_date = ?`).get(wallet, gameId, today).c;
   
+  const vacation = !!settings.vacationMode;
+  const effectiveMaxPlays = vacation ? 1 : (settings[`${gameId}MaxPlays`] || 1);
+  const effectiveCost = vacation ? 0 : (settings[`${gameId}EntryCost`] || 0);
+
   return {
     enabled: Boolean(settings[`${gameId}Enabled`]),
-    entryCost: settings[`${gameId}EntryCost`],
-    maxPlays: settings[`${gameId}MaxPlays`],
+    entryCost: effectiveCost,
+    maxPlays: effectiveMaxPlays,
     playsToday: plays,
-    playsLeft: Math.max(0, settings[`${gameId}MaxPlays`] - plays)
+    playsLeft: Math.max(0, effectiveMaxPlays - plays),
+    vacationMode: vacation
   };
 }
 

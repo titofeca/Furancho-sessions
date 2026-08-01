@@ -733,7 +733,7 @@ router.patch('/:id/collect', requireAuth, (req, res) => {
   try {
     collectRaffle(parseInt(req.params.id), note || null);
     const { db } = require('../db/database');
-    const raffle = db.prepare(`SELECT winner_wallet FROM raffles WHERE id = ?`).get(parseInt(req.params.id));
+    const raffle = db.prepare(`SELECT prize, winner_wallet, establishment, collected_at FROM raffles WHERE id = ?`).get(parseInt(req.params.id));
     if (raffle?.winner_wallet) {
       const clientSSE = clients.find(c => c.walletAddress === raffle.winner_wallet);
       if (clientSSE) {
@@ -742,6 +742,18 @@ router.patch('/:id/collect', requireAuth, (req, res) => {
           if (typeof clientSSE.res.flush === 'function') clientSSE.res.flush();
         } catch (_) {}
       }
+      
+      const payload = {
+        raffleId: parseInt(req.params.id),
+        prize: raffle.prize,
+        wallet: raffle.winner_wallet.slice(0, 6) + '…' + raffle.winner_wallet.slice(-4),
+        walletFull: raffle.winner_wallet,
+        establishment: raffle.establishment || null,
+        collected_at: raffle.collected_at || new Date().toISOString()
+      };
+      broadcastToAdmins('bono_redeemed', payload);
+      broadcastToStaff('bono_redeemed', payload);
+
       try {
         const { injectSystemMuroMessage } = require('../db/database');
         const aliasRow = db.prepare(`SELECT alias FROM user_profiles WHERE LOWER(wallet_address) = LOWER(?)`).get(raffle.winner_wallet);

@@ -262,12 +262,16 @@ function getRuletaStatus(wallet) {
   if (!settings.ruletaEnabled) return { enabled: false };
   const today = new Date().toISOString().slice(0, 10);
   const plays = db.prepare(`SELECT COUNT(*) as c FROM ruleta_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
+  const vacation = !!settings.vacationMode;
+  const effectiveMaxPlays = vacation ? 1 : (settings.ruletaMaxPlays || 1);
+  const effectiveCost = vacation ? 0 : (settings.ruletaEntryCost || 0);
   return {
     enabled: true,
     playsToday: plays.c,
-    maxPlays: settings.ruletaMaxPlays,
-    canPlay: plays.c < settings.ruletaMaxPlays,
-    entryCost: settings.ruletaEntryCost,
+    maxPlays: effectiveMaxPlays,
+    canPlay: plays.c < effectiveMaxPlays,
+    entryCost: effectiveCost,
+    vacationMode: vacation,
     slices: RULETA_SLICES.map((s, i) => ({ name: s.name, index: i, prize: settings[s.key] }))
   };
 }
@@ -278,10 +282,14 @@ function spinRuleta(wallet) {
 
   const today = new Date().toISOString().slice(0, 10);
   const plays = db.prepare(`SELECT COUNT(*) as c FROM ruleta_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
-  if (plays.c >= settings.ruletaMaxPlays) throw new Error('Ya has agotado tus tiradas de hoy');
+  const vacation = !!settings.vacationMode;
+  const effectiveMaxPlays = vacation ? 1 : (settings.ruletaMaxPlays || 1);
+  if (plays.c >= effectiveMaxPlays) {
+    throw new Error(vacation ? '🏖️ Modo Vacaciones: Solo puedes girar 1 vez al día' : 'Ya has agotado tus tiradas de hoy');
+  }
 
   const baseRuletaCost = settings.ruletaEntryCost;
-  const entryCost = settings.vacationMode ? 0 : baseRuletaCost; // En vacaciones, gratis 🏖️
+  const entryCost = vacation ? 0 : baseRuletaCost; // En vacaciones, gratis 🏖️
   if (entryCost > 0) {
     const { spendCorchoCoins } = require('./corcho');
     const res = spendCorchoCoins(wallet, entryCost, 'minigame_ruleta_entry', `🐙 Ruleta do Pulpo: entrada (-${entryCost} $CORCHO)`);
@@ -303,7 +311,7 @@ function spinRuleta(wallet) {
     addCorchoCoins(wallet, prize, 'minigame_ruleta', `🐙 Ruleta do Pulpo: ${slice.name} (+${prize} $CORCHO)`, `ruleta_${today}_${plays.c}`);
   }
 
-  return { sliceIndex, sliceName: slice.name, prize, playsLeft: settings.ruletaMaxPlays - plays.c - 1 };
+  return { sliceIndex, sliceName: slice.name, prize, playsLeft: effectiveMaxPlays - plays.c - 1 };
 }
 
 // ==================== A QUEIMADA ====================
@@ -324,12 +332,16 @@ function getQueimadaStatus(wallet) {
   if (!settings.queimadaEnabled) return { enabled: false };
   const today = new Date().toISOString().slice(0, 10);
   const plays = db.prepare(`SELECT COUNT(*) as c FROM queimada_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
+  const vacation = !!settings.vacationMode;
+  const effectiveMaxPlays = vacation ? 1 : (settings.queimadaMaxPlays || 1);
+  const effectiveCost = vacation ? 0 : (settings.queimadaEntryCost || 0);
   return {
     enabled: true,
     playsToday: plays.c,
-    maxPlays: settings.queimadaMaxPlays,
-    canPlay: plays.c < settings.queimadaMaxPlays,
-    entryCost: settings.queimadaEntryCost
+    maxPlays: effectiveMaxPlays,
+    canPlay: plays.c < effectiveMaxPlays,
+    entryCost: effectiveCost,
+    vacationMode: vacation
   };
 }
 
@@ -339,7 +351,11 @@ function startQueimada(wallet) {
 
   const today = new Date().toISOString().slice(0, 10);
   const plays = db.prepare(`SELECT COUNT(*) as c FROM queimada_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
-  if (plays.c >= settings.queimadaMaxPlays) throw new Error('Ya has agotado tus queimadas de hoy');
+  const vacation = !!settings.vacationMode;
+  const effectiveMaxPlays = vacation ? 1 : (settings.queimadaMaxPlays || 1);
+  if (plays.c >= effectiveMaxPlays) {
+    throw new Error(vacation ? '🏖️ Modo Vacaciones: Solo puedes hacer 1 queimada al día' : 'Ya has agotado tus queimadas de hoy');
+  }
 
   const baseQueimadaCost = settings.queimadaEntryCost;
   const entryCost = settings.vacationMode ? 0 : baseQueimadaCost; // En vacaciones, gratis 🏖️
