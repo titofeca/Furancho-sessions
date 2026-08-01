@@ -495,22 +495,26 @@ router.post('/summer/stamp', (req, res) => {
   }
 });
 
-// GET /api/corcho/leaderboard — ranking público de $CORCHO para competir entre socios
+// GET /api/corcho/leaderboard — ranking de juegos (por $CORCHO ganados en juegos)
 router.get('/leaderboard', (req, res) => {
   try {
     const { db } = require('../db/database');
     const userWallet = (req.query.wallet || '').toLowerCase();
     
-    // Top 20 por saldo $CORCHO
+    // Top 3 por corchos ganados exclusivamente en minijuegos
     const topRows = db.prepare(`
-      SELECT b.wallet_address, b.balance,
-             p.alias,
-             (SELECT MAX(level) FROM mints WHERE LOWER(wallet_address) = LOWER(b.wallet_address) AND status = 'success') as level
+      SELECT LOWER(b.wallet_address) AS wallet_address,
+             COALESCE((
+               SELECT SUM(t.amount)
+               FROM corcho_transactions t
+               WHERE LOWER(t.wallet_address) = LOWER(b.wallet_address)
+                 AND t.type LIKE 'minigame_%' AND t.amount > 0 AND t.type NOT LIKE '%_entry'
+             ), 0) AS game_corchos,
+             p.alias
       FROM corcho_balances b
       LEFT JOIN user_profiles p ON LOWER(p.wallet_address) = LOWER(b.wallet_address)
-      WHERE b.balance > 0
-      ORDER BY b.balance DESC, b.wallet_address ASC
-      LIMIT 20
+      ORDER BY game_corchos DESC, b.balance DESC, b.wallet_address ASC
+      LIMIT 3
     `).all();
 
     const leaderboard = topRows.map((r, i) => {
@@ -521,27 +525,62 @@ router.get('/leaderboard', (req, res) => {
         walletAddress: w,
         walletMasked: shortW,
         displayName: r.alias ? `${r.alias}` : `Socio ${shortW}`,
-        balance: r.balance,
-        level: r.level || 1,
+        gameCorchos: r.game_corchos || 0,
         isMe: userWallet ? (w === userWallet) : false
       };
     });
 
+    let userItem = null;
     let userRank = null;
+
     if (userWallet) {
       const foundIdx = leaderboard.findIndex(x => x.isMe);
       if (foundIdx >= 0) {
         userRank = foundIdx + 1;
       } else {
-        const myBal = db.prepare(`SELECT balance FROM corcho_balances WHERE LOWER(wallet_address) = LOWER(?)`).get(userWallet);
-        if (myBal && myBal.balance > 0) {
-          const ahead = db.prepare(`SELECT COUNT(*) as c FROM corcho_balances WHERE balance > ?`).get(myBal.balance);
-          userRank = (ahead ? ahead.c : 0) + 1;
-        }
+        const myRow = db.prepare(`
+          SELECT LOWER(b.wallet_address) AS wallet_address,
+                 COALESCE((
+                   SELECT SUM(t.amount)
+                   FROM corcho_transactions t
+                   WHERE LOWER(t.wallet_address) = LOWER(b.wallet_address)
+                     AND t.type LIKE 'minigame_%' AND t.amount > 0 AND t.type NOT LIKE '%_entry'
+                 ), 0) AS game_corchos,
+                 p.alias
+          FROM corcho_balances b
+          LEFT JOIN user_profiles p ON LOWER(p.wallet_address) = LOWER(b.wallet_address)
+          WHERE LOWER(b.wallet_address) = LOWER(?)
+        `).get(userWallet);
+
+        const myCorchos = myRow ? (myRow.game_corchos || 0) : 0;
+        const myAlias = myRow ? myRow.alias : null;
+
+        const ahead = db.prepare(`
+          SELECT COUNT(*) as c FROM (
+            SELECT COALESCE((
+              SELECT SUM(t.amount)
+              FROM corcho_transactions t
+              WHERE LOWER(t.wallet_address) = LOWER(b.wallet_address)
+                AND t.type LIKE 'minigame_%' AND t.amount > 0 AND t.type NOT LIKE '%_entry'
+            ), 0) AS gc
+            FROM corcho_balances b
+          ) WHERE gc > ?
+        `).get(myCorchos);
+
+        userRank = (ahead ? ahead.c : 0) + 1;
+        const shortW = `${userWallet.slice(0, 6)}…${userWallet.slice(-4)}`;
+        userItem = {
+          rank: userRank,
+          walletAddress: userWallet,
+          walletMasked: shortW,
+          displayName: myAlias ? `${myAlias}` : `Socio ${shortW}`,
+          gameCorchos: myCorchos,
+          isMe: true
+        };
       }
     }
 
-    res.json({ leaderboard, userRank });
+    res.json({ leaderboard, userItem, userRank });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
