@@ -227,6 +227,41 @@ setInterval(() => {
   } catch (_) {}
 }, 30 * 1000);
 
+// ─── MENSAJES AUTOMÁTICOS DIARIOS (09:00 AM hora Madrid) ──────────────────
+let _dailyMessageLastSentDate = null;
+function scheduleDailyMorningMessage() {
+  setInterval(() => {
+    try {
+      const now = new Date();
+      const madridDate = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+      const todayStr = madridDate.toISOString().slice(0, 10);
+      const h = madridDate.getHours();
+      const m = madridDate.getMinutes();
+
+      // Ventana de disparo a las 09:00 AM (09:00 - 09:04)
+      if (h === 9 && m >= 0 && m <= 4) {
+        if (_dailyMessageLastSentDate === todayStr) return;
+
+        const { db } = require('./db/database');
+        const alreadySentRow = db.prepare(`
+          SELECT id FROM daily_sent_messages WHERE date(sent_at) = ?
+        `).get(todayStr);
+
+        if (!alreadySentRow) {
+          const { sendDailyMorningMessage } = require('./services/daily_messages');
+          const res = sendDailyMorningMessage();
+          if (res) _dailyMessageLastSentDate = todayStr;
+        } else {
+          _dailyMessageLastSentDate = todayStr;
+        }
+      }
+    } catch (e) {
+      console.error('[DailyMessage] Error en el programador de las 09:00 AM:', e);
+    }
+  }, 60 * 1000); // comprobar cada minuto
+}
+scheduleDailyMorningMessage();
+
 // ─── SORTEO SEMANAL AUTOMÁTICO (Miércoles 21:00 hora Madrid) ──────────────────
 // Lógica: cada minuto, miércoles entre las 21:00 y las 21:04 (ventana robusta):
 //   - Si hay un premio configurado para la semana objetivo → lanza el sorteo.
