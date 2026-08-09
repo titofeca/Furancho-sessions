@@ -284,6 +284,12 @@ function scheduleWeeklyRaffle() {
     if (!isWednesday || !isDrawWindow) return;
 
     try {
+      const { getEconomySettings } = require('./services/corcho');
+      if (getEconomySettings().vacationMode) {
+        console.log('[WeeklyRaffle] Modo vacaciones activo — sorteo suspendido.');
+        return;
+      }
+
       const { db, drawWeeklyRaffle, getWeeklyRaffleTargetWeek, hasEventOnThursday } = require('./db/database');
 
       const weekStr = getWeeklyRaffleTargetWeek(madridHour);
@@ -387,6 +393,9 @@ function scheduleWeeklyLifecyclePushes() {
 
       const { db, getWeeklyRaffleTargetWeek } = require('./db/database');
 
+      const { getEconomySettings } = require('./services/corcho');
+      if (getEconomySettings().vacationMode) return;
+
       // ── Domingo 21:00 — ventana abierta ──────────────────────────────────
       if (day === 0 && h === 21 && _lastWeeklyOpenPush !== todayStr) {
         _lastWeeklyOpenPush = todayStr;
@@ -444,6 +453,9 @@ function scheduleEventOpeningPushes() {
       const madrid = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
       const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const todayStr = fmt(madrid);
+
+      const { getEconomySettings } = require('./services/corcho');
+      if (getEconomySettings().vacationMode) return;
 
       const event = db.prepare(`SELECT id, title FROM events WHERE event_date = ? AND active = 1 LIMIT 1`).get(todayStr);
       if (!event) return;
@@ -525,6 +537,9 @@ function scheduleComebackPushes() {
       // Solo disparar una vez al día a las 18:00 h Madrid
       if (hour !== 18 || _lastComebackCheckDate === todayStr) return;
       _lastComebackCheckDate = todayStr;
+
+      const { getEconomySettings } = require('./services/corcho');
+      if (getEconomySettings().vacationMode) return;
 
       const { db } = require('./db/database');
 
