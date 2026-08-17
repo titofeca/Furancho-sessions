@@ -61,7 +61,7 @@ router.post('/checkin', staffLimiter, requireStaff, (req, res) => {
     const hasFuranchoToday = !!getActiveEventWindow();
     const result = hasFuranchoToday
       ? performCheckin(walletAddress, req.ip)
-      : { checkin: false, noFuranchoToday: true };
+      : { success: true, checkin: false, noFuranchoToday: true };
 
     // ── Campaña "Reto de los 5" ──────────────────────────────────────────────
     // Regla (anti-captura incluida) en services/campaign.js: la misma que aplica el
