@@ -203,18 +203,20 @@ router.post('/campaign-checkin', staffLimiter, requireStaff, (req, res) => {
   try {
     const campaign = require('../services/campaign');
     if (!campaign.isCampaignActive()) {
-      return res.json({ active: false, counted: false, message: 'La campaña no está activa.' });
+      return res.json({ success: true, active: false, counted: false, message: 'La campaña no está activa.' });
     }
     const result = campaign.recordVisitByStaff(walletAddress);
 
     if (result.error === 'furancho_day') {
       return res.json({
+        success: true,
         ...result,
         message: '⚠️ Hoy hay Furancho. Los días de sesión no suman visita al Reto de Verano. Correcto.'
       });
     }
 
     return res.json({
+      success: true,
       ...result,
       message: result.counted
         ? `✅ Visita de campaña anotada. Total: ${result.totalVisits}/${result.required}.`

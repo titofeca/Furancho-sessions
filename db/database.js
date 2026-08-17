@@ -1685,10 +1685,11 @@ function rejectMint(id) {
 // si ya fichó hoy, no crea otra. Devuelve si contó y el total acumulado.
 function recordCampaignVisit(walletAddress, dateStr, campaignId = 'reto_5_verano_2026') {
   if (!walletAddress || !dateStr) return { counted: false, totalVisits: 0 };
+  const normalized = walletAddress.toLowerCase();
   const info = db.prepare(`
     INSERT OR IGNORE INTO campaign_visits (wallet_address, campaign_id, visit_date)
     VALUES (?, ?, ?)
-  `).run(walletAddress, campaignId, dateStr);
+  `).run(normalized, campaignId, dateStr);
   const totalVisits = getCampaignVisitCount(walletAddress, campaignId);
   return { counted: info.changes > 0, totalVisits };
 }
