@@ -7439,6 +7439,23 @@
         setTimeout(loadWeeklyRaffle, 800);
       });
 
+      // Sorteo de reapertura: anunciar ganador a todos los clientes
+      _evtSource.addEventListener('reopening_raffle_winner', (e) => {
+        const data = JSON.parse(e.data);
+        const isMe = userWalletAddress && data.winnerWallet && data.winnerWallet.toLowerCase() === userWalletAddress.toLowerCase();
+        if (isMe) {
+          showProfileBanner(
+            `🏆🎉 <strong>¡HAS GANADO EL SORTEO DE REAPERTURA!</strong><br>${data.prize} — con tus ${data.winnerTickets} boletos. Enhorabuena, ho!`,
+            'gold'
+          );
+        } else {
+          showProfileBanner(
+            `🎉 <strong>Ganador del Sorteo de Reapertura:</strong> ${data.winnerAlias} ha ganado ${data.prize} con ${data.winnerTickets} boletos de ${data.totalTickets} totales.`,
+            'gold'
+          );
+        }
+      });
+
       // Admin confirma/cancela reserva VIP → actualizar estado en la agenda
       _evtSource.addEventListener('vip_status', (e) => {
         const data = JSON.parse(e.data);
