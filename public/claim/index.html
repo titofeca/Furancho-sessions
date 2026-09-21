@@ -7255,7 +7255,7 @@
         modal._tickInterval = tickInterval;
       });
 
-      evtSource.addEventListener('raffle_result', (e) => { _handleRaffleResult(JSON.parse(e.data)); });
+      _evtSource.addEventListener('raffle_result', (e) => { _handleRaffleResult(JSON.parse(e.data)); });
 
       // Fichaje EN VIVO: el camarero (o el admin) fichó la entrada de este cliente.
       // Su app se actualiza sola —botón "Registrar Salida", badge "Estás dentro" y
@@ -7280,7 +7280,7 @@
         } catch (_) {}
       });
 
-      evtSource.addEventListener('raffle_timeout', () => {
+      _evtSource.addEventListener('raffle_timeout', () => {
         hideAcceptBanner();
         const modal = document.getElementById('raffle-modal');
         if (modal) { modal.style.display = 'none'; document.body.style.overflow = ''; }
@@ -7297,7 +7297,7 @@
         loadNextRaffleCountdown(); // refrescar countdown tras sorteo terminado
       });
 
-      evtSource.addEventListener('raffle_rejected', () => {
+      _evtSource.addEventListener('raffle_rejected', () => {
         hideAcceptBanner();
         const modal = document.getElementById('raffle-modal');
         if (modal) { modal.style.display = 'none'; document.body.style.overflow = ''; }
@@ -7313,20 +7313,20 @@
         renderPrizes();
       });
 
-      evtSource.addEventListener('raffle_accepted', () => {
+      _evtSource.addEventListener('raffle_accepted', () => {
         const statusText = document.getElementById('raffle-status-text');
         if (statusText) statusText.textContent = '✅ Premio reclamado. ¡Enhorabuena, ho!';
         renderPrizes();
       });
 
       // Admin confirma entrega → actualizar
-      evtSource.addEventListener('prize_collected', () => {
+      _evtSource.addEventListener('prize_collected', () => {
         hideAcceptBanner();
         renderPrizes();
       });
 
       // Cambio de Modo Vacaciones / Verano en vivo
-      evtSource.addEventListener('vacation_mode_toggle', (e) => {
+      _evtSource.addEventListener('vacation_mode_toggle', (e) => {
         try {
           const data = JSON.parse(e.data);
           window.isVacationMode = !!data.vacationMode;
@@ -7344,7 +7344,7 @@
       // ── CHAVE SEMANAL: sorteo realizado ──────────────────────────────────────
 
       // Ganador de la Chave Semanal: debe CONFIRMAR antes de las 23:59 — el código se revela al confirmar
-      evtSource.addEventListener('weekly_draw_result', (e) => {
+      _evtSource.addEventListener('weekly_draw_result', (e) => {
         const data = JSON.parse(e.data);
         // Este evento solo llega a quien es el ganador (el servidor lo filtra por wallet)
         launchParticles();
@@ -7409,7 +7409,7 @@
       });
 
       // El plazo de confirmación venció sin confirmar: premio perdido (solo llega al ganador)
-      evtSource.addEventListener('weekly_forfeited', (e) => {
+      _evtSource.addEventListener('weekly_forfeited', (e) => {
         const data = JSON.parse(e.data);
         const modal = document.getElementById('raffle-modal');
         if (modal) { modal.style.display = 'none'; document.body.style.overflow = 'auto'; }
@@ -7422,7 +7422,7 @@
       });
 
       // Sorteo semanal cerrado: notificar a todos los demás
-      evtSource.addEventListener('weekly_draw_closed', (e) => {
+      _evtSource.addEventListener('weekly_draw_closed', (e) => {
         const data = JSON.parse(e.data);
         const statusText = document.getElementById('raffle-status-text');
         if (statusText) statusText.textContent = `🔑 Chave Semanal sorteada — ${data.prize}`;
@@ -7431,7 +7431,7 @@
       });
 
       // Mensaje nuevo del staff sobre el premio de la Chave
-      evtSource.addEventListener('weekly_chat_message', (e) => {
+      _evtSource.addEventListener('weekly_chat_message', (e) => {
         const data = JSON.parse(e.data);
         if (data.sender !== 'admin') return;
         if (_weeklyChatOpenWeek === data.week) {
@@ -7442,14 +7442,14 @@
       });
 
       // Premio Chave entregado: notificar al ganador
-      evtSource.addEventListener('weekly_prize_collected', (e) => {
+      _evtSource.addEventListener('weekly_prize_collected', (e) => {
         const data = JSON.parse(e.data);
         showProfileBanner(`✅ <strong>¡Premio entregado!</strong> El staff ha confirmado la entrega de <strong>${data.prize}</strong>. ¡Que lo disfrutes, ho!`, 'green');
         setTimeout(loadWeeklyRaffle, 800);
       });
 
       // Admin confirma/cancela reserva VIP → actualizar estado en la agenda
-      evtSource.addEventListener('vip_status', (e) => {
+      _evtSource.addEventListener('vip_status', (e) => {
         const data = JSON.parse(e.data);
         const badge = document.getElementById(`vip-status-${data.eventId}`);
         if (badge) {
@@ -7484,7 +7484,7 @@
         }
       });
 
-      evtSource.onerror = () => {
+      _evtSource.onerror = () => {
         const dot = document.getElementById('raffle-live-dot');
         if (dot) {
           dot.classList.remove('live');
@@ -7492,7 +7492,7 @@
           dot.style.boxShadow = '0 0 6px rgba(239,68,68,0.6)';
         }
         updateSseStatus(false);
-        evtSource.close();
+        _evtSource.close();
         setTimeout(connectRaffle, 5000);
       };
     }
@@ -14295,8 +14295,13 @@
 
       // Ocultar/Mostrar sección de agenda/eventos según el modo
       const agendaSection = document.getElementById('agenda-section');
-      if (agendaSection && isSummer) {
-        agendaSection.style.display = 'none';
+      if (agendaSection) {
+        if (isSummer) {
+          agendaSection.style.display = 'none';
+        } else {
+          // Restaurar agenda al salir de vacaciones (loadAgenda la rellena con display:block)
+          if (typeof loadAgenda === 'function') loadAgenda();
+        }
       }
     };
 
