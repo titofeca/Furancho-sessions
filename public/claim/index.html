@@ -5504,11 +5504,11 @@
             </div>`;
         };
 
-        const restEvents = events.filter(ev => ev.id !== firstOpenId);
+        const restEvents = futureEvents.filter(ev => ev.id !== firstOpenId);
         const restCount = restEvents.length;
 
         list.innerHTML =
-          buildCard(events[nextIdx >= 0 ? nextIdx : 0], false) +
+          buildCard(futureEvents[0], false) +
           restEvents.map(ev => buildCard(ev, true)).join('') +
           (restCount > 0 ? `
             <button id="agenda-more-btn" onclick="toggleAgendaRest(${restCount})"
