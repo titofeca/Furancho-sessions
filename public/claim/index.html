@@ -12816,6 +12816,11 @@
           return;
         }
 
+        const rulesFooter = `<div style="margin-top:6px; padding:12px 14px; background:rgba(var(--wine-rgb),0.04); border:1px dashed rgba(var(--wine-rgb),0.2); border-radius:12px; font-size:11.5px; color:var(--text-muted); line-height:1.55; text-align:center;">
+            🍷 <b style="color:var(--wine);">Lembra, neno:</b> cada canje é para disfrutar <b>esta noite no Furancho</b> — máximo 1 unidade de cada produto por sesión.
+            Os $CORCHO que non gastes <b>caducan aos 90 días</b> (quema FIFO): os máis vellos arden primeiro. <b>Non os deixes morrer na cunca!</b> 🔥
+          </div>`;
+
         container.innerHTML = htmlHeader + items.map(item => {
           const isOut = item.stock !== null && item.stock !== undefined && item.stock <= 0;
           const isLocked = item.min_level > userLvlNum;
@@ -12847,7 +12852,7 @@
             ${btnHtml}
           </div>
         `;
-        }).join('');
+        }).join('') + rulesFooter;
       } catch (e) {
         console.error('Error abriendo catálogo do Corcho:', e);
         container.innerHTML = '<p style="font-size:12px; color:var(--wine); text-align:center;">Error cargando catálogo.</p>';
