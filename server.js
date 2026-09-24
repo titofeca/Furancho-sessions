@@ -290,7 +290,9 @@ function scheduleWeeklyRaffle() {
         return;
       }
 
-      const { db, drawWeeklyRaffle, getWeeklyRaffleTargetWeek, hasEventOnThursday } = require('./db/database');
+      const { db, drawWeeklyRaffle, getWeeklyRaffleTargetWeek, hasEventOnThursday, getBoolSetting } = require('./db/database');
+
+      if (!getBoolSetting('weekly_raffle_enabled', true)) return;
 
       const weekStr = getWeeklyRaffleTargetWeek(madridHour);
 
@@ -391,10 +393,11 @@ function scheduleWeeklyLifecyclePushes() {
       const dd = String(madrid.getDate()).padStart(2, '0');
       const todayStr = `${yyyy}-${mm}-${dd}`;
 
-      const { db, getWeeklyRaffleTargetWeek } = require('./db/database');
+      const { db, getWeeklyRaffleTargetWeek, getBoolSetting } = require('./db/database');
 
       const { getEconomySettings } = require('./services/corcho');
       if (getEconomySettings().vacationMode) return;
+      if (!getBoolSetting('weekly_raffle_enabled', true)) return;
 
       // ── Domingo 21:00 — ventana abierta ──────────────────────────────────
       if (day === 0 && h === 21 && _lastWeeklyOpenPush !== todayStr) {

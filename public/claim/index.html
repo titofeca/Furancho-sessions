@@ -9928,6 +9928,16 @@
 
       _lastWeeklyData = data;
 
+      if (data.weeklyEnabled === false) {
+        setChaveState('chave-state-idle', null);
+        setChaveBanner({ show: false });
+        const medallion = document.getElementById('chave-medallion');
+        if (medallion) medallion.style.display = 'none';
+        return;
+      }
+      const medallion = document.getElementById('chave-medallion');
+      if (medallion) medallion.style.display = '';
+
       const isWinner = isWeeklyWinner(data.winnerWallet, userWalletAddress);
 
       // 1a. Ganador pendiente de CONFIRMAR

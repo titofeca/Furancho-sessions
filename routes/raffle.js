@@ -1414,7 +1414,9 @@ router.get('/weekly/status', (req, res) => {
     const elig = require('../services/eligibility');
     const criteria = { minLevel: status.minLevel, requiredAchievement: status.requiredAchievement };
     const e = elig.checkEligibility(wallet, criteria);
-    res.json({ ...status, currentWeek: weekStr, eligible: e.eligible, eligibilityReason: e.reason, requirementLabel: elig.requirementLabel(criteria) });
+    const { getBoolSetting } = require('../db/database');
+    const weeklyEnabled = getBoolSetting('weekly_raffle_enabled', true);
+    res.json({ ...status, currentWeek: weekStr, eligible: e.eligible, eligibilityReason: e.reason, requirementLabel: elig.requirementLabel(criteria), weeklyEnabled });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -1859,6 +1861,20 @@ router.post('/admin/weekly/app-policy', requireAuth, (req, res) => {
     setSetting('chave_visitor_weight', String(w));
     res.json({ success: true, allowAppOnly: allow, visitorWeight: w });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/admin/weekly/enabled — consultar si la Chave Semanal está activa
+router.get('/admin/weekly/enabled', requireAuth, (req, res) => {
+  const { getBoolSetting } = require('../db/database');
+  res.json({ enabled: getBoolSetting('weekly_raffle_enabled', true) });
+});
+
+// POST /api/admin/weekly/enabled — activar/desactivar la Chave Semanal
+router.post('/admin/weekly/enabled', requireAuth, (req, res) => {
+  const { setSetting, getBoolSetting } = require('../db/database');
+  const enabled = req.body.enabled ? '1' : '0';
+  setSetting('weekly_raffle_enabled', enabled);
+  res.json({ success: true, enabled: enabled === '1' });
 });
 
 // POST /api/admin/weekly/config (ADMIN)
