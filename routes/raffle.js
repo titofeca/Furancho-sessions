@@ -1016,9 +1016,9 @@ router.post('/admin/draw-reopening', requireAuth, (req, res) => {
     // Registrar en BD con status 'claimed' para que aparezca en la lista de Premios Canjeables del socio
     const now = new Date().toISOString();
     const result = db.prepare(`
-      INSERT INTO raffles (prize_name, winner_wallet, total_participants, status, created_at, verification_code)
-      VALUES (?, ?, ?, 'claimed', ?, ?)
-    `).run(`${prizeName} (${winnerCount} boletos de reapertura)`, winnerWallet, allTickets.length, now, verificationCode);
+      INSERT INTO raffles (prize, winner_wallet, status, created_at, verification_code, type)
+      VALUES (?, ?, 'claimed', ?, ?, 'night')
+    `).run(`${prizeName} (${winnerCount} boletos de reapertura)`, winnerWallet, now, verificationCode);
 
     // Emitir difusión SSE a todos los clientes
     broadcast('reopening_raffle_winner', {
