@@ -8992,7 +8992,6 @@
     try {
       const res = await apiFetch('/api/raffle/admin/draw-reopening', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prize: prizeName })
       });
       const data = await res.json();
@@ -9037,7 +9036,6 @@
     try {
       await apiFetch('/api/raffle/admin/weekly/enabled', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled })
       });
       loadWeeklyEnabledToggle();
