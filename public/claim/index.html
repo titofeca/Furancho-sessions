@@ -10306,11 +10306,6 @@
 
   function updateFicharButtons() {
     const container = document.getElementById('fichar-container');
-    if (Date.now() > new Date('2026-07-30T23:59:59+02:00').getTime()) {
-      if (container) container.style.display = 'none';
-      return;
-    }
-
     const entryBtn = document.getElementById('fichar-btn-entry');
     const exitBtn = document.getElementById('fichar-btn-exit');
     const activeBadge = document.getElementById('session-active-badge');
