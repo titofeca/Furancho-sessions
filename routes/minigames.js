@@ -22,11 +22,13 @@ router.get('/enxebre/status', requireWallet, (req, res) => {
     const existing = db.prepare(`SELECT * FROM enxebre_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(req.walletAddress, today);
     const { getEconomySettings } = require('../services/corcho');
     const settings = getEconomySettings();
+    const vacation = !!settings.vacationMode;
     res.json({
       playedToday: existing && existing.solved !== null ? true : false,
       startedToday: !!existing,
       history: existing || null,
-      entryCost: settings.enxebreEntryCost || 0
+      entryCost: vacation ? 0 : (settings.enxebreEntryCost || 0),
+      vacationMode: vacation
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
