@@ -209,12 +209,15 @@ router.get('/economy-info', (req, res) => {
     const supply = getCorchoGlobalSupply();
     // En Modo Vacaciones el local está cerrado: la tienda de consumiciones no abre
     // (aunque haya evento). La de NFTs (traspaso/compra) sigue abierta siempre.
-    const vacationMode = !!corcho.getEconomySettings().vacationMode;
+    const econ = corcho.getEconomySettings();
+    const vacationMode = !!econ.vacationMode;
     const isStoreOpen = isCorchoStoreEventScheduledThisWeek() && !vacationMode;
 
     res.json({
       storeOpenForItems: isStoreOpen,
       vacationMode,
+      vacationMessage: econ.vacationMessage || '',
+      vacationLogo: econ.vacationLogo || '',
       globalSupply: supply.currentSupply,
       totalEarned: supply.totalEarned,
       totalBurned: supply.totalBurned,

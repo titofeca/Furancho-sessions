@@ -166,7 +166,9 @@ function getEconomySettings() {
     trivialEnabled: getRate('trivialEnabled'),
     trivialEntryCost: getRate('trivialEntryCost'),
     trivialPrize: getRate('trivialPrize'),
-    trivialMaxPlays: getRate('trivialMaxPlays')
+    trivialMaxPlays: getRate('trivialMaxPlays'),
+    vacationMessage: getSetting('vacation_message', '') || '',
+    vacationLogo: getSetting('vacation_logo', '') || ''
   };
 }
 

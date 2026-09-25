@@ -2899,12 +2899,21 @@ router.post('/settings/:key', requireAuth, (req, res) => {
 router.post('/corcho/settings', requireAuth, (req, res) => {
   try {
     const corcho = require('../services/corcho');
+    const { setSetting, getSetting } = require('../db/database');
     const updated = corcho.saveEconomySettings(req.body || {});
+    if (req.body.vacationMessage !== undefined) {
+      setSetting('vacation_message', String(req.body.vacationMessage || ''));
+    }
+    if (req.body.vacationLogo !== undefined) {
+      setSetting('vacation_logo', String(req.body.vacationLogo || ''));
+    }
+    const vacationMessage = getSetting('vacation_message', '') || '';
+    const vacationLogo = getSetting('vacation_logo', '') || '';
     try {
       const { broadcast } = require('./raffle');
-      broadcast('vacation_mode_toggle', { vacationMode: !!updated.vacationMode });
+      broadcast('vacation_mode_toggle', { vacationMode: !!updated.vacationMode, vacationMessage, vacationLogo });
     } catch (_) {}
-    res.json({ success: true, message: 'Tarifas del Banco do Corcho actualizadas', settings: updated });
+    res.json({ success: true, message: 'Tarifas del Banco do Corcho actualizadas', settings: { ...updated, vacationMessage, vacationLogo } });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

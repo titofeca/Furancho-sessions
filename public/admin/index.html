@@ -2772,6 +2772,22 @@
               <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Max $CORCHO por usuario/día en juegos:</label>
               <input type="number" id="corcho-vacation-max" class="input-field" style="font-size:12px; padding:6px 10px; max-width:150px;" />
             </div>
+            <div style="margin-top:10px;">
+              <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:4px;">Mensaje para los clientes:</label>
+              <textarea id="corcho-vacation-message" class="input-field" rows="3" placeholder="Ej: ¡Estamos de vacaciones! Volvemos en octubre con más fuerza..." style="font-size:12px; padding:8px 10px; width:100%; box-sizing:border-box; resize:vertical; font-family:inherit;"></textarea>
+            </div>
+            <div style="margin-top:10px;">
+              <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:4px;">Logo personalizado (opcional):</label>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <label style="background:rgba(216,90,48,0.1); border:1.5px dashed rgba(216,90,48,0.4); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; color:#d85a30; cursor:pointer;">
+                  📷 Seleccionar imagen
+                  <input type="file" id="corcho-vacation-logo-input" accept="image/*" style="display:none;" onchange="uploadVacationLogo(this)" />
+                </label>
+                <img id="corcho-vacation-logo-preview" src="" alt="" style="display:none; width:48px; height:48px; object-fit:contain; border-radius:8px; border:1px solid rgba(216,90,48,0.2);" />
+                <button id="corcho-vacation-logo-remove" onclick="removeVacationLogo()" style="display:none; background:none; border:none; color:#c00; font-size:16px; cursor:pointer; padding:2px 6px;" title="Quitar logo">✕</button>
+                <input type="hidden" id="corcho-vacation-logo" value="" />
+              </div>
+            </div>
             <div style="margin-top:10px; text-align:right;">
               <button onclick="saveCorchoAdminSettings()" style="background:var(--wine); color:#fff; border:none; border-radius:8px; padding:7px 14px; font-size:11px; font-weight:700; cursor:pointer;">💾 Guardar</button>
             </div>
@@ -5370,6 +5386,39 @@
     }
   }
 
+  async function uploadVacationLogo(input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    let blob;
+    try { blob = await imageFileToPng(file, 500); }
+    catch (e) { showToast('No pude leer esa imagen. Prueba con otra.', true); input.value = ''; return; }
+    const form = new FormData();
+    form.append('image', blob, 'vacation_logo.png');
+    try {
+      const up = await fetch('/api/raffle/upload-image', { method: 'POST', headers: { 'x-admin-token': AUTH_TOKEN }, body: form });
+      const upData = await up.json().catch(() => ({}));
+      if (!upData.url) { showToast(upData.error || 'Error subiendo logo', true); input.value = ''; return; }
+      document.getElementById('corcho-vacation-logo').value = upData.url;
+      const prev = document.getElementById('corcho-vacation-logo-preview');
+      prev.src = upData.url + '?t=' + Date.now();
+      prev.style.display = 'block';
+      const rmBtn = document.getElementById('corcho-vacation-logo-remove');
+      if (rmBtn) rmBtn.style.display = 'inline';
+      showToast('Logo subido. Pulsa Guardar para aplicar.');
+    } catch (e) {
+      showToast('Error subiendo logo', true);
+    } finally {
+      input.value = '';
+    }
+  }
+  function removeVacationLogo() {
+    document.getElementById('corcho-vacation-logo').value = '';
+    document.getElementById('corcho-vacation-logo-preview').style.display = 'none';
+    const rmBtn = document.getElementById('corcho-vacation-logo-remove');
+    if (rmBtn) rmBtn.style.display = 'none';
+    showToast('Logo eliminado. Pulsa Guardar para aplicar.');
+  }
+
   // ==================== BANCO DO CORCHO ($CORCHO) ====================
 
   // Compras de $CORCHO por cobrar + vales de canje por entregar. El admin valida
@@ -5480,6 +5529,14 @@
         
         setCheck('corcho-vacation-mode', data.settings.vacationMode);
         setVal('corcho-vacation-max', data.settings.vacationMaxDailyGameCorchos);
+        { const msgEl = document.getElementById('corcho-vacation-message'); if (msgEl) msgEl.value = data.settings.vacationMessage || ''; }
+        { const logoUrl = data.settings.vacationLogo || '';
+          document.getElementById('corcho-vacation-logo').value = logoUrl;
+          const prev = document.getElementById('corcho-vacation-logo-preview');
+          const rmBtn = document.getElementById('corcho-vacation-logo-remove');
+          if (logoUrl) { prev.src = logoUrl; prev.style.display = 'block'; if (rmBtn) rmBtn.style.display = 'inline'; }
+          else { prev.style.display = 'none'; if (rmBtn) rmBtn.style.display = 'none'; }
+        }
 
         // Minijuegos
         setCheck('minigame-enxebre-enabled', data.settings.enxebreEnabled);
@@ -6115,6 +6172,8 @@
       level4: getVal('rate-level4'),
       vacationMode: document.getElementById('corcho-vacation-mode').checked ? 1 : 0,
       vacationMaxDailyGameCorchos: getVal('corcho-vacation-max'),
+      vacationMessage: (document.getElementById('corcho-vacation-message') || {}).value || '',
+      vacationLogo: (document.getElementById('corcho-vacation-logo') || {}).value || '',
       enxebreEnabled: document.getElementById('minigame-enxebre-enabled').checked ? 1 : 0,
       enxebreEntryCost: getVal('mg-enx-cost'),
       enxebrePrize1: getVal('mg-enx-1'),

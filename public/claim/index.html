@@ -2723,15 +2723,8 @@
             <p id="vibe-text" style="font-size:12.5px; color:var(--text-muted); line-height:1.55; margin:0 0 12px;"></p>
           </div>
 
-          <!-- ESTADO C: MODO VACACIONES (A partir de agosto) -->
-          <div id="vacation-mode-state" style="display:none; text-align:center;">
-            <span style="font-size:40px; display:block; margin-bottom:8px;">🏖️</span>
-            <h3 style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:var(--wine); margin:0 0 10px; line-height:1.3;">¡Estamos de vacaciones disfrutando del sol, la playa y la buena mesa!</h3>
-            <p style="font-size:15px; color:#2A1509; line-height:1.65; margin:0 0 12px; font-weight:500;">Mientras el furancho descansa para volver con más fuerza en septiembre, <strong>los juegos son gratis</strong> y puedes ganar hasta <strong>+2 $CORCHO al día</strong> jugando. ¡Compite en el ranking y sube posiciones antes de que volvamos! 🍷☀️</p>
-            <div style="background:linear-gradient(135deg,rgba(196,151,58,0.18),rgba(139,25,24,0.08)); border:1px solid rgba(196,151,58,0.4); border-radius:12px; padding:10px 14px; font-size:13px; font-weight:700; color:var(--wine);">
-              🎮 Juegos gratuitos · 🪙 Máx. 2 $CORCHO/día · 🎲 Hasta 3 partidas/día · 📅 Volvemos en septiembre
-            </div>
-          </div>
+          <!-- ESTADO C: MODO VACACIONES -->
+          <div id="vacation-mode-state" style="display:none; text-align:center;"></div>
 
           <!-- EL TERMÓMETRO (Común para todos) -->
           <div id="vibe-meter" style="display:flex; gap:5px; justify-content:center; margin-top:16px;">
@@ -4600,6 +4593,9 @@
           raffleRequireSse = !!data.raffleRequireSse;
         }
         window.isVacationMode = !!data.vacationMode;
+        if (data.vacationMessage) window._vacationMessage = data.vacationMessage;
+        if (data.vacationLogo) window._vacationLogo = data.vacationLogo;
+        renderVacationBanner();
         applySummerLogoState();
         if (typeof checkPendingPrizeBanner === 'function') checkPendingPrizeBanner();
         // Mostrar/ocultar botón Marcho según sesión activa
@@ -7321,6 +7317,9 @@
         try {
           const data = JSON.parse(e.data);
           window.isVacationMode = !!data.vacationMode;
+          window._vacationMessage = data.vacationMessage || '';
+          window._vacationLogo = data.vacationLogo || '';
+          renderVacationBanner();
           document.body.classList.toggle('theme-summer', !!window.isVacationMode);
           applySummerLogoState();
           if (window.isVacationMode) {
@@ -9287,12 +9286,12 @@
             }
           }
         } else {
-          // No quedan Furanchos en la agenda → gracias + volvemos en septiembre
           if (!window._isVibeActive) {
             if (cdState) cdState.style.display = 'none';
-            if (modeState) modeState.style.display = 'block';
+            if (modeState) modeState.style.display = window.isVacationMode ? 'block' : 'none';
             vc.style.background = 'linear-gradient(160deg, rgba(var(--gold-rgb),.12), rgba(var(--wine-rgb),.06))';
             vc.style.borderColor = 'rgba(var(--gold-rgb),.45)';
+            if (!window.isVacationMode) vc.style.display = 'none';
           }
         }
       }
@@ -10185,14 +10184,36 @@
   // Persistente: lee la config guardada por el admin en el servidor, así el
   // tema verano (colores + logo a pantalla completa) se ve en cualquier
   // pantalla, incluido el onboarding, desde el primer instante.
+  window._vacationMessage = '';
+  window._vacationLogo = '';
+  function renderVacationBanner() {
+    const el = document.getElementById('vacation-mode-state');
+    if (!el) return;
+    if (!window.isVacationMode) { el.innerHTML = ''; return; }
+    const msg = window._vacationMessage || '¡Estamos de vacaciones! Los juegos siguen activos con ganancias limitadas. ¡Volvemos pronto!';
+    const logoHtml = window._vacationLogo
+      ? `<img src="${window._vacationLogo}" alt="" style="width:80px; height:80px; object-fit:contain; border-radius:12px; margin-bottom:8px;" />`
+      : '<span style="font-size:40px; display:block; margin-bottom:8px;">🏖️</span>';
+    el.innerHTML = `
+      ${logoHtml}
+      <h3 style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:var(--wine); margin:0 0 10px; line-height:1.3;">${msg.split('\n')[0]}</h3>
+      ${msg.split('\n').slice(1).map(l => `<p style="font-size:14px; color:#2A1509; line-height:1.55; margin:0 0 6px; font-weight:500;">${l}</p>`).join('')}
+      <div style="background:linear-gradient(135deg,rgba(196,151,58,0.18),rgba(139,25,24,0.08)); border:1px solid rgba(196,151,58,0.4); border-radius:12px; padding:10px 14px; font-size:13px; font-weight:700; color:var(--wine); margin-top:10px;">
+        🎮 Juegos gratuitos · 🪙 Ganancias limitadas · 🍷 ¡Volvemos pronto!
+      </div>`;
+  }
+
   async function loadVacationState() {
     try {
       const rates = await fetch('/api/corcho/rates').then(r => r.json()).catch(() => null);
       if (rates && Object.prototype.hasOwnProperty.call(rates, 'vacationMode')) {
         window.isVacationMode = !!rates.vacationMode;
+        window._vacationMessage = rates.vacationMessage || '';
+        window._vacationLogo = rates.vacationLogo || '';
+        renderVacationBanner();
         if (typeof applySummerLogoState === 'function') applySummerLogoState();
       }
-    } catch (_) { /* silencioso: si falla la red, se aplica luego con el history */ }
+    } catch (_) {}
   }
 
   document.addEventListener('DOMContentLoaded', () => {
