@@ -1414,8 +1414,10 @@ router.get('/weekly/status', (req, res) => {
     const elig = require('../services/eligibility');
     const criteria = { minLevel: status.minLevel, requiredAchievement: status.requiredAchievement };
     const e = elig.checkEligibility(wallet, criteria);
-    const { getBoolSetting } = require('../db/database');
-    const weeklyEnabled = getBoolSetting('weekly_raffle_enabled', true);
+    const { getBoolSetting, hasEventOnThursday } = require('../db/database');
+    const adminEnabled = getBoolSetting('weekly_raffle_enabled', true);
+    const eventThisWeek = hasEventOnThursday();
+    const weeklyEnabled = adminEnabled && eventThisWeek;
     res.json({ ...status, currentWeek: weekStr, eligible: e.eligible, eligibilityReason: e.reason, requirementLabel: elig.requirementLabel(criteria), weeklyEnabled });
   } catch (e) {
     res.status(500).json({ error: e.message });

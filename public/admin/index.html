@@ -1994,45 +1994,49 @@
         </div>
       </div>
 
-      <!-- 🎟️ GRAN SORTEO DE REAPERTURA DE SEPTIEMBRE -->
-      <div class="glass-card" style="margin-bottom:20px; background:linear-gradient(135deg, rgba(196,151,58,0.15) 0%, rgba(139,25,24,0.08) 100%); border:2px solid rgba(196,151,58,0.5); border-radius:20px; padding:20px; position:relative; overflow:hidden;">
-        <div style="position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg,var(--wine),var(--gold),var(--wine));"></div>
-        
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
-          <div>
-            <h3 style="font-family:'Playfair Display',serif; font-size:18px; font-weight:900; color:var(--wine); margin:0 0 4px;">🎟️ Gran Sorteo de Reapertura (Septiembre)</h3>
-            <p style="font-size:11.5px; color:var(--text-muted); margin:0;">Extracción aleatoria ponderada por número de boletos de verano.</p>
+      <!-- 🎟️ GRAN SORTEO DE REAPERTURA DE SEPTIEMBRE (Pasado) -->
+      <details style="margin-bottom:20px; background:linear-gradient(135deg, rgba(196,151,58,0.05) 0%, rgba(139,25,24,0.02) 100%); border:1px solid rgba(196,151,58,0.3); border-radius:12px; overflow:hidden;">
+        <summary style="padding:15px; font-family:'Playfair Display',serif; font-size:16px; font-weight:800; color:var(--wine); cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between; outline:none;">
+          <span>🎟️ Gran Sorteo de Reapertura (Finalizado/Oculto)</span>
+          <span style="font-size:12px; opacity:0.6;">▼</span>
+        </summary>
+        <div class="glass-card" style="background:transparent; border:none; padding:0 20px 20px; position:relative;">
+          
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+            <div>
+              <p style="font-size:11.5px; color:var(--text-muted); margin:0;">Extracción aleatoria ponderada por número de boletos de verano. (Módulo pasado)</p>
+            </div>
+            <button onclick="loadReopeningStatsAdmin()" style="background:none; border:1px solid rgba(196,151,58,0.4); border-radius:8px; padding:5px 10px; font-size:12px; font-weight:700; color:var(--gold); cursor:pointer;">↻ Actualizar</button>
           </div>
-          <button onclick="loadReopeningStatsAdmin()" style="background:none; border:1px solid rgba(196,151,58,0.4); border-radius:8px; padding:5px 10px; font-size:12px; font-weight:700; color:var(--gold); cursor:pointer;">↻ Actualizar</button>
-        </div>
 
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;">
-          <div style="background:rgba(255,255,255,0.7); border:1px solid rgba(196,151,58,0.3); border-radius:12px; padding:12px; text-align:center;">
-            <div style="font-size:10px; font-weight:800; text-transform:uppercase; color:var(--wine);">Boletos en Bombona</div>
-            <div id="reopening-total-tickets" style="font-family:'Playfair Display',serif; font-size:28px; font-weight:900; color:var(--wine); line-height:1.2;">0</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;">
+            <div style="background:rgba(255,255,255,0.7); border:1px solid rgba(196,151,58,0.3); border-radius:12px; padding:12px; text-align:center;">
+              <div style="font-size:10px; font-weight:800; text-transform:uppercase; color:var(--wine);">Boletos en Bombona</div>
+              <div id="reopening-total-tickets" style="font-family:'Playfair Display',serif; font-size:28px; font-weight:900; color:var(--wine); line-height:1.2;">0</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.7); border:1px solid rgba(196,151,58,0.3); border-radius:12px; padding:12px; text-align:center;">
+              <div style="font-size:10px; font-weight:800; text-transform:uppercase; color:var(--gold);">Socios Participantes</div>
+              <div id="reopening-total-participants" style="font-family:'Playfair Display',serif; font-size:28px; font-weight:900; color:var(--gold); line-height:1.2;">0</div>
+            </div>
           </div>
-          <div style="background:rgba(255,255,255,0.7); border:1px solid rgba(196,151,58,0.3); border-radius:12px; padding:12px; text-align:center;">
-            <div style="font-size:10px; font-weight:800; text-transform:uppercase; color:var(--gold);">Socios Participantes</div>
-            <div id="reopening-total-participants" style="font-family:'Playfair Display',serif; font-size:28px; font-weight:900; color:var(--gold); line-height:1.2;">0</div>
+
+          <div style="margin-bottom:14px; background:rgba(255,255,255,0.6); border-radius:12px; padding:10px 14px;">
+            <div style="font-size:11px; font-weight:800; color:var(--wine); text-transform:uppercase; margin-bottom:6px;">🏆 Top Socios con más papeletas:</div>
+            <div id="reopening-top-holders-list" style="display:flex; flex-direction:column; gap:4px; font-size:11.5px; color:var(--text);">
+              <p style="font-size:11px; color:var(--text-muted); text-align:center; margin:0;">Cargando estadísticas de la bombona…</p>
+            </div>
           </div>
-        </div>
 
-        <div style="margin-bottom:14px; background:rgba(255,255,255,0.6); border-radius:12px; padding:10px 14px;">
-          <div style="font-size:11px; font-weight:800; color:var(--wine); text-transform:uppercase; margin-bottom:6px;">🏆 Top Socios con más papeletas:</div>
-          <div id="reopening-top-holders-list" style="display:flex; flex-direction:column; gap:4px; font-size:11.5px; color:var(--text);">
-            <p style="font-size:11px; color:var(--text-muted); text-align:center; margin:0;">Cargando estadísticas de la bombona…</p>
+          <div style="margin-bottom:12px;">
+            <label style="display:block; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:var(--wine); margin-bottom:5px;">🎁 Premio a sortear</label>
+            <input type="text" id="reopening-prize-name" class="input-field" placeholder="Ej: Cena VIP para 2, Botella Albariño..." style="margin:0; font-size:14px;" />
           </div>
-        </div>
 
-        <div style="margin-bottom:12px;">
-          <label style="display:block; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:var(--wine); margin-bottom:5px;">🎁 Premio a sortear</label>
-          <input type="text" id="reopening-prize-name" class="input-field" placeholder="Ej: Cena VIP para 2, Botella Albariño..." style="margin:0; font-size:14px;" />
+          <button id="btn-draw-reopening" onclick="drawReopeningRaffleAdmin()" style="width:100%; padding:14px; background:linear-gradient(135deg, var(--wine), #6b1110); color:#fff; border:none; border-radius:14px; font-family:'Playfair Display',serif; font-size:15px; font-weight:900; cursor:pointer; box-shadow:0 4px 15px rgba(139,25,24,0.35);">
+            🎉 REALIZAR SORTEO DE REAPERTURA
+          </button>
         </div>
-
-        <button id="btn-draw-reopening" onclick="drawReopeningRaffleAdmin()" style="width:100%; padding:14px; background:linear-gradient(135deg, var(--wine), #6b1110); color:#fff; border:none; border-radius:14px; font-family:'Playfair Display',serif; font-size:15px; font-weight:900; cursor:pointer; box-shadow:0 4px 15px rgba(139,25,24,0.35);">
-          🎉 REALIZAR SORTEO DE REAPERTURA
-        </button>
-      </div>
+      </details>
 
       <!-- Agenda de sorteos programados -->
       <div class="glass-card" style="margin-bottom:16px;">
