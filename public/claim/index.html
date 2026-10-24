@@ -13617,6 +13617,9 @@
             document.getElementById('mg-enxebre-card').style.display = 'block';
             const costEl = document.getElementById('mg-enxebre-cost');
             if (costEl) costEl.textContent = data.vacationMode ? '💸 🏖️ Gratis' : (data.entryCost > 0 ? `💸 Coste: ${data.entryCost} $CORCHO` : '💸 Coste: Gratis');
+            // El premio venía fijo en el HTML y no seguía al panel.
+            const prizeEl = document.getElementById('mg-enxebre-prize');
+            if (prizeEl && data.maxPrize) prizeEl.textContent = `🏆 Premio: Hasta ${data.maxPrize} $CORCHO`;
           }
         }).catch(console.error);
 

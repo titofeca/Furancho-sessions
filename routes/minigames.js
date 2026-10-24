@@ -26,6 +26,10 @@ router.get('/enxebre/status', requireWallet, (req, res) => {
       startedToday: !!existing,
       history: existing || null,
       entryCost: vacation ? 0 : (settings.enxebreEntryCost || 0),
+      // El cliente anunciaba "Hasta 50 $CORCHO" fijo en el HTML: si se
+      // bajaba el premio en el panel, seguía prometiendo 50 y pagando otra
+      // cosa. Se manda el valor real para que lo pinte.
+      maxPrize: settings.enxebrePrize1 || 0,
       vacationMode: vacation
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
