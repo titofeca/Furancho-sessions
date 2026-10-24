@@ -15,6 +15,10 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/icon-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Capa "cinema": profundidad y 3D compartidos con la app de clientes.
+       Aditiva — quitando estas dos líneas el panel vuelve a su aspecto anterior. -->
+  <link rel="stylesheet" href="/assets/cinema.css" />
+  <script src="/assets/cinema.js" defer></script>
   <style>
     :root {
       --wine: #8B1918;
@@ -1008,13 +1012,24 @@
 
 <!-- ==================== LOGIN ==================== -->
 <div id="login-screen">
-  <div class="login-card">
-    <img src="/assets/logo.png" alt="Furancho Sessions Logo" class="login-logo-img" />
-    <div class="login-logo">Furancho Sessions</div>
-    <div class="login-sub">Panel de Administración</div>
+  <div class="login-card cin-surface cin-sheen cin-sheen-auto cin-reveal" data-cin-delay="2">
+    <!-- Hero 3D: mismo lenguaje que el onboarding de clientes. El escenario
+         solo envuelve piezas decorativas, nunca modales fixed. -->
+    <div class="cin-stage">
+      <div class="cin-plate">
+        <div class="cin-piece">
+          <div class="cin-halo" aria-hidden="true"></div>
+          <div class="cin-ring" aria-hidden="true"></div>
+          <img src="/assets/logo.png" alt="Furancho Sessions Logo" class="login-logo-img cin-hero-img" />
+          <div class="cin-contact" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+    <div class="login-logo cin-reveal" data-cin-delay="3">Furancho Sessions</div>
+    <div class="login-sub cin-reveal" data-cin-delay="4">Panel de Administración</div>
     <form onsubmit="handleLogin(event)">
       <input type="password" id="login-password" class="login-input" placeholder="Contraseña de acceso" autocomplete="current-password" />
-      <button type="submit" class="login-btn">Entrar al Panel</button>
+      <button type="submit" class="login-btn cin-press cin-sheen">Entrar al Panel</button>
       <div id="login-error" class="login-error">Contraseña incorrecta</div>
     </form>
   </div>
@@ -3735,35 +3750,35 @@
 
   <!-- ==================== BOTTOM NAV ==================== -->
   <nav class="bottom-nav">
-    <button class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
+    <button class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard" data-cin-place="furancho">
       <span class="nav-icon">🏠</span>
       <span>Dashboard</span>
     </button>
-    <button class="nav-item" onclick="showPage('holders')" id="nav-holders">
+    <button class="nav-item" onclick="showPage('holders')" id="nav-holders" data-cin-place="metricas">
       <span class="nav-icon">📊</span>
       <span>Métricas</span>
     </button>
-    <button class="nav-item" onclick="showPage('messages')" id="nav-messages">
+    <button class="nav-item" onclick="showPage('messages')" id="nav-messages" data-cin-place="taboleiro">
       <span class="nav-icon">💬</span>
       <span>Mensajes</span>
     </button>
-    <button class="nav-item" onclick="showPage('qrcodes')" id="nav-qrcodes">
+    <button class="nav-item" onclick="showPage('qrcodes')" id="nav-qrcodes" data-cin-place="escaner">
       <span class="nav-icon">📷</span>
       <span>Escáner</span>
     </button>
-    <button class="nav-item" onclick="showPage('raffles')" id="nav-raffles">
+    <button class="nav-item" onclick="showPage('raffles')" id="nav-raffles" data-cin-place="rifa">
       <span class="nav-icon">🎰</span>
       <span>Rifa</span>
     </button>
-    <button class="nav-item" onclick="showPage('nfts')" id="nav-nfts">
+    <button class="nav-item" onclick="showPage('nfts')" id="nav-nfts" data-cin-place="nfts">
       <span class="nav-icon">🏅</span>
       <span>NFTs</span>
     </button>
-        <button class="nav-item" onclick="showPage('banco')" id="nav-banco">
+        <button class="nav-item" onclick="showPage('banco')" id="nav-banco" data-cin-place="banco">
       <span class="nav-icon">🪙</span>
       <span>Banco</span>
     </button>
-    <button class="nav-item" onclick="showPage('events')" id="nav-events" style="position:relative;">
+    <button class="nav-item" onclick="showPage('events')" id="nav-events" data-cin-place="eventos" style="position:relative;">
       <span class="nav-icon">📅</span>
       <span>Eventos</span>
       <span id="vip-pending-badge" style="display:none; position:absolute; top:6px; right:10px; background:var(--wine); color:#fff; font-size:9px; font-weight:900; border-radius:100px; padding:1px 5px; min-width:14px; text-align:center;">0</span>

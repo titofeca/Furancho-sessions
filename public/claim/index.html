@@ -14,6 +14,10 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/assets/icon-512.png">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Capa "cinema": profundidad y 3D compartidos con el panel admin.
+       Aditiva — quitando estas dos líneas la app vuelve a su aspecto anterior. -->
+  <link rel="stylesheet" href="/assets/cinema.css" />
+  <script src="/assets/cinema.js" defer></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <!-- ethers: generación de wallet EN el dispositivo (la clave privada no viaja por la red) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js" defer></script>
@@ -2021,19 +2025,32 @@
   <!-- ==================== PANTALLA: ONBOARDING ==================== -->
   <div class="screen active" id="screen-onboarding" style="justify-content:center; padding:40px 24px;">
     <div style="width:100%; max-width:380px; text-align:center;">
-      <img id="onboarding-logo" src="/assets/logo.png" alt="Furancho Sessions" style="height:52px; border-radius:10px; margin-bottom:32px; opacity:0.9;" />
-      <h1 style="font-family:'Playfair Display',serif; font-size:30px; font-weight:900; color:var(--text); margin-bottom:6px; letter-spacing:-0.3px;">Furancho Sessions</h1>
-      <p style="font-size:14px; color:var(--text-muted); margin-bottom:36px; line-height:1.6; font-weight:300;">Afterwork · Viño, Tapas y Leria ochentera</p>
- 
-      <div style="background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:20px; padding:22px; margin-bottom:14px;">
+      <!-- Hero 3D: el escenario solo envuelve piezas decorativas, nunca
+           modales, para no capturar elementos position:fixed. -->
+      <div class="cin-stage" style="margin-bottom:32px;">
+        <div class="cin-plate">
+          <div class="cin-piece">
+            <div class="cin-halo" aria-hidden="true"></div>
+            <div class="cin-ring" aria-hidden="true"></div>
+            <img id="onboarding-logo" class="cin-hero-img cin-reveal" src="/assets/logo.png" alt="Furancho Sessions" style="height:52px; border-radius:10px; opacity:0.9;" />
+            <div class="cin-contact" aria-hidden="true"></div>
+          </div>
+          <div class="cin-hero-text">
+            <h1 class="cin-reveal" data-cin-delay="1" style="font-family:'Playfair Display',serif; font-size:30px; font-weight:900; color:var(--text); margin:14px 0 6px; letter-spacing:-0.3px;">Furancho Sessions</h1>
+            <p class="cin-reveal" data-cin-delay="2" style="font-size:14px; color:var(--text-muted); margin:0; line-height:1.6; font-weight:300;">Afterwork · Viño, Tapas y Leria ochentera</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="cin-surface cin-sheen cin-sheen-auto cin-reveal" data-cin-delay="3" style="background:rgba(42,21,9,0.04); border:1px solid rgba(42,21,9,0.08); border-radius:20px; padding:22px; margin-bottom:14px;">
         <p style="font-size:16px; font-weight:700; color:var(--text); margin-bottom:6px;">¿Ya estuviste en el furancho antes, neno?</p>
         <p style="font-size:13px; color:var(--text-muted); margin-bottom:20px; line-height:1.5; font-weight:300;">Si eres nuevo por la parroquia, pasa y coge cunca, que esto mola un huevo. Si ya eres un veterano de las Furancho Sessions, recupera tu pase para no perder tus galones.</p>
  
-        <button onclick="startNewAccount()" class="btn-primary btn-accent" style="margin-bottom:10px;">
+        <button onclick="startNewAccount()" class="btn-primary btn-accent cin-press cin-sheen" style="margin-bottom:10px;">
           🍷 Mi estreno en el Furancho
         </button>
- 
-        <button onclick="showOnboardingRecovery()" style="width:100%; padding:16px 24px; background:transparent; border:1.5px solid rgba(var(--wine-rgb),0.3); border-radius:50px; color:var(--wine); font-family:'Outfit',sans-serif; font-size:15px; font-weight:600; cursor:pointer; letter-spacing:0.3px; transition:all 0.2s;" onmouseover="this.style.background='rgba(var(--wine-rgb),0.06)'" onmouseout="this.style.background='transparent'">
+
+        <button onclick="showOnboardingRecovery()" class="cin-press" style="width:100%; padding:16px 24px; background:transparent; border:1.5px solid rgba(var(--wine-rgb),0.3); border-radius:50px; color:var(--wine); font-family:'Outfit',sans-serif; font-size:15px; font-weight:600; cursor:pointer; letter-spacing:0.3px; transition:all 0.2s;" onmouseover="this.style.background='rgba(var(--wine-rgb),0.06)'" onmouseout="this.style.background='transparent'">
           🔑 Ya vengo de antes (Tengo mi pase)
         </button>
       </div>
@@ -2369,26 +2386,26 @@
 
       <!-- Fila de 4 medallones principales (ID Socio, Carné VIP, Museo, Ruta Furancheira) -->
       <div class="main-actions-row">
-        <button onclick="openIdModal()" class="action-medallion" aria-label="ID Socio">
+        <button onclick="openIdModal()" class="action-medallion cin-press" aria-label="ID Socio" data-cin-place="id">
           <div class="medallion-ring">
             <div class="medallion-core"><span style="display: flex; align-items: center; justify-content: center;"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--wine)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><circle cx="10" cy="13" r="2"></circle><path d="M6 20a4 4 0 0 1 8 0"></path></svg></span></div>
           </div>
           <div class="medallion-label">ID Socio</div>
         </button>
-        <button onclick="openPrizesModal()" class="action-medallion" aria-label="O meu Museo do Furancho">
+        <button onclick="openPrizesModal()" class="action-medallion cin-press" aria-label="O meu Museo do Furancho" data-cin-place="museo">
           <div class="medallion-ring">
             <div class="raffle-live-dot portal-dot" id="raffle-live-dot" style="top: 1px; right: 1px;"></div>
             <div class="medallion-core"><span style="display: flex; align-items: center; justify-content: center;"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--wine)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="20" y2="20"></line><line x1="4" y1="17" x2="20" y2="17"></line><line x1="6" y1="17" x2="6" y2="10"></line><line x1="10" y1="17" x2="10" y2="10"></line><line x1="14" y1="17" x2="14" y2="10"></line><line x1="18" y1="17" x2="18" y2="10"></line><polygon points="12 2 2 10 22 10"></polygon></svg></span></div>
           </div>
           <div class="medallion-label">Museo</div>
         </button>
-        <button onclick="openRutaModal()" class="action-medallion" aria-label="Ruta Furancheira">
+        <button onclick="openRutaModal()" class="action-medallion cin-press" aria-label="Ruta Furancheira" data-cin-place="ruta">
           <div class="medallion-ring">
             <div class="medallion-core"><span style="display: flex; align-items: center; justify-content: center;"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--wine)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg></span></div>
           </div>
           <div class="medallion-label">Ruta</div>
         </button>
-        <button id="chave-medallion" onclick="onChaveMedallionClick()" class="action-medallion chave-state-idle" aria-label="Chave Semanal">
+        <button id="chave-medallion" onclick="onChaveMedallionClick()" class="action-medallion chave-state-idle cin-press" aria-label="Chave Semanal" data-cin-place="chave">
           <div class="chave-medallion-ring">
             <span id="chave-pill" class="chave-pill-badge" style="display:none;"></span>
             <div class="chave-medallion-core"><svg viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg></div>
@@ -2586,7 +2603,7 @@
             <!-- Botones Corcho (Resto en 1 línea) -->
             <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin:4px 0 8px;">
               <!-- Tienda -->
-              <button id="btn-corcho-tienda" onclick="openCorchoItemsModal()" style="background:linear-gradient(165deg, rgba(22,163,74,0.08), rgba(21,128,61,0.03)); border:1.5px solid rgba(22,163,74,0.3); border-radius:14px; padding:12px 4px 10px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(22,163,74,0.08);">
+              <button id="btn-corcho-tienda" onclick="openCorchoItemsModal()" data-cin-place="banco" style="background:linear-gradient(165deg, rgba(22,163,74,0.08), rgba(21,128,61,0.03)); border:1.5px solid rgba(22,163,74,0.3); border-radius:14px; padding:12px 4px 10px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(22,163,74,0.08);">
                 <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
                   <line x1="3" y1="6" x2="21" y2="6"/>
@@ -2596,7 +2613,7 @@
               </button>
 
               <!-- Recargar -->
-              <button id="btn-corcho-recargar" onclick="openCorchoPacksModal()" style="background:linear-gradient(165deg, rgba(var(--gold2-rgb),0.08), rgba(169,123,31,0.03)); border:1.5px solid rgba(var(--gold2-rgb),0.3); border-radius:14px; padding:12px 4px 10px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(var(--gold2-rgb),0.08);">
+              <button id="btn-corcho-recargar" onclick="openCorchoPacksModal()" data-cin-place="banco" style="background:linear-gradient(165deg, rgba(var(--gold2-rgb),0.08), rgba(169,123,31,0.03)); border:1.5px solid rgba(var(--gold2-rgb),0.3); border-radius:14px; padding:12px 4px 10px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(var(--gold2-rgb),0.08);">
                 <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#a97b1f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                   <rect x="2" y="5" width="20" height="14" rx="2"/>
                   <line x1="2" y1="10" x2="22" y2="10"/>
@@ -2606,7 +2623,7 @@
               </button>
 
               <!-- Traspasar -->
-              <button id="btn-corcho-traspasar" onclick="openCorchoTransferModal()" style="background:linear-gradient(165deg, rgba(42,21,9,0.08), rgba(42,21,9,0.02)); border:1.5px solid rgba(42,21,9,0.2); border-radius:14px; padding:12px 4px 10px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(42,21,9,0.06);">
+              <button id="btn-corcho-traspasar" onclick="openCorchoTransferModal()" data-cin-place="banco" style="background:linear-gradient(165deg, rgba(42,21,9,0.08), rgba(42,21,9,0.02)); border:1.5px solid rgba(42,21,9,0.2); border-radius:14px; padding:12px 4px 10px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; transition:transform 0.1s; box-shadow:0 4px 12px rgba(42,21,9,0.06);">
                 <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="rgba(42,21,9,0.85)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M17 1l4 4-4 4"/>
                   <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
@@ -2627,7 +2644,7 @@
             <div id="corcho-pending-section" style="display:none; margin-top:4px;"></div>
 
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-              <button id="btn-corcho-info" onclick="openCorchoInfoModal()" style="background:none; border:none; color:var(--wine); font-size:12px; font-weight:800; cursor:pointer; text-decoration:underline;">ℹ️ Reglas do $CORCHO</button>
+              <button id="btn-corcho-info" onclick="openCorchoInfoModal()" data-cin-place="banco" style="background:none; border:none; color:var(--wine); font-size:12px; font-weight:800; cursor:pointer; text-decoration:underline;">ℹ️ Reglas do $CORCHO</button>
 
               <!-- Desplegable Historial -->
               <details style="position:relative;">
@@ -11578,7 +11595,7 @@
   </div>
 
   <!-- Botón flotante mensajes -->
-  <div id="msg-fab" style="display:none; position:fixed; bottom:84px; right:18px; z-index:900; align-items:center; justify-content:center; width:54px; height:54px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); border-radius:50%; box-shadow:0 6px 20px rgba(var(--wine-rgb),0.45); cursor:pointer; border:2px solid rgba(212,175,55,0.4);" onclick="openMsgPanel()">
+  <div id="msg-fab" data-cin-place="taboleiro" style="display:none; position:fixed; bottom:84px; right:18px; z-index:900; align-items:center; justify-content:center; width:54px; height:54px; background:linear-gradient(135deg,var(--wine),var(--wine-dark)); border-radius:50%; box-shadow:0 6px 20px rgba(var(--wine-rgb),0.45); cursor:pointer; border:2px solid rgba(212,175,55,0.4);" onclick="openMsgPanel()">
     <span style="font-size:24px;">✉️</span>
     <span id="msg-fab-badge" style="display:none; position:absolute; top:-4px; right:-4px; background:var(--gold); color:#fff; font-size:12.5px; font-weight:900; width:22px; height:22px; border-radius:50%; align-items:center; justify-content:center; font-family:'Outfit',sans-serif; box-shadow:0 2px 6px rgba(0,0,0,0.3);"></span>
   </div>
