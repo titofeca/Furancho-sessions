@@ -2,8 +2,6 @@ const express = require('express');
 const router = express.Router();
 const minigames = require('../services/minigames');
 const { db } = require('../db/database');
-const { requireAuth } = require('./events'); // Assuming it's exported or similar. Wait, I should implement a simple middleware if I can't import it.
-
 const requireWallet = (req, res, next) => {
   const wallet = req.headers['wallet-address'] || req.query.wallet || (req.body && req.body.walletAddress);
   if (!wallet || wallet === 'null' || wallet === 'undefined') {

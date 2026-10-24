@@ -326,7 +326,8 @@ function rewardReferral(referrerWallet, newWallet) {
 
   // Campaña Colega VIP (Marketing Growth)
   try {
-    const { db, getAppSetting } = require('../db/database');
+    const { db } = require('../db/database');
+    const { getAppSetting } = require('../db/transfers');
     if (getAppSetting('promo_referral_vip') === '1') {
       const raffleId = parseInt(getAppSetting('promo_referral_vip_raffle_id'), 10);
       if (raffleId > 0) {

@@ -1222,7 +1222,7 @@ router.post('/easter-egg', (req, res) => {
     const { walletAddress } = req.body;
     if (!walletAddress) return res.status(400).json({ error: 'Falta wallet' });
     
-    const { getAppSetting } = require('../db/database');
+    const { getAppSetting } = require('../db/transfers');
     if (getAppSetting('promo_easter_egg') !== '1') {
       return res.status(403).json({ error: 'El Easter Egg no está activo' });
     }
@@ -1255,7 +1255,7 @@ router.post('/easter-egg', (req, res) => {
 // GET /api/mint/fomo-stats
 router.get('/fomo-stats', (req, res) => {
   try {
-    const { getAppSetting } = require('../db/database');
+    const { getAppSetting } = require('../db/transfers');
     if (getAppSetting('promo_fomo') !== '1') {
       return res.json({ active: false });
     }

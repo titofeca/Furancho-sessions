@@ -2500,7 +2500,7 @@ router.get('/analytics/usage', requireAuth, (req, res) => {
 // GET /api/admin/marketing/settings
 router.get('/marketing/settings', requireAuth, (req, res) => {
   try {
-    const { getAppSetting } = require('../db/database');
+    const { getAppSetting } = require('../db/transfers');
     res.json({
       success: true,
       settings: {
@@ -2518,7 +2518,7 @@ router.get('/marketing/settings', requireAuth, (req, res) => {
 // POST /api/admin/marketing/settings
 router.post('/marketing/settings', requireAuth, (req, res) => {
   try {
-    const { setAppSetting } = require('../db/database');
+    const { setAppSetting } = require('../db/transfers');
     const b = req.body || {};
     setAppSetting('promo_easter_egg', b.promo_easter_egg ? '1' : '0');
     setAppSetting('promo_fomo', b.promo_fomo ? '1' : '0');

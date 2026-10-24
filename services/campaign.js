@@ -311,6 +311,8 @@ module.exports = {
   recordVisitFromScan,
   recordVisitByStaff,
   recordVisitByDate,
+  // La usa routes/mint.js como respaldo al fichar cuando la visita no suma.
+  getCampaignVisitCount,
   getProgress,
   getLeaderboard,
   getStats

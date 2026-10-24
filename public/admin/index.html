@@ -5348,6 +5348,32 @@
     }
   }
 
+  // El botón "Guardar Cambios" del Panel de Marketing la llamaba desde su
+  // onclick, pero no estaba definida en ninguna parte: pulsarlo no hacía nada.
+  async function saveMarketingSettings() {
+    const val = (id, prop) => { const el = document.getElementById(id); return el ? el[prop] : null; };
+    try {
+      const res = await fetch('/api/admin/marketing/settings', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          promo_easter_egg: !!val('promo_easter_egg', 'checked'),
+          promo_fomo: !!val('promo_fomo', 'checked'),
+          promo_referral_vip: !!val('promo_referral_vip', 'checked'),
+          promo_referral_vip_raffle_id: val('promo_referral_vip_raffle_id', 'value') || ''
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('✅ Panel de Marketing guardado');
+      } else {
+        showToast(data.error || 'Error guardando Marketing', true);
+      }
+    } catch (e) {
+      showToast('Error de red al guardar Marketing', true);
+    }
+  }
+
 
   async function approveCampaign(id) {
     if (!confirm('¿Aprobar el NFT Furancho Legend de este cliente? Se minteará en Polygon.')) return;
