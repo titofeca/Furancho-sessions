@@ -44,7 +44,14 @@ try {
     seed.run('🎁', 'Sorpresa do Patrón', 'La Caja Sorpresa do Patrón', '¡Sorpresa sorpresa, ho! Una caja de madera misteriosa preparada a mano por el patrón del furancho con productos secretos que no te podemos desvelar... ¡Atrévete a descubrir lo que hay dentro!');
   }
 } catch (_) {}
-try { db.exec(`CREATE TABLE IF NOT EXISTS raffle_participants (raffle_id INTEGER NOT NULL, wallet_address TEXT NOT NULL, PRIMARY KEY (raffle_id, wallet_address))`); } catch (_) {}
+// is_vip y status los escribe la campaña Colega VIP (services/corcho.js), que
+// sin ellos lanzaba al apuntar a los participantes.
+try { db.exec(`CREATE TABLE IF NOT EXISTS raffle_participants (raffle_id INTEGER NOT NULL, wallet_address TEXT NOT NULL, is_vip INTEGER DEFAULT 0, status TEXT DEFAULT 'active', PRIMARY KEY (raffle_id, wallet_address))`); } catch (_) {}
+try {
+  const cols = new Set(db.prepare(`PRAGMA table_info(raffle_participants)`).all().map(c => c.name));
+  if (!cols.has('is_vip')) db.exec(`ALTER TABLE raffle_participants ADD COLUMN is_vip INTEGER DEFAULT 0`);
+  if (!cols.has('status')) db.exec(`ALTER TABLE raffle_participants ADD COLUMN status TEXT DEFAULT 'active'`);
+} catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS scheduled_raffles (id INTEGER PRIMARY KEY AUTOINCREMENT, event_date TEXT NOT NULL, scheduled_time TEXT NOT NULL, prize TEXT NOT NULL, status TEXT DEFAULT 'pending', raffle_id INTEGER, target_level INTEGER, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
 try {
   db.exec(`
@@ -822,9 +829,13 @@ try {
     description TEXT,
     stock INTEGER DEFAULT NULL,
     active INTEGER DEFAULT 1,
+    min_level INTEGER DEFAULT 1,
     created_at TEXT DEFAULT (datetime('now'))
   )`);
   try { db.exec(`ALTER TABLE corcho_items ADD COLUMN stock INTEGER DEFAULT NULL`); } catch (_) {}
+  // createCorchoItem guarda min_level: sin la columna, crear un artículo de
+  // tienda desde el panel fallaba.
+  try { db.exec(`ALTER TABLE corcho_items ADD COLUMN min_level INTEGER DEFAULT 1`); } catch (_) {}
   // Coste REAL en € (céntimos) que le cuesta a la barra cada premio. Alimenta el
   // semáforo "Saúde do Furancho" (coste por evento vs objetivo de 30 €). Editable en
   // el panel. NULL = sin definir (el semáforo lo avisa). Aditivo, no toca precios ni UX.

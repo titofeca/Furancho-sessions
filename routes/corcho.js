@@ -658,13 +658,16 @@ router.post('/daily-streak/claim', (req, res) => {
         updated_at = datetime('now')
     `).run(walletAddress, newStreak, todayStr);
 
-    corcho.addCorchoTransaction({
+    // La función se llama addCorchoCoins y lleva argumentos posicionales:
+    // `addCorchoTransaction` no existe, así que esto lanzaba y la racha se
+    // apuntaba sin pagar ni un $CORCHO.
+    corcho.addCorchoCoins(
       walletAddress,
-      amount: rewardAmount,
-      type: 'daily_streak',
-      description: `🔥 Recompensa Racha Diaria (${newStreak} día${newStreak > 1 ? 's' : ''})`,
-      referenceId: `streak_${todayStr}_${walletAddress}`
-    });
+      rewardAmount,
+      'daily_streak',
+      `🔥 Recompensa Racha Diaria (${newStreak} día${newStreak > 1 ? 's' : ''})`,
+      `streak_${todayStr}_${walletAddress}`
+    );
 
     // Conceder boleto para el sorteo de reapertura de septiembre
     try {
