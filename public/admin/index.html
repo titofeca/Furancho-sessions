@@ -12881,8 +12881,22 @@
       if (res.status === 401) return;
       const data = await res.json();
       const list = document.getElementById('transfers-list');
-      
-      if (!data || data.length === 0) {
+
+      // El endpoint devuelve {error} si la consulta falla. Un objeto pasa el
+      // `data.length === 0` sin inmutarse y reventaba abajo en data.map(),
+      // y ese TypeError tapaba el motivo real del fallo.
+      if (!Array.isArray(data)) {
+        const motivo = (data && data.error) ? String(data.error) : 'respuesta inesperada del servidor';
+        list.textContent = '';
+        const tr = list.insertRow();
+        const td = tr.insertCell();
+        td.colSpan = 5;
+        td.style.textAlign = 'center';
+        td.textContent = `No se pudieron cargar los traspasos: ${motivo}`;
+        return;
+      }
+
+      if (data.length === 0) {
         list.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay traspasos pendientes</td></tr>';
         return;
       }

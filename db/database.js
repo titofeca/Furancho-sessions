@@ -782,6 +782,10 @@ try {
     created_at TEXT DEFAULT (datetime('now'))
   )`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_corcho_tx_wallet ON corcho_transactions(wallet_address)`);
+  // Misma forma que en db/transfers.js: la tabla la comparten el traspaso
+  // instantáneo y el que pasa por aprobación del admin. Si las dos
+  // declaraciones divergen, gana la que corra primero y la otra se queda sin
+  // sus columnas. db/transfers.js reconcilia además las bases ya creadas.
   db.exec(`CREATE TABLE IF NOT EXISTS nft_transfers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nft_type TEXT,
@@ -789,7 +793,12 @@ try {
     from_wallet TEXT NOT NULL,
     to_wallet TEXT NOT NULL,
     fee_paid INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT (datetime('now'))
+    token_id INTEGER,
+    private_key_enc TEXT,
+    status TEXT DEFAULT 'pending',
+    created_at TEXT DEFAULT (datetime('now')),
+    approved_at TEXT,
+    tx_hash TEXT
   )`);
   db.exec(`CREATE TABLE IF NOT EXISTS corcho_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -4537,9 +4546,12 @@ function transferNftWithFee(fromWallet, toWallet, nftType, nftId, feeAmount) {
         const moveRes = require('../services/memeShop').moveUnitOnTransfer(fromW, toW);
         if (moveRes.moved) {
           // Registrar en nft_transfers
+          // status explícito: el traspaso ya está hecho. Sin él cae en el
+          // DEFAULT 'pending' y el panel lo listaría como una solicitud por
+          // aprobar que nadie ha pedido.
           db.prepare(`
-            INSERT INTO nft_transfers (nft_type, nft_id, from_wallet, to_wallet, fee_paid)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO nft_transfers (nft_type, nft_id, from_wallet, to_wallet, fee_paid, status)
+            VALUES (?, ?, ?, ?, ?, 'completed')
           `).run(nftType, String(nftId), fromW, toW, feeAmount);
           return { ok: true, newBalance: spendRes.newBalance };
         }
