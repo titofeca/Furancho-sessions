@@ -267,7 +267,11 @@ function performCheckin(walletAddress, ipAddress, isSelfCheckin = false) {
         const eventId = win.event.id;
         
         // Check RSVP
-        const hasRsvp = db.prepare(`SELECT 1 FROM event_rsvps WHERE event_id = ? AND LOWER(wallet_address) = LOWER(?)`).get(eventId, walletAddress);
+        // La tabla es `rsvps`; con el nombre viejo esto lanzaba en cada
+        // fichaje y el catch de abajo se lo tragaba, así que no solo se
+        // perdía la recompensa por RSVP: al cortar aquí tampoco llegaba a
+        // comprobarse la de VIP.
+        const hasRsvp = db.prepare(`SELECT 1 FROM rsvps WHERE event_id = ? AND LOWER(wallet_address) = LOWER(?)`).get(eventId, walletAddress);
         if (hasRsvp) {
           corcho.rewardRsvpShowup(walletAddress, eventId);
         }

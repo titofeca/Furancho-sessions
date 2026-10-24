@@ -782,6 +782,20 @@ try {
     created_at TEXT DEFAULT (datetime('now'))
   )`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_corcho_tx_wallet ON corcho_transactions(wallet_address)`);
+  // La usa checkAndApplyLevelDecay y la purga la higiene del arranque, pero
+  // solo la creaba update_decay.js, un script suelto de la raíz: en cualquier
+  // base donde no se hubiese pasado a mano, el arranque avisaba de "no such
+  // table: level_decay_events". El aviso era inofensivo —la purga va al final
+  // del bloque— pero tapaba el canal: un fallo de verdad en la higiene salía
+  // con el mismo mensaje y se confundía con este.
+  db.exec(`CREATE TABLE IF NOT EXISTS level_decay_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_address TEXT NOT NULL,
+    penalty_visits INTEGER NOT NULL,
+    missed_events_count INTEGER NOT NULL,
+    applied_at TEXT DEFAULT (datetime('now'))
+  )`);
+
   // Misma forma que en db/transfers.js: la tabla la comparten el traspaso
   // instantáneo y el que pasa por aprobación del admin. Si las dos
   // declaraciones divergen, gana la que corra primero y la otra se queda sin
