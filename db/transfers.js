@@ -1,19 +1,63 @@
 const { db } = require('./database');
 
+// `nft_transfers` la usan dos flujos distintos y cada uno la declaraba a su
+// manera: el traspaso instantáneo (nft_type / nft_id / fee_paid, en
+// database.js) y el traspaso con aprobación del admin (token_id /
+// private_key_enc / status / approved_at / tx_hash, aquí). Como ambas eran
+// CREATE TABLE IF NOT EXISTS, ganaba la que corriese primero y la otra se
+// quedaba sin sus columnas: de ahí el "no such column: token_id" que tumbaba
+// el listado de pendientes, la creación de solicitudes y el registro de los
+// traspasos instantáneos.
+//
+// La tabla es ahora la unión de las dos, y se reconcilia una ya existente
+// añadiendo lo que le falte. Las columnas se añaden, nunca se tocan ni se
+// borran las que haya.
+const COLUMNAS = {
+  nft_type: 'TEXT',
+  nft_id: 'TEXT',
+  fee_paid: 'INTEGER DEFAULT 0',
+  token_id: 'INTEGER',
+  private_key_enc: 'TEXT',
+  status: "TEXT DEFAULT 'pending'",
+  approved_at: 'TEXT',
+  tx_hash: 'TEXT'
+};
+
 function setupTransfersTable() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS nft_transfers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       from_wallet TEXT NOT NULL,
       to_wallet TEXT NOT NULL,
-      token_id INTEGER NOT NULL,
-      private_key_enc TEXT NOT NULL,
+      nft_type TEXT,
+      nft_id TEXT,
+      fee_paid INTEGER DEFAULT 0,
+      token_id INTEGER,
+      private_key_enc TEXT,
       status TEXT DEFAULT 'pending',
       created_at TEXT DEFAULT (datetime('now')),
       approved_at TEXT,
       tx_hash TEXT
     )
   `);
+
+  const tiene = new Set(db.prepare(`PRAGMA table_info(nft_transfers)`).all().map(c => c.name));
+  const anadidas = [];
+  for (const [nombre, tipo] of Object.entries(COLUMNAS)) {
+    if (tiene.has(nombre)) continue;
+    db.exec(`ALTER TABLE nft_transfers ADD COLUMN ${nombre} ${tipo}`);
+    anadidas.push(nombre);
+  }
+
+  // Si `status` acaba de aparecer, las filas que ya había son traspasos
+  // instantáneos YA hechos. Con el DEFAULT se quedarían en 'pending' y
+  // saldrían en el panel como solicitudes por aprobar que nadie pidió.
+  if (anadidas.includes('status')) {
+    db.prepare(`UPDATE nft_transfers SET status = 'completed' WHERE status IS NULL OR status = 'pending'`).run();
+  }
+  if (anadidas.length) {
+    console.log(`[DB] nft_transfers reconciliada — columnas añadidas: ${anadidas.join(', ')}`);
+  }
 }
 
 setupTransfersTable();

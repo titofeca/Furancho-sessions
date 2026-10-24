@@ -267,7 +267,11 @@ function performCheckin(walletAddress, ipAddress, isSelfCheckin = false) {
         const eventId = win.event.id;
         
         // Check RSVP
-        const hasRsvp = db.prepare(`SELECT 1 FROM event_rsvps WHERE event_id = ? AND LOWER(wallet_address) = LOWER(?)`).get(eventId, walletAddress);
+        // La tabla es `rsvps`; con el nombre viejo esto lanzaba en cada
+        // fichaje y el catch de abajo se lo tragaba, así que no solo se
+        // perdía la recompensa por RSVP: al cortar aquí tampoco llegaba a
+        // comprobarse la de VIP.
+        const hasRsvp = db.prepare(`SELECT 1 FROM rsvps WHERE event_id = ? AND LOWER(wallet_address) = LOWER(?)`).get(eventId, walletAddress);
         if (hasRsvp) {
           corcho.rewardRsvpShowup(walletAddress, eventId);
         }
@@ -1218,7 +1222,7 @@ router.post('/easter-egg', (req, res) => {
     const { walletAddress } = req.body;
     if (!walletAddress) return res.status(400).json({ error: 'Falta wallet' });
     
-    const { getAppSetting } = require('../db/database');
+    const { getAppSetting } = require('../db/transfers');
     if (getAppSetting('promo_easter_egg') !== '1') {
       return res.status(403).json({ error: 'El Easter Egg no está activo' });
     }
@@ -1231,15 +1235,15 @@ router.post('/easter-egg', (req, res) => {
     // Comprobar si ya reclamó en los últimos 7 días
     const recent = db.prepare(`
       SELECT 1 FROM corcho_transactions 
-      WHERE LOWER(wallet_address) = LOWER(?) AND reason = 'easter_egg_valle' AND created_at > datetime('now', '-7 days')
+      WHERE LOWER(wallet_address) = LOWER(?) AND type = 'easter_egg_valle' AND created_at > datetime('now', '-7 days')
     `).get(walletAddress);
 
     if (recent) {
       return res.status(429).json({ error: 'Ya has encontrado el Furancho oculto esta semana, ¡déjale algo a los demás!' });
     }
 
-    const { addCorchoTransaction } = require('../services/corcho');
-    addCorchoTransaction(walletAddress, 25, 'easter_egg_valle');
+    const { addCorchoCoins } = require('../services/corcho');
+    addCorchoCoins(walletAddress, 25, 'easter_egg_valle', '🥚 Furancho oculto en día valle');
     
     res.json({ success: true, message: '¡Has encontrado el Furancho oculto en día valle! Te regalamos +25 $CORCHO.' });
   } catch (e) {
@@ -1251,7 +1255,7 @@ router.post('/easter-egg', (req, res) => {
 // GET /api/mint/fomo-stats
 router.get('/fomo-stats', (req, res) => {
   try {
-    const { getAppSetting } = require('../db/database');
+    const { getAppSetting } = require('../db/transfers');
     if (getAppSetting('promo_fomo') !== '1') {
       return res.json({ active: false });
     }

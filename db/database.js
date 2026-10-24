@@ -44,7 +44,14 @@ try {
     seed.run('🎁', 'Sorpresa do Patrón', 'La Caja Sorpresa do Patrón', '¡Sorpresa sorpresa, ho! Una caja de madera misteriosa preparada a mano por el patrón del furancho con productos secretos que no te podemos desvelar... ¡Atrévete a descubrir lo que hay dentro!');
   }
 } catch (_) {}
-try { db.exec(`CREATE TABLE IF NOT EXISTS raffle_participants (raffle_id INTEGER NOT NULL, wallet_address TEXT NOT NULL, PRIMARY KEY (raffle_id, wallet_address))`); } catch (_) {}
+// is_vip y status los escribe la campaña Colega VIP (services/corcho.js), que
+// sin ellos lanzaba al apuntar a los participantes.
+try { db.exec(`CREATE TABLE IF NOT EXISTS raffle_participants (raffle_id INTEGER NOT NULL, wallet_address TEXT NOT NULL, is_vip INTEGER DEFAULT 0, status TEXT DEFAULT 'active', PRIMARY KEY (raffle_id, wallet_address))`); } catch (_) {}
+try {
+  const cols = new Set(db.prepare(`PRAGMA table_info(raffle_participants)`).all().map(c => c.name));
+  if (!cols.has('is_vip')) db.exec(`ALTER TABLE raffle_participants ADD COLUMN is_vip INTEGER DEFAULT 0`);
+  if (!cols.has('status')) db.exec(`ALTER TABLE raffle_participants ADD COLUMN status TEXT DEFAULT 'active'`);
+} catch (_) {}
 try { db.exec(`CREATE TABLE IF NOT EXISTS scheduled_raffles (id INTEGER PRIMARY KEY AUTOINCREMENT, event_date TEXT NOT NULL, scheduled_time TEXT NOT NULL, prize TEXT NOT NULL, status TEXT DEFAULT 'pending', raffle_id INTEGER, target_level INTEGER, created_at TEXT DEFAULT (datetime('now')))`); } catch (_) {}
 try {
   db.exec(`
@@ -782,6 +789,24 @@ try {
     created_at TEXT DEFAULT (datetime('now'))
   )`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_corcho_tx_wallet ON corcho_transactions(wallet_address)`);
+  // La usa checkAndApplyLevelDecay y la purga la higiene del arranque, pero
+  // solo la creaba update_decay.js, un script suelto de la raíz: en cualquier
+  // base donde no se hubiese pasado a mano, el arranque avisaba de "no such
+  // table: level_decay_events". El aviso era inofensivo —la purga va al final
+  // del bloque— pero tapaba el canal: un fallo de verdad en la higiene salía
+  // con el mismo mensaje y se confundía con este.
+  db.exec(`CREATE TABLE IF NOT EXISTS level_decay_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_address TEXT NOT NULL,
+    penalty_visits INTEGER NOT NULL,
+    missed_events_count INTEGER NOT NULL,
+    applied_at TEXT DEFAULT (datetime('now'))
+  )`);
+
+  // Misma forma que en db/transfers.js: la tabla la comparten el traspaso
+  // instantáneo y el que pasa por aprobación del admin. Si las dos
+  // declaraciones divergen, gana la que corra primero y la otra se queda sin
+  // sus columnas. db/transfers.js reconcilia además las bases ya creadas.
   db.exec(`CREATE TABLE IF NOT EXISTS nft_transfers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nft_type TEXT,
@@ -789,7 +814,12 @@ try {
     from_wallet TEXT NOT NULL,
     to_wallet TEXT NOT NULL,
     fee_paid INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT (datetime('now'))
+    token_id INTEGER,
+    private_key_enc TEXT,
+    status TEXT DEFAULT 'pending',
+    created_at TEXT DEFAULT (datetime('now')),
+    approved_at TEXT,
+    tx_hash TEXT
   )`);
   db.exec(`CREATE TABLE IF NOT EXISTS corcho_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -799,9 +829,13 @@ try {
     description TEXT,
     stock INTEGER DEFAULT NULL,
     active INTEGER DEFAULT 1,
+    min_level INTEGER DEFAULT 1,
     created_at TEXT DEFAULT (datetime('now'))
   )`);
   try { db.exec(`ALTER TABLE corcho_items ADD COLUMN stock INTEGER DEFAULT NULL`); } catch (_) {}
+  // createCorchoItem guarda min_level: sin la columna, crear un artículo de
+  // tienda desde el panel fallaba.
+  try { db.exec(`ALTER TABLE corcho_items ADD COLUMN min_level INTEGER DEFAULT 1`); } catch (_) {}
   // Coste REAL en € (céntimos) que le cuesta a la barra cada premio. Alimenta el
   // semáforo "Saúde do Furancho" (coste por evento vs objetivo de 30 €). Editable en
   // el panel. NULL = sin definir (el semáforo lo avisa). Aditivo, no toca precios ni UX.
@@ -4537,9 +4571,12 @@ function transferNftWithFee(fromWallet, toWallet, nftType, nftId, feeAmount) {
         const moveRes = require('../services/memeShop').moveUnitOnTransfer(fromW, toW);
         if (moveRes.moved) {
           // Registrar en nft_transfers
+          // status explícito: el traspaso ya está hecho. Sin él cae en el
+          // DEFAULT 'pending' y el panel lo listaría como una solicitud por
+          // aprobar que nadie ha pedido.
           db.prepare(`
-            INSERT INTO nft_transfers (nft_type, nft_id, from_wallet, to_wallet, fee_paid)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO nft_transfers (nft_type, nft_id, from_wallet, to_wallet, fee_paid, status)
+            VALUES (?, ?, ?, ?, ?, 'completed')
           `).run(nftType, String(nftId), fromW, toW, feeAmount);
           return { ok: true, newBalance: spendRes.newBalance };
         }

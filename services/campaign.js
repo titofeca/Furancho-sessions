@@ -75,12 +75,12 @@ function getPrivilegeTiers() {
   const { getSetting } = require('../db/database');
   
   let perks5 = [
-    '🎟️ Descuento en consumición en septiembre',
+    '🎟️ Descuento en consumición en la próxima temporada',
     'NFT Furancho Legend 2026 (requiere aprobación admin)'
   ];
   let perks10 = [
     '🍷 Plaza para cata exclusiva (¡solo queda 1 plaza!)',
-    'Mesa VIP garantizada en el 1er Furancho de septiembre',
+    'Mesa VIP garantizada en el 1er Furancho de la próxima temporada',
     'NFT Furancho Legend Oro 2026'
   ];
 
@@ -311,6 +311,8 @@ module.exports = {
   recordVisitFromScan,
   recordVisitByStaff,
   recordVisitByDate,
+  // La usa routes/mint.js como respaldo al fichar cuando la visita no suma.
+  getCampaignVisitCount,
   getProgress,
   getLeaderboard,
   getStats

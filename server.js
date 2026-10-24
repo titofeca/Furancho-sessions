@@ -242,13 +242,17 @@ function scheduleDailyMorningMessage() {
       if (h === 9 && m >= 0 && m <= 4) {
         if (_dailyMessageLastSentDate === todayStr) return;
 
+        // El módulo se carga ANTES de la consulta: es él quien crea
+        // daily_sent_messages. Al revés, en una base nueva la consulta
+        // lanzaba cada minuto de la ventana y el mensaje de las 09:00 no
+        // llegaba a enviarse nunca.
+        const { sendDailyMorningMessage } = require('./services/daily_messages');
         const { db } = require('./db/database');
         const alreadySentRow = db.prepare(`
           SELECT id FROM daily_sent_messages WHERE date(sent_at) = ?
         `).get(todayStr);
 
         if (!alreadySentRow) {
-          const { sendDailyMorningMessage } = require('./services/daily_messages');
           const res = sendDailyMorningMessage();
           if (res) _dailyMessageLastSentDate = todayStr;
         } else {

@@ -1417,7 +1417,10 @@ router.get('/weekly/status', (req, res) => {
     const { getBoolSetting, hasEventOnThursday } = require('../db/database');
     const adminEnabled = getBoolSetting('weekly_raffle_enabled', true);
     const eventThisWeek = hasEventOnThursday();
-    const weeklyEnabled = adminEnabled && eventThisWeek;
+    // En Modo Vacaciones el sorteo automático ya está suspendido (server.js): ocultamos
+    // también su UI para no anunciar sorteos durante el fin de temporada.
+    const vacationMode = !!require('../services/corcho').getEconomySettings().vacationMode;
+    const weeklyEnabled = adminEnabled && eventThisWeek && !vacationMode;
     res.json({ ...status, currentWeek: weekStr, eligible: e.eligible, eligibilityReason: e.reason, requirementLabel: elig.requirementLabel(criteria), weeklyEnabled });
   } catch (e) {
     res.status(500).json({ error: e.message });

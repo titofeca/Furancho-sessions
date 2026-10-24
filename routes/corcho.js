@@ -618,7 +618,7 @@ router.get('/daily-streak/status', (req, res) => {
       alreadyClaimed,
       rewardAmount,
       vacationMode,
-      vacationMessage: vacationMode ? '🏖️ ¡Estamos de vacaciones disfrutando del sol y la playa! Conéctate a diario para mantener tu racha y ganar tus +2 $CORCHO diarios 🍷☀️' : null
+      vacationMessage: vacationMode ? '🍷 El viño está madurando y fermentando en la bodega hasta el año que viene. Conéctate a diario para mantener tu racha y ganar tus +2 $CORCHO diarios 🪙' : null
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -658,13 +658,16 @@ router.post('/daily-streak/claim', (req, res) => {
         updated_at = datetime('now')
     `).run(walletAddress, newStreak, todayStr);
 
-    corcho.addCorchoTransaction({
+    // La función se llama addCorchoCoins y lleva argumentos posicionales:
+    // `addCorchoTransaction` no existe, así que esto lanzaba y la racha se
+    // apuntaba sin pagar ni un $CORCHO.
+    corcho.addCorchoCoins(
       walletAddress,
-      amount: rewardAmount,
-      type: 'daily_streak',
-      description: `🔥 Recompensa Racha Diaria (${newStreak} día${newStreak > 1 ? 's' : ''})`,
-      referenceId: `streak_${todayStr}_${walletAddress}`
-    });
+      rewardAmount,
+      'daily_streak',
+      `🔥 Recompensa Racha Diaria (${newStreak} día${newStreak > 1 ? 's' : ''})`,
+      `streak_${todayStr}_${walletAddress}`
+    );
 
     // Conceder boleto para el sorteo de reapertura de septiembre
     try {
@@ -689,7 +692,7 @@ router.post('/daily-streak/claim', (req, res) => {
       streak: newStreak,
       rewardAmount,
       message: vacationMode
-        ? `🏖️ ¡+${rewardAmount} $CORCHO y +1 Boleto de Reapertura añadidos! Estás de vacaciones acumulando racha de ${newStreak} día${newStreak > 1 ? 's' : ''} seguidos 🍷☀️`
+        ? `🍷 ¡+${rewardAmount} $CORCHO añadidos! Mientras el viño fermenta, tú acumulas racha de ${newStreak} día${newStreak > 1 ? 's' : ''} seguidos 🪙`
         : `🔥 ¡+${rewardAmount} $CORCHO añadidos! Racha de ${newStreak} día${newStreak > 1 ? 's' : ''} seguidos.`
     });
   } catch (e) {
