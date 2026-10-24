@@ -18,12 +18,12 @@ const DAILY_MESSAGES_CATALOG = [
   {
     category: 'reto5',
     title: '👑 ¿Llevas tu Reto de los 5 a medias?',
-    body: '¡Buenos días! No dejes tu pasaporte a medias. Completa tus 5 visitas a la terraza este verano y asegura tu NFT Furancho Legend para septiembre.'
+    body: '¡Buenos días! No dejes tu pasaporte a medias. Completa tus 5 visitas a la terraza y asegura tu NFT Furancho Legend para la próxima temporada.'
   },
   {
     category: 'reto5',
     title: '📍 ¡Sumando sellos para el NFT Legend!',
-    body: 'Recuerda que cada visita a la terraza en verano suma un sello a tu Reto de los 5. ¡Consigue tus 5 sellos antes de abrir en septiembre!'
+    body: 'Recuerda que cada visita a la terraza suma un sello a tu Reto de los 5. ¡Consigue tus 5 sellos antes del cierre de temporada!'
   },
   {
     category: 'reto5',
@@ -115,47 +115,46 @@ const DAILY_MESSAGES_CATALOG = [
     body: '¡Menudo día azul hace hoy! Disfruta del paisaje, del agua y del verano en nuestra tierra.'
   },
 
-  // ⏳ CATEGORÍA 3: CUENTA REGRESIVA A SEPTIEMBRE
+  // 🍇 CATEGORÍA 3: EL VIÑO MADURA Y FERMENTA (FIN DE TEMPORADA)
   {
     category: 'reopening',
-    title: '⏳ ¡Cada día más cerca de abrir!',
-    body: '¡Buenos días! Falta muy poco para saber la fecha oficial de apertura. En septiembre volvemos con ideas nuevas y muchas ganas.'
+    title: '🍇 ¡El viño ya está fermentando!',
+    body: '¡Buenos días! La uva está en la bodega y el viño nuevo empieza a fermentar tranquilo. Nos vemos el año que viene con la cunca llena.'
   },
   {
     category: 'reopening',
-    title: '🍷 ¡Septiembre se acerca!',
-    body: 'El verano avanza y entre bambalinas seguimos preparando la reapertura del Furancho. ¡Se vienen noches inolvidables!'
+    title: '🍷 ¡La bodega trabaja en silencio!',
+    body: 'Fin de temporada en el Furancho: ahora toca madurar. El viño reposa hasta el año que viene y nosotros con él.'
   },
   {
     category: 'reopening',
-    title: '⏳ ¡Descontando días para el reencuentro!',
-    body: 'Falta menos para volver a reunirnos alrededor del viño nuevo, la broa y el raxo. ¡Septiembre está a la vuelta de la esquina!'
-  },
-
-  {
-    category: 'reopening',
-    title: '🍷 ¡Sorpresas en camino para la apertura!',
-    body: 'Buenos días. Estamos afinando los detalles para septiembre. ¡La noche de reapertura va a ser histórica!'
+    title: '🛢️ ¡Barriles llenos y paciencia!',
+    body: 'Buenos días. El viño necesita su tiempo: está madurando en la bodega hasta la próxima temporada. ¡Paciencia, que merece la pena!'
   },
   {
     category: 'reopening',
-    title: '⏳ ¡Preparando los barriles para septiembre!',
-    body: '¡Buenos días! Cada día cuenta en nuestra cuenta regresiva. Muy pronto anunciaremos la fecha exacta de apertura.'
+    title: '🍇 ¡Madurando para el año que viene!',
+    body: 'El Furancho cierra temporada y el viño queda fermentando. Cuando esté en su punto, volvemos a abrir las puertas.'
   },
   {
     category: 'reopening',
-    title: '🍷 ¡Las noches de furancho volverán pronto!',
-    body: 'Septiembre ya asoma en el calendario. Mantente atento a la app para ser el primero en conocer la fecha de apertura.'
+    title: '🍷 ¡Hasta la próxima temporada!',
+    body: '¡Buenos días! Gracias por una temporada enorme. El viño se queda madurando en la bodega y volveremos el año que viene.'
   },
   {
     category: 'reopening',
-    title: '⏳ ¡Cuenta atrás en marcha!',
-    body: '¡Buenos días! La bodega se está preparando para volver a abrir sus puertas en septiembre. ¡Nos vemos muy pronto!'
+    title: '🛢️ ¡El viño nuevo se está haciendo!',
+    body: 'Mientras la bodega hace su trabajo, tú sigue disfrutando de la app. El año que viene volvemos con viño en su punto.'
+  },
+  {
+    category: 'reopening',
+    title: '🍇 ¡Temporada cerrada, viño en marcha!',
+    body: 'Buenos días. El furancho descansa y el viño fermenta. Nos reencontramos alrededor del viño nuevo el año que viene.'
   },
   {
     category: 'reopening',
     title: '🍷 ¡Ganas de furancho y boa xente!',
-    body: 'Falta muy poco para desvelar la fecha de inicio de temporada. ¡Prepara tus cuncas que en septiembre volvemos!'
+    body: 'El viño está madurando hasta el año que viene. Prepara tus cuncas, que cuando esté listo te avisamos por aquí.'
   },
 
   // 🥖 CATEGORÍA 4: REFRANES GASTRONÓMICOS GALLEGOS (EN CASTELLANO)

@@ -3475,7 +3475,7 @@
             <div style="text-align:center; margin-bottom:6px;">
               <span style="font-size:30px;">👑</span>
               <h3 style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:var(--wine); margin:4px 0 2px;">El Reto de los 5</h3>
-              <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0 0 8px;">Ven a la terraza este verano y construye tu rango. <strong>5 visitas = NFT Furancho Legend 2026.</strong> Cuantas más vengas, más privilegios a la vuelta en septiembre.</p>
+              <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0 0 8px;">Ven a la terraza y construye tu rango. <strong>5 visitas = NFT Furancho Legend 2026.</strong> Cuantas más vengas, más privilegios a la vuelta en la próxima temporada.</p>
               <div style="display:none !important; margin-top:10px; margin-bottom:12px; background:rgba(196,151,58,0.08); border:1px solid rgba(196,151,58,0.25); border-radius:12px; padding:10px 14px; flex-direction:row; align-items:center; justify-content:space-between;">
                 <div style="display:flex; align-items:center; gap:8px; text-align:left;">
                   <span style="font-size:20px;">🎟️</span>
@@ -3505,7 +3505,7 @@
             <p id="campaign-show-qr-subtext" style="text-align:center; font-size:13px; color:#2A1509; margin:8px 0 0; line-height:1.45; font-weight:500;">Enséñalo <strong>en vivo</strong> desde la app. Las capturas caducan solas.</p>
             <details style="margin-top:16px;">
               <summary style="font-size:14.5px; font-weight:800; color:var(--wine); cursor:pointer; list-style:none; display:flex; align-items:center; gap:6px; justify-content:center; padding:6px;">
-                🏆 Ver rangos y privilegios de septiembre ▾
+                🏆 Ver rangos y privilegios de la próxima temporada ▾
               </summary>
               <div id="campaign-tiers-list" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;"></div>
             </details>
@@ -5366,9 +5366,9 @@
             section.style.display = 'block';
             list.innerHTML = `
               <div style="text-align:center; padding:18px 14px; background:linear-gradient(135deg,rgba(196,151,58,0.12),rgba(139,25,24,0.06)); border:1.5px dashed rgba(196,151,58,0.4); border-radius:16px;">
-                <span style="font-size:32px; display:block; margin-bottom:8px;">🏖️</span>
-                <h4 style="font-family:'Playfair Display',serif; font-size:17px; font-weight:900; color:var(--wine); margin:0 0 6px;">Próxima Temporada de Furancho</h4>
-                <p style="font-size:13px; color:var(--text-muted); margin:0; line-height:1.5; font-weight:500;">Estamos preparando la reapertura de septiembre. Muy pronto anunciaremos las nuevas fechas de sesión.</p>
+                <span style="font-size:32px; display:block; margin-bottom:8px;">🍷</span>
+                <h4 style="font-family:'Playfair Display',serif; font-size:17px; font-weight:900; color:var(--wine); margin:0 0 6px;">El viño reposa en la bodega</h4>
+                <p style="font-size:13px; color:var(--text-muted); margin:0; line-height:1.5; font-weight:500;">El viño está madurando y fermentando tranquilo en la bodega hasta el año que viene. Nos vemos en la próxima temporada.</p>
               </div>
             `;
           }
@@ -10190,7 +10190,7 @@
     const el = document.getElementById('vacation-mode-state');
     if (!el) return;
     if (!window.isVacationMode) { el.innerHTML = ''; return; }
-    const msg = window._vacationMessage || '¡Estamos de vacaciones! Los juegos siguen activos con ganancias limitadas. ¡Volvemos pronto!';
+    const msg = window._vacationMessage || 'El viño está madurando y fermentando\nFin de temporada: el viño reposa en la bodega hasta el año que viene. Los juegos siguen activos con ganancias limitadas.';
     const logoHtml = window._vacationLogo
       ? `<img src="${window._vacationLogo}" alt="" style="width:80px; height:80px; object-fit:contain; border-radius:12px; margin-bottom:8px;" />`
       : '<span style="font-size:40px; display:block; margin-bottom:8px;">🏖️</span>';
@@ -10199,7 +10199,7 @@
       <h3 style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:var(--wine); margin:0 0 10px; line-height:1.3;">${msg.split('\n')[0]}</h3>
       ${msg.split('\n').slice(1).map(l => `<p style="font-size:14px; color:#2A1509; line-height:1.55; margin:0 0 6px; font-weight:500;">${l}</p>`).join('')}
       <div style="background:linear-gradient(135deg,rgba(196,151,58,0.18),rgba(139,25,24,0.08)); border:1px solid rgba(196,151,58,0.4); border-radius:12px; padding:10px 14px; font-size:13px; font-weight:700; color:var(--wine); margin-top:10px;">
-        🎮 Juegos gratuitos · 🪙 Ganancias limitadas · 🍷 ¡Volvemos pronto!
+        🎮 Juegos gratuitos · 🪙 Ganancias limitadas · 🍷 Nos vemos el año que viene
       </div>`;
   }
 

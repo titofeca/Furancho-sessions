@@ -618,7 +618,7 @@ router.get('/daily-streak/status', (req, res) => {
       alreadyClaimed,
       rewardAmount,
       vacationMode,
-      vacationMessage: vacationMode ? '🏖️ ¡Estamos de vacaciones disfrutando del sol y la playa! Conéctate a diario para mantener tu racha y ganar tus +2 $CORCHO diarios 🍷☀️' : null
+      vacationMessage: vacationMode ? '🍷 El viño está madurando y fermentando en la bodega hasta el año que viene. Conéctate a diario para mantener tu racha y ganar tus +2 $CORCHO diarios 🪙' : null
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -689,7 +689,7 @@ router.post('/daily-streak/claim', (req, res) => {
       streak: newStreak,
       rewardAmount,
       message: vacationMode
-        ? `🏖️ ¡+${rewardAmount} $CORCHO y +1 Boleto de Reapertura añadidos! Estás de vacaciones acumulando racha de ${newStreak} día${newStreak > 1 ? 's' : ''} seguidos 🍷☀️`
+        ? `🍷 ¡+${rewardAmount} $CORCHO añadidos! Mientras el viño fermenta, tú acumulas racha de ${newStreak} día${newStreak > 1 ? 's' : ''} seguidos 🪙`
         : `🔥 ¡+${rewardAmount} $CORCHO añadidos! Racha de ${newStreak} día${newStreak > 1 ? 's' : ''} seguidos.`
     });
   } catch (e) {

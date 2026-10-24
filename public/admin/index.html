@@ -2778,7 +2778,7 @@
             </div>
             <div style="margin-top:10px;">
               <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:4px;">Mensaje para los clientes:</label>
-              <textarea id="corcho-vacation-message" class="input-field" rows="3" placeholder="Ej: ¡Estamos de vacaciones! Volvemos en octubre con más fuerza..." style="font-size:12px; padding:8px 10px; width:100%; box-sizing:border-box; resize:vertical; font-family:inherit;"></textarea>
+              <textarea id="corcho-vacation-message" class="input-field" rows="3" placeholder="Ej: El viño está madurando y fermentando en la bodega hasta el año que viene..." style="font-size:12px; padding:8px 10px; width:100%; box-sizing:border-box; resize:vertical; font-family:inherit;"></textarea>
             </div>
             <div style="margin-top:10px;">
               <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:4px;">Logo personalizado (opcional):</label>
@@ -3511,8 +3511,8 @@
 
         <!-- Editar Privilegios de Septiembre (+5 y +10 visitas) -->
         <div style="margin-bottom:16px; padding:14px; background:var(--bg); border:1px solid rgba(42,21,9,0.1); border-radius:12px;">
-          <div class="card-title" style="font-size:14px; margin-bottom:6px;">🎁 Privilegios al regresar en Septiembre (+5 y +10 visitas)</div>
-          <p style="font-size:11px; color:var(--text-muted); margin-bottom:12px; line-height:1.4;">Edita los beneficios que recibirán los clientes en septiembre (escribe 1 beneficio por línea):</p>
+          <div class="card-title" style="font-size:14px; margin-bottom:6px;">🎁 Privilegios al regresar la próxima temporada (+5 y +10 visitas)</div>
+          <p style="font-size:11px; color:var(--text-muted); margin-bottom:12px; line-height:1.4;">Edita los beneficios que recibirán los clientes a la vuelta (escribe 1 beneficio por línea):</p>
           
           <!-- +5 visitas -->
           <div style="margin-bottom:10px;">
@@ -3526,7 +3526,7 @@
             <textarea id="camp-perks-10" rows="3" class="input-field" style="width:100%; font-size:12px; resize:vertical; font-family:'Outfit',sans-serif; padding:8px 10px;" placeholder="Ej: Mesa VIP garantizada en el 1er Furancho&#10;Botella de albariño de bienvenida&#10;Mención especial en el tablón"></textarea>
           </div>
 
-          <button onclick="saveCampaignPrivileges()" style="background:var(--wine); color:#fff; border:none; border-radius:10px; padding:9px 18px; font-size:12px; font-weight:700; cursor:pointer;">💾 Guardar Privilegios de Septiembre</button>
+          <button onclick="saveCampaignPrivileges()" style="background:var(--wine); color:#fff; border:none; border-radius:10px; padding:9px 18px; font-size:12px; font-weight:700; cursor:pointer;">💾 Guardar Privilegios de la próxima temporada</button>
         </div>
 
         <!-- Ranking -->
@@ -5324,7 +5324,7 @@
       });
       const data = await res.json();
       if (data.success) {
-        showToast('✅ Privilegios de septiembre guardados');
+        showToast('✅ Privilegios de la próxima temporada guardados');
       } else {
         showToast(data.error || 'Error guardando privilegios', true);
       }
