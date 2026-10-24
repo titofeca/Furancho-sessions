@@ -528,6 +528,9 @@ html[data-cin-place="taboleiro"]{ --cin-hue: 172deg;  --cin-sat: .6;   --cin-pla
 /* A Ruta Furancheira — fuera, al aire: verde y camino. */
 html[data-cin-place="ruta"]     { --cin-hue: 96deg;   --cin-sat: .85;  --cin-place: 62, 104, 58; }
 
+/* A Sala de Xogos — madera y lámparas cálidas sobre las mesas. */
+html[data-cin-place="xogos"]    { --cin-hue: 22deg;   --cin-sat: 1.1;  --cin-place: 164, 118, 54; }
+
 /* A Chave Semanal — el premio: ámbar encendido. */
 html[data-cin-place="chave"]    { --cin-hue: 28deg;   --cin-sat: 1.35; --cin-place: 239, 159, 39; }
 
@@ -581,9 +584,128 @@ html[data-cin-place="eventos"]  { --cin-hue: 340deg;  --cin-sat: .95;  --cin-pla
   transition: background .55s var(--cin-ease-soft), box-shadow .55s var(--cin-ease-soft);
 }
 
+/* ============================================================
+   7 · CARTELES DE ZONA
+   Cada menú no es una pestaña: es un sitio al que llegas. El cartel
+   enseña la ilustración de esa zona con volumen — la escena se mueve
+   por detrás del marco (parallax) y respira sola (deriva lenta), así
+   que la imagen se lee como una ventana, no como una foto pegada.
+
+   Funciona DENTRO de modales: no usa `.cin-plate`, de modo que la
+   guarda `cin-halt` no lo aplana. El parallax lo mueven las mismas
+   `--cin-mx/--cin-my`, que el driver mantiene vivas siempre.
+   No envuelve nada position:fixed, así que su transform es inocuo.
+   ============================================================ */
+.cin-poster {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 22 / 10;
+  max-height: 210px;
+  overflow: hidden;
+  border-radius: 16px;
+  isolation: isolate;
+  background: rgba(var(--cin-deep), .10);
+  box-shadow:
+    0 10px 30px -14px rgba(28, 14, 6, .45),
+    inset 0 0 0 1px rgba(var(--cin-warm), .35),
+    inset 0 2px 14px rgba(28, 14, 6, .22);
+}
+
+/* La escena. Sobredimensionada para que el parallax nunca deje bordes. */
+.cin-poster-img {
+  position: absolute;
+  inset: -7%;
+  width: 114%;
+  height: 114%;
+  object-fit: cover;
+  /* Punto de encuadre por zona: cada ilustración lleva su propio rótulo
+     dibujado, y si el recorte lo parte por la mitad parece un error.
+     Se baja el encuadre hasta dejarlo fuera y que mande la escena, salvo
+     donde el rótulo cae centrado y luce bien (el Museo). */
+  object-position: center var(--cin-focus, 42%);
+  display: block;
+  transform:
+    translate3d(calc(var(--cin-mx, 0) * -13px), calc(var(--cin-my, 0) * -9px), 0)
+    scale(1.02);
+  transition: transform .7s var(--cin-ease-soft);
+  animation: cinPosterDrift 26s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes cinPosterDrift {
+  from { scale: 1;     }
+  to   { scale: 1.055; }
+}
+
+/* Velo: oscurece abajo para que el rótulo se lea, y tiñe la escena con
+   la luz de su sala para que cartel y ambiente vayan juntos. */
+.cin-poster-veil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to top, rgba(20, 10, 4, .82) 0%, rgba(20, 10, 4, .30) 34%, transparent 62%),
+    radial-gradient(130% 100% at 50% 40%, transparent 48%, rgba(20, 10, 4, .38) 100%),
+    linear-gradient(to bottom, rgba(var(--cin-place), .22), rgba(var(--cin-place), .06));
+}
+
+/* Rótulo de llegada. */
+.cin-poster-name {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 12px;
+  text-align: left;
+  pointer-events: none;
+}
+
+.cin-poster-kicker {
+  display: block;
+  font-family: 'Outfit', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2.2px;
+  text-transform: uppercase;
+  color: rgba(255, 245, 230, .78);
+  margin-bottom: 1px;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, .75);
+}
+
+.cin-poster-title {
+  display: block;
+  font-family: 'Playfair Display', serif;
+  font-size: 21px;
+  font-weight: 900;
+  line-height: 1.12;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, .8), 0 1px 3px rgba(0, 0, 0, .9);
+}
+
+/* Entrada: la cámara se acerca al llegar a la zona. */
+.cin-poster.cin-reveal { animation: cinPosterIn .9s var(--cin-ease) both; }
+
+@keyframes cinPosterIn {
+  from { opacity: 0; transform: scale(.955); filter: blur(8px); }
+  to   { opacity: 1; transform: none; filter: none; }
+}
+
+@media (max-width: 400px) {
+  .cin-poster { aspect-ratio: 20 / 10; border-radius: 14px; }
+  .cin-poster-title { font-size: 18.5px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cin-poster-img {
+    animation: none !important;
+    transform: none !important;
+  }
+  .cin-poster.cin-reveal { animation: none !important; opacity: 1 !important; filter: none !important; }
+}
+
 /* Impresión: fuera todo. El admin se imprime y exporta a PDF. */
 @media print {
   .cin-backdrop { display: none !important; }
+  .cin-poster { display: none !important; }
   .cin-halo, .cin-ring, .cin-contact { display: none !important; }
   .cin-plate { transform: none !important; }
   .cin-surface { box-shadow: none !important; }

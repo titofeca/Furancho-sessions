@@ -2384,6 +2384,17 @@
         <span id="profile-mint-serial-text" style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:2px; color:var(--gold); background:rgba(var(--gold-rgb),0.1); border:1px solid rgba(var(--gold-rgb),0.25); border-radius:100px; padding:3px 12px;"></span>
       </div>
 
+      <!-- Cartel de zona: a Estación das Viaxes. Es el hub desde el que se
+           sale a las demás zonas, así que encabeza la fila de medallones. -->
+      <div class="cin-poster" style="margin:0 0 16px;">
+        <img class="cin-poster-img" style="--cin-focus:60%" src="/assets/zonas/estacion.webp" alt="" />
+        <div class="cin-poster-veil"></div>
+        <div class="cin-poster-name">
+          <span class="cin-poster-kicker">Estación das viaxes</span>
+          <span class="cin-poster-title">¿A onde vas hoxe?</span>
+        </div>
+      </div>
+
       <!-- Fila de 4 medallones principales (ID Socio, Carné VIP, Museo, Ruta Furancheira) -->
       <div class="main-actions-row">
         <button onclick="openIdModal()" class="action-medallion cin-press" aria-label="ID Socio" data-cin-place="id">
@@ -2555,7 +2566,17 @@
       <!-- 🍾 BANCO DO CORCHO ($CORCHO) -->
       <div class="profile-progress-card" id="corcho-card" style="padding:14px 18px; margin-bottom:20px; background:linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(245, 236, 216, 0.65) 100%); border:1.5px solid rgba(var(--gold-rgb), 0.4); box-shadow:0 10px 30px -10px rgba(42, 21, 9, 0.08); position:relative; overflow:hidden;">
         <div style="position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--gold),var(--wine));"></div>
-        
+
+        <!-- Cartel de zona: o Banco do Corcho -->
+        <div class="cin-poster" style="margin:6px 0 14px;">
+          <img class="cin-poster-img" style="--cin-focus:62%" src="/assets/zonas/banco.webp" alt="" loading="lazy" />
+          <div class="cin-poster-veil"></div>
+          <div class="cin-poster-name">
+            <span class="cin-poster-kicker">Estás en</span>
+            <span class="cin-poster-title">O Banco do Corcho</span>
+          </div>
+        </div>
+
         <div style="width:100%;">
           <div style="display:flex; align-items:center; justify-content:space-between;">
             <div style="display:flex; align-items:center; gap:10px;">
@@ -2635,7 +2656,7 @@
             </div>
 
             <!-- Minijuegos en 1 sola línea abajo -->
-            <button id="btn-open-minigames" onclick="openMinigamesModal()" style="display:none; width:100%; padding:13px; background:linear-gradient(135deg, #eab308, #d97706); color:#fff; border:none; border-radius:14px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:900; cursor:pointer; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 16px rgba(217,119,6,0.35); position:relative; overflow:hidden;">
+            <button id="btn-open-minigames" onclick="openMinigamesModal()" data-cin-place="xogos" style="display:none; width:100%; padding:13px; background:linear-gradient(135deg, #eab308, #d97706); color:#fff; border:none; border-radius:14px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:900; cursor:pointer; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 16px rgba(217,119,6,0.35); position:relative; overflow:hidden;">
               <div style="position:absolute; top:0; left:0; right:0; bottom:0; background:linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.3) 50%, transparent 60%); background-size:200% 200%; animation:shine 3s infinite;"></div>
               🎮 Jugar y Ganar $CORCHO
             </button>
@@ -11846,7 +11867,15 @@
         <div style="width:36px; height:4px; background:rgba(42,21,9,0.15); border-radius:100px; margin:0 auto;"></div>
       </div>
 
-      <span style="font-size:44px; display:block; margin-bottom:10px;">🏛️</span>
+      <!-- Cartel de zona: o Museo do Corcho -->
+      <div class="cin-poster cin-reveal" style="margin:0 0 14px;">
+        <img class="cin-poster-img" src="/assets/zonas/museo.webp" alt="" loading="lazy" />
+        <div class="cin-poster-veil"></div>
+        <div class="cin-poster-name">
+          <span class="cin-poster-kicker">Estás en</span>
+          <span class="cin-poster-title">O Museo do Corcho</span>
+        </div>
+      </div>
       <span style="background:rgba(var(--gold-rgb),0.12); color:var(--gold); font-size:11px; font-weight:700; padding:4px 12px; border-radius:100px; text-transform:uppercase; letter-spacing:1.5px; display:inline-block; margin-bottom:10px;">Museo do Furancho</span>
       <h2 style="font-family:'Playfair Display',serif; font-size:24px; font-weight:900; color:var(--wine); margin:0 0 16px 0;">O meu Museo de Logros</h2>
 
@@ -12141,6 +12170,16 @@
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; padding-bottom:10px; border-bottom:1.5px solid rgba(var(--gold-rgb),0.25); flex-shrink:0;">
         <h3 style="font-family:'Playfair Display',serif; font-size:21px; font-weight:900; color:var(--wine); margin:0; display:flex; align-items:center; gap:8px;">🎮 Juegos del Furancho</h3>
         <button onclick="closeMinigamesModal()" style="background:rgba(42,21,9,0.08); border:none; border-radius:50%; width:32px; height:32px; font-size:18px; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
+      </div>
+
+      <!-- Cartel de zona: a Sala de Xogos -->
+      <div class="cin-poster cin-reveal" style="margin:0 0 12px; flex-shrink:0;">
+        <img class="cin-poster-img" style="--cin-focus:58%" src="/assets/zonas/xogos.webp" alt="" loading="lazy" />
+        <div class="cin-poster-veil"></div>
+        <div class="cin-poster-name">
+          <span class="cin-poster-kicker">Estás en</span>
+          <span class="cin-poster-title">A Sala de Xogos</span>
+        </div>
       </div>
 
       <!-- Lista Scrollable de Juegos -->
