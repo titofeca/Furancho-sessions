@@ -17,7 +17,10 @@ const DEFAULT_RATES = {
   level4: 500,             // Recompensa por alcanzar Nivel 4 (O Presidente)
   referral: 75,            // Recompensa para ambos por Plan Amigo
   campaignVisit: 2,        // Recompensa por visita a la Terraza de verano (2 $CORCHO por día sin evento)
-  campaignCompleted: 300,  // Recompensa por completar el Reto de los 5
+  // (Hubo aquí un campaignCompleted: 300 "por completar el Reto de los 5".
+  //  No lo pagaba nadie, no salía en el panel, y la leyenda de la app dice
+  //  que completar el reto no da bono: era un ajuste muerto que inducía a
+  //  creer que estaba activo. El reto sí paga campaignVisit por cada visita.)
   nftTransferFee: 150,     // Peaje en $CORCHO por traspasar un NFT entre wallets
   rsvpShowup: 15,          // Recompensa por cumplir RSVP ("Me apetece") y asistir
   vipShowup: 50,           // Recompensa por tener reserva VIP y asistir
@@ -107,7 +110,6 @@ function getEconomySettings() {
     level4: getRate('level4'),
     referral: getRate('referral'),
     campaignVisit: getRate('campaignVisit'),
-    campaignCompleted: getRate('campaignCompleted'),
     nftTransferFee: getRate('nftTransferFee'),
     rsvpShowup: getRate('rsvpShowup'),
     vipShowup: getRate('vipShowup'),

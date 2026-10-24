@@ -191,6 +191,11 @@ function drinkCunca(wallet) {
 
   db.prepare(`UPDATE cunca_quente SET status = 'claimed' WHERE id = ?`).run(active.id);
 
+  // A propósito SIN applyVacationModeCap, al revés que los demás juegos.
+  // El tope de vacaciones limita la EMISIÓN de $CORCHO con el local cerrado,
+  // y este bote no se emite: lo ponen los propios jugadores al pasar la cunca
+  // (cada pase cobra cuncaPassCost y lo suma al bote). Recortarlo aquí
+  // evaporaría lo que ya han pagado entre ellos. No es un olvido.
   const { addCorchoCoins } = require('./corcho');
   addCorchoCoins(
     wallet,
