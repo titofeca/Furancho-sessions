@@ -2598,6 +2598,35 @@ router.delete('/partners/:id', requireAuth, (req, res) => {
   }
 });
 
+// GET /api/admin/board (ADMIN ONLY) — el Muro visto desde el panel, para poder
+// retirar lo que no debería estar. No había forma de quitar un mensaje: los
+// avisos automáticos se publicaban aquí y se quedaban para siempre.
+router.get('/board', requireAuth, (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    res.json(db.prepare(`
+      SELECT id, wallet_address, display_name, body, created_at
+      FROM board_posts ORDER BY id DESC LIMIT 100
+    `).all());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /api/admin/board/:id (ADMIN ONLY)
+router.delete('/board/:id', requireAuth, (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
+  try {
+    const { db } = require('../db/database');
+    const info = db.prepare(`DELETE FROM board_posts WHERE id = ?`).run(id);
+    if (!info.changes) return res.status(404).json({ error: 'Esa publicación ya no existe' });
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/admin/scheduled-messages (ADMIN ONLY)
 router.get('/scheduled-messages', requireAuth, (req, res) => {
   try {

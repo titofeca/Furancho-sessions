@@ -238,6 +238,20 @@ function scheduleDailyMorningMessage() {
       const h = madridDate.getHours();
       const m = madridDate.getMinutes();
 
+      // Este programador mandaba un push CADA mañana, elegido de un catálogo,
+      // sin que nadie lo pidiera: así salió el aviso de revisar el banco
+      // "antes de la apertura" que no había escrito nadie. Los demás avisos
+      // automáticos (Chave, apertura de evento) ya callaban en vacaciones.
+      //
+      // Ahora nace APAGADO y solo se enciende desde el panel: el silencio no
+      // depende de acordarse de activar el Modo Vacaciones.
+      const { getBoolSetting } = require('./db/database');
+      if (!getBoolSetting('daily_messages_enabled', false)) return;
+
+      // Y con el Furancho cerrado tampoco, aunque esté encendido.
+      const { getEconomySettings } = require('./services/corcho');
+      if (getEconomySettings().vacationMode) return;
+
       // Ventana de disparo a las 09:00 AM (09:00 - 09:04)
       if (h === 9 && m >= 0 && m <= 4) {
         if (_dailyMessageLastSentDate === todayStr) return;
