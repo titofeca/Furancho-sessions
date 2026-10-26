@@ -7156,6 +7156,12 @@
       // ficha entrada para sumar al Reto de Verano": invitaba a venir a un
       // local que no abre y a una campaña que ya terminó. Mientras dure el
       // cierre solo se dice que está cerrado.
+      //
+      // El Reto de Verano se cerró con la temporada (vive como historial en el
+      // perfil), así que los días SIN sesión ya no suman nada: ni punto de
+      // campaña ni visita. Por eso estos avisos ya no invitan a fichar esos
+      // días — apuntan a lo que de verdad sigue vivo cada semana: la sesión de
+      // Furancho, su bombo y sus sorteos.
       if (window.isVacationMode) {
         banner.style.background = 'rgba(var(--wine-rgb),0.07)';
         banner.style.border = '1.5px solid rgba(var(--wine-rgb),0.28)';
@@ -7176,7 +7182,7 @@
           if (hasEventToday) {
             banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,0.25);display:inline-block;flex-shrink:0;"></span>Estás dentro del bombo — participa en los sorteos de hoy</span>';
           } else {
-            banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,0.25);display:inline-block;flex-shrink:0;"></span>Fichado — esta visita cuenta para el Reto de Verano</span>';
+            banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,0.25);display:inline-block;flex-shrink:0;"></span>Fichado — hoy no hay sesión; los sorteos son los días de Furancho</span>';
           }
         } else {
           banner.style.background = 'rgba(249,115,22,0.08)';
@@ -7185,7 +7191,7 @@
           if (hasEventToday) {
             banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#f97316;display:inline-block;flex-shrink:0;"></span>¡Hoy hay Furancho! Ficha entrada para entrar en el sorteo</span>';
           } else if (window._terrazaOpenToday !== false) {
-            banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#f97316;display:inline-block;flex-shrink:0;"></span>Terraza abierta — ficha entrada para sumar al Reto de Verano</span>';
+            banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#f97316;display:inline-block;flex-shrink:0;"></span>Terraza abierta — pásate a tomar un vino; los sorteos son los días de Furancho</span>';
           } else {
             banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#a8a29e;display:inline-block;flex-shrink:0;"></span>Terraza cerrada hoy — descansa, rapaz</span>';
             banner.style.background = 'rgba(168,162,158,0.1)';
@@ -7215,7 +7221,10 @@
           if (hasEventToday) {
             banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0;"></span>¡Hoy hay Furancho! Ficha entrada para participar en el sorteo</span>';
           } else if (window._terrazaOpenToday !== false) {
-            banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0;"></span>Ficha entrada hoy para sumar al Reto de Verano</span>';
+            banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#f97316;display:inline-block;flex-shrink:0;"></span>Terraza abierta — pásate a tomar un vino; los sorteos son los días de Furancho</span>';
+            banner.style.background = 'rgba(249,115,22,0.08)';
+            banner.style.border = '1.5px solid rgba(249,115,22,0.35)';
+            banner.style.color = '#c2410c';
           } else {
             banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#a8a29e;display:inline-block;flex-shrink:0;"></span>Terraza cerrada hoy — descansa, rapaz</span>';
             banner.style.background = 'rgba(168,162,158,0.1)';
@@ -9082,8 +9091,11 @@
       if (typeof loadReopeningTicketsUI === 'function') loadReopeningTicketsUI();
 
       // ── Aviso día de Furancho ─────────────────────────────────────────────
+      // El aviso de "hoy es Furancho, no suma" solo tiene sentido con la campaña
+      // viva. Terminada, la tarjeta es historial: no se avisa de una regla que
+      // ya no se aplica a nada.
       const warnEl = document.getElementById('campaign-furancho-day-warn');
-      if (warnEl) warnEl.style.display = p.isFuranchoDay ? 'block' : 'none';
+      if (warnEl) warnEl.style.display = (p.active && p.isFuranchoDay) ? 'block' : 'none';
 
       // ── Sellos ────────────────────────────────────────────────────────────
       const dots = document.getElementById('campaign-dots');
@@ -9187,8 +9199,6 @@
   // tocan fichaje ni sorteos). Offset +02:00 = CEST (verano español, válido para
   // todas estas fechas). Si el año que viene cambian, se editan estas constantes.
   const VACATION = {
-    lastFurancho: '2026-07-30T19:30:00+02:00', // último Furancho antes de vacaciones
-    backInSeptember: '2026-09-20T23:59:59+02:00', // vuelta (fin de temporada de verano)
     eclipse: '2026-08-12T20:28:00+02:00'         // totalidad en A Coruña (IGN: máx 20:28, 76s)
   };
   let _vacationTimer = null;
@@ -9203,17 +9213,17 @@
   }
 
   // Agenda real de Furanchos (para contar hacia el PRÓXIMO evento y ir rodando al
-  // siguiente el día después de cada uno). Si la carga falla, se cae al objetivo
-  // fijo del 30 jul (sin romper). `rollMs` = hasta cuándo ese evento sigue siendo
-  // "el actual": el día del evento entero + la madrugada (releva a las 05:00 del
-  // día siguiente), para que durante la noche del Furancho no salte ya al siguiente.
+  // siguiente el día después de cada uno). Si la carga falla no se inventa nada:
+  // la tarjeta se queda oculta hasta que la agenda llegue. `rollMs` = hasta cuándo
+  // ese evento sigue siendo "el actual": el día del evento entero + la madrugada
+  // (releva a las 05:00 del día siguiente), para que durante la noche del Furancho
+  // no salte ya al siguiente.
   let _furanchoList = null; // [{ ms, rollMs, dateLabel }]
   async function loadUpcomingFuranchos() {
     try {
       const r = await resilientFetch('/api/events');
       if (!r.ok) return;
       const events = await r.json();
-      const lastMs = new Date(VACATION.lastFurancho).getTime();
       _furanchoList = (events || [])
         .filter(e => e.event_date && (e.active === undefined || e.active))
         .map(e => {
@@ -9223,7 +9233,7 @@
           const dateLabel = d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
           return { id: e.id, title: e.title, ms, rollMs, dateLabel };
         })
-        .filter(f => !isNaN(f.ms) && f.ms <= lastMs)
+        .filter(f => !isNaN(f.ms))
         .sort((a, b) => a.ms - b.ms);
       renderVacationCards();
     } catch (_) {}
@@ -9231,20 +9241,18 @@
 
   function renderVacationCards() {
     const now = Date.now();
-    const last = new Date(VACATION.lastFurancho).getTime();
-    const backAt = new Date(VACATION.backInSeptember).getTime();
     const ecl = new Date(VACATION.eclipse).getTime();
 
-    // El Pulso Furancheiro: si no hay Vibe activo, mostramos la cuenta atrás.
+    // El Pulso Furancheiro: si no hay Vibe activo, mostramos la cuenta atrás al
+    // próximo Furancho de la agenda. Con el local cerrado no hay nada que contar
+    // — el cartel de reposo del inicio ya lo explica.
     const vc = document.getElementById('vibe-pulse-card');
     if (vc) {
-      if (now > backAt && !window._isVibeActive) {
+      if (window.isVacationMode && !window._isVibeActive) {
         vc.style.display = 'none';
       } else {
         vc.style.display = 'block';
-        const upcoming = (_furanchoList !== null)
-          ? _furanchoList.filter(f => f.rollMs > now)
-          : (now < (last + 11 * 3600 * 1000) ? [{ ms: last, rollMs: last + 11 * 3600 * 1000, dateLabel: 'jueves, 30 de julio' }] : []);
+        const upcoming = (_furanchoList || []).filter(f => f.rollMs > now);
         const cdState = document.getElementById('vibe-state-sleep');
         const modeState = document.getElementById('vacation-mode-state');
         vc.style.display = 'block';
@@ -9258,7 +9266,6 @@
           }
           const next = upcoming[0];
           const rest = upcoming.length - 1;          // sesiones que quedan DESPUÉS de esta
-          const isLast = (upcoming.length === 1);    // ya no hay más → es el último
           const started = (now >= next.ms);          // el evento de hoy ya arrancó
           const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
           const emojiEl = document.getElementById('vac-cd-emoji');
@@ -9266,20 +9273,14 @@
           const subEl = document.getElementById('vac-cd-sub');
           const listEl = document.getElementById('vac-cd-list');
 
-          if (isLast) {
-            if (emojiEl) emojiEl.textContent = '🌅';
-            if (titleEl) titleEl.textContent = started ? '¡Hoy, último Furancho del verano!' : 'Último Furancho del verano';
-            if (subEl) subEl.innerHTML = started
-              ? `Hoy cerramos el verano con la última cunca. ¡Te esperamos esta noche, neno! 🍷`
-              : `El <strong>${cap(next.dateLabel)}</strong> cerramos por vacaciones. ¡La última cunca antes del verano, neno! 🍷`;
-          } else {
-            if (emojiEl) emojiEl.textContent = '🍷';
-            if (titleEl) titleEl.textContent = started ? '¡Hoy hay Furancho!' : 'Próximo Furancho';
-            const restTxt = rest === 1 ? 'queda otra sesión' : `quedan ${rest} sesiones`;
-            if (subEl) subEl.innerHTML = started
-              ? `¡Nos vemos esta noche, ho! Y después aún ${restTxt} antes del verano. 🍷`
-              : `Nos vemos el <strong>${cap(next.dateLabel)}</strong>. Después aún ${restTxt} antes de las vacaciones, ho. 🍷`;
-          }
+          if (emojiEl) emojiEl.textContent = '🍷';
+          if (titleEl) titleEl.textContent = started ? '¡Hoy hay Furancho!' : 'Próximo Furancho';
+          const restTxt = rest === 0 ? ''
+            : (rest === 1 ? ' Y después aún queda otra sesión en la agenda.'
+                          : ` Y después aún quedan ${rest} sesiones en la agenda.`);
+          if (subEl) subEl.innerHTML = started
+            ? `¡Nos vemos esta noche, ho!${restTxt} 🍷`
+            : `Nos vemos el <strong>${cap(next.dateLabel)}</strong>.${restTxt} 🍷`;
 
           if (listEl) {
             if (started) {
@@ -9351,10 +9352,8 @@
         } else {
           if (!window._isVibeActive) {
             if (cdState) cdState.style.display = 'none';
-            if (modeState) modeState.style.display = window.isVacationMode ? 'block' : 'none';
-            vc.style.background = 'linear-gradient(160deg, rgba(var(--gold-rgb),.12), rgba(var(--wine-rgb),.06))';
-            vc.style.borderColor = 'rgba(var(--gold-rgb),.45)';
-            if (!window.isVacationMode) vc.style.display = 'none';
+            if (modeState) modeState.style.display = 'none';
+            vc.style.display = 'none';
           }
         }
       }
