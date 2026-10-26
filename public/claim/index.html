@@ -5098,15 +5098,9 @@
       qrImg.src = qrUrl;
       qrLink.href = qrUrl;
 
-      // No aplicar tema oscuro en el perfil — mantener fondo crema siempre
-      document.body.classList.toggle('theme-summer', !!window.isVacationMode);
+      // El tema, el logo y las partículas los deja ya en su sitio
+      // applySummerLogoState: aquí se duplicaba el toggle.
       applySummerLogoState();
-      if (window.isVacationMode) {
-        spawnSummerParticles();
-      } else {
-        const summerContainer = document.getElementById('summer-particles');
-        if (summerContainer) summerContainer.innerHTML = '';
-      }
 
       // Buzón de mensajes: carga inicial + arrancar polling
       startInboxPolling(lvl, userWalletAddress);
@@ -5936,6 +5930,15 @@
     // Los premios reales SOLO se revelan a quien ya fichó entrada con el QR esta noche.
     // Antes de fichar se muestra un teaser temático, sin desvelar los premios.
     async function loadTonightPrizes() {
+      // Con el Furancho cerrado no hay "esta noche" ni QR de entrada que
+      // escanear: esta tarjeta invitaba a venir y a fichar igualmente.
+      if (window.isVacationMode) {
+        ['claim-tonight-prizes', 'tonight-prizes-card'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+        });
+        return;
+      }
       const today = new Date().toISOString().slice(0, 10);
       const wallet = localStorage.getItem('furancho_wallet_address') || '';
       let scheduled = [];
@@ -7374,14 +7377,7 @@
           window._vacationMessage = data.vacationMessage || '';
           window._vacationLogo = data.vacationLogo || '';
           renderVacationBanner();
-          document.body.classList.toggle('theme-summer', !!window.isVacationMode);
           applySummerLogoState();
-          if (window.isVacationMode) {
-            spawnSummerParticles();
-          } else {
-            const summerContainer = document.getElementById('summer-particles');
-            if (summerContainer) summerContainer.innerHTML = '';
-          }
         } catch (_) {}
       });
 
@@ -14444,39 +14440,25 @@
       }
 
     window.applySummerLogoState = function() {
-      const isSummer = !!window.isVacationMode;
-      // toggle en vez de sobrescribir className para no borrar otras clases del body
-      document.body.classList.toggle('theme-summer', isSummer);
+      // Este modo se hizo para las vacaciones de agosto: cambiaba el logo por
+      // uno de playa y repintaba la app de coral y azul. Ahora el cierre es de
+      // fin de temporada —el viño reposando hasta el año que viene— y las
+      // sombrillas desentonaban justo encima de ese mensaje. La marca se queda
+      // como es; lo que comunica el cierre es el cartel, no el disfraz.
+      document.body.classList.remove('theme-summer');
 
-      // Intercambio de logo (logo de verano con sombrillas vs logo habitual).
-      // Incluye el logo de la pantalla de inicio (#onboarding-logo) para que el
-      // modo vacaciones se vea desde el primer arranque, sin necesidad de wallet.
       document.querySelectorAll('.header-logo-row img, img[alt*="Logo"], #onboarding-logo').forEach(img => {
-        if (isSummer) {
-          if (!img.src.includes('/assets/logo_verano.jpg')) {
-            img.src = '/assets/logo_verano.jpg';
-          }
-          img.classList.add('logo-verano');
-        } else {
-          if (img.src.includes('/assets/logo_verano.jpg')) {
-            img.src = '/assets/logo.png';
-          }
-          img.classList.remove('logo-verano');
-        }
+        if (img.src.includes('/assets/logo_verano.jpg')) img.src = '/assets/logo.png';
+        img.classList.remove('logo-verano');
       });
 
-      // Partículas y pasaporte en modo verano
-      if (isSummer) {
-        if (typeof spawnSummerParticles === 'function') spawnSummerParticles();
-      } else {
-        const summerContainer = document.getElementById('summer-particles');
-        if (summerContainer) summerContainer.innerHTML = '';
-      }
+      const summerContainer = document.getElementById('summer-particles');
+      if (summerContainer) summerContainer.innerHTML = '';
 
       // Ocultar/Mostrar sección de agenda/eventos según el modo
       const agendaSection = document.getElementById('agenda-section');
       if (agendaSection) {
-        if (isSummer) {
+        if (window.isVacationMode) {
           agendaSection.style.display = 'none';
         } else {
           // Restaurar agenda al salir de vacaciones (loadAgenda la rellena con display:block)
