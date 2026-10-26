@@ -7136,6 +7136,18 @@
       if (!banner) return;
       banner.style.display = 'block';
 
+      // Con el Furancho cerrado, este aviso seguía diciendo "Terraza abierta —
+      // ficha entrada para sumar al Reto de Verano": invitaba a venir a un
+      // local que no abre y a una campaña que ya terminó. Mientras dure el
+      // cierre solo se dice que está cerrado.
+      if (window.isVacationMode) {
+        banner.style.background = 'rgba(var(--wine-rgb),0.07)';
+        banner.style.border = '1.5px solid rgba(var(--wine-rgb),0.28)';
+        banner.style.color = 'var(--wine)';
+        banner.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--wine);display:inline-block;flex-shrink:0;"></span>O Furancho está pechado — o viño repousa ata o ano que vén</span>';
+        return;
+      }
+
       // Comprobar si hay evento hoy usando la variable global de la agenda
       const today = new Date().toISOString().slice(0, 10);
       const hasEventToday = _globalEvents && _globalEvents.some(ev => ev.event_date === today);
@@ -9378,6 +9390,10 @@
       const cfg = await r.json();
       const card = document.getElementById('terraza-card');
       if (!card || !cfg.days) return;
+      // Con el Furancho cerrado no se anuncia horario: si quedaban días
+      // configurados de la temporada, esta tarjeta llegaba a poner
+      // "🟢 ABERTO AGORA" mientras el local no abre.
+      if (window.isVacationMode) { card.style.display = 'none'; return; }
       const overrides = cfg.overrides || [];
       const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const todayStr = ymd(new Date());
