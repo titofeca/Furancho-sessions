@@ -2124,7 +2124,11 @@
     </div>
 
     <div class="content" style="margin-top: 10px;">
-      
+
+      <!-- O FURANCHO ESTÁ PECHADO — lo primero que se ve al entrar mientras
+           dure el Modo Vacaciones. Lo rellena renderClosedNotice(). -->
+      <div id="closed-notice" style="display:none; margin-bottom:18px;"></div>
+
       <!-- FOMO Widget (Marketing) -->
       <div id="fomo-widget" style="display:none; background:linear-gradient(135deg, rgba(220,38,38,0.1), rgba(153,27,27,0.05)); border:1px solid rgba(220,38,38,0.2); border-radius:12px; padding:12px 16px; margin-bottom:16px; align-items:center; gap:12px; backdrop-filter:blur(10px);">
         <div style="font-size:20px; animation:pulse 2s infinite;">🔥</div>
@@ -10224,7 +10228,36 @@
   // pantalla, incluido el onboarding, desde el primer instante.
   window._vacationMessage = '';
   window._vacationLogo = '';
+  // Cartel de CERRADO en la pantalla de inicio. El aviso de vacaciones que ya
+  // existía vive dentro del Pulso Furancheiro, en el perfil: quien abría la
+  // app no veía por ningún lado que el Furancho estuviese cerrado.
+  function renderClosedNotice() {
+    const el = document.getElementById('closed-notice');
+    if (!el) return;
+    if (!window.isVacationMode) { el.style.display = 'none'; el.innerHTML = ''; return; }
+
+    // Si hay texto puesto en el panel manda ese; si no, el del viño en reposo.
+    const propio = (window._vacationMessage || '').trim();
+    const titulo = propio ? propio.split('\n')[0] : 'O Furancho está pechado';
+    const cuerpo = propio
+      ? propio.split('\n').slice(1).join(' ').trim()
+      : 'O viño está madurando e fermentando na adega ata o ano que vén. Volvemos abrir cando estea no seu punto.';
+
+    el.style.display = 'block';
+    el.innerHTML = `
+      <div class="cin-surface" style="position:relative; overflow:hidden; text-align:center; padding:22px 18px 20px;
+           background:linear-gradient(160deg, rgba(var(--wine-rgb),0.07), rgba(var(--gold-rgb),0.05));
+           border:1.5px solid rgba(var(--wine-rgb),0.28); border-radius:18px;">
+        <span style="display:inline-block; font-size:10px; font-weight:800; letter-spacing:2px; text-transform:uppercase;
+              color:#fff; background:var(--wine); padding:4px 12px; border-radius:100px; margin-bottom:12px;">Pechado</span>
+        <h3 style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:var(--wine);
+            margin:0 0 8px; line-height:1.25;">${titulo}</h3>
+        <p style="font-size:13.5px; color:var(--text); line-height:1.6; margin:0; font-weight:500;">${cuerpo}</p>
+      </div>`;
+  }
+
   function renderVacationBanner() {
+    renderClosedNotice();
     const el = document.getElementById('vacation-mode-state');
     if (!el) return;
     if (!window.isVacationMode) { el.innerHTML = ''; return; }
