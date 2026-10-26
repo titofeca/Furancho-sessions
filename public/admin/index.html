@@ -1652,6 +1652,7 @@
       <div style="display:flex; background:rgba(42,21,9,0.05); border-radius:12px; margin-bottom: 20px; padding:3px; max-width: 480px; border:1px solid var(--border);">
         <button id="admin-tab-btn-broadcast" onclick="switchAdminMsgTab('broadcast')" style="flex:1; padding:10px; border:none; border-radius:10px; background:#d4af37; color:#120904; font-family:'Outfit',sans-serif; font-size:13px; font-weight:800; cursor:pointer; transition:all 0.2s;">📢 Publicar Anuncio</button>
         <button id="admin-tab-btn-dms" onclick="switchAdminMsgTab('dms')" style="flex:1; padding:10px; border:none; border-radius:10px; background:transparent; color:var(--text); font-family:'Outfit',sans-serif; font-size:13px; font-weight:800; cursor:pointer; transition:all 0.2s;">📩 Mensajes de Clientes (DMs)</button>
+        <button id="admin-tab-btn-board" onclick="switchAdminMsgTab('board')" style="flex:1; padding:10px; border:none; border-radius:10px; background:transparent; color:var(--text); font-family:'Outfit',sans-serif; font-size:13px; font-weight:800; cursor:pointer; transition:all 0.2s;">🧱 O Taboleiro (Muro)</button>
       </div>
 
       <div id="admin-broadcast-wrap" style="display:block;">
@@ -1742,6 +1743,21 @@
             <button onclick="loadAdminDms()" class="btn-secondary" style="font-size:12px; padding:6px 12px; height:auto; margin:0;">🔄 Actualizar</button>
           </div>
           <div id="admin-dms-list" style="display:flex; flex-direction:column; gap:16px; margin-top:14px;"></div>
+        </div>
+      </div>
+
+      <!-- SECCIÓN 3: O Taboleiro — el muro público que leen todos los clientes -->
+      <div id="admin-board-wrap" style="display:none;">
+        <div class="glass-card">
+          <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <span class="card-title">🧱 O Taboleiro — muro público</span>
+            <button onclick="loadAdminBoard()" class="btn-secondary" style="font-size:12px; padding:6px 12px; height:auto; margin:0;">🔄 Actualizar</button>
+          </div>
+          <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; margin:10px 0 0;">
+            Todo lo que hay aquí lo ve <strong>cualquier cliente</strong> que abra el Taboleiro en su app.
+            Borrar una publicación es inmediato y no se puede deshacer.
+          </p>
+          <div id="admin-board-list" style="display:flex; flex-direction:column; gap:12px; margin-top:14px;"></div>
         </div>
       </div>
     </div>
@@ -3079,7 +3095,6 @@
               <div id="corcho-recent-tx-list" style="font-size:11px; display:flex; flex-direction:column; gap:4px; max-height:220px; overflow-y:auto;">—</div>
             </div>
           </div>
-        </div>
       </details>
 
       <!-- Traspasos: historial de solicitudes pendientes -->
@@ -3324,7 +3339,6 @@
 
     </div>
 
-  </div>
 
     <!-- ==================== NFTs & LOGROS ==================== -->
     <div class="page" id="page-nfts">
@@ -6495,29 +6509,92 @@
 
   let _adminCurrentMsgTab = 'broadcast';
 
-  function switchAdminMsgTab(tab) {
-    _adminCurrentMsgTab = tab;
-    const btnBroadcast = document.getElementById('admin-tab-btn-broadcast');
-    const btnDms = document.getElementById('admin-tab-btn-dms');
-    const wrapBroadcast = document.getElementById('admin-broadcast-wrap');
-    const wrapDms = document.getElementById('admin-dms-wrap');
-    if (!btnBroadcast || !btnDms || !wrapBroadcast || !wrapDms) return;
+  // Tres pestañas: anuncios, DMs y el muro público. El id de cada una da el
+  // del botón y el del contenedor, así añadir una más es una línea.
+  const ADMIN_MSG_TABS = ['broadcast', 'dms', 'board'];
 
-    if (tab === 'broadcast') {
-      btnBroadcast.style.background = '#d4af37';
-      btnBroadcast.style.color = '#120904';
-      btnDms.style.background = 'transparent';
-      btnDms.style.color = 'var(--text)';
-      wrapBroadcast.style.display = 'block';
-      wrapDms.style.display = 'none';
-    } else {
-      btnDms.style.background = '#d4af37';
-      btnDms.style.color = '#120904';
-      btnBroadcast.style.background = 'transparent';
-      btnBroadcast.style.color = 'var(--text)';
-      wrapBroadcast.style.display = 'none';
-      wrapDms.style.display = 'block';
-      loadAdminDms();
+  function switchAdminMsgTab(tab) {
+    if (!ADMIN_MSG_TABS.includes(tab)) return;
+    const falta = ADMIN_MSG_TABS.some(t => !document.getElementById(`admin-tab-btn-${t}`)
+                                        || !document.getElementById(`admin-${t}-wrap`));
+    if (falta) return;
+    _adminCurrentMsgTab = tab;
+
+    for (const t of ADMIN_MSG_TABS) {
+      const btn = document.getElementById(`admin-tab-btn-${t}`);
+      const wrap = document.getElementById(`admin-${t}-wrap`);
+      const activa = (t === tab);
+      btn.style.background = activa ? '#d4af37' : 'transparent';
+      btn.style.color = activa ? '#120904' : 'var(--text)';
+      wrap.style.display = activa ? 'block' : 'none';
+    }
+
+    if (tab === 'dms') loadAdminDms();
+    if (tab === 'board') loadAdminBoard();
+  }
+
+  // ── O TABOLEIRO (muro público) ────────────────────────────────────────────
+  // El muro lo escriben los clientes, pero también acabó recibiendo mensajes
+  // automáticos. Sin este panel no había forma de retirar una publicación:
+  // los endpoints existían y nadie podía usarlos.
+  async function loadAdminBoard() {
+    const list = document.getElementById('admin-board-list');
+    if (!list) return;
+    list.innerHTML = '<p style="font-size:13px; color:var(--text-muted); text-align:center; padding:20px 0;">Cargando el Taboleiro...</p>';
+    try {
+      const res = await apiFetch('/api/admin/board');
+      if (!res.ok) {
+        list.innerHTML = '<p style="font-size:13px; color:red; text-align:center; padding:20px 0;">Error al leer el muro. Comprueba tu sesión.</p>';
+        return;
+      }
+      const posts = await res.json();
+      if (!Array.isArray(posts) || posts.length === 0) {
+        list.innerHTML = '<p style="font-size:13px; color:var(--text-muted); text-align:center; padding:24px 0;">El Taboleiro está vacío, neno 🍷</p>';
+        return;
+      }
+      list.innerHTML = posts.map(post => {
+        const cuando = post.created_at
+          ? new Date(post.created_at + 'Z').toLocaleString('es-ES')
+          : '—';
+        const wallet = post.wallet_address || '';
+        const firma = wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : 'sin billetera';
+        const nombre = post.display_name ? escapeHtml(post.display_name) : '(sin nombre)';
+        return `
+          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px;">
+              <span style="font-size:13px; font-weight:800; color:var(--gold);">${nombre}
+                <span style="font-family:monospace; font-size:11px; font-weight:600; color:var(--text-muted);" title="${escapeHtml(wallet)}">${firma}</span>
+              </span>
+              <span style="font-size:11px; color:var(--text-muted);">${cuando}</span>
+            </div>
+            <div style="font-size:13.5px; color:var(--text); line-height:1.45; white-space:pre-wrap; word-break:break-word;">${escapeHtml(post.body || '')}</div>
+            <div style="display:flex; justify-content:flex-end;">
+              <button onclick="deleteBoardPost(${post.id})" style="background:#ef4444; color:#fff; border:none; border-radius:8px; padding:7px 16px; font-size:12px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif;">🗑️ Borrar del muro</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (e) {
+      list.innerHTML = '<p style="font-size:13px; color:red; text-align:center; padding:20px 0;">Error de red al cargar el Taboleiro.</p>';
+    }
+  }
+
+  async function deleteBoardPost(id) {
+    const ok = await corchoConfirm(
+      'Esta publicación desaparece del Taboleiro para todos los clientes. No se puede recuperar.',
+      '¿Borrar del muro?', '🗑️'
+    );
+    if (!ok) return;
+    try {
+      const res = await apiFetch(`/api/admin/board/${id}`, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        corchoAlert('⚠️ ' + (data.error || 'No se pudo borrar la publicación.'));
+        return;
+      }
+      loadAdminBoard();
+    } catch (e) {
+      corchoAlert('Error de conexión al borrar.');
     }
   }
 
