@@ -6223,6 +6223,19 @@
       // Los premios de esta noche se muestran en la tarjeta del perfil (tonight-prizes-card), no en el modal
       const scheduleHTML = '';
 
+      // ── ESTADO: el Furancho está cerrado ──
+      if (window.isVacationMode) {
+        stateEl.innerHTML = `
+          <div style="background:rgba(var(--wine-rgb),0.05); border:1px dashed rgba(var(--wine-rgb),0.25); border-radius:16px; padding:16px; text-align:center;">
+            <div style="font-size:28px; margin-bottom:8px;">🍷</div>
+            <p style="font-size:13px; font-weight:700; color:var(--wine); margin:0 0 4px;">O Furancho está pechado</p>
+            <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0;">O viño repousa na adega ata o ano que vén. Aquí seguirán agardando os teus logros e premios.</p>
+          </div>`;
+        section.style.display = 'none';
+        if (statusEl) statusEl.textContent = 'O Furancho está pechado';
+        return;
+      }
+
       // ── ESTADO: sin entrada fichada y sin historial anterior ──
       if (!hasEntry && !history.length) {
         stateEl.innerHTML = `
@@ -10420,7 +10433,10 @@
       if (activeBadge) activeBadge.style.display = 'block';
       if (footer) footer.style.display = 'block';
     } else {
-      if (entryBtn) entryBtn.style.display = 'flex';
+      // Con el Furancho cerrado no hay puerta que fichar: el botón verde
+      // seguía invitando a escanear el QR de entrada. La salida sí se deja
+      // por si alguien quedó con una sesión abierta del último día.
+      if (entryBtn) entryBtn.style.display = window.isVacationMode ? 'none' : 'flex';
       if (exitBtn) exitBtn.style.display = 'none';
       if (activeBadge) activeBadge.style.display = 'none';
       if (footer) footer.style.display = 'none';
