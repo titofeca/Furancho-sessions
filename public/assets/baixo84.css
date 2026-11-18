@@ -1,8 +1,8 @@
 /* ==========================================================================
-   FURANCHO SESSIONS · CAPA INMERSIVA 3D "O BAIXO DA CASA 1984" (v2 SIN SOLAPES)
-   Diseño limpio y despejado: controles fuera de la imagen, medallones de latón
-   compactos sobre los objetos reales (solo 1 etiqueta activa a la vez) y barra
-   de estación dedicada bajo el visor.
+   FURANCHO SESSIONS · CAPA INMERSIVA 3D "O BAIXO DA CASA 1984" (v3 FLUJO TOTAL)
+   Navegación unificada entre todos los menús sin bloqueos ni estados colgados:
+   sheets sin translateY(100%) residual, cabeceras con cierre visible y dock
+   persistente tipo app nativa con indicador de sección activa.
    ========================================================================== */
 
 :root {
@@ -16,14 +16,11 @@
   --b84-ink: #0D242C;
 }
 
-/* Espacio amplio inferior para que el dock nunca pise tarjetas ni textos */
 #screen-profile {
   padding-bottom: 112px !important;
 }
 
-/* Ocultar visualmente la fila duplicada de medallones blancos (ID/Museo/Ruta/Chave)
-   porque ya viven en el dock inferior y en el Baixo 3D, conservando sus nodos DOM
-   para que los contadores/puntos en vivo sigan actualizándose sin romper JS. */
+/* Ocultar fila blanca duplicada conservando nodos para contadores en vivo */
 #screen-profile .main-actions-row {
   position: absolute !important;
   width: 1px !important;
@@ -36,7 +33,169 @@
   pointer-events: none !important;
 }
 
-/* ── MUEBLE MARCO DE CASTAÑO TALLADO 1984 (CABECERA + VISOR 3D + BANDEJA) ── */
+/* ── ANTI-BLOQUEO DE MODALES (ELIMINA EL FALLO DE SHEETS INVISIBLES) ──
+   Antes id-modal, prizes-history-modal, ruta-modal y chave-modal dependían de
+   transform:translateY(100%) inline + setTimeout(280ms), dejando a menudo el
+   fondo oscuro bloqueado con el contenido fuera de pantalla al cambiar rápido
+   de menú. Ahora siempre que el modal está visible, su hoja es visible y entra
+   con una animación limpia que termina en transform:none. */
+#id-modal > div,
+#prizes-history-modal > div,
+#ruta-modal > div,
+#chave-modal > #chave-modal-sheet,
+#levels-modal > div,
+#allergens-modal > #allergens-modal-inner {
+  transform: none !important;
+  transition: none !important;
+  animation: b84SheetIn 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+  max-height: calc(100vh - 92px) !important;
+  max-height: calc(100dvh - 92px) !important;
+  padding-bottom: 28px !important;
+}
+
+#minigames-menu-modal > div,
+.b84-passbook-cover,
+#corcho-items-modal > div,
+#corcho-packs-modal > div,
+#corcho-transfer-modal > div,
+#corcho-info-modal > div {
+  max-height: calc(100vh - 96px) !important;
+  max-height: calc(100dvh - 96px) !important;
+  animation: b84ModalPop 0.20s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Dejar margen inferior en todos los modales para que la barra inferior persistente
+   nunca tape sus botones de cierre o acción */
+#id-modal,
+#prizes-history-modal,
+#ruta-modal,
+#chave-modal,
+#levels-modal,
+#minigames-menu-modal,
+#b84-libreta-modal,
+#corcho-items-modal,
+#corcho-packs-modal,
+#corcho-transfer-modal,
+#corcho-info-modal,
+#corcho-voucher-modal,
+#rasca-modal,
+#traga-modal,
+#chave-virtual-modal,
+#trivial-modal {
+  padding-bottom: 76px !important;
+  box-sizing: border-box !important;
+}
+
+#enxebre-modal,
+#ruleta-modal,
+#queimada-modal {
+  padding-bottom: 84px !important;
+  box-sizing: border-box !important;
+}
+
+#enxebre-modal .enx-title,
+#ruleta-modal > h3,
+#queimada-modal > h3 {
+  margin-top: 48px !important;
+}
+
+@keyframes b84SheetIn {
+  from { opacity: 0; translate: 0 24px; }
+  to   { opacity: 1; translate: 0 0; }
+}
+
+@keyframes b84ModalPop {
+  from { opacity: 0; scale: 0.96; }
+  to   { opacity: 1; scale: 1; }
+}
+
+/* Barra superior sticky inyectada en modales que no tenían botón X arriba */
+.b84-sheet-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 0 10px;
+  margin-bottom: 8px;
+  background: #F2EDE3;
+  border-bottom: 1px solid rgba(42, 21, 9, 0.10);
+}
+
+.b84-sheet-back {
+  background: rgba(139, 10, 26, 0.08);
+  border: 1px solid rgba(139, 10, 26, 0.22);
+  color: var(--b84-wine);
+  border-radius: 100px;
+  padding: 6px 12px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.b84-sheet-close {
+  background: rgba(42, 21, 9, 0.09);
+  border: none;
+  color: #3A1F0E;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 17px;
+  font-weight: 900;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Botón "← Xogos" en cada juego individual y "← Libreta" en submenús del Banco */
+.b84-back-to-games {
+  position: absolute;
+  top: 14px;
+  left: 52px;
+  z-index: 25;
+  background: rgba(30, 15, 6, 0.90);
+  border: 1.5px solid var(--b84-brass);
+  color: #FFE7A8;
+  border-radius: 100px;
+  padding: 6px 13px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.45);
+}
+
+#rasca-modal > .b84-back-to-games,
+#traga-modal > .b84-back-to-games,
+#chave-virtual-modal > .b84-back-to-games,
+#trivial-modal > .b84-back-to-games {
+  left: 16px;
+}
+
+.b84-back-to-libreta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 10px;
+  background: rgba(139, 10, 26, 0.08);
+  border: 1px solid rgba(139, 10, 26, 0.25);
+  color: var(--b84-wine);
+  border-radius: 100px;
+  padding: 5px 11px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* ── MUEBLE MARCO DE CASTAÑO TALLADO 1984 ── */
 .b84-stage-shell {
   position: relative;
   margin: 0 0 20px 0;
@@ -49,7 +208,6 @@
     inset 0 1px 0 rgba(243, 213, 141, 0.30);
 }
 
-/* 1. Barra superior FUERA del visor 3D (cero solape con lámpara ni calendario) */
 .b84-bezel-top {
   display: flex;
   align-items: center;
@@ -117,7 +275,6 @@
   color: #FFF;
 }
 
-/* 2. Ventana 3D limpia y despejada */
 .b84-viewport {
   position: relative;
   width: 100%;
@@ -183,7 +340,6 @@
   background: radial-gradient(120% 100% at 50% 50%, transparent 62%, rgba(10, 5, 2, 0.48) 100%);
 }
 
-/* ── PUNTOS 3D DISCRETOS (CERO SOLAPE: 30px en reposo, solo 1 activo expandido) ── */
 .b84-pin {
   position: absolute;
   transform: translate(-50%, -50%) translateZ(20px);
@@ -209,7 +365,6 @@
   transform: translate(-50%, -50%) translateZ(28px) scale(1.14);
 }
 
-/* SOLO el punto enfocado muestra su cartela limpia encima, sin tapar el resto */
 .b84-pin.b84-pin-focused {
   z-index: 7;
   width: auto;
@@ -233,9 +388,7 @@
   letter-spacing: 0.2px;
 }
 
-.b84-pin.b84-pin-focused .b84-pin-lbl {
-  display: inline;
-}
+.b84-pin.b84-pin-focused .b84-pin-lbl { display: inline; }
 
 .b84-pin.b84-hs-live {
   border-color: #4ADE80;
@@ -251,7 +404,6 @@
   50%      { box-shadow: 0 4px 16px rgba(0,0,0,0.75), 0 0 0 7px rgba(250, 204, 21, 0); }
 }
 
-/* 3. Bandeja inferior integrada en el mueble (FUERA de la imagen, cero solape) */
 .b84-bezel-Tray {
   margin-top: 8px;
   display: flex;
@@ -259,7 +411,6 @@
   gap: 7px;
 }
 
-/* Selector de estancias 1D limpio */
 .b84-room-tabs {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
@@ -293,7 +444,6 @@
   font-weight: 800;
 }
 
-/* Tarjeta de estación enfocada con acción directa */
 .b84-station-bar {
   display: flex;
   align-items: center;
@@ -314,16 +464,8 @@
   flex: 1;
 }
 
-.b84-st-ico {
-  font-size: 20px;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-.b84-st-meta {
-  min-width: 0;
-  flex: 1;
-}
+.b84-st-ico { font-size: 20px; line-height: 1; flex-shrink: 0; }
+.b84-st-meta { min-width: 0; flex: 1; }
 
 .b84-st-title {
   font-family: 'Playfair Display', serif;
@@ -363,25 +505,27 @@
 }
 .b84-st-cta:active { transform: scale(0.95); }
 
-/* ── BARRA INFERIOR FIJA COMPACTA Y DESPEJADA ── */
+/* ── BARRA DE NAVEGACIÓN PERSISTENTE TIPO APP NATIVA (z-index: 21000) ──
+   Permite saltar directamente de cualquier menú abierto a otro con 1 solo toque
+   o volver al Baixo sin quedarse atrapado nunca. */
 #baixo84-dock {
   position: fixed;
   left: 50%;
-  bottom: 10px;
+  bottom: 8px;
   transform: translateX(-50%);
-  width: calc(100% - 20px);
-  max-width: 456px;
-  z-index: 880;
+  width: calc(100% - 16px);
+  max-width: 464px;
+  z-index: 21000;
   display: none;
   grid-template-columns: repeat(7, 1fr);
   gap: 2px;
   padding: 5px;
   border-radius: 16px;
-  background: rgba(30, 15, 6, 0.95);
+  background: rgba(26, 13, 5, 0.96);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1.5px solid rgba(200, 155, 60, 0.65);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.48);
+  border: 1.5px solid rgba(200, 155, 60, 0.72);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.62);
 }
 
 #baixo84-dock.visible {
@@ -391,7 +535,7 @@
 .b84-dock-btn {
   position: relative;
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 11px;
   padding: 5px 1px 4px;
   display: flex;
@@ -399,19 +543,21 @@
   align-items: center;
   justify-content: center;
   gap: 2px;
-  color: #EADBC0;
+  color: #D8C7AB;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.16s ease, transform 0.14s ease;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease;
 }
+
 .b84-dock-btn:active {
   transform: scale(0.92);
-  background: rgba(200, 155, 60, 0.20);
 }
-.b84-dock-btn.b84-dock-primary {
+
+.b84-dock-btn.active {
   background: linear-gradient(145deg, #8B0A1A, #5B0510);
-  border: 1px solid rgba(243, 213, 141, 0.5);
+  border-color: rgba(243, 213, 141, 0.65);
   color: #FFF8EB;
+  box-shadow: 0 3px 10px rgba(139, 10, 26, 0.45);
 }
 
 .b84-dock-ico { font-size: 15px; line-height: 1; }
@@ -435,15 +581,14 @@
   display: none;
 }
 
-/* Botón flotante del Taboleiro colocado limpiamente encima del dock sin pisar nada */
 #msg-fab {
-  bottom: 76px !important;
+  bottom: 74px !important;
   right: 14px !important;
   width: 48px !important;
   height: 48px !important;
 }
 
-/* ── ESTÉTICA ENXEBRE 1984 EN BANCO Y MODALES DE JUEGOS ── */
+/* ── LIBRETA 1984 Y ESTÉTICA DE JUEGOS ── */
 #corcho-card {
   background: linear-gradient(165deg, rgba(252, 246, 233, 0.96) 0%, rgba(236, 222, 194, 0.92) 100%) !important;
   border: 1.5px solid rgba(168, 122, 38, 0.55) !important;
@@ -465,7 +610,7 @@
 .b84-passbook-cover {
   width: 100%;
   max-width: 430px;
-  max-height: 86vh;
+  max-height: 80vh;
   overflow-y: auto;
   border-radius: 20px;
   padding: 6px;
@@ -476,7 +621,7 @@
 
 .b84-passbook-page {
   border-radius: 14px;
-  padding: 18px 16px;
+  padding: 16px 15px;
   background-color: #FAF3E0;
   background-image: repeating-linear-gradient(
     to bottom,

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'furancho-vip-v86-clean';
+const CACHE_NAME = 'furancho-vip-v87-flow';
 const STATIC_ASSETS = [
   '/assets/logo.png',
   '/assets/icon-192.png',

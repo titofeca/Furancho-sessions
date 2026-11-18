@@ -1,7 +1,8 @@
 /* ==========================================================================
-   FURANCHO SESSIONS · MOTOR INTERACTIVO 3D "O BAIXO DA CASA 1984" (v2 LIMPIO)
-   Cero solapamientos: cabecera y bandeja de control fuera de la imagen,
-   medallones 3D discretos (solo 1 expandido a la vez) y 8 juegos años 80.
+   FURANCHO SESSIONS · MOTOR 3D "O BAIXO DA CASA 1984" + ROUTER DE MENÚS (v3)
+   Garantiza flujo instantáneo y sin bloqueos entre todos los menús y juegos:
+   cierre determinista sin race-conditions de 280ms, dock persistente para
+   cambiar de sección con 1 toque y cabeceras de retorno visibles en cada modal.
    ========================================================================== */
 (function () {
   'use strict';
@@ -44,7 +45,7 @@
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(190, t);
       osc.frequency.exponentialRampToValueAtTime(68, t + 0.055);
-      g.gain.setValueAtTime(0.16, t);
+      g.gain.setValueAtTime(0.15, t);
       g.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
       osc.connect(g); g.connect(ctx.destination);
       osc.start(t); osc.stop(t + 0.065);
@@ -57,7 +58,7 @@
         var o = ctx.createOscillator(), g = ctx.createGain();
         o.type = 'sine';
         o.frequency.setValueAtTime(freq, t + idx * 0.02);
-        g.gain.setValueAtTime(0.12, t + idx * 0.02);
+        g.gain.setValueAtTime(0.11, t + idx * 0.02);
         g.gain.exponentialRampToValueAtTime(0.001, t + 0.24 + idx * 0.04);
         o.connect(g); g.connect(ctx.destination);
         o.start(t + idx * 0.02); o.stop(t + idx * 0.02 + 0.28);
@@ -138,7 +139,376 @@
   };
   window.FuranchoAudio = FuranchoAudio;
 
-  // ── 2. DEFINICIÓN DE LAS 6 ESTACIONES LIMPIAS DEL BAIXO 1984 ──────────────
+  // ── 2. ROUTER UNIFICADO DE MENÚS Y MODALES (CERO ESTADOS COLGADOS) ────────
+  var ALL_MANAGED_MODALS = [
+    'id-modal',
+    'prizes-history-modal',
+    'ruta-modal',
+    'chave-modal',
+    'levels-modal',
+    'msg-panel',
+    'b84-libreta-modal',
+    'minigames-menu-modal',
+    'enxebre-modal',
+    'enxebre-help-modal',
+    'cunca-modal',
+    'cunca-help-modal',
+    'ruleta-modal',
+    'ruleta-help-modal',
+    'queimada-modal',
+    'queimada-help-modal',
+    'rasca-modal',
+    'traga-modal',
+    'chave-virtual-modal',
+    'trivial-modal',
+    'corcho-items-modal',
+    'corcho-packs-modal',
+    'corcho-transfer-modal',
+    'corcho-info-modal',
+    'corcho-voucher-modal',
+    'transfer-modal',
+    'allergens-modal'
+  ];
+
+  // Timers activos de juegos para cancelarlos al salir del juego o cambiar de menú
+  var _gameTimers = {
+    tragaSpin: null,
+    tragaReopen: null,
+    chaveReopen: null,
+    trivialTick: null
+  };
+
+  function clearAllGameTimers() {
+    if (_gameTimers.tragaSpin) { clearInterval(_gameTimers.tragaSpin); _gameTimers.tragaSpin = null; }
+    if (_gameTimers.tragaReopen) { clearTimeout(_gameTimers.tragaReopen); _gameTimers.tragaReopen = null; }
+    if (_gameTimers.chaveReopen) { clearTimeout(_gameTimers.chaveReopen); _gameTimers.chaveReopen = null; }
+    if (_gameTimers.trivialTick) { clearInterval(_gameTimers.trivialTick); _gameTimers.trivialTick = null; }
+  }
+
+  function isModalVisible(id) {
+    var el = document.getElementById(id);
+    return !!(el && el.style.display && el.style.display !== 'none');
+  }
+
+  var B84Nav = {
+    closeAll: function (exceptId) {
+      clearAllGameTimers();
+      if (typeof window.stopCampaignQr === 'function' && exceptId !== 'id-modal') {
+        try { window.stopCampaignQr(); } catch (_) {}
+      }
+      if (exceptId !== 'enxebre-modal' && typeof window.handleEnxebreKeydown === 'function') {
+        try { document.removeEventListener('keydown', window.handleEnxebreKeydown); } catch (_) {}
+      }
+      if (exceptId !== 'client-scanner-modal' && isModalVisible('client-scanner-modal')) {
+        if (typeof window.stopClientScanner === 'function') {
+          try { window.stopClientScanner(); } catch (_) {
+            document.getElementById('client-scanner-modal').style.display = 'none';
+          }
+        }
+      }
+      ALL_MANAGED_MODALS.forEach(function (id) {
+        if (id === exceptId) return;
+        var m = document.getElementById(id);
+        if (m && m.style.display !== 'none') {
+          m.style.display = 'none';
+        }
+      });
+      if (!exceptId) {
+        document.body.style.overflow = '';
+      }
+      B84Nav.syncDockActive();
+    },
+
+    getActiveSection: function () {
+      if (isModalVisible('client-scanner-modal')) return 'fichar';
+      if (isModalVisible('id-modal')) return 'carne';
+      if (isModalVisible('b84-libreta-modal') || isModalVisible('corcho-items-modal') || isModalVisible('corcho-packs-modal') || isModalVisible('corcho-transfer-modal') || isModalVisible('corcho-info-modal') || isModalVisible('corcho-voucher-modal')) return 'banco';
+      if (isModalVisible('minigames-menu-modal') || isModalVisible('enxebre-modal') || isModalVisible('ruleta-modal') || isModalVisible('queimada-modal') || isModalVisible('rasca-modal') || isModalVisible('traga-modal') || isModalVisible('chave-virtual-modal') || isModalVisible('trivial-modal') || isModalVisible('cunca-modal')) return 'xogos';
+      if (isModalVisible('chave-modal')) return 'chave';
+      if (isModalVisible('prizes-history-modal') || isModalVisible('transfer-modal')) return 'museo';
+      if (isModalVisible('ruta-modal')) return 'ruta';
+      return null;
+    },
+
+    syncDockActive: function () {
+      var activeSec = B84Nav.getActiveSection();
+      ['fichar', 'carne', 'banco', 'xogos', 'chave', 'museo', 'ruta'].forEach(function (sec) {
+        var btn = document.getElementById('b84-dock-btn-' + sec);
+        if (btn) btn.classList.toggle('active', activeSec === sec);
+      });
+    },
+
+    dockTap: function (sec) {
+      FuranchoAudio.woodTap();
+      var current = B84Nav.getActiveSection();
+      // Si tocas la misma pestaña que ya está abierta, se cierra y vuelves limpio al Baixo
+      if (current === sec && sec !== 'fichar') {
+        B84Nav.closeAll();
+        return;
+      }
+      if (sec === 'fichar') {
+        B84Nav.closeAll();
+        smartFicharAction();
+      } else if (sec === 'carne') {
+        window.openIdModal();
+      } else if (sec === 'banco') {
+        window.openLibreta84Modal();
+      } else if (sec === 'xogos') {
+        window.openMinigamesModal();
+      } else if (sec === 'chave') {
+        window.openChaveModal();
+      } else if (sec === 'museo') {
+        window.openPrizesModal();
+      } else if (sec === 'ruta') {
+        window.openRutaModal();
+      }
+      B84Nav.syncDockActive();
+    },
+
+    backToGamesMenu: function () {
+      FuranchoAudio.woodTap();
+      B84Nav.closeAll('minigames-menu-modal');
+      window.openMinigamesModal();
+    }
+  };
+  window.B84Nav = B84Nav;
+
+  // Cerrar con tecla Escape en escritorio
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && B84Nav.getActiveSection()) {
+      B84Nav.closeAll();
+    }
+  });
+
+  // Inyectar cabeceras con botón "← Volver ao Baixo" y "✕" en modales largos sin botón superior
+  function injectSheetTopbars() {
+    [
+      { id: 'id-modal', title: '🪪 Carné Furancheiro' },
+      { id: 'prizes-history-modal', title: '🏺 Museo do Furancho' },
+      { id: 'ruta-modal', title: '🗺️ Ruta Furancheira' }
+    ].forEach(function (cfg) {
+      var modal = document.getElementById(cfg.id);
+      if (!modal) return;
+      var sheet = modal.firstElementChild;
+      if (!sheet || sheet.querySelector('.b84-sheet-topbar')) return;
+
+      // Ocultar el antiguo tirador gris decorativo sin acción
+      var oldHandle = sheet.firstElementChild;
+      if (oldHandle && oldHandle.offsetHeight < 36 && !oldHandle.classList.contains('cin-poster')) {
+        oldHandle.style.display = 'none';
+      }
+
+      var bar = document.createElement('div');
+      bar.className = 'b84-sheet-topbar';
+      bar.innerHTML =
+        '<button type="button" class="b84-sheet-back" onclick="B84Nav.closeAll()">← Volver ao Baixo</button>' +
+        '<button type="button" class="b84-sheet-close" onclick="B84Nav.closeAll()" aria-label="Pechar">✕</button>';
+      sheet.insertBefore(bar, sheet.firstChild);
+
+      modal.addEventListener('click', function (e) {
+        if (e.target === modal) B84Nav.closeAll();
+      });
+    });
+
+    // Añadir botón "← Libreta" y cierre al pulsar fuera en los 4 submenús del Banco
+    ['corcho-items-modal', 'corcho-packs-modal', 'corcho-transfer-modal', 'corcho-info-modal'].forEach(function (cid) {
+      var cm = document.getElementById(cid);
+      if (!cm) return;
+      cm.addEventListener('click', function (e) {
+        if (e.target === cm) B84Nav.closeAll();
+      });
+      var card = cm.firstElementChild;
+      if (!card || card.querySelector('.b84-back-to-libreta')) return;
+      var backLib = document.createElement('button');
+      backLib.type = 'button';
+      backLib.className = 'b84-back-to-libreta';
+      backLib.textContent = '← Volver á Libreta';
+      backLib.onclick = function (e) {
+        e.stopPropagation();
+        FuranchoAudio.woodTap();
+        window.openLibreta84Modal();
+      };
+      card.insertBefore(backLib, card.firstChild);
+    });
+
+    var lvlModal = document.getElementById('levels-modal');
+    if (lvlModal) {
+      lvlModal.addEventListener('click', function (e) {
+        if (e.target === lvlModal) B84Nav.closeAll();
+      });
+    }
+
+    // Añadir botón "← Xogos" y cierre determinista a todos los juegos individuales
+    ['enxebre-modal', 'ruleta-modal', 'queimada-modal', 'rasca-modal', 'traga-modal', 'chave-virtual-modal', 'trivial-modal'].forEach(function (gid) {
+      var gm = document.getElementById(gid);
+      if (!gm || gm.querySelector('.b84-back-to-games')) return;
+      var backBtn = document.createElement('button');
+      backBtn.type = 'button';
+      backBtn.className = 'b84-back-to-games';
+      backBtn.textContent = '← Xogos';
+      backBtn.onclick = function (e) {
+        e.stopPropagation();
+        B84Nav.backToGamesMenu();
+      };
+      gm.appendChild(backBtn);
+
+      // Interceptar botones inline de cierre directo (style.display='none') para limpiar timers y dock al instante
+      gm.querySelectorAll('button[onclick*="style.display"]').forEach(function (closeBtn) {
+        if (closeBtn.getAttribute('onclick').indexOf('help-modal') !== -1) return;
+        closeBtn.onclick = function (ev) {
+          ev.stopPropagation();
+          B84Nav.closeAll();
+        };
+      });
+
+      // Clic en el fondo oscuro cierra limpio y cancela timers
+      gm.addEventListener('click', function (e) {
+        if (e.target === gm) B84Nav.closeAll();
+      });
+    });
+  }
+
+  // Envolver TODAS las funciones globales de abrir/cerrar modales para erradicar los
+  // setTimeout(280ms) con condición de carrera y el bloqueo de overflow:hidden
+  function patchGlobalModalFunctions() {
+    var origOpenId = window.openIdModal;
+    window.openIdModal = function () {
+      B84Nav.closeAll('id-modal');
+      if (typeof origOpenId === 'function') origOpenId();
+      var m = document.getElementById('id-modal');
+      if (m) m.style.display = 'flex';
+      B84Nav.syncDockActive();
+    };
+    window.closeIdModal = function () { B84Nav.closeAll(); };
+
+    var origOpenPrizes = window.openPrizesModal;
+    window.openPrizesModal = function () {
+      B84Nav.closeAll('prizes-history-modal');
+      if (typeof origOpenPrizes === 'function') origOpenPrizes();
+      var m = document.getElementById('prizes-history-modal');
+      if (m) m.style.display = 'flex';
+      B84Nav.syncDockActive();
+    };
+    window.closePrizesModal = function () { B84Nav.closeAll(); };
+
+    var origOpenRuta = window.openRutaModal;
+    window.openRutaModal = function () {
+      B84Nav.closeAll('ruta-modal');
+      if (typeof origOpenRuta === 'function') origOpenRuta();
+      var m = document.getElementById('ruta-modal');
+      if (m) m.style.display = 'flex';
+      B84Nav.syncDockActive();
+    };
+    window.closeRutaModal = function () { B84Nav.closeAll(); };
+
+    var origOpenChave = window.openChaveModal;
+    window.openChaveModal = function () {
+      B84Nav.closeAll('chave-modal');
+      if (typeof origOpenChave === 'function') origOpenChave();
+      var m = document.getElementById('chave-modal');
+      if (m) m.style.display = 'flex';
+      // Si aún no abrió la ventana del domingo o está en vacaciones, mostrar aviso claro dentro del modal
+      var prizeEl = document.getElementById('chave-modal-prize');
+      if (prizeEl && (!prizeEl.textContent || prizeEl.textContent === '—' || prizeEl.textContent.includes('secreto'))) {
+        if (window.isVacationMode) {
+          prizeEl.textContent = '🏖️ A Chave Semanal descansa en Modo Vacacións — volverá coa nova tempada, ho.';
+        }
+      }
+      document.body.style.overflow = '';
+      B84Nav.syncDockActive();
+    };
+    window.closeChaveModal = function () { B84Nav.closeAll(); };
+
+    // Hacer que pulsar Chave SIEMPRE abra el modal informativo en vez de no hacer nada cuando _lastWeeklyData es null
+    window.onChaveMedallionClick = function () {
+      window.openChaveModal();
+    };
+
+    window.openLevelsModal = function () {
+      B84Nav.closeAll('levels-modal');
+      var m = document.getElementById('levels-modal');
+      if (m) m.style.display = 'flex';
+      B84Nav.syncDockActive();
+    };
+    window.closeLevelsModal = function () { B84Nav.closeAll(); };
+
+    var origOpenItems = window.openCorchoItemsModal;
+    window.openCorchoItemsModal = async function () {
+      B84Nav.closeAll('corcho-items-modal');
+      if (typeof origOpenItems === 'function') await origOpenItems();
+      B84Nav.syncDockActive();
+    };
+    var origCloseItems = window.closeCorchoItemsModal;
+    window.closeCorchoItemsModal = function () {
+      if (typeof origCloseItems === 'function') origCloseItems();
+      B84Nav.syncDockActive();
+    };
+
+    var origOpenPacks = window.openCorchoPacksModal;
+    window.openCorchoPacksModal = async function () {
+      B84Nav.closeAll('corcho-packs-modal');
+      if (typeof origOpenPacks === 'function') await origOpenPacks();
+      B84Nav.syncDockActive();
+    };
+    var origClosePacks = window.closeCorchoPacksModal;
+    window.closeCorchoPacksModal = function () {
+      if (typeof origClosePacks === 'function') origClosePacks();
+      B84Nav.syncDockActive();
+    };
+
+    var origOpenTransfer = window.openCorchoTransferModal;
+    window.openCorchoTransferModal = function () {
+      B84Nav.closeAll('corcho-transfer-modal');
+      if (typeof origOpenTransfer === 'function') origOpenTransfer();
+      B84Nav.syncDockActive();
+    };
+    var origCloseTransfer = window.closeCorchoTransferModal;
+    window.closeCorchoTransferModal = function () {
+      if (typeof origCloseTransfer === 'function') origCloseTransfer();
+      B84Nav.syncDockActive();
+    };
+
+    var origOpenInfo = window.openCorchoInfoModal;
+    window.openCorchoInfoModal = function () {
+      B84Nav.closeAll('corcho-info-modal');
+      if (typeof origOpenInfo === 'function') origOpenInfo();
+      B84Nav.syncDockActive();
+    };
+    var origCloseInfo = window.closeCorchoInfoModal;
+    window.closeCorchoInfoModal = function () {
+      if (typeof origCloseInfo === 'function') origCloseInfo();
+      B84Nav.syncDockActive();
+    };
+
+    var origStartTransferScan = window.startTransferScan;
+    if (typeof origStartTransferScan === 'function') {
+      window.startTransferScan = function () {
+        B84Nav.closeAll('transfer-modal');
+        return origStartTransferScan();
+      };
+    }
+
+    var origOpenMsg = window.openMsgPanel;
+    if (typeof origOpenMsg === 'function') {
+      window.openMsgPanel = function () {
+        B84Nav.closeAll('msg-panel');
+        origOpenMsg();
+      };
+    }
+
+    // Unificar funciones de cierre de juegos para limpiar timers y dock al instante
+    ['closeEnxebre', 'closeRuletaModal', 'closeQueimadaModal', 'closeRascaModal', 'closeCuncaQuente'].forEach(function (fnName) {
+      var origFn = window[fnName];
+      window[fnName] = function () {
+        if (typeof origFn === 'function') {
+          try { origFn(); } catch (_) {}
+        }
+        B84Nav.closeAll();
+      };
+    });
+  }
+
+  // ── 3. ESCENARIO 3D "O BAIXO DA CASA 1984" ────────────────────────────────
   function isUserInside() {
     var badge = document.getElementById('session-active-badge');
     return !!(badge && badge.style.display !== 'none');
@@ -161,12 +531,12 @@
       icon: '🌿',
       pinLabel: 'Porta do Loureiro',
       title: 'Porta do Loureiro · Fichaxe',
-      sub: '📷 Escanear QR de Entrada',
+      sub: '📷 Escanea o QR da porta ao chegar',
       cta: 'Fichar ›',
       pan: -0.90,
       left: '18%',
       top: '48%',
-      open: function () { smartFicharAction(); }
+      open: function () { B84Nav.dockTap('fichar'); }
     },
     {
       id: 'pizarra',
@@ -182,9 +552,10 @@
       open: function () {
         var acceptBanner = document.getElementById('accept-prize-banner');
         if (acceptBanner && acceptBanner.style.display !== 'none') {
+          B84Nav.closeAll();
           acceptBanner.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } else if (typeof window.onChaveMedallionClick === 'function') {
-          window.onChaveMedallionClick();
+        } else {
+          window.openChaveModal();
         }
       }
     },
@@ -194,7 +565,7 @@
       icon: '📒',
       pinLabel: 'Libreta do Corcho',
       title: 'Libreta do Corcho · 1984',
-      sub: '0 $CORCHO · Canxes, Packs e Historial',
+      sub: '0 $CORCHO · Canxes, Packs e Movementos',
       cta: 'Abrir Libreta ›',
       pan: -0.02,
       left: '49%',
@@ -214,7 +585,7 @@
       top: '66%',
       open: function () {
         FuranchoAudio.clinkCunca();
-        if (typeof window.openLevelsModal === 'function') window.openLevelsModal();
+        window.openLevelsModal();
       }
     },
     {
@@ -228,9 +599,7 @@
       pan: 0.48,
       left: '69.5%',
       top: '42%',
-      open: function () {
-        if (typeof window.openMinigamesModal === 'function') window.openMinigamesModal();
-      }
+      open: function () { window.openMinigamesModal(); }
     },
     {
       id: 'museo',
@@ -243,13 +612,11 @@
       pan: 0.90,
       left: '83.5%',
       top: '36%',
-      open: function () {
-        if (typeof window.openPrizesModal === 'function') window.openPrizesModal();
-      }
+      open: function () { window.openPrizesModal(); }
     }
   ];
 
-  var focusedIdx = 2; // Empezamos centrados en la mesa del barril (Libreta / Jarra y Cunca)
+  var focusedIdx = 2;
   var panNorm = STATIONS[2].pan;
   var targetPanNorm = STATIONS[2].pan;
   var tiltY = 0, targetTiltY = 0;
@@ -310,10 +677,8 @@
   window.b84OnPinTap = function (idx, ev) {
     if (ev) ev.stopPropagation();
     if (focusedIdx === idx) {
-      // Si ya estaba seleccionado, un toque lo abre directamente
       window.b84OpenFocusedStation();
     } else {
-      // Primer toque: centra la cámara en ese objeto sin abrir popups por accidente
       FuranchoAudio.woodTap();
       setFocusedStation(idx, true);
     }
@@ -363,11 +728,10 @@
     shell.id = 'baixo84-stage-shell';
     shell.className = 'b84-stage-shell';
     shell.innerHTML =
-      '<!-- Cabecera en madera tallada FUERA de la imagen -->' +
       '<div class="b84-bezel-top">' +
         '<div class="b84-era-badge">' +
           '<span class="b84-era-dot" id="b84-era-dot"></span>' +
-          '<span id="b84-era-label">O BAIXO DA CASA · 1984</span>' +
+          '<span id="b84-era-label">O BAIXO · 1984</span>' +
         '</div>' +
         '<div class="b84-hud-controls">' +
           '<button type="button" class="b84-ctrl-btn" onclick="b84ToggleViva(this)">👥 Ambiente</button>' +
@@ -376,7 +740,6 @@
         '</div>' +
       '</div>' +
 
-      '<!-- Ventana 3D totalmente despejada -->' +
       '<div class="b84-viewport" id="baixo84-viewport">' +
         '<div class="b84-pan-world" id="baixo84-pan-world">' +
           '<img id="b84-scene-img" class="b84-scene-img" src="/assets/baixo84/adega_1984.jpg" alt="O Baixo da Casa 1984" />' +
@@ -386,7 +749,6 @@
         '<div class="b84-vignette"></div>' +
       '</div>' +
 
-      '<!-- Bandeja inferior FUERA de la imagen: cero solape -->' +
       '<div class="b84-bezel-Tray">' +
         '<div class="b84-room-tabs">' + tabsHtml + '</div>' +
         '<div class="b84-station-bar">' +
@@ -409,7 +771,6 @@
     resizeFxCanvas();
     window.addEventListener('resize', resizeFxCanvas);
 
-    // Al arrastrar horizontalmente, la estación más cercana al centro se enfoca sola
     var vp = document.getElementById('baixo84-viewport');
     var dragging = false, startX = 0, startPan = 0;
     vp.addEventListener('pointerdown', function (e) {
@@ -438,10 +799,12 @@
 
     mountBottomDock84();
     mountLibreta84Modal();
+    injectSheetTopbars();
+    patchGlobalModalFunctions();
     renderFocusedBar();
     startCellarLoop();
-    setInterval(syncCellarLiveBadges, 1500);
-    setTimeout(syncCellarLiveBadges, 450);
+    setInterval(syncCellarLiveBadges, 1200);
+    setTimeout(syncCellarLiveBadges, 350);
   }
 
   function resizeFxCanvas() {
@@ -457,8 +820,8 @@
 
     function frame() {
       var profileActive = document.getElementById('screen-profile')?.classList.contains('active');
-      var halt = document.documentElement.classList.contains('cin-halt');
-      if (document.visibilityState === 'visible' && profileActive && !halt && panWorld) {
+      var anyModalOpen = !!B84Nav.getActiveSection();
+      if (document.visibilityState === 'visible' && profileActive && !anyModalOpen && panWorld) {
         t += 0.016;
         panNorm += (targetPanNorm - panNorm) * 0.11;
         tiltY += (targetTiltY - tiltY) * 0.08;
@@ -472,7 +835,6 @@
           var W = fxCanvas.width, H = fxCanvas.height;
           fxCtx.clearRect(0, 0, W, H);
 
-          // 1. Orballo tras la puerta abierta
           fxCtx.strokeStyle = 'rgba(195, 222, 242, 0.34)';
           fxCtx.lineWidth = 1.1;
           for (var i = 0; i < rainDrops.length; i++) {
@@ -483,7 +845,6 @@
             fxCtx.beginPath(); fxCtx.moveTo(rx, ry0); fxCtx.lineTo(rx - 2, ry0 + 11); fxCtx.stroke();
           }
 
-          // 2. Luz cálida bajo la pantalla esmaltada
           var flicker = 0.93 + 0.07 * Math.sin(t * 7.1) * Math.cos(t * 3.0);
           var lx = W * 0.602, ly = H * 0.21;
           var cone = fxCtx.createRadialGradient(lx, ly, 4, lx - W * 0.04, H * 0.65, W * 0.34);
@@ -493,7 +854,6 @@
           fxCtx.fillStyle = cone;
           fxCtx.fillRect(W * 0.22, 0, W * 0.72, H);
 
-          // 3. Llamas azules en el pote de Queimada
           var qx = W * 0.752, qy = H * 0.585;
           for (var f = 0; f < 5; f++) {
             var fx = qx + (f - 2) * 4.5 + Math.sin(t * 8 + f) * 2;
@@ -506,7 +866,6 @@
             fxCtx.beginPath(); fxCtx.ellipse(fx, qy - fh * 0.45, 3.5, fh * 0.55, 0, 0, Math.PI * 2); fxCtx.fill();
           }
 
-          // 4. Motas de polvo flotando en la luz
           for (var k = 0; k < dustMotes.length; k++) {
             var dm = dustMotes[k];
             dm.x += dm.vx; dm.y += dm.vy;
@@ -524,7 +883,10 @@
   function syncCellarLiveBadges() {
     var profileActive = document.getElementById('screen-profile')?.classList.contains('active');
     var dock = document.getElementById('baixo84-dock');
-    if (dock) dock.classList.toggle('visible', !!profileActive);
+    // Ocultar el dock solo durante el sorteo de pantalla completa (#raffle-modal)
+    var liveRaffleOpen = isModalVisible('raffle-modal');
+    if (dock) dock.classList.toggle('visible', !!(profileActive && !liveRaffleOpen));
+    B84Nav.syncDockActive();
     if (!profileActive) return;
 
     var inside = isUserInside();
@@ -542,7 +904,6 @@
     if (dockFicharLbl) dockFicharLbl.textContent = inside ? 'Saír' : 'Fichar';
     if (dockFicharDot) dockFicharDot.style.display = inside ? 'block' : 'none';
 
-    // Banco
     var balText = document.getElementById('corcho-user-balance')?.textContent || '0';
     STATIONS[2].sub = balText + ' $CORCHO · Canxes, Packs e Movementos';
     var pendingSec = document.getElementById('corcho-pending-section');
@@ -550,12 +911,10 @@
     var dockBancoDot = document.getElementById('b84-dock-banco-dot');
     if (dockBancoDot) dockBancoDot.style.display = hasPendingCorcho ? 'block' : 'none';
 
-    // Cunca / Visitas
     var visits = document.getElementById('visit-count-display')?.textContent || '0';
     var nextHint = document.getElementById('next-level-text')?.textContent || 'Ver niveis VIP';
     STATIONS[3].sub = visits + (visits === '1' ? ' visita · ' : ' visitas · ') + nextHint;
 
-    // Sorteos / Chave
     var chavePill = document.getElementById('chave-pill');
     var raffleLive = document.getElementById('raffle-live-dot');
     var acceptBanner = document.getElementById('accept-prize-banner');
@@ -571,41 +930,41 @@
     renderFocusedBar();
   }
 
-  // ── 3. BARRA INFERIOR RÚSTICA COMPACTA ─────────────────────────────────────
+  // ── 4. DOCK PERSISTENTE DE NAVEGACIÓN ENTRE MENÚS ──────────────────────────
   function mountBottomDock84() {
     if (document.getElementById('baixo84-dock')) return;
     var dock = document.createElement('nav');
     dock.id = 'baixo84-dock';
-    dock.setAttribute('aria-label', 'Navegación rápida do Furancho');
+    dock.setAttribute('aria-label', 'Navegación principal do Furancho');
     dock.innerHTML =
-      '<button type="button" class="b84-dock-btn b84-dock-primary" onclick="smartFicharAction()">' +
+      '<button type="button" class="b84-dock-btn" id="b84-dock-btn-fichar" onclick="B84Nav.dockTap(\'fichar\')">' +
         '<span class="b84-dock-dot" id="b84-dock-fichar-dot"></span>' +
         '<span class="b84-dock-ico">🌿</span><span class="b84-dock-lbl" id="b84-dock-fichar-lbl">Fichar</span>' +
       '</button>' +
-      '<button type="button" class="b84-dock-btn" onclick="FuranchoAudio.woodTap(); openIdModal()">' +
+      '<button type="button" class="b84-dock-btn" id="b84-dock-btn-carne" onclick="B84Nav.dockTap(\'carne\')">' +
         '<span class="b84-dock-ico">🪪</span><span class="b84-dock-lbl">Carné</span>' +
       '</button>' +
-      '<button type="button" class="b84-dock-btn" onclick="FuranchoAudio.woodTap(); openLibreta84Modal()">' +
+      '<button type="button" class="b84-dock-btn" id="b84-dock-btn-banco" onclick="B84Nav.dockTap(\'banco\')">' +
         '<span class="b84-dock-dot" id="b84-dock-banco-dot"></span>' +
         '<span class="b84-dock-ico">📒</span><span class="b84-dock-lbl">Banco</span>' +
       '</button>' +
-      '<button type="button" class="b84-dock-btn" onclick="FuranchoAudio.woodTap(); openMinigamesModal()">' +
+      '<button type="button" class="b84-dock-btn" id="b84-dock-btn-xogos" onclick="B84Nav.dockTap(\'xogos\')">' +
         '<span class="b84-dock-ico">🕹️</span><span class="b84-dock-lbl">Xogos</span>' +
       '</button>' +
-      '<button type="button" class="b84-dock-btn" onclick="FuranchoAudio.woodTap(); onChaveMedallionClick()">' +
+      '<button type="button" class="b84-dock-btn" id="b84-dock-btn-chave" onclick="B84Nav.dockTap(\'chave\')">' +
         '<span class="b84-dock-dot" id="b84-dock-chave-dot"></span>' +
         '<span class="b84-dock-ico">🔑</span><span class="b84-dock-lbl">Chave</span>' +
       '</button>' +
-      '<button type="button" class="b84-dock-btn" onclick="FuranchoAudio.woodTap(); openPrizesModal()">' +
+      '<button type="button" class="b84-dock-btn" id="b84-dock-btn-museo" onclick="B84Nav.dockTap(\'museo\')">' +
         '<span class="b84-dock-ico">🏺</span><span class="b84-dock-lbl">Museo</span>' +
       '</button>' +
-      '<button type="button" class="b84-dock-btn" onclick="FuranchoAudio.woodTap(); openRutaModal()">' +
+      '<button type="button" class="b84-dock-btn" id="b84-dock-btn-ruta" onclick="B84Nav.dockTap(\'ruta\')">' +
         '<span class="b84-dock-ico">🗺️</span><span class="b84-dock-lbl">Ruta</span>' +
       '</button>';
     document.body.appendChild(dock);
   }
 
-  // ── 4. LIBRETA DE AFORRO DO CORCHO 1984 ────────────────────────────────────
+  // ── 5. LIBRETA DE AFORRO DO CORCHO 1984 ────────────────────────────────────
   var _libretaFilter = 'all';
   var _libretaHistoryCache = [];
 
@@ -642,10 +1001,10 @@
           '<div id="b84-libreta-pending" style="display:none; margin-bottom:12px;"></div>' +
 
           '<div style="display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:14px;">' +
-            '<button type="button" onclick="closeLibreta84Modal(); openCorchoItemsModal();" style="padding:11px 10px; border-radius:12px; border:1.5px solid #15803d; background:linear-gradient(145deg,#dcfce7,#bbf7d0); color:#14532d; font-weight:800; font-size:12.5px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">🎁 Canxear na Barra</button>' +
-            '<button type="button" onclick="closeLibreta84Modal(); openCorchoPacksModal();" style="padding:11px 10px; border-radius:12px; border:1.5px solid #b45309; background:linear-gradient(145deg,#fef3c7,#fde68a); color:#78350f; font-weight:800; font-size:12.5px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">💶 Recargar Packs</button>' +
-            '<button type="button" onclick="closeLibreta84Modal(); openCorchoTransferModal();" style="padding:10px; border-radius:12px; border:1.5px solid #5E3418; background:#EFE4CE; color:#2B1506; font-weight:800; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">🔄 Traspasar NFT</button>' +
-            '<button type="button" onclick="closeLibreta84Modal(); openCorchoInfoModal();" style="padding:10px; border-radius:12px; border:1.5px solid rgba(139,10,26,0.35); background:#FFFDF8; color:#8B0A1A; font-weight:800; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">📜 Regras FIFO</button>' +
+            '<button type="button" onclick="openCorchoItemsModal()" style="padding:11px 10px; border-radius:12px; border:1.5px solid #15803d; background:linear-gradient(145deg,#dcfce7,#bbf7d0); color:#14532d; font-weight:800; font-size:12.5px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">🎁 Canxear na Barra</button>' +
+            '<button type="button" onclick="openCorchoPacksModal()" style="padding:11px 10px; border-radius:12px; border:1.5px solid #b45309; background:linear-gradient(145deg,#fef3c7,#fde68a); color:#78350f; font-weight:800; font-size:12.5px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">💶 Recargar Packs</button>' +
+            '<button type="button" onclick="openCorchoTransferModal()" style="padding:10px; border-radius:12px; border:1.5px solid #5E3418; background:#EFE4CE; color:#2B1506; font-weight:800; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">🔄 Traspasar NFT</button>' +
+            '<button type="button" onclick="openCorchoInfoModal()" style="padding:10px; border-radius:12px; border:1.5px solid rgba(139,10,26,0.35); background:#FFFDF8; color:#8B0A1A; font-weight:800; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">📜 Regras FIFO</button>' +
           '</div>' +
 
           '<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:6px;">' +
@@ -657,7 +1016,7 @@
             '</div>' +
           '</div>' +
 
-          '<div id="b84-libreta-ledger" style="max-height:210px; overflow-y:auto; display:flex; flex-direction:column; gap:5px; font-family:\'Courier New\',monospace;">' +
+          '<div id="b84-libreta-ledger" style="max-height:190px; overflow-y:auto; display:flex; flex-direction:column; gap:5px; font-family:\'Courier New\',monospace;">' +
             '<p style="font-size:11px; text-align:center; color:#6E4720;">Cargando movementos...</p>' +
           '</div>' +
         '</div>' +
@@ -667,7 +1026,9 @@
 
   window.openLibreta84Modal = async function () {
     mountLibreta84Modal();
+    B84Nav.closeAll('b84-libreta-modal');
     document.getElementById('b84-libreta-modal').style.display = 'flex';
+    B84Nav.syncDockActive();
 
     var balEl = document.getElementById('corcho-user-balance');
     var stEl = document.getElementById('corcho-wealth-status');
@@ -697,8 +1058,7 @@
   };
 
   window.closeLibreta84Modal = function () {
-    var modal = document.getElementById('b84-libreta-modal');
-    if (modal) modal.style.display = 'none';
+    B84Nav.closeAll();
   };
 
   window.setLibretaFilter = function (f) {
@@ -740,7 +1100,7 @@
     }).join('');
   }
 
-  // ── 5. REMODELACIÓN GRÁFICA Y FÍSICA DE LOS 8 MINIJUEGOS AÑOS 80 ──────────
+  // ── 6. REMODELACIÓN DE LOS 8 MINIJUEGOS Y SU FLUJO INTERNO ─────────────────
   function activeWallet() {
     return window.userWalletAddress || localStorage.getItem('furancho_wallet_address') || '';
   }
@@ -753,9 +1113,12 @@
   function upgradeAllMinigames84() {
     window.openMinigamesModal = function () {
       FuranchoAudio.woodTap();
+      B84Nav.closeAll('minigames-menu-modal');
       var modal = document.getElementById('minigames-menu-modal');
       if (!modal) return;
       modal.style.display = 'flex';
+      B84Nav.syncDockActive();
+
       var hdrs = { 'wallet-address': activeWallet() };
 
       function markExhausted(card, exhausted, msg) {
@@ -771,6 +1134,20 @@
           card.appendChild(st);
         }
       }
+
+      // Poblar también los premios máximos de cada juego desde /api/corcho/rates
+      fetch('/api/corcho/rates').then(function (r) { return r.json(); }).then(function (rates) {
+        var qP = document.getElementById('mg-queimada-prize');
+        if (qP) qP.textContent = '🏆 Premio: Hasta ' + ((rates.queimadaEntryCost || 15) * (rates.queimadaMult21 || 3)) + ' $CORCHO';
+        var raP = document.getElementById('mg-rasca-prize');
+        if (raP) raP.textContent = '🏆 Premio: Hasta ' + (rates.rascaPrize1 || 100) + ' $CORCHO';
+        var trP = document.getElementById('mg-traga-prize');
+        if (trP) trP.textContent = '🏆 Premio: Hasta ' + (rates.tragaPrize3 || 100) + ' $CORCHO';
+        var chP = document.getElementById('mg-chave-prize');
+        if (chP) chP.textContent = '🏆 Premio: Hasta ' + (rates.chavePrizePleno || 50) + ' $CORCHO';
+        var tvP = document.getElementById('mg-trivial-prize');
+        if (tvP) tvP.textContent = '🏆 Premio: ' + (rates.trivialPrize || 100) + ' $CORCHO';
+      }).catch(function () {});
 
       fetch('/api/minigames/enxebre/status', { headers: hdrs }).then(function (r) { return r.json(); }).then(function (d) {
         var card = document.getElementById('mg-enxebre-card');
@@ -834,6 +1211,46 @@
       });
     };
 
+    window.closeMinigamesModal = function () {
+      B84Nav.closeAll();
+    };
+
+    // Envolver apertura de O Enxebre y Ruleta para que cierren limpio cualquier otro modal antes
+    var origOpenEnxebre = window.openEnxebre;
+    if (typeof origOpenEnxebre === 'function') {
+      window.openEnxebre = function () {
+        B84Nav.closeAll('enxebre-modal');
+        origOpenEnxebre();
+        B84Nav.syncDockActive();
+      };
+    }
+    var origOpenRuleta = window.openRuletaModal;
+    if (typeof origOpenRuleta === 'function') {
+      window.openRuletaModal = function () {
+        B84Nav.closeAll('ruleta-modal');
+        origOpenRuleta();
+        B84Nav.syncDockActive();
+      };
+    }
+
+    // Envolver apertura de Rasca y Traga para cerrar minigames-menu-modal antes (evitar doble fondo borroso)
+    var origOpenRasca = window.openRascaModal;
+    if (typeof origOpenRasca === 'function') {
+      window.openRascaModal = function () {
+        B84Nav.closeAll('rasca-modal');
+        origOpenRasca();
+        B84Nav.syncDockActive();
+      };
+    }
+    var origOpenTraga = window.openTragaModal;
+    if (typeof origOpenTraga === 'function') {
+      window.openTragaModal = function () {
+        B84Nav.closeAll('traga-modal');
+        origOpenTraga();
+        B84Nav.syncDockActive();
+      };
+    }
+
     // ── A CHAVE NO TERREIRO 3D ──
     var chaveRaf = null, chaveAimT = 0, chaveFlight = null, chaveSparkParticles = [];
     var chaveBladeSpin = 0, chaveStateReady = false;
@@ -865,8 +1282,7 @@
     }
 
     function renderChave3DLoop() {
-      var modal = document.getElementById('chave-virtual-modal');
-      if (!modal || modal.style.display === 'none') { chaveRaf = null; return; }
+      if (!isModalVisible('chave-virtual-modal')) { chaveRaf = null; return; }
       var cv = document.getElementById('b84-chave-canvas');
       if (!cv) { chaveRaf = null; return; }
       var c = cv.getContext('2d');
@@ -962,8 +1378,10 @@
     }
 
     window.openChaveVirtualModal = async function () {
+      B84Nav.closeAll('chave-virtual-modal');
       ensureChave3DCanvas();
       document.getElementById('chave-virtual-modal').style.display = 'flex';
+      B84Nav.syncDockActive();
       document.getElementById('chave-msg').textContent = '';
       var btn = document.getElementById('chave-throw-btn');
       btn.style.display = 'none';
@@ -976,6 +1394,7 @@
       try {
         var r = await fetch('/api/minigames/chave/status', { headers: { 'wallet-address': activeWallet() } });
         var d = await r.json();
+        if (!isModalVisible('chave-virtual-modal')) return;
         if (!r.ok || d.error) {
           document.getElementById('chave-status-text').textContent = d.error || 'Error al conectar.';
         } else if (!d.enabled) {
@@ -1019,6 +1438,7 @@
           serverData: data,
           impacted: false,
           onImpact: function (res) {
+            if (!isModalVisible('chave-virtual-modal')) return;
             if (res.result === 'pleno') {
               msgEl.textContent = '💥 ¡¡CHAVE PLENA!! +' + res.prize + ' $CORCHO';
               msgEl.style.color = '#4ADE80';
@@ -1030,7 +1450,10 @@
               msgEl.style.color = '#CBD5E1';
             }
             if (res.prize > 0) refreshBalanceQuietly();
-            setTimeout(function () { window.openChaveVirtualModal(); }, 2400);
+            // Solo recargar estado si el jugador SIGUE dentro del modal de A Chave
+            _gameTimers.chaveReopen = setTimeout(function () {
+              if (isModalVisible('chave-virtual-modal')) window.openChaveVirtualModal();
+            }, 2300);
           }
         };
       } catch (e) {
@@ -1060,7 +1483,9 @@
         s.style.boxShadow = 'inset 0 4px 8px rgba(0,0,0,0.35)';
       });
 
-      var spinTimer = setInterval(function () {
+      clearAllGameTimers();
+      _gameTimers.tragaSpin = setInterval(function () {
+        if (!isModalVisible('traga-modal')) { clearAllGameTimers(); return; }
         for (var i = 0; i < 3; i++) {
           if (!locked[i]) {
             slots[i].textContent = symbols[Math.floor(Math.random() * symbols.length)];
@@ -1077,6 +1502,7 @@
 
         [850, 1450, 2100].forEach(function (delay, idx) {
           setTimeout(function () {
+            if (!isModalVisible('traga-modal')) return;
             locked[idx] = true;
             slots[idx].textContent = data.result[idx];
             slots[idx].style.transform = 'scale(1.14)';
@@ -1085,7 +1511,7 @@
             vibrate(18);
 
             if (idx === 2) {
-              clearInterval(spinTimer);
+              if (_gameTimers.tragaSpin) { clearInterval(_gameTimers.tragaSpin); _gameTimers.tragaSpin = null; }
               if (data.prize > 0) {
                 FuranchoAudio.coinDrop();
                 msg.textContent = '🪙 ¡PREMIO NA TASCA! +' + data.prize + ' $CORCHO';
@@ -1095,12 +1521,14 @@
                 msg.textContent = 'Sen liña desta vez, neno.';
                 msg.style.color = '#EADBC0';
               }
-              setTimeout(function () { window.openTragaModal(); }, 2500);
+              _gameTimers.tragaReopen = setTimeout(function () {
+                if (isModalVisible('traga-modal')) window.openTragaModal();
+              }, 2400);
             }
           }, delay);
         });
       } catch (e) {
-        clearInterval(spinTimer);
+        clearAllGameTimers();
         slots.forEach(function (s) { s.style.transform = 'none'; });
         msg.textContent = e.message;
         msg.style.color = '#F87171';
@@ -1230,8 +1658,7 @@
       if (queimadaCanvasRaf) return;
       var t = 0;
       function drawFire() {
-        var modal = document.getElementById('queimada-modal');
-        if (!modal || modal.style.display === 'none') { queimadaCanvasRaf = null; return; }
+        if (!isModalVisible('queimada-modal')) { queimadaCanvasRaf = null; return; }
         var cv = document.getElementById('b84-queimada-canvas');
         if (!cv) { queimadaCanvasRaf = null; return; }
         var c = cv.getContext('2d');
@@ -1284,11 +1711,13 @@
 
     var origOpenQueimada = window.openQueimadaModal;
     window.openQueimadaModal = function () {
+      B84Nav.closeAll('queimada-modal');
       queimadaLiveScore = 0;
       queimadaBurned = false;
       origOpenQueimada();
       ensureQueimadaCanvas();
       startQueimadaFireLoop();
+      B84Nav.syncDockActive();
     };
 
     var origDrawQueimada = window.drawQueimadaIngredient;
@@ -1301,19 +1730,21 @@
     };
 
     // ── TRIVIAL DA PARROQUIA '84 ──
-    var trivQs = [], trivIdx = 0, trivAnswers = [], trivInt = null, trivSec = 12;
+    var trivQs = [], trivIdx = 0, trivAnswers = [], trivSec = 12;
 
     window.openTrivialModal = async function () {
+      B84Nav.closeAll('trivial-modal');
       document.getElementById('trivial-modal').style.display = 'flex';
+      B84Nav.syncDockActive();
       document.getElementById('trivial-msg').textContent = '';
       document.getElementById('trivial-start-btn').style.display = 'none';
       document.getElementById('trivial-quiz-area').style.display = 'none';
       document.getElementById('trivial-status-text').textContent = 'Sintonizando Radio Parroquia...';
-      clearInterval(trivInt);
 
       try {
         var r = await fetch('/api/minigames/trivial/status', { headers: { 'wallet-address': activeWallet() } });
         var d = await r.json();
+        if (!isModalVisible('trivial-modal')) return;
         if (!r.ok || d.error) {
           document.getElementById('trivial-status-text').textContent = d.error || 'Erro ao conectar.';
         } else if (!d.enabled) {
@@ -1356,6 +1787,7 @@
     };
 
     function renderTrivialStep() {
+      if (!isModalVisible('trivial-modal')) return;
       if (trivIdx >= 3) {
         submitTrivialToServer(true, '');
         return;
@@ -1375,12 +1807,13 @@
 
       trivSec = 12;
       document.getElementById('trivial-timer').textContent = '⏱️ ' + trivSec + 's';
-      clearInterval(trivInt);
-      trivInt = setInterval(function () {
+      if (_gameTimers.trivialTick) clearInterval(_gameTimers.trivialTick);
+      _gameTimers.trivialTick = setInterval(function () {
+        if (!isModalVisible('trivial-modal')) { clearAllGameTimers(); return; }
         trivSec--;
         document.getElementById('trivial-timer').textContent = '⏱️ ' + trivSec + 's';
         if (trivSec <= 0) {
-          clearInterval(trivInt);
+          clearAllGameTimers();
           trivAnswers.push(-1);
           submitTrivialToServer(false, 'Acabouse o tempo!');
         }
@@ -1388,7 +1821,7 @@
     }
 
     async function onTrivialPick(selectedIdx, btnNode) {
-      clearInterval(trivInt);
+      clearAllGameTimers();
       var allBtns = document.getElementById('trivial-options').querySelectorAll('button');
       allBtns.forEach(function (b) { b.disabled = true; });
       trivAnswers.push(selectedIdx);
@@ -1400,6 +1833,7 @@
           body: JSON.stringify({ questionIndex: trivIdx, selectedIdx: selectedIdx })
         });
         var check = await r.json();
+        if (!isModalVisible('trivial-modal')) return;
         if (check.correct) {
           FuranchoAudio.clinkCunca();
           btnNode.style.background = '#dcfce7';
@@ -1421,7 +1855,7 @@
     }
 
     async function submitTrivialToServer(allRight, reason) {
-      clearInterval(trivInt);
+      clearAllGameTimers();
       document.getElementById('trivial-quiz-area').style.display = 'none';
       var msg = document.getElementById('trivial-msg');
       msg.textContent = 'Selando papeleta...';
@@ -1452,7 +1886,7 @@
         var delays = [120, 240, 380, 540, 720, 930, 1180, 1470, 1810, 2220, 2700, 3260, 3800];
         delays.forEach(function (ms) {
           setTimeout(function () {
-            if (document.getElementById('ruleta-modal')?.style.display !== 'none') {
+            if (isModalVisible('ruleta-modal')) {
               FuranchoAudio.reelTick(420);
               vibrate(8);
             }
