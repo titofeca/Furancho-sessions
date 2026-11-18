@@ -85,15 +85,21 @@ function generateToken() {
   return `${payload}.${sig}`;
 }
 
-// Verifica firma y expiración
+// Verifica firma y expiración (a prueba de tokens malformados)
 function verifyToken(token) {
-  if (!token) return false;
-  const [payload, sig] = token.split('.');
-  if (!payload || !sig) return false;
-  const expected = crypto.createHmac('sha256', TOKEN_SECRET).update(payload).digest('base64url');
-  if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return false;
-  const { ts } = JSON.parse(Buffer.from(payload, 'base64url').toString());
-  return Date.now() - ts < TOKEN_TTL_MS;
+  if (!token || typeof token !== 'string') return false;
+  try {
+    const [payload, sig] = token.split('.');
+    if (!payload || !sig) return false;
+    const expected = crypto.createHmac('sha256', TOKEN_SECRET).update(payload).digest('base64url');
+    const a = Buffer.from(sig);
+    const b = Buffer.from(expected);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return false;
+    const { ts } = JSON.parse(Buffer.from(payload, 'base64url').toString());
+    return typeof ts === 'number' && (Date.now() - ts < TOKEN_TTL_MS);
+  } catch (_) {
+    return false;
+  }
 }
 
 // Middleware de autenticación

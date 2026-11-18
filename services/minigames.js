@@ -1,43 +1,56 @@
 const { db } = require('../db/database');
 const corcho = require('./corcho');
 
+function getMadridDateStr() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+}
+
 // ==================== VACATION MODE ====================
 function applyVacationModeCap(wallet, basePrize) {
   const settings = corcho.getEconomySettings();
-  if (!settings.vacationMode) return basePrize; // Normal behavior
-  
+  if (!settings.vacationMode) return basePrize;
+
   const maxDaily = parseInt(settings.vacationMaxDailyGameCorchos || 2, 10);
-  const today = new Date().toISOString().slice(0, 10);
-  
-  // Calculate how many minigame corchos they already won today
-  const earnedRow = db.prepare(`SELECT SUM(amount) as s FROM corcho_transactions WHERE LOWER(wallet_address) = LOWER(?) AND type LIKE 'minigame_%' AND amount > 0 AND date(created_at) = ?`).get(wallet, today);
+  const today = getMadridDateStr();
+
+  const earnedRow = db.prepare(`
+    SELECT SUM(amount) as s FROM corcho_transactions
+    WHERE LOWER(wallet_address) = LOWER(?)
+      AND type LIKE 'minigame_%'
+      AND amount > 0
+      AND date(created_at, 'localtime') >= date(?)
+  `).get(wallet, today);
   const earned = earnedRow ? (earnedRow.s || 0) : 0;
-  
-  if (earned >= maxDaily) {
-    return 0;
-  } else if (earned + basePrize > maxDaily) {
-    return maxDaily - earned;
-  }
+
+  if (earned >= maxDaily) return 0;
+  if (earned + basePrize > maxDaily) return maxDaily - earned;
   return basePrize;
 }
 
-// ==================== O ENXEBRE (WORDLE) ====================
-
-// Diccionario reducido de 5 letras relacionadas exclusivamente con gastronomía gallega y furancho
+// ==================== O ENXEBRE (WORDLE FURANCHEIRO) ====================
 const DICT = [
-  'CUNCA', 'VIÑOS', 'ZORZA', 'CARNE', 'TAPAS', 
+  'CUNCA', 'VIÑOS', 'ZORZA', 'CARNE', 'TAPAS',
   'POLBO', 'CALDO', 'XAMON', 'PORCO', 'LURAS',
   'XOUBA', 'TAZAS', 'TARTA', 'FOGON', 'PRATO',
-  'LICOR', 'MILLO', 'BROAS', 'CHOCA', 'MORRO'
+  'LICOR', 'MILLO', 'BROAS', 'CHOCA', 'MORRO',
+  'ADEGA', 'PIPAS', 'BRASA', 'LACON', 'GRELO',
+  ' ORUXO'.trim(), 'FEIRA', ' ALDEA'.trim(), 'CUBA' .padEnd(5, 'S')
 ];
 
+// Asegurar columna guesses_json para seguimiento real en servidor (anti-trampa)
+try {
+  const cols = new Set(db.prepare(`PRAGMA table_info(enxebre_history)`).all().map(c => c.name));
+  if (!cols.has('guesses_json')) {
+    db.exec(`ALTER TABLE enxebre_history ADD COLUMN guesses_json TEXT DEFAULT '[]'`);
+  }
+} catch (_) {}
+
 function getEnxebreWordForToday() {
-  // Use today's date to deterministically pick a word
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getMadridDateStr();
   let hash = 0;
   for (let i = 0; i < today.length; i++) {
     hash = ((hash << 5) - hash) + today.charCodeAt(i);
-    hash |= 0; 
+    hash |= 0;
   }
   const index = Math.abs(hash) % DICT.length;
   return DICT[index];
@@ -47,8 +60,7 @@ function checkEnxebreGuess(guess) {
   const target = getEnxebreWordForToday();
   const result = [];
   const targetChars = target.split('');
-  
-  // First pass: correct position
+
   for (let i = 0; i < 5; i++) {
     if (guess[i] === target[i]) {
       result.push('correct');
@@ -57,8 +69,7 @@ function checkEnxebreGuess(guess) {
       result.push(null);
     }
   }
-  
-  // Second pass: wrong position
+
   for (let i = 0; i < 5; i++) {
     if (result[i] === null) {
       const idx = targetChars.indexOf(guess[i]);
@@ -70,7 +81,7 @@ function checkEnxebreGuess(guess) {
       }
     }
   }
-  
+
   return result;
 }
 
@@ -78,84 +89,114 @@ function startEnxebre(wallet) {
   const settings = corcho.getEconomySettings();
   if (!settings.enxebreEnabled) throw new Error('Minijuego desactivado');
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getMadridDateStr();
   const existing = db.prepare(`SELECT * FROM enxebre_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
   if (existing) {
-    if (existing.attempts > 0 || existing.solved === 1) throw new Error('Ya has jugado hoy');
-    // Ya está empezada pero sin intentos (recargó la página)
-    return { sessionStarted: true, resumed: true };
+    let prevGuesses = [];
+    try { prevGuesses = JSON.parse(existing.guesses_json || '[]'); } catch (_) {}
+    if (existing.solved === 1 || prevGuesses.length >= 6 || existing.attempts >= 6) {
+      throw new Error('Ya has jugado hoy');
+    }
+    return {
+      sessionStarted: true,
+      resumed: true,
+      previousGuesses: prevGuesses.map(g => ({ guess: g, result: checkEnxebreGuess(g) }))
+    };
   }
 
   const baseEntryCost = settings.enxebreEntryCost || 0;
-  const entryCost = settings.vacationMode ? 0 : baseEntryCost; // En vacaciones, gratis 🏖️
+  const entryCost = settings.vacationMode ? 0 : baseEntryCost;
   if (entryCost > 0) {
     const { spendCorchoCoins } = require('./corcho');
-    const res = spendCorchoCoins(wallet, entryCost, 'minigame_enxebre_entry', `🎮 O Enxebre: entrada (-${entryCost} $CORCHO)`);
+    const res = spendCorchoCoins(wallet, entryCost, 'minigame_enxebre_entry', `🪵 O Enxebre: entrada (-${entryCost} $CORCHO)`);
     if (!res.ok) throw new Error(`Necesitas al menos ${entryCost} $CORCHO para jugar`);
   }
 
-  // Insertar fila inicial
   db.prepare(`
-    INSERT INTO enxebre_history (wallet_address, play_date, attempts, solved, awarded_corchos)
-    VALUES (?, ?, 0, 0, 0)
+    INSERT INTO enxebre_history (wallet_address, play_date, attempts, solved, awarded_corchos, guesses_json)
+    VALUES (?, ?, 0, 0, 0, '[]')
   `).run(wallet, today);
 
-  return { sessionStarted: true, entryCost };
+  return { sessionStarted: true, entryCost, previousGuesses: [] };
 }
 
-function recordEnxebrePlay(wallet, attempts, solved) {
+function submitEnxebreGuess(wallet, rawGuess) {
   const settings = corcho.getEconomySettings();
   if (!settings.enxebreEnabled) throw new Error('Minijuego desactivado');
-  
-  const today = new Date().toISOString().slice(0, 10);
-  
-  // Check if played today
-  const existing = db.prepare(`SELECT * FROM enxebre_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
-  if (!existing) throw new Error('Debes iniciar el juego primero');
-  if (existing.attempts > 0 || existing.solved === 1) throw new Error('Ya has terminado el juego hoy');
 
+  const guess = String(rawGuess || '').trim().toUpperCase();
+  if (guess.length !== 5) throw new Error('La palabra debe tener 5 letras');
+
+  const today = getMadridDateStr();
+  let existing = db.prepare(`SELECT * FROM enxebre_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
+  if (!existing) {
+    // Auto-start si coste es 0 para máxima fluidez
+    startEnxebre(wallet);
+    existing = db.prepare(`SELECT * FROM enxebre_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
+  }
+
+  let prevGuesses = [];
+  try { prevGuesses = JSON.parse(existing.guesses_json || '[]'); } catch (_) {}
+  if (existing.solved === 1 || prevGuesses.length >= 6) {
+    throw new Error('Ya has terminado la partida de hoy');
+  }
+
+  prevGuesses.push(guess);
+  const attempts = prevGuesses.length;
+  const result = checkEnxebreGuess(guess);
+  const solved = result.every(r => r === 'correct');
   let awarded = 0;
+
   if (solved && attempts >= 1 && attempts <= 6) {
     awarded = settings[`enxebrePrize${attempts}`] || 0;
     awarded = applyVacationModeCap(wallet, awarded);
   }
 
+  const finished = solved || attempts >= 6;
   db.prepare(`
-    UPDATE enxebre_history 
-    SET attempts = ?, solved = ?, awarded_corchos = ?
+    UPDATE enxebre_history
+    SET attempts = ?, solved = ?, awarded_corchos = ?, guesses_json = ?
     WHERE id = ?
-  `).run(attempts, solved ? 1 : 0, awarded, existing.id);
+  `).run(attempts, solved ? 1 : 0, finished ? awarded : 0, JSON.stringify(prevGuesses), existing.id);
 
-  if (awarded > 0) {
+  if (solved && awarded > 0) {
     const { addCorchoCoins } = require('./corcho');
     addCorchoCoins(
       wallet,
       awarded,
       'minigame_enxebre',
-      `🎮 O Enxebre: Acierto en ${attempts} intentos (+${awarded} $CORCHO)`,
+      `🪵 O Enxebre: Acierto en ${attempts} intento${attempts > 1 ? 's' : ''} (+${awarded} $CORCHO)`,
       `enxebre_${today}`
     );
   }
+  if (finished) {
+    try { corcho.grantReopeningTicket(wallet, 'minigame_enxebre'); } catch (_) {}
+  }
 
-  return awarded;
+  return {
+    result,
+    solved,
+    awarded,
+    attempts,
+    finished,
+    targetWord: (!solved && finished) ? getEnxebreWordForToday() : undefined
+  };
 }
 
 // ==================== A CUNCA QUENTE ====================
-
 function getActiveCunca() {
   const settings = corcho.getEconomySettings();
   if (!settings.cuncaEnabled) return null;
 
   const active = db.prepare(`
-    SELECT * FROM cunca_quente 
+    SELECT * FROM cunca_quente
     WHERE status = 'active' AND expires_at > datetime('now')
     ORDER BY id DESC LIMIT 1
   `).get();
-  
+
   if (active) {
-    active.history = JSON.parse(active.history);
+    try { active.history = JSON.parse(active.history || '[]'); } catch (_) { active.history = []; }
   } else {
-    // Check if any expired that need to be spilled
     db.prepare(`UPDATE cunca_quente SET status = 'spilled' WHERE status = 'active' AND expires_at <= datetime('now')`).run();
   }
   return active;
@@ -164,23 +205,22 @@ function getActiveCunca() {
 function spawnCunca(targetWallet) {
   const settings = corcho.getEconomySettings();
   if (!settings.cuncaEnabled) throw new Error('Minijuego desactivado');
-  
-  // Expire current active ones
+
   db.prepare(`UPDATE cunca_quente SET status = 'spilled' WHERE status = 'active'`).run();
-  
+
   const expires = new Date(Date.now() + (settings.cuncaTimeoutMins * 60000)).toISOString();
   db.prepare(`
     INSERT INTO cunca_quente (status, current_holder, pot_amount, expires_at, history)
     VALUES ('active', ?, ?, ?, '[]')
   `).run(targetWallet, settings.cuncaBasePot, expires);
 
-  // Send push
   const { sendPushToWallet } = require('./push');
-  sendPushToWallet(targetWallet, {
-    title: '¡A Cunca Quente! 🔥',
-    body: `Alguien te ha pasado una cunca con ${settings.cuncaBasePot} $CORCHO. ¡Entra antes de que se derrame!`,
-    icon: '/assets/corcho_coin_gold.png'
-  });
+  sendPushToWallet(
+    targetWallet,
+    '¡A Cunca Quente! 🔥',
+    `Alguien te ha pasado una cunca con ${settings.cuncaBasePot} $CORCHO. ¡Entra antes de que se derrame!`,
+    { icon: '/assets/corcho_coin_gold.png', url: '/claim' }
+  ).catch(() => {});
 }
 
 function drinkCunca(wallet) {
@@ -191,11 +231,6 @@ function drinkCunca(wallet) {
 
   db.prepare(`UPDATE cunca_quente SET status = 'claimed' WHERE id = ?`).run(active.id);
 
-  // A propósito SIN applyVacationModeCap, al revés que los demás juegos.
-  // El tope de vacaciones limita la EMISIÓN de $CORCHO con el local cerrado,
-  // y este bote no se emite: lo ponen los propios jugadores al pasar la cunca
-  // (cada pase cobra cuncaPassCost y lo suma al bote). Recortarlo aquí
-  // evaporaría lo que ya han pagado entre ellos. No es un olvido.
   const { addCorchoCoins } = require('./corcho');
   addCorchoCoins(
     wallet,
@@ -204,7 +239,7 @@ function drinkCunca(wallet) {
     `🍷 Bebiste A Cunca Quente (+${active.pot_amount} $CORCHO)`,
     `cunca_drink_${active.id}`
   );
-  
+
   return active.pot_amount;
 }
 
@@ -216,11 +251,10 @@ function passCunca(wallet, toWallet) {
   if (wallet.toLowerCase() === toWallet.toLowerCase()) {
     throw new Error('No te la puedes pasar a ti mismo');
   }
-  
+
   const settings = corcho.getEconomySettings();
   const cost = settings.cuncaPassCost || 5;
 
-  // Deduct cost
   const { spendCorchoCoins } = require('./corcho');
   const deducted = spendCorchoCoins(wallet, cost, 'cunca_pass_cost', `Pasaste A Cunca Quente (-${cost} $CORCHO)`);
   if (!deducted.ok) {
@@ -229,28 +263,27 @@ function passCunca(wallet, toWallet) {
 
   const newPot = active.pot_amount + cost;
   const newExpires = new Date(Date.now() + (settings.cuncaTimeoutMins * 60000)).toISOString();
-  const history = active.history;
+  const history = Array.isArray(active.history) ? active.history : [];
   history.push({ from: wallet, to: toWallet, amount: cost, time: new Date().toISOString() });
 
   db.prepare(`
-    UPDATE cunca_quente 
+    UPDATE cunca_quente
     SET current_holder = ?, pot_amount = ?, expires_at = ?, history = ?
     WHERE id = ?
   `).run(toWallet, newPot, newExpires, JSON.stringify(history), active.id);
 
-  // Send push
   const { sendPushToWallet } = require('./push');
-  sendPushToWallet(toWallet, {
-    title: '¡A Cunca Quente! 🔥',
-    body: `Alguien te ha pasado una cunca con ${newPot} $CORCHO. ¡Entra a la app antes de que se derrame!`,
-    icon: '/assets/corcho_coin_gold.png'
-  });
+  sendPushToWallet(
+    toWallet,
+    '¡A Cunca Quente! 🔥',
+    `Alguien te ha pasado una cunca con ${newPot} $CORCHO. ¡Entra a la app antes de que se derrame!`,
+    { icon: '/assets/corcho_coin_gold.png', url: '/claim' }
+  ).catch(() => {});
 
   return newPot;
 }
 
 // ==================== A RULETA DO PULPO ====================
-
 const RULETA_SLICES = [
   { name: 'Tentáculo seco',  key: 'ruletaSlice0' },
   { name: 'Pimentón frío',   key: 'ruletaSlice1' },
@@ -265,7 +298,7 @@ const RULETA_SLICES = [
 function getRuletaStatus(wallet) {
   const settings = corcho.getEconomySettings();
   if (!settings.ruletaEnabled) return { enabled: false };
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getMadridDateStr();
   const plays = db.prepare(`SELECT COUNT(*) as c FROM ruleta_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
   const vacation = !!settings.vacationMode;
   const effectiveMaxPlays = vacation ? 3 : (settings.ruletaMaxPlays || 1);
@@ -285,7 +318,7 @@ function spinRuleta(wallet) {
   const settings = corcho.getEconomySettings();
   if (!settings.ruletaEnabled) throw new Error('Minijuego desactivado');
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getMadridDateStr();
   const plays = db.prepare(`SELECT COUNT(*) as c FROM ruleta_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
   const vacation = !!settings.vacationMode;
   const effectiveMaxPlays = vacation ? 3 : (settings.ruletaMaxPlays || 1);
@@ -293,8 +326,8 @@ function spinRuleta(wallet) {
     throw new Error(vacation ? '🏖️ Modo Vacaciones: Solo puedes girar 3 veces al día' : 'Ya has agotado tus tiradas de hoy');
   }
 
-  const baseRuletaCost = settings.ruletaEntryCost;
-  const entryCost = vacation ? 0 : baseRuletaCost; // En vacaciones, gratis 🏖️
+  const baseRuletaCost = settings.ruletaEntryCost || 0;
+  const entryCost = vacation ? 0 : baseRuletaCost;
   if (entryCost > 0) {
     const { spendCorchoCoins } = require('./corcho');
     const res = spendCorchoCoins(wallet, entryCost, 'minigame_ruleta_entry', `🐙 Ruleta do Pulpo: entrada (-${entryCost} $CORCHO)`);
@@ -316,43 +349,46 @@ function spinRuleta(wallet) {
     addCorchoCoins(wallet, prize, 'minigame_ruleta', `🐙 Ruleta do Pulpo: ${slice.name} (+${prize} $CORCHO)`, `ruleta_${today}_${plays.c}`);
   }
 
-  // Otorgar 1 boleto para el sorteo de reapertura por cada tirada
   try {
-    const { grantReopeningTicket } = require('./corcho');
-    grantReopeningTicket(wallet, 'minigame_ruleta');
+    corcho.grantReopeningTicket(wallet, 'minigame_ruleta');
   } catch (_) {}
 
-  return { sliceIndex, sliceName: slice.name, prize, playsLeft: effectiveMaxPlays - plays.c - 1 };
+  return { sliceIndex, sliceName: slice.name, prize, playsLeft: Math.max(0, effectiveMaxPlays - plays.c - 1) };
 }
 
-// ==================== A QUEIMADA ====================
-
+// ==================== A QUEIMADA (SERVER-AUTHORITATIVE) ====================
 const QUEIMADA_INGREDIENTS = [
-  { name: 'Aguardiente',     icon: '🥃', min: 7, max: 10 },
-  { name: 'Azúcar',          icon: '🍬', min: 3, max: 5 },
-  { name: 'Limón',           icon: '🍋', min: 1, max: 3 },
-  { name: 'Café en grano',   icon: '☕', min: 4, max: 6 },
-  { name: 'Piel de naranja', icon: '🍊', min: 2, max: 4 },
-  { name: 'Orujo de hierbas',icon: '🌿', min: 5, max: 8 },
-  { name: 'Miel',            icon: '🍯', min: 2, max: 4 },
-  { name: 'Canela',          icon: '🪵', min: 1, max: 3 }
+  { name: 'Aguardiente da Ulla', icon: '🥃', min: 7, max: 10 },
+  { name: 'Azúcar blanco',       icon: '🍬', min: 3, max: 5 },
+  { name: 'Monda de limón',      icon: '🍋', min: 1, max: 3 },
+  { name: 'Café en grano',       icon: '☕', min: 4, max: 6 },
+  { name: 'Piel de naranja',     icon: '🍊', min: 2, max: 4 },
+  { name: 'Orujo de hierbas',    icon: '🌿', min: 5, max: 8 },
+  { name: 'Miel de brezo',       icon: '🍯', min: 2, max: 4 },
+  { name: 'Rama de canela',      icon: '🪵', min: 1, max: 3 }
 ];
+
+// Sesiones activas en servidor para evitar resolver sin haber pagado entrada ni inventar ingredientes
+const _activeQueimadas = new Map();
 
 function getQueimadaStatus(wallet) {
   const settings = corcho.getEconomySettings();
   if (!settings.queimadaEnabled) return { enabled: false };
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getMadridDateStr();
   const plays = db.prepare(`SELECT COUNT(*) as c FROM queimada_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
   const vacation = !!settings.vacationMode;
   const effectiveMaxPlays = vacation ? 3 : (settings.queimadaMaxPlays || 1);
   const effectiveCost = vacation ? 0 : (settings.queimadaEntryCost || 0);
+  const wKey = wallet.toLowerCase();
+  const activeSession = _activeQueimadas.get(wKey);
   return {
     enabled: true,
     playsToday: plays.c,
     maxPlays: effectiveMaxPlays,
-    canPlay: plays.c < effectiveMaxPlays,
+    canPlay: plays.c < effectiveMaxPlays || !!activeSession,
     entryCost: effectiveCost,
-    vacationMode: vacation
+    vacationMode: vacation,
+    activeSession: activeSession || null
   };
 }
 
@@ -360,7 +396,13 @@ function startQueimada(wallet) {
   const settings = corcho.getEconomySettings();
   if (!settings.queimadaEnabled) throw new Error('Minijuego desactivado');
 
-  const today = new Date().toISOString().slice(0, 10);
+  const wKey = wallet.toLowerCase();
+  if (_activeQueimadas.has(wKey)) {
+    const sess = _activeQueimadas.get(wKey);
+    return { sessionStarted: true, resumed: true, entryCost: sess.entryCost, ingredients: sess.ingredients, totalScore: sess.score };
+  }
+
+  const today = getMadridDateStr();
   const plays = db.prepare(`SELECT COUNT(*) as c FROM queimada_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
   const vacation = !!settings.vacationMode;
   const effectiveMaxPlays = vacation ? 3 : (settings.queimadaMaxPlays || 1);
@@ -368,39 +410,46 @@ function startQueimada(wallet) {
     throw new Error(vacation ? '🏖️ Modo Vacaciones: Solo puedes hacer 3 queimadas al día' : 'Ya has agotado tus queimadas de hoy');
   }
 
-  const baseQueimadaCost = settings.queimadaEntryCost;
-  const entryCost = settings.vacationMode ? 0 : baseQueimadaCost; // En vacaciones, gratis 🏖️
+  const baseQueimadaCost = settings.queimadaEntryCost || 0;
+  const entryCost = vacation ? 0 : baseQueimadaCost;
   if (entryCost > 0) {
     const { spendCorchoCoins } = require('./corcho');
     const res = spendCorchoCoins(wallet, entryCost, 'minigame_queimada_entry', `🔥 A Queimada: entrada (-${entryCost} $CORCHO)`);
     if (!res.ok) throw new Error(`Necesitas al menos ${entryCost} $CORCHO para jugar`);
   }
 
+  _activeQueimadas.set(wKey, { today, entryCost, ingredients: [], score: 0, startedAt: Date.now() });
   return { sessionStarted: true, entryCost };
 }
 
-function drawIngredient() {
+function drawIngredient(wallet) {
+  const wKey = String(wallet || '').toLowerCase();
+  const sess = _activeQueimadas.get(wKey);
+  if (!sess) throw new Error('Debes encender la Queimada primero');
+  if (sess.score > 21) throw new Error('La Queimada ya se pasó de fuego');
+
   const ing = QUEIMADA_INGREDIENTS[Math.floor(Math.random() * QUEIMADA_INGREDIENTS.length)];
   const value = ing.min + Math.floor(Math.random() * (ing.max - ing.min + 1));
-  return { name: ing.name, icon: ing.icon, value };
+  const drawn = { name: ing.name, icon: ing.icon, value };
+  sess.ingredients.push(drawn);
+  sess.score += value;
+  return { ...drawn, totalScore: sess.score };
 }
 
-function resolveQueimada(wallet, ingredients, totalScore) {
+function resolveQueimada(wallet) {
   const settings = corcho.getEconomySettings();
-  const today = new Date().toISOString().slice(0, 10);
-
-  // Recalcular puntuación real servidor para prevenir manipulación del totalScore desde la red
-  let verifiedScore = 0;
-  if (Array.isArray(ingredients)) {
-    verifiedScore = ingredients.reduce((acc, ing) => acc + (parseInt(ing.value, 10) || 0), 0);
-  } else {
-    verifiedScore = parseInt(totalScore, 10) || 0;
+  const wKey = String(wallet || '').toLowerCase();
+  const sess = _activeQueimadas.get(wKey);
+  if (!sess) {
+    throw new Error('No hay ninguna Queimada activa. Pulsa Empezar primero.');
   }
-  totalScore = verifiedScore;
+  _activeQueimadas.delete(wKey);
 
-  // En vacaciones, el coste es 0 pero el premio se calcula sobre el coste base configurado
+  const today = sess.today || getMadridDateStr();
+  const totalScore = sess.score;
+  const ingredients = sess.ingredients;
   const baseCostForPrize = settings.queimadaEntryCost || 1;
-  const entryCost = settings.vacationMode ? 0 : baseCostForPrize;
+  const entryCost = sess.entryCost;
 
   let result, prize = 0;
   if (totalScore > 21) {
@@ -427,24 +476,24 @@ function resolveQueimada(wallet, ingredients, totalScore) {
 
   if (prize > 0) {
     const { addCorchoCoins } = require('./corcho');
-    addCorchoCoins(wallet, prize, 'minigame_queimada', `🔥 A Queimada: ${result === 'perfect' ? '¡Perfecta!' : result === 'great' ? 'Casi perfecta' : 'Pasable'} (+${prize} $CORCHO)`, `queimada_${today}_${Date.now()}`);
+    addCorchoCoins(wallet, prize, 'minigame_queimada', `🔥 A Queimada: ${result === 'perfect' ? '¡Conxuro Perfecto (21)!' : result === 'great' ? '¡Moi boa!' : 'No seu punto'} (+${prize} $CORCHO)`, `queimada_${today}_${Date.now()}`);
   }
 
-  // Otorgar 1 boleto para el sorteo de reapertura por cada partida
   try {
-    const { grantReopeningTicket } = require('./corcho');
-    grantReopeningTicket(wallet, 'minigame_queimada');
+    corcho.grantReopeningTicket(wallet, 'minigame_queimada');
   } catch (_) {}
 
   const plays = db.prepare(`SELECT COUNT(*) as c FROM queimada_history WHERE LOWER(wallet_address) = LOWER(?) AND play_date = ?`).get(wallet, today);
+  const effectiveMaxPlays = settings.vacationMode ? 3 : (settings.queimadaMaxPlays || 1);
 
-  return { result, prize, totalScore, playsLeft: settings.queimadaMaxPlays - plays.c };
+  return { result, prize, totalScore, playsLeft: Math.max(0, effectiveMaxPlays - plays.c) };
 }
 
 module.exports = {
+  getMadridDateStr,
   checkEnxebreGuess,
   startEnxebre,
-  recordEnxebrePlay,
+  submitEnxebreGuess,
   getActiveCunca,
   spawnCunca,
   drinkCunca,

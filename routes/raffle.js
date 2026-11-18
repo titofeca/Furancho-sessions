@@ -153,8 +153,12 @@ router.get('/stream', (req, res) => {
 
   const clientId = Date.now() + Math.random();
   const walletAddress = req.query.wallet || null;
-  const isAdmin = req.query.admin === 'true';
-  const isStaff = req.query.staff === 'true';
+  const { verifyAdminToken } = require('./admin');
+  const { verifyStaffCode } = require('./staff');
+  const rawAdminToken = req.query.token || req.headers['x-admin-token'] || '';
+  const rawStaffCode = req.query.code || req.headers['x-staff-code'] || '';
+  const isAdmin = req.query.admin === 'true' && !!verifyAdminToken(rawAdminToken);
+  const isStaff = req.query.staff === 'true' && (!!verifyStaffCode(rawStaffCode) || !!verifyAdminToken(rawAdminToken));
   const newClient = { id: clientId, res, walletAddress, isAdmin, isStaff };
 
   // Cap: máximo 500 conexiones SSE activas para evitar memory leaks
@@ -230,13 +234,13 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
     console.error('[Raffle] Error filtering by active SSE:', e);
   }
 
-  // Sorteo VIP: solo participan "O Presidente" (Nivel 4)
+  // Sorteo VIP: solo participan "O Presidente" (Nivel 4) — insensible a mayúsculas EIP-55
   if (type === 'vip') {
     const { db } = require('../db/database');
     const vipWallets = new Set(
-      db.prepare(`SELECT DISTINCT wallet_address FROM mints WHERE level = 4 AND status != 'failed'`).all().map(r => r.wallet_address)
+      db.prepare(`SELECT DISTINCT LOWER(wallet_address) as w FROM mints WHERE level = 4 AND status != 'failed'`).all().map(r => r.w)
     );
-    eligibleWallets = eligibleWallets.filter(w => vipWallets.has(w));
+    eligibleWallets = eligibleWallets.filter(w => vipWallets.has(String(w).toLowerCase()));
     if (eligibleWallets.length === 0) throw new Error('No hay furancheiros O Presidente presentes esta noche.');
   }
 
@@ -251,13 +255,13 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
     if (eligibleWallets.length === 0) throw new Error('No hay nadie en el local que haya declarado cumplir el Dress Code.');
   }
 
-  // Filtro por nivel mínimo de participante
+  // Filtro por nivel mínimo de participante — insensible a mayúsculas EIP-55
   if (sanitizedParticipantLevel) {
     const { db } = require('../db/database');
     const levelWallets = new Set(
-      db.prepare(`SELECT DISTINCT wallet_address FROM mints WHERE level >= ? AND status != 'failed'`).all(sanitizedParticipantLevel).map(r => r.wallet_address)
+      db.prepare(`SELECT DISTINCT LOWER(wallet_address) as w FROM mints WHERE level >= ? AND status != 'failed'`).all(sanitizedParticipantLevel).map(r => r.w)
     );
-    eligibleWallets = eligibleWallets.filter(w => levelWallets.has(w));
+    eligibleWallets = eligibleWallets.filter(w => levelWallets.has(String(w).toLowerCase()));
     if (eligibleWallets.length === 0) throw new Error(`No hay participantes de nivel ${sanitizedParticipantLevel}+ presentes en el local.`);
   }
 
@@ -340,8 +344,8 @@ function doLaunch({ prize, type = 'night', targetLevel = null, participantLevel 
     console.error('[Raffle] Error calculando doble boleto Plan Amigo:', e.message);
   }
 
-  const eligibleSet = new Set(eligibleWallets);
-  const connectedCount = clients.filter(c => c.walletAddress && eligibleSet.has(c.walletAddress)).length;
+  const eligibleSet = new Set(eligibleWallets.map(w => String(w).toLowerCase()));
+  const connectedCount = clients.filter(c => c.walletAddress && eligibleSet.has(c.walletAddress.toLowerCase())).length;
 
   const winnerWallet = eligibleWallets[Math.floor(Math.random() * eligibleWallets.length)];
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';

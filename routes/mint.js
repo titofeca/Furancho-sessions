@@ -235,7 +235,7 @@ function completeVipReservationOnCheckin(walletAddress) {
 }
 
 function performCheckin(walletAddress, ipAddress, isSelfCheckin = false) {
-  const { getVisitCount, openSession } = require('../db/database');
+  const { getVisitCount, openSession, db } = require('../db/database');
   const result = openSession(walletAddress, false);
   const visitCount = getVisitCount(walletAddress);
   let levelUp = null;
@@ -343,7 +343,7 @@ function performCheckin(walletAddress, ipAddress, isSelfCheckin = false) {
       broadcastToAdmins('pending_nft_checkin', {
         wallet: walletAddress,
         alias: aliasStr,
-        prizes: pendingNftPrizes.map(p => p.name).join(', ')
+        prizes: pendingNftPrizes.map(p => p.achievementName || p.prize || 'Premio').join(', ')
       });
     } catch(e) { console.error('Error broadcasting pending NFT checkin:', e); }
   }

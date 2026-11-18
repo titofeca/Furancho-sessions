@@ -17,6 +17,7 @@
   <!-- Capa "cinema": profundidad y 3D compartidos con el panel admin.
        Aditiva — quitando estas dos líneas la app vuelve a su aspecto anterior. -->
   <link rel="stylesheet" href="/assets/cinema.css" />
+  <link rel="stylesheet" href="/assets/baixo84.css" />
   <script src="/assets/cinema.js" defer></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <!-- ethers: generación de wallet EN el dispositivo (la clave privada no viaja por la red) -->
@@ -13762,9 +13763,9 @@
           }
           
           if (data.startedToday) {
-            // Ya empezó y recargó la página
-            document.getElementById('enxebre-cost-label').textContent = 'Continuar partida...';
-            startEnxebreSession();
+            // Ya empezó y recargó la página — restaurar intentos previos del servidor
+            document.getElementById('enxebre-cost-label').textContent = 'Continuando partida de hoxe...';
+            startEnxebreSession(data.previousGuesses || []);
           } else {
             const cost = data.entryCost || 0;
             document.getElementById('enxebre-cost-label').textContent = data.vacationMode ? '🏖️ Gratis (Vacaciones)' : (cost > 0 ? `Coste: ${cost} $CORCHO` : 'Coste: Gratis');
@@ -13788,14 +13789,34 @@
       } catch (e) { showToast('Error de red', true); }
     }
 
-    function startEnxebreSession() {
+    function startEnxebreSession(previousGuesses = []) {
       document.getElementById('enxebre-start-container').style.display = 'none';
       document.getElementById('enxebre-game-container').style.display = 'flex';
       enxebreGrid = Array(6).fill().map(() => Array(5).fill(''));
       enxebreCurrentRow = 0;
       enxebreCurrentCol = 0;
+      previousGuesses.forEach((entry, rIdx) => {
+        if (rIdx < 6 && entry && entry.guess) {
+          for (let c = 0; c < 5; c++) enxebreGrid[rIdx][c] = entry.guess[c] || '';
+          enxebreCurrentRow = rIdx + 1;
+        }
+      });
       renderEnxebreGrid();
       renderEnxebreKeyboard();
+      previousGuesses.forEach((entry, rIdx) => {
+        if (rIdx < 6 && entry && Array.isArray(entry.result)) {
+          entry.result.forEach((status, i) => {
+            const cell = document.getElementById(`enx-cell-${rIdx}-${i}`);
+            const keyBtn = document.getElementById(`enx-key-${entry.guess[i]}`);
+            if (cell) cell.className = 'enx-cell ' + status;
+            if (keyBtn) {
+              if (status === 'correct') keyBtn.className = 'enx-key correct';
+              else if (status === 'present' && !keyBtn.classList.contains('correct')) keyBtn.className = 'enx-key present';
+              else if (!keyBtn.classList.contains('correct') && !keyBtn.classList.contains('present')) keyBtn.className = 'enx-key absent';
+            }
+          });
+        }
+      });
       document.addEventListener('keydown', handleEnxebreKeydown);
     }
 
@@ -13885,37 +13906,38 @@
           return;
         }
 
-        // Animate row colors
+        // Animate row colors with 3D wood tile flip
         data.result.forEach((status, i) => {
           const cell = document.getElementById(`enx-cell-${enxebreCurrentRow}-${i}`);
           const keyBtn = document.getElementById(`enx-key-${guess[i]}`);
           setTimeout(() => {
-            cell.className = 'enx-cell ' + status;
+            if (window.FuranchoAudio) window.FuranchoAudio.woodTap();
+            cell.className = 'enx-cell b84-flip ' + status;
             if (keyBtn) {
               if (status === 'correct') { keyBtn.className = 'enx-key correct'; }
               else if (status === 'present' && !keyBtn.classList.contains('correct')) { keyBtn.className = 'enx-key present'; }
               else if (!keyBtn.classList.contains('correct') && !keyBtn.classList.contains('present')) { keyBtn.className = 'enx-key absent'; }
             }
-          }, i * 300);
+          }, i * 260);
         });
 
         setTimeout(() => {
           if (data.solved) {
-            corchoAlert({icon: '🎉', title: '¡Acertaste!', body: `Te llevas ${data.awarded} $CORCHO. ¡Vuelve mañana!`});
+            if (window.FuranchoAudio) window.FuranchoAudio.coinDrop();
+            corchoAlert({icon: '🎉', title: '¡Acertaches!', body: `Levas ${data.awarded} $CORCHO ao peto. ¡Volve mañá!`});
             closeEnxebre();
             loadCorchoBalance();
-            document.getElementById('mg-enxebre-card').style.display = 'none';
           } else {
-            if (enxebreCurrentRow < 5) {
+            if (!data.finished && enxebreCurrentRow < 5) {
               enxebreCurrentRow++;
               enxebreCurrentCol = 0;
             } else {
-              corchoAlert({icon: '❌', title: '¡Oh no!', body: 'Has agotado tus intentos. ¡Vuelve mañana!'});
+              const revealTxt = data.targetWord ? ` A palabra de hoxe era "${data.targetWord}".` : '';
+              corchoAlert({icon: '🪵', title: '¡Esgotaches os intentos!', body: `Mala sorte hoxe, neno.${revealTxt} ¡Proba mañá!`});
               closeEnxebre();
-              document.getElementById('mg-enxebre-card').style.display = 'none';
             }
           }
-        }, 1800);
+        }, 1650);
 
       } catch (e) {
         showToast('Error de red', true);
@@ -14199,7 +14221,16 @@
           if (data.enabled === false) { showToast('Juego desactivado', true); closeQueimadaModal(); return; }
           document.getElementById('queimada-cost-label').textContent = `Coste: ${data.entryCost} $CORCHO por partida`;
           document.getElementById('queimada-plays-label').textContent = `Partidas restantes hoy: ${data.maxPlays - data.playsToday}`;
-          if (!data.canPlay) {
+          if (data.activeSession) {
+            _queimadaActive = true;
+            _queimadaIngredients = data.activeSession.ingredients || [];
+            _queimadaScore = data.activeSession.score || 0;
+            document.getElementById('queimada-start-btn').style.display = 'none';
+            document.getElementById('queimada-actions').style.display = 'flex';
+            document.getElementById('queimada-score').textContent = _queimadaScore;
+            const pct = Math.min((_queimadaScore / 21) * 100, 110);
+            document.getElementById('queimada-bar').style.width = pct + '%';
+          } else if (!data.canPlay) {
             document.getElementById('queimada-start-btn').style.display = 'none';
             document.getElementById('queimada-plays-label').textContent = '¡Has agotado las queimadas de hoy! Vuelve mañana.';
           }
@@ -15106,7 +15137,7 @@
     }
   </script>
 
-  <script src="/claim/app.js"></script>
+  <script src="/assets/baixo84.js" defer></script>
 </body>
 </html>
 

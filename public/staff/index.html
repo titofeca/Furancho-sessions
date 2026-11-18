@@ -1569,7 +1569,7 @@
     function connectStaffSse(){
       if (_staffSse) return;
       try{
-        _staffSse = new EventSource('/api/raffle/stream?staff=true');
+        _staffSse = new EventSource('/api/raffle/stream?staff=true&code=' + encodeURIComponent(localStorage.getItem(STAFF_KEY) || ''));
 
         // 1. Avisos de $CORCHO (compras y canjes)
         _staffSse.addEventListener('corcho_pending', (e) => {

@@ -359,31 +359,10 @@ function syncRetroactiveCorchoCoins() {
       rewardLevelAward(m.wallet_address, m.level);
     }
 
-    // 2. Sesiones de eventos pasadas
-    const sessions = db.prepare(`SELECT wallet_address, entry_time FROM sessions WHERE counted_as_visit = 1`).all();
-    for (const s of sessions) {
-      if (!s.wallet_address) continue;
-      const dateStr = s.entry_time ? s.entry_time.slice(0, 10) : 'past_session';
-      rewardCheckin(s.wallet_address, `event_${dateStr}`);
-    }
-
-    // 2b. Salidas ya registradas. Solo las sesiones que CONTARON como visita
-    // (counted_as_visit = 1): así el premio de salida va 1:1 con las visitas reales
-    // y no se puede farmear con re-entradas (que abren sesiones sin contar). Cubre
-    // salidas cerradas por el cliente, el staff o el auto-cierre. Idempotente por sesión.
-    const exits = db.prepare(`SELECT id, wallet_address FROM sessions WHERE exit_time IS NOT NULL AND counted_as_visit = 1`).all();
-    for (const s of exits) {
-      if (!s.wallet_address) continue;
-      rewardExit(s.wallet_address, s.id);
-    }
-
-    // 3. Visitas pasadas
-    const visits = db.prepare(`SELECT wallet_address, event_date, visited_at FROM visits`).all();
-    for (const v of visits) {
-      if (!v.wallet_address) continue;
-      const dateStr = v.event_date || (v.visited_at ? v.visited_at.slice(0, 10) : 'past_visit');
-      rewardCheckin(v.wallet_address, `event_${dateStr}`);
-    }
+    // 2 y 3: las sesiones/visitas históricas ya se sincronizaron en su día; no llamar
+    // a rewardCheckin / rewardExit aquí porque ambos evalúan la ventana EN VIVO de esta
+    // noche y un reinicio en mitad de sesión acreditaría una salida histórica como si
+    // fuera de hoy.
 
     // 4. Campaña de verano pasadas
     const campVisits = db.prepare(`SELECT wallet_address, visit_date FROM campaign_visits`).all();
@@ -403,7 +382,7 @@ function grantReopeningTicket(walletAddress, sourcePrefix = 'minigame') {
   if (!walletAddress) return;
   try {
     const { db } = require('../db/database');
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
     const uniqueSource = `${sourcePrefix}_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
     db.prepare(`
       CREATE TABLE IF NOT EXISTS reopening_tickets (

@@ -252,10 +252,22 @@
       setPlace(document.body.getAttribute('data-cin-place-default') || 'furancho');
     }
 
-    // Comprobación barata y espaciada: no observamos todo el DOM, que en
-    // estas páginas cambia constantemente. Cubre la guarda de los modales
-    // fixed y el regreso a casa al cerrar una sala.
-    setInterval(syncHalt, 450);
+    // Observador ligero de atributos style/class en modales directos en vez de escanear todo el DOM cada 450ms
+    var haltTimer = null;
+    function debouncedSyncHalt() {
+      if (haltTimer) return;
+      haltTimer = setTimeout(function () {
+        haltTimer = null;
+        if (document.visibilityState !== 'hidden') syncHalt();
+      }, 180);
+    }
+    if ('MutationObserver' in window) {
+      var mo = new MutationObserver(debouncedSyncHalt);
+      mo.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['style', 'class'] });
+    } else {
+      setInterval(syncHalt, 900);
+    }
+    document.addEventListener('visibilitychange', debouncedSyncHalt);
 
     if (reduced || !stages.length) return;
 

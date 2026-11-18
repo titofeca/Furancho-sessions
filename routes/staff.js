@@ -695,3 +695,4 @@ router.post('/terraza-hours', staffLimiter, requireStaff, (req, res) => {
 });
 
 module.exports = router;
+module.exports.verifyStaffCode = codeOk;

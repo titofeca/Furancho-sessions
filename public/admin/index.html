@@ -7074,7 +7074,7 @@
     if (adminSseSource) {
       try { adminSseSource.close(); } catch(e){}
     }
-    adminSseSource = new EventSource('/api/raffle/stream?admin=true');
+    adminSseSource = new EventSource('/api/raffle/stream?admin=true&token=' + encodeURIComponent(AUTH_TOKEN || ''));
     
     adminSseSource.addEventListener('new_vip_request', (e) => {
       try {

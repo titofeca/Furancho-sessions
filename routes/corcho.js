@@ -67,7 +67,10 @@ router.post('/transfer-nft', (req, res) => {
   try {
     let feeKey = nftType === 'level' ? `transfer_fee_${nftId}` : `transfer_fee_ach_${nftId}`;
     let feeSetting = require('../db/database').getSetting(feeKey, null);
-    let fee = (feeSetting !== null && !isNaN(parseInt(feeSetting, 10))) ? parseInt(feeSetting, 10) : 0;
+    const defaultFee = corcho.getEconomySettings().nftTransferFee || 0;
+    let fee = (feeSetting !== null && feeSetting !== '' && !isNaN(parseInt(feeSetting, 10)))
+      ? Math.max(0, parseInt(feeSetting, 10))
+      : defaultFee;
 
     const result = corcho.transferNftWithFee(fromWallet, toWallet, nftType, nftId, fee);
 
@@ -288,21 +291,55 @@ router.post('/redeem-item', (req, res) => {
       });
     }
 
-    const spendRes = spendCorchoCoins(
-      walletAddress,
-      item.price_corcho,
-      'item_redemption',
-      `🎁 Canje: ${item.emoji} ${item.name} (-${item.price_corcho} $CORCHO)`,
-      `redeem_${item.id}_${Date.now()}`
-    );
-
-    if (!spendRes.ok) {
-      if (spendRes.error === 'insufficient_balance') {
+    // Transacción atómica: stock + cobro $CORCHO + creación de vale en un único bloque indivisible
+    let spendRes = null;
+    let voucher = null;
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const freshItem = db.prepare(`SELECT * FROM corcho_items WHERE id = ? AND active = 1`).get(itemId);
+      if (!freshItem) {
+        db.exec('ROLLBACK');
+        return res.status(404).json({ error: 'El producto o canje ya no está disponible' });
+      }
+      if (freshItem.stock !== null && freshItem.stock !== undefined) {
+        if (freshItem.stock <= 0 || !decrementCorchoItemStock(freshItem.id)) {
+          db.exec('ROLLBACK');
+          return res.status(400).json({ error: '🔴 Producto o canje agotado (0 unidades disponibles en stock).' });
+        }
+      }
+      if (category && sessionCanjeCount(walletAddress, category) >= 1) {
+        db.exec('ROLLBACK');
+        const catName = category === 'tapa' ? 'tapa' : 'cunca';
         return res.status(400).json({
-          error: `Saldo insuficiente. Requiere ${item.price_corcho.toLocaleString()} $CORCHO (tienes ${spendRes.currentBalance.toLocaleString()} $CORCHO).`
+          error: `Xa canxeaches a túa ${catName} desta sesión. Só 1 por cada producto por noite de furancho, neno.`,
+          limitReached: true
         });
       }
-      return res.status(400).json({ error: 'No se pudo procesar el canje.' });
+
+      spendRes = spendCorchoCoins(
+        walletAddress,
+        freshItem.price_corcho,
+        'item_redemption',
+        `🎁 Canje: ${freshItem.emoji} ${freshItem.name} (-${freshItem.price_corcho} $CORCHO)`,
+        `redeem_${freshItem.id}_${Date.now()}`
+      );
+
+      if (!spendRes.ok) {
+        db.exec('ROLLBACK');
+        if (spendRes.error === 'insufficient_balance') {
+          return res.status(400).json({
+            error: `Saldo insuficiente. Requiere ${freshItem.price_corcho.toLocaleString()} $CORCHO (tienes ${spendRes.currentBalance.toLocaleString()} $CORCHO).`
+          });
+        }
+        return res.status(400).json({ error: 'No se pudo procesar el canje.' });
+      }
+
+      voucher = createRedemptionVoucher({ walletAddress, item: freshItem, ttlMinutes: 15 });
+      db.exec('COMMIT');
+    } catch (txErr) {
+      try { db.exec('ROLLBACK'); } catch (_) {}
+      console.error('Error en transacción atómica de canje:', txErr.message);
+      return res.status(500).json({ error: 'Error creando el vale de canje. Tu saldo no ha sido descontado.' });
     }
 
     try {
@@ -312,21 +349,6 @@ router.post('/redeem-item', (req, res) => {
       const { injectSystemMuroMessage } = require('../db/database');
       injectSystemMuroMessage(msg);
     } catch(e) {}
-
-    // Descontar 1 unidad del stock si es un artículo con unidades limitadas
-    if (item.stock !== null && item.stock !== undefined && item.stock > 0) {
-      try { decrementCorchoItemStock(item.id); } catch (_) {}
-    }
-
-    // Vale server-side con código REAL: el staff/admin lo valida al entregar la
-    // consumición. Antes el código era cosmético (aleatorio en el móvil) y nadie
-    // lo comprobaba — ahora la entrega queda registrada y es anti-doble-canje.
-    let voucher = null;
-    try {
-      voucher = createRedemptionVoucher({ walletAddress, item, ttlMinutes: 15 });
-    } catch (ve) {
-      console.error('Error creando vale de canje:', ve.message);
-    }
 
     // Aviso EN VIVO al admin con el código clave: así la validación no depende solo
     // del móvil del cliente. El staff además lo ve al fichar / en el panel.
