@@ -1,64 +1,128 @@
 /* ==========================================================================
-   FURANCHO SESSIONS · CAPA INMERSIVA 3D "O BAIXO DA CASA 1984"
-   Estética realista enxebre gallega años 80: mampostería de granito con musgo,
-   castaño ahumado, esmalte crema, tinto Barrantes (#8B0A1A) y latón (#C89B3C).
-   Cumple estrictamente la regla de oro: CERO transform persistente en body,
-   .screen ni ancestros de modales position:fixed.
+   FURANCHO SESSIONS · CAPA INMERSIVA 3D "O BAIXO DA CASA 1984" (v2 SIN SOLAPES)
+   Diseño limpio y despejado: controles fuera de la imagen, medallones de latón
+   compactos sobre los objetos reales (solo 1 etiqueta activa a la vez) y barra
+   de estación dedicada bajo el visor.
    ========================================================================== */
 
 :root {
   --b84-wood-dark: #1B0E06;
-  --b84-wood-mid: #3A1F0E;
-  --b84-wood-warm: #5E3418;
+  --b84-wood-mid: #341B0B;
+  --b84-wood-warm: #583015;
   --b84-brass: #C89B3C;
   --b84-brass-light: #F3D58D;
   --b84-wine: #8B0A1A;
-  --b84-wine-deep: #56050F;
-  --b84-enamel: #F7EFE0;
+  --b84-enamel: #FAF3E3;
   --b84-ink: #0D242C;
-  --b84-slate: #1C2421;
 }
 
-/* Espacio inferior en el perfil para la barra rústica fija */
+/* Espacio amplio inferior para que el dock nunca pise tarjetas ni textos */
 #screen-profile {
-  padding-bottom: 94px !important;
+  padding-bottom: 112px !important;
 }
 
-/* ── CONTENEDOR PRINCIPAL DEL ESCENARIO 3D "O BAIXO DA CASA 1984" ── */
+/* Ocultar visualmente la fila duplicada de medallones blancos (ID/Museo/Ruta/Chave)
+   porque ya viven en el dock inferior y en el Baixo 3D, conservando sus nodos DOM
+   para que los contadores/puntos en vivo sigan actualizándose sin romper JS. */
+#screen-profile .main-actions-row {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* ── MUEBLE MARCO DE CASTAÑO TALLADO 1984 (CABECERA + VISOR 3D + BANDEJA) ── */
 .b84-stage-shell {
   position: relative;
-  margin: 0 0 18px 0;
+  margin: 0 0 20px 0;
   border-radius: 20px;
-  padding: 5px;
-  background: linear-gradient(145deg, #4A2812 0%, #1F1007 52%, #3B1F0D 100%);
-  border: 1.5px solid rgba(200, 155, 60, 0.55);
+  padding: 8px;
+  background: linear-gradient(160deg, #3E210E 0%, #1C0E05 55%, #2E180A 100%);
+  border: 1.5px solid rgba(200, 155, 60, 0.62);
   box-shadow:
-    0 18px 38px -12px rgba(20, 10, 4, 0.55),
-    0 4px 12px rgba(20, 10, 4, 0.25),
-    inset 0 1px 0 rgba(243, 213, 141, 0.35);
+    0 16px 34px -10px rgba(20, 10, 4, 0.48),
+    inset 0 1px 0 rgba(243, 213, 141, 0.30);
 }
 
-/* Remaches de latón en las 4 esquinas del marco de madera */
-.b84-stage-shell::before,
-.b84-stage-shell::after {
-  content: "";
-  position: absolute;
-  width: 7px;
-  height: 7px;
+/* 1. Barra superior FUERA del visor 3D (cero solape con lámpara ni calendario) */
+.b84-bezel-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 2px 4px 8px 6px;
+}
+
+.b84-era-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #F3D58D;
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  min-width: 0;
+}
+
+.b84-era-badge span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.b84-era-dot {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #FFE7A8, #9E7220);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.65);
-  z-index: 8;
-  pointer-events: none;
+  flex-shrink: 0;
+  background: #F59E0B;
+  box-shadow: 0 0 6px #F59E0B;
 }
-.b84-stage-shell::before { top: 9px; left: 9px; }
-.b84-stage-shell::after  { top: 9px; right: 9px; }
+.b84-era-dot.inside {
+  background: #22C55E;
+  box-shadow: 0 0 8px #22C55E;
+}
 
+.b84-hud-controls {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.b84-ctrl-btn {
+  background: rgba(255, 244, 218, 0.09);
+  border: 1px solid rgba(200, 155, 60, 0.45);
+  color: #F7EFE0;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.b84-ctrl-btn:active { transform: scale(0.94); }
+.b84-ctrl-btn.active {
+  background: var(--b84-wine);
+  border-color: #F3D58D;
+  color: #FFF;
+}
+
+/* 2. Ventana 3D limpia y despejada */
 .b84-viewport {
   position: relative;
   width: 100%;
-  height: 325px;
-  border-radius: 15px;
+  height: 270px;
+  border-radius: 13px;
   overflow: hidden;
   background: #120A05;
   perspective: 900px;
@@ -66,29 +130,26 @@
   touch-action: pan-y;
   user-select: none;
   -webkit-user-select: none;
-  transition: height 0.38s cubic-bezier(0.22, 1, 0.36, 1);
-  box-shadow: inset 0 0 28px rgba(0, 0, 0, 0.72);
+  border: 1px solid rgba(200, 155, 60, 0.35);
+  transition: height 0.36s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .b84-stage-shell.b84-expanded .b84-viewport {
-  height: 445px;
+  height: 390px;
 }
 
-/* Plano panorámico 3D navegable dentro del bajo */
 .b84-pan-world {
   position: absolute;
-  top: -5%;
-  left: -32%;
-  width: 164%;
-  height: 110%;
+  top: -4%;
+  left: -28%;
+  width: 156%;
+  height: 108%;
   transform-style: preserve-3d;
   will-change: transform;
   cursor: grab;
   transition: transform 0.08s linear;
 }
-.b84-pan-world:active {
-  cursor: grabbing;
-}
+.b84-pan-world:active { cursor: grabbing; }
 .b84-pan-world.b84-zooming {
   transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -99,7 +160,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 48%;
+  object-position: center 50%;
   display: block;
   pointer-events: none;
   filter: contrast(1.04) saturate(1.06);
@@ -114,246 +175,213 @@
   z-index: 2;
 }
 
-/* Viñeta cinematográfica cálida de película años 80 */
 .b84-vignette {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  z-index: 3;
+  background: radial-gradient(120% 100% at 50% 50%, transparent 62%, rgba(10, 5, 2, 0.48) 100%);
+}
+
+/* ── PUNTOS 3D DISCRETOS (CERO SOLAPE: 30px en reposo, solo 1 activo expandido) ── */
+.b84-pin {
+  position: absolute;
+  transform: translate(-50%, -50%) translateZ(20px);
   z-index: 4;
-  background:
-    linear-gradient(to bottom, rgba(14, 7, 3, 0.62) 0%, transparent 22%, transparent 74%, rgba(14, 7, 3, 0.82) 100%),
-    radial-gradient(115% 95% at 50% 50%, transparent 56%, rgba(12, 6, 2, 0.52) 100%);
-}
-
-/* ── CARTELES ESMALTADOS INTERACTIVOS ANCLADOS EN 3D ── */
-.b84-hotspot {
-  position: absolute;
-  transform: translate(-50%, -50%) translateZ(26px);
-  z-index: 5;
-  background: linear-gradient(180deg, #FAF3E3 0%, #EADBC0 100%);
-  color: var(--b84-ink);
-  border: 1.5px solid var(--b84-brass);
-  border-radius: 10px;
-  padding: 4px 8px 4px 6px;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  box-shadow:
-    0 6px 16px rgba(0, 0, 0, 0.62),
-    0 0 0 1px rgba(26, 12, 4, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.85);
-  cursor: pointer;
-  font-family: 'Outfit', sans-serif;
-  white-space: nowrap;
-  -webkit-tap-highlight-color: transparent;
-  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease, background 0.2s ease;
-}
-
-.b84-hotspot::after {
-  content: "";
-  position: absolute;
-  bottom: -6px;
-  left: 50%;
-  margin-left: -5px;
-  border-width: 6px 5px 0 5px;
-  border-style: solid;
-  border-color: var(--b84-brass) transparent transparent transparent;
-}
-
-.b84-hotspot:hover,
-.b84-hotspot:active {
-  transform: translate(-50%, -53%) translateZ(34px) scale(1.07);
-  background: linear-gradient(180deg, #8B0A1A 0%, #630611 100%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  padding: 0;
+  border: 2px solid #F3D58D;
+  background: radial-gradient(circle at 35% 30%, rgba(58, 31, 14, 0.92), rgba(22, 11, 5, 0.95));
   color: #FAF3E3;
-  border-color: #F3D58D;
-  box-shadow: 0 10px 24px rgba(139, 10, 26, 0.65), 0 0 14px rgba(243, 213, 141, 0.45);
-}
-
-.b84-hotspot:hover .b84-hs-sub,
-.b84-hotspot:active .b84-hs-sub {
-  color: #F3D58D;
-}
-
-.b84-hs-icon {
-  font-size: 14px;
-  line-height: 1;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
-}
-
-.b84-hs-txt {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  line-height: 1.08;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.65), 0 0 0 3px rgba(200, 155, 60, 0.22);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), background 0.2s, box-shadow 0.2s;
 }
 
-.b84-hs-title {
-  font-family: 'Playfair Display', serif;
+.b84-pin:hover {
+  transform: translate(-50%, -50%) translateZ(28px) scale(1.14);
+}
+
+/* SOLO el punto enfocado muestra su cartela limpia encima, sin tapar el resto */
+.b84-pin.b84-pin-focused {
+  z-index: 7;
+  width: auto;
+  height: 32px;
+  border-radius: 100px;
+  padding: 0 11px 0 8px;
+  gap: 6px;
+  background: linear-gradient(135deg, #8B0A1A 0%, #5B0510 100%);
+  border-color: #FFE7A8;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.72), 0 0 0 3px rgba(243, 213, 141, 0.38);
+  transform: translate(-50%, -50%) translateZ(34px) scale(1.04);
+}
+
+.b84-pin-lbl {
+  display: none;
+  font-family: 'Outfit', sans-serif;
   font-size: 11.5px;
-  font-weight: 900;
+  font-weight: 800;
+  color: #FFF8EB;
+  white-space: nowrap;
   letter-spacing: 0.2px;
 }
 
-.b84-hs-sub {
-  font-size: 9px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--b84-wine);
+.b84-pin.b84-pin-focused .b84-pin-lbl {
+  display: inline;
 }
 
-/* Variante destacada cuando estás dentro o hay sorteo activo */
-.b84-hotspot.b84-hs-live {
+.b84-pin.b84-hs-live {
   border-color: #4ADE80;
-  box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.32), 0 8px 18px rgba(0,0,0,0.65);
-}
-.b84-hotspot.b84-hs-alert {
-  animation: b84PulseGold 2s ease-in-out infinite;
+  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.35), 0 4px 12px rgba(0,0,0,0.65);
 }
 
-@keyframes b84PulseGold {
-  0%, 100% { box-shadow: 0 6px 16px rgba(0,0,0,0.6), 0 0 0 0 rgba(243, 213, 141, 0.65); }
-  50%      { box-shadow: 0 6px 20px rgba(0,0,0,0.7), 0 0 0 6px rgba(243, 213, 141, 0); }
+.b84-pin.b84-hs-alert {
+  animation: b84PinPulse 2s ease-in-out infinite;
 }
 
-/* ── HUD SUPERIOR E INFERIOR DEL VISOR 3D ── */
-.b84-hud-top {
-  position: absolute;
-  top: 9px;
-  left: 10px;
-  right: 10px;
-  z-index: 6;
+@keyframes b84PinPulse {
+  0%, 100% { box-shadow: 0 4px 12px rgba(0,0,0,0.65), 0 0 0 2px rgba(250, 204, 21, 0.55); }
+  50%      { box-shadow: 0 4px 16px rgba(0,0,0,0.75), 0 0 0 7px rgba(250, 204, 21, 0); }
+}
+
+/* 3. Bandeja inferior integrada en el mueble (FUERA de la imagen, cero solape) */
+.b84-bezel-Tray {
+  margin-top: 8px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  pointer-events: none;
+  flex-direction: column;
+  gap: 7px;
 }
 
-.b84-era-badge {
-  pointer-events: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 100px;
-  background: rgba(24, 13, 6, 0.84);
-  border: 1px solid rgba(200, 155, 60, 0.55);
-  color: #F7EFE0;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.6px;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-}
-
-.b84-era-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #F59E0B;
-  box-shadow: 0 0 6px #F59E0B;
-}
-.b84-era-dot.inside {
-  background: #22C55E;
-  box-shadow: 0 0 8px #22C55E;
-}
-
-.b84-hud-controls {
-  pointer-events: auto;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.b84-ctrl-btn {
-  background: rgba(24, 13, 6, 0.84);
-  border: 1px solid rgba(200, 155, 60, 0.5);
-  color: #F3D58D;
-  border-radius: 8px;
-  padding: 4px 8px;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  transition: transform 0.15s ease, background 0.15s ease;
-}
-.b84-ctrl-btn:active {
-  transform: scale(0.93);
-}
-.b84-ctrl-btn.active {
-  background: var(--b84-wine);
-  color: #FAF3E3;
-  border-color: #F3D58D;
-}
-
-.b84-hud-bottom {
-  position: absolute;
-  bottom: 8px;
-  left: 10px;
-  right: 10px;
-  z-index: 6;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  pointer-events: none;
-}
-
-.b84-compass-strip {
-  pointer-events: auto;
-  display: flex;
-  align-items: center;
+/* Selector de estancias 1D limpio */
+.b84-room-tabs {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
   gap: 4px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  max-width: 100%;
-  padding: 3px 5px;
-  border-radius: 10px;
-  background: rgba(20, 10, 4, 0.80);
-  border: 1px solid rgba(200, 155, 60, 0.35);
-  backdrop-filter: blur(5px);
+  background: rgba(12, 6, 2, 0.52);
+  padding: 4px;
+  border-radius: 11px;
+  border: 1px solid rgba(200, 155, 60, 0.25);
 }
-.b84-compass-strip::-webkit-scrollbar { display: none; }
 
 .b84-cam-chip {
   background: transparent;
   border: none;
-  color: rgba(247, 239, 224, 0.78);
+  color: rgba(247, 239, 224, 0.72);
+  font-family: 'Outfit', sans-serif;
   font-size: 10.5px;
   font-weight: 700;
-  padding: 3px 7px;
-  border-radius: 7px;
+  padding: 5px 2px;
+  border-radius: 8px;
   cursor: pointer;
+  text-align: center;
   white-space: nowrap;
-  transition: background 0.2s, color 0.2s;
-}
-.b84-cam-chip.active {
-  background: rgba(200, 155, 60, 0.28);
-  color: #FFE7A8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.18s, color 0.18s;
 }
 
-/* ── BARRA INFERIOR FIJA EN CASTAÑO TALLADO Y LATÓN (DOCK 1984) ── */
+.b84-cam-chip.active {
+  background: rgba(200, 155, 60, 0.30);
+  color: #FFE7A8;
+  font-weight: 800;
+}
+
+/* Tarjeta de estación enfocada con acción directa */
+.b84-station-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #FAF3E3 0%, #ECDEC3 100%);
+  border: 1.5px solid var(--b84-brass);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.b84-st-left {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  flex: 1;
+}
+
+.b84-st-ico {
+  font-size: 20px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.b84-st-meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.b84-st-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--b84-ink);
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.b84-st-sub {
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--b84-wine);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.b84-st-cta {
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #8B0A1A, #610611);
+  color: #FFF8EB;
+  border: 1px solid rgba(243, 213, 141, 0.45);
+  border-radius: 10px;
+  padding: 8px 13px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(139, 10, 26, 0.30);
+  transition: transform 0.14s ease;
+}
+.b84-st-cta:active { transform: scale(0.95); }
+
+/* ── BARRA INFERIOR FIJA COMPACTA Y DESPEJADA ── */
 #baixo84-dock {
   position: fixed;
   left: 50%;
-  bottom: 8px;
+  bottom: 10px;
   transform: translateX(-50%);
-  width: calc(100% - 16px);
-  max-width: 470px;
+  width: calc(100% - 20px);
+  max-width: 456px;
   z-index: 880;
   display: none;
   grid-template-columns: repeat(7, 1fr);
   gap: 2px;
-  padding: 6px 5px;
-  border-radius: 18px;
-  background:
-    linear-gradient(180deg, #3A1F0E 0%, #1E0F06 100%);
+  padding: 5px;
+  border-radius: 16px;
+  background: rgba(30, 15, 6, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1.5px solid rgba(200, 155, 60, 0.65);
-  box-shadow:
-    0 12px 30px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 rgba(255, 230, 170, 0.28);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.48);
 }
 
 #baixo84-dock.visible {
@@ -364,8 +392,8 @@
   position: relative;
   background: transparent;
   border: none;
-  border-radius: 12px;
-  padding: 5px 2px 4px;
+  border-radius: 11px;
+  padding: 5px 1px 4px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -374,39 +402,31 @@
   color: #EADBC0;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.18s ease, transform 0.15s ease, color 0.18s ease;
+  transition: background 0.16s ease, transform 0.14s ease;
 }
-
 .b84-dock-btn:active {
   transform: scale(0.92);
-  background: rgba(200, 155, 60, 0.18);
+  background: rgba(200, 155, 60, 0.20);
 }
-
 .b84-dock-btn.b84-dock-primary {
   background: linear-gradient(145deg, #8B0A1A, #5B0510);
-  border: 1px solid rgba(243, 213, 141, 0.55);
+  border: 1px solid rgba(243, 213, 141, 0.5);
   color: #FFF8EB;
-  box-shadow: 0 3px 10px rgba(139, 10, 26, 0.45);
 }
 
-.b84-dock-ico {
-  font-size: 16px;
-  line-height: 1;
-}
-
+.b84-dock-ico { font-size: 15px; line-height: 1; }
 .b84-dock-lbl {
   font-family: 'Outfit', sans-serif;
   font-size: 9.5px;
   font-weight: 800;
-  letter-spacing: 0.1px;
   line-height: 1;
   white-space: nowrap;
 }
 
 .b84-dock-dot {
   position: absolute;
-  top: 3px;
-  right: 6px;
+  top: 2px;
+  right: 5px;
   width: 7px;
   height: 7px;
   border-radius: 50%;
@@ -415,22 +435,20 @@
   display: none;
 }
 
-/* Subir un pelín el FAB de mensajes para convivir limpio con el dock */
+/* Botón flotante del Taboleiro colocado limpiamente encima del dock sin pisar nada */
 #msg-fab {
-  bottom: 78px !important;
+  bottom: 76px !important;
+  right: 14px !important;
+  width: 48px !important;
+  height: 48px !important;
 }
 
-/* ── MEJORAS ENXEBRES AÑOS 80 EN TARJETAS Y MODALES EXISTENTES ── */
+/* ── ESTÉTICA ENXEBRE 1984 EN BANCO Y MODALES DE JUEGOS ── */
 #corcho-card {
-  background:
-    linear-gradient(165deg, rgba(252, 246, 233, 0.96) 0%, rgba(236, 222, 194, 0.92) 100%) !important;
+  background: linear-gradient(165deg, rgba(252, 246, 233, 0.96) 0%, rgba(236, 222, 194, 0.92) 100%) !important;
   border: 1.5px solid rgba(168, 122, 38, 0.55) !important;
-  box-shadow:
-    0 12px 28px -10px rgba(38, 19, 7, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.75) !important;
 }
 
-/* Estilo Libreta de Aforro 1984 (Hule Granate + Papel Pautado) */
 .b84-passbook-modal {
   display: none;
   position: fixed;
@@ -447,7 +465,7 @@
 .b84-passbook-cover {
   width: 100%;
   max-width: 430px;
-  max-height: 88vh;
+  max-height: 86vh;
   overflow-y: auto;
   border-radius: 20px;
   padding: 6px;
@@ -470,76 +488,48 @@
   position: relative;
 }
 
-/* Estética Recreativa 1985 para Tragaperras */
 #traga-modal > div {
   background: linear-gradient(180deg, #3B1F0E 0%, #1F1007 100%) !important;
   border: 3px solid #C89B3C !important;
   color: #FAF3E3 !important;
-  box-shadow: 0 24px 55px rgba(0, 0, 0, 0.75), inset 0 0 24px rgba(0, 0, 0, 0.6) !important;
 }
-#traga-modal h3 {
-  color: #FFE082 !important;
-  font-family: 'Playfair Display', serif !important;
-  text-shadow: 0 2px 8px rgba(245, 158, 11, 0.55);
-}
+#traga-modal h3 { color: #FFE082 !important; font-family: 'Playfair Display', serif !important; }
 #traga-status-text { color: #EADBC0 !important; }
 
-/* Estética Boleto Verjurado 1984 para O Rasca */
 #rasca-modal > div {
   background: linear-gradient(145deg, #F7EFE0, #E5D4B3) !important;
   border: 2px solid #8B0A1A !important;
-  box-shadow: 0 24px 50px rgba(0,0,0,0.65) !important;
 }
-#rasca-modal h3 {
-  color: #8B0A1A !important;
-  font-family: 'Playfair Display', serif !important;
-}
+#rasca-modal h3 { color: #8B0A1A !important; font-family: 'Playfair Display', serif !important; }
 
-/* Estética Terreiro de Granito 1984 para A Chave Virtual */
 #chave-virtual-modal > div {
   background: linear-gradient(180deg, #281B12 0%, #18100A 100%) !important;
   border: 2px solid #C89B3C !important;
   color: #FAF3E3 !important;
 }
-#chave-virtual-modal h3 {
-  color: #F3D58D !important;
-  font-family: 'Playfair Display', serif !important;
-}
+#chave-virtual-modal h3 { color: #F3D58D !important; font-family: 'Playfair Display', serif !important; }
 #chave-status-text { color: #D6C5A9 !important; }
 
-/* Estética Concurso Radiofónico da Parroquia 1984 para Trivial */
 #trivial-modal > div {
   background: linear-gradient(155deg, #FAF3E0, #E8D7B4) !important;
   border: 2px solid #5E3418 !important;
 }
-#trivial-modal h3 {
-  color: #8B0A1A !important;
-  font-family: 'Playfair Display', serif !important;
-}
+#trivial-modal h3 { color: #8B0A1A !important; font-family: 'Playfair Display', serif !important; }
 #trivial-status-text { color: #5E3418 !important; }
 
-/* Fichas de roble pirograbadas con flip 3D en O Enxebre */
 .enx-cell {
   background: linear-gradient(180deg, #E8D5B5 0%, #CFAF82 100%) !important;
   border: 2px solid #6E4720 !important;
   color: #2B1506 !important;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
-  box-shadow: 0 2px 0 #523314, inset 0 1px 0 rgba(255, 255, 255, 0.45) !important;
 }
-.enx-cell.b84-flip {
-  animation: b84TileFlip 0.45s ease both;
-}
+.enx-cell.b84-flip { animation: b84TileFlip 0.45s ease both; }
 @keyframes b84TileFlip {
   0%   { transform: rotateX(0deg); }
   50%  { transform: rotateX(90deg); }
   100% { transform: rotateX(0deg); }
 }
 
-/* Sello "XOGADO HOXE" en la Sala de Xogos para que ningún juego desaparezca sin explicación */
-.b84-game-exhausted {
-  opacity: 0.72;
-  position: relative;
-}
+.b84-game-exhausted { opacity: 0.72; position: relative; }
 .b84-stamp-done {
   display: inline-block;
   margin-top: 4px;

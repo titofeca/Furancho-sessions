@@ -1,7 +1,7 @@
 /* ==========================================================================
-   FURANCHO SESSIONS · MOTOR INTERACTIVO 3D "O BAIXO DA CASA 1984" + JUEGOS 80s
-   100% ligero, cero dependencias externas, respeta e impulsa todas las
-   utilidades originales (fichajes, premios, sorteos, banco, juegos, museo, ruta).
+   FURANCHO SESSIONS · MOTOR INTERACTIVO 3D "O BAIXO DA CASA 1984" (v2 LIMPIO)
+   Cero solapamientos: cabecera y bandeja de control fuera de la imagen,
+   medallones 3D discretos (solo 1 expandido a la vez) y 8 juegos años 80.
    ========================================================================== */
 (function () {
   'use strict';
@@ -40,8 +40,7 @@
       var ctx = getAudio();
       if (!ctx) return;
       var t = ctx.currentTime;
-      var osc = ctx.createOscillator();
-      var g = ctx.createGain();
+      var osc = ctx.createOscillator(), g = ctx.createGain();
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(190, t);
       osc.frequency.exponentialRampToValueAtTime(68, t + 0.055);
@@ -55,14 +54,13 @@
       if (!ctx) return;
       var t = ctx.currentTime;
       [980, 1480].forEach(function (freq, idx) {
-        var o = ctx.createOscillator();
-        var g = ctx.createGain();
+        var o = ctx.createOscillator(), g = ctx.createGain();
         o.type = 'sine';
         o.frequency.setValueAtTime(freq, t + idx * 0.02);
         g.gain.setValueAtTime(0.12, t + idx * 0.02);
         g.gain.exponentialRampToValueAtTime(0.001, t + 0.24 + idx * 0.04);
         o.connect(g); g.connect(ctx.destination);
-        o.start(t + idx * 0.02); o.stop(t + 0.28 + idx * 0.04);
+        o.start(t + idx * 0.02); o.stop(t + idx * 0.02 + 0.28);
       });
     },
     ironClank: function (hitType) {
@@ -140,24 +138,7 @@
   };
   window.FuranchoAudio = FuranchoAudio;
 
-  // ── 2. ESCENARIO 3D "O BAIXO DA CASA 1984" ────────────────────────────────
-  var panNorm = 0;        // -1 (izquierda: puerta) .. 0 (centro: barril) .. +1 (derecha: alacena)
-  var targetPanNorm = 0;
-  var tiltY = 0, targetTiltY = 0;
-  var vivaMode = false;
-  var fxCanvas = null, fxCtx = null;
-  var panWorld = null;
-  var stageRunning = false;
-  var rainDrops = [];
-  var dustMotes = [];
-
-  for (var r = 0; r < 22; r++) {
-    rainDrops.push({ x: 0.04 + Math.random() * 0.16, y: 0.16 + Math.random() * 0.68, sp: 0.012 + Math.random() * 0.009 });
-  }
-  for (var m = 0; m < 28; m++) {
-    dustMotes.push({ x: 0.22 + Math.random() * 0.72, y: 0.12 + Math.random() * 0.78, r: 0.7 + Math.random() * 1.4, vx: (Math.random() - 0.5) * 0.0005, vy: -0.0004 - Math.random() * 0.0006 });
-  }
-
+  // ── 2. DEFINICIÓN DE LAS 6 ESTACIONES LIMPIAS DEL BAIXO 1984 ──────────────
   function isUserInside() {
     var badge = document.getElementById('session-active-badge');
     return !!(badge && badge.style.display !== 'none');
@@ -173,38 +154,169 @@
   }
   window.smartFicharAction = smartFicharAction;
 
-  function focusAndRun(normTarget, actionFn) {
-    FuranchoAudio.woodTap();
-    targetPanNorm = Math.max(-1, Math.min(1, normTarget));
-    updateCompassActive(targetPanNorm);
-    if (panWorld) {
-      panWorld.classList.add('b84-zooming');
-      setTimeout(function () {
-        if (panWorld) panWorld.classList.remove('b84-zooming');
-      }, 440);
+  var STATIONS = [
+    {
+      id: 'porta',
+      tab: '🚪 Porta',
+      icon: '🌿',
+      pinLabel: 'Porta do Loureiro',
+      title: 'Porta do Loureiro · Fichaxe',
+      sub: '📷 Escanear QR de Entrada',
+      cta: 'Fichar ›',
+      pan: -0.90,
+      left: '18%',
+      top: '48%',
+      open: function () { smartFicharAction(); }
+    },
+    {
+      id: 'pizarra',
+      tab: '🔑 Rifas',
+      icon: '🔑',
+      pinLabel: 'Pizarra e Sorteos',
+      title: 'Pizarra de Tiza · A Chave e Rifas',
+      sub: 'Consulta o sorteo semanal e premios',
+      cta: 'Ver Sorteo ›',
+      pan: -0.36,
+      left: '40.5%',
+      top: '33%',
+      open: function () {
+        var acceptBanner = document.getElementById('accept-prize-banner');
+        if (acceptBanner && acceptBanner.style.display !== 'none') {
+          acceptBanner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (typeof window.onChaveMedallionClick === 'function') {
+          window.onChaveMedallionClick();
+        }
+      }
+    },
+    {
+      id: 'banco',
+      tab: '📒 Banco',
+      icon: '📒',
+      pinLabel: 'Libreta do Corcho',
+      title: 'Libreta do Corcho · 1984',
+      sub: '0 $CORCHO · Canxes, Packs e Historial',
+      cta: 'Abrir Libreta ›',
+      pan: -0.02,
+      left: '49%',
+      top: '78%',
+      open: function () { window.openLibreta84Modal(); }
+    },
+    {
+      id: 'cunca',
+      tab: '🍷 Cunca',
+      icon: '🍷',
+      pinLabel: 'A Cunca · Niveis',
+      title: 'Jarra e Cunca · O teu Nivel VIP',
+      sub: '0 visitas · Cautivo → Presidente',
+      cta: 'Ver Niveis ›',
+      pan: 0.16,
+      left: '61%',
+      top: '66%',
+      open: function () {
+        FuranchoAudio.clinkCunca();
+        if (typeof window.openLevelsModal === 'function') window.openLevelsModal();
+      }
+    },
+    {
+      id: 'xogos',
+      tab: '🕹️ Xogos',
+      icon: '🕹️',
+      pinLabel: 'Recreativos \'85',
+      title: 'Recreativos \'85 e Pote de Queimada',
+      sub: '8 Xogos enxebres para gañar $CORCHO',
+      cta: 'Xogar ›',
+      pan: 0.48,
+      left: '69.5%',
+      top: '42%',
+      open: function () {
+        if (typeof window.openMinigamesModal === 'function') window.openMinigamesModal();
+      }
+    },
+    {
+      id: 'museo',
+      tab: '🏺 Museo',
+      icon: '🏺',
+      pinLabel: 'Alacena · Museo',
+      title: 'A Alacena · Museo do Furancho',
+      sub: 'Os teus NFTs, premios e reliquias',
+      cta: 'Ver Museo ›',
+      pan: 0.90,
+      left: '83.5%',
+      top: '36%',
+      open: function () {
+        if (typeof window.openPrizesModal === 'function') window.openPrizesModal();
+      }
     }
-    setTimeout(function () {
-      if (typeof actionFn === 'function') actionFn();
-    }, 180);
+  ];
+
+  var focusedIdx = 2; // Empezamos centrados en la mesa del barril (Libreta / Jarra y Cunca)
+  var panNorm = STATIONS[2].pan;
+  var targetPanNorm = STATIONS[2].pan;
+  var tiltY = 0, targetTiltY = 0;
+  var vivaMode = false;
+  var fxCanvas = null, fxCtx = null, panWorld = null;
+  var stageRunning = false;
+  var rainDrops = [], dustMotes = [];
+
+  for (var r = 0; r < 22; r++) {
+    rainDrops.push({ x: 0.04 + Math.random() * 0.16, y: 0.16 + Math.random() * 0.68, sp: 0.012 + Math.random() * 0.009 });
+  }
+  for (var m = 0; m < 26; m++) {
+    dustMotes.push({ x: 0.22 + Math.random() * 0.72, y: 0.12 + Math.random() * 0.78, r: 0.7 + Math.random() * 1.4, vx: (Math.random() - 0.5) * 0.0005, vy: -0.0004 - Math.random() * 0.0006 });
   }
 
-  function updateCompassActive(val) {
-    var chips = document.querySelectorAll('.b84-cam-chip');
-    var bestIdx = 2;
-    if (val < -0.55) bestIdx = 0;
-    else if (val < -0.15) bestIdx = 1;
-    else if (val <= 0.28) bestIdx = 2;
-    else if (val <= 0.68) bestIdx = 3;
-    else bestIdx = 4;
-    chips.forEach(function (c, idx) {
-      c.classList.toggle('active', idx === bestIdx);
-    });
+  function setFocusedStation(idx, panToIt) {
+    focusedIdx = idx;
+    var st = STATIONS[idx];
+    if (panToIt) {
+      targetPanNorm = st.pan;
+      if (panWorld) {
+        panWorld.classList.add('b84-zooming');
+        setTimeout(function () { if (panWorld) panWorld.classList.remove('b84-zooming'); }, 440);
+      }
+    }
+    for (var i = 0; i < STATIONS.length; i++) {
+      var pin = document.getElementById('b84-pin-' + i);
+      var chip = document.getElementById('b84-chip-' + i);
+      if (pin) pin.classList.toggle('b84-pin-focused', i === idx);
+      if (chip) chip.classList.toggle('active', i === idx);
+    }
+    renderFocusedBar();
   }
 
-  window.b84AimCamera = function (normVal) {
+  function renderFocusedBar() {
+    var st = STATIONS[focusedIdx];
+    var icoEl = document.getElementById('b84-st-ico');
+    var titEl = document.getElementById('b84-st-title');
+    var subEl = document.getElementById('b84-st-sub');
+    var ctaEl = document.getElementById('b84-st-cta');
+    if (icoEl) icoEl.textContent = st.icon;
+    if (titEl) titEl.textContent = st.title;
+    if (subEl) subEl.textContent = st.sub;
+    if (ctaEl) ctaEl.textContent = st.cta;
+  }
+
+  window.b84SelectStation = function (idx) {
     FuranchoAudio.woodTap();
-    targetPanNorm = normVal;
-    updateCompassActive(normVal);
+    setFocusedStation(idx, true);
+  };
+
+  window.b84OpenFocusedStation = function () {
+    FuranchoAudio.woodTap();
+    var st = STATIONS[focusedIdx];
+    if (st && typeof st.open === 'function') st.open();
+  };
+
+  window.b84OnPinTap = function (idx, ev) {
+    if (ev) ev.stopPropagation();
+    if (focusedIdx === idx) {
+      // Si ya estaba seleccionado, un toque lo abre directamente
+      window.b84OpenFocusedStation();
+    } else {
+      // Primer toque: centra la cámara en ese objeto sin abrir popups por accidente
+      FuranchoAudio.woodTap();
+      setFocusedStation(idx, true);
+    }
   };
 
   window.b84ToggleViva = function (btn) {
@@ -220,7 +332,7 @@
     var shell = document.getElementById('baixo84-stage-shell');
     if (!shell) return;
     var exp = shell.classList.toggle('b84-expanded');
-    if (btn) btn.textContent = exp ? '🗕 Compactar' : '⛶ Ampliar';
+    if (btn) btn.textContent = exp ? '🗕 Normal' : '⛶ Ampliar';
     resizeFxCanvas();
   };
 
@@ -236,80 +348,56 @@
     var oldPoster = profileScreen.querySelector('.cin-poster');
     if (!oldPoster) return;
 
+    var pinsHtml = STATIONS.map(function (st, i) {
+      return '<button type="button" class="b84-pin' + (i === focusedIdx ? ' b84-pin-focused' : '') + '" id="b84-pin-' + i + '" style="left:' + st.left + '; top:' + st.top + ';" onclick="b84OnPinTap(' + i + ', event)" aria-label="' + st.pinLabel + '">' +
+        '<span>' + st.icon + '</span>' +
+        '<span class="b84-pin-lbl">' + st.pinLabel + ' ›</span>' +
+      '</button>';
+    }).join('');
+
+    var tabsHtml = STATIONS.map(function (st, i) {
+      return '<button type="button" class="b84-cam-chip' + (i === focusedIdx ? ' active' : '') + '" id="b84-chip-' + i + '" onclick="b84SelectStation(' + i + ')">' + st.tab + '</button>';
+    }).join('');
+
     var shell = document.createElement('div');
     shell.id = 'baixo84-stage-shell';
     shell.className = 'b84-stage-shell';
     shell.innerHTML =
-      '<div class="b84-viewport" id="baixo84-viewport">' +
-        '<div class="b84-hud-top">' +
-          '<div class="b84-era-badge">' +
-            '<span class="b84-era-dot" id="b84-era-dot"></span>' +
-            '<span id="b84-era-label">O BAIXO DA CASA · 1984</span>' +
-          '</div>' +
-          '<div class="b84-hud-controls">' +
-            '<button type="button" class="b84-ctrl-btn" onclick="b84ToggleViva(this)" title="Alternar bodega íntima / sesión llena">👥 Ambiente</button>' +
-            '<button type="button" class="b84-ctrl-btn" onclick="b84ToggleExpand(this)" title="Ampliar vista 3D">⛶ Ampliar</button>' +
-            '<button type="button" class="b84-ctrl-btn" id="b84-sound-btn" onclick="b84ToggleSound(this)" title="Sonido taberna">' + (soundMuted ? '🔇' : '🔊') + '</button>' +
-          '</div>' +
+      '<!-- Cabecera en madera tallada FUERA de la imagen -->' +
+      '<div class="b84-bezel-top">' +
+        '<div class="b84-era-badge">' +
+          '<span class="b84-era-dot" id="b84-era-dot"></span>' +
+          '<span id="b84-era-label">O BAIXO DA CASA · 1984</span>' +
         '</div>' +
+        '<div class="b84-hud-controls">' +
+          '<button type="button" class="b84-ctrl-btn" onclick="b84ToggleViva(this)">👥 Ambiente</button>' +
+          '<button type="button" class="b84-ctrl-btn" onclick="b84ToggleExpand(this)">⛶ Ampliar</button>' +
+          '<button type="button" class="b84-ctrl-btn" id="b84-sound-btn" onclick="b84ToggleSound(this)">' + (soundMuted ? '🔇' : '🔊') + '</button>' +
+        '</div>' +
+      '</div>' +
 
+      '<!-- Ventana 3D totalmente despejada -->' +
+      '<div class="b84-viewport" id="baixo84-viewport">' +
         '<div class="b84-pan-world" id="baixo84-pan-world">' +
           '<img id="b84-scene-img" class="b84-scene-img" src="/assets/baixo84/adega_1984.jpg" alt="O Baixo da Casa 1984" />' +
-          '<canvas id="baixo84-fx-canvas" class="b84-fx-canvas" width="680" height="360"></canvas>' +
-
-          '<!-- 1. Porta do Loureiro (Fichar Entrada / Salida) -->' +
-          '<button type="button" class="b84-hotspot" id="b84-hs-fichar" style="left:17.5%; top:46%;">' +
-            '<span class="b84-hs-icon">🌿</span>' +
-            '<span class="b84-hs-txt"><span class="b84-hs-title">Porta do Loureiro</span><span class="b84-hs-sub" id="b84-sub-fichar">📷 Fichar QR</span></span>' +
-          '</button>' +
-
-          '<!-- 2. Pizarra de Tiza (Sorteos & Chave Semanal) -->' +
-          '<button type="button" class="b84-hotspot" id="b84-hs-sorteos" style="left:41%; top:35%;">' +
-            '<span class="b84-hs-icon">🔑</span>' +
-            '<span class="b84-hs-txt"><span class="b84-hs-title">Pizarra e Sorteos</span><span class="b84-hs-sub" id="b84-sub-sorteos">A Chave Semanal</span></span>' +
-          '</button>' +
-
-          '<!-- 3. Almanaque 1984 (Agenda / Pulso / Reserva VIP) -->' +
-          '<button type="button" class="b84-hotspot" id="b84-hs-agenda" style="left:50.5%; top:24%;">' +
-            '<span class="b84-hs-icon">📅</span>' +
-            '<span class="b84-hs-txt"><span class="b84-hs-title">Almanaque \'84</span><span class="b84-hs-sub" id="b84-sub-agenda">Sesións e VIP</span></span>' +
-          '</button>' +
-
-          '<!-- 4. Libreta do Corcho & Pesetas (Banco $CORCHO) -->' +
-          '<button type="button" class="b84-hotspot" id="b84-hs-banco" style="left:49.5%; top:78%;">' +
-            '<span class="b84-hs-icon">📒</span>' +
-            '<span class="b84-hs-txt"><span class="b84-hs-title">Libreta do Corcho</span><span class="b84-hs-sub" id="b84-sub-banco">0 $CORCHO</span></span>' +
-          '</button>' +
-
-          '<!-- 5. Jarra Roja y Cunca (Niveles y Visitas) -->' +
-          '<button type="button" class="b84-hotspot" id="b84-hs-cunca" style="left:61%; top:65%;">' +
-            '<span class="b84-hs-icon">🍷</span>' +
-            '<span class="b84-hs-txt"><span class="b84-hs-title">A Cunca</span><span class="b84-hs-sub" id="b84-sub-cunca">0 visitas · Niveis</span></span>' +
-          '</button>' +
-
-          '<!-- 6. Máquina Recreativa 1985 & Pote Queimada (Sala de Xogos) -->' +
-          '<button type="button" class="b84-hotspot" id="b84-hs-xogos" style="left:69.5%; top:45%;">' +
-            '<span class="b84-hs-icon">🕹️</span>' +
-            '<span class="b84-hs-txt"><span class="b84-hs-title">Recreativos \'85</span><span class="b84-hs-sub" id="b84-sub-xogos">8 Xogos Enxebres</span></span>' +
-          '</button>' +
-
-          '<!-- 7. Alacena da Avoa y Pipotes (Museo NFT & Premios) -->' +
-          '<button type="button" class="b84-hotspot" id="b84-hs-museo" style="left:83.5%; top:36%;">' +
-            '<span class="b84-hs-icon">🏺</span>' +
-            '<span class="b84-hs-txt"><span class="b84-hs-title">Alacena · Museo</span><span class="b84-hs-sub" id="b84-sub-museo">NFTs e Trofeos</span></span>' +
-          '</button>' +
+          '<canvas id="baixo84-fx-canvas" class="b84-fx-canvas" width="680" height="340"></canvas>' +
+          pinsHtml +
         '</div>' +
-
         '<div class="b84-vignette"></div>' +
+      '</div>' +
 
-        '<div class="b84-hud-bottom">' +
-          '<div class="b84-compass-strip">' +
-            '<button type="button" class="b84-cam-chip" onclick="b84AimCamera(-0.88)">🚪 Porta</button>' +
-            '<button type="button" class="b84-cam-chip" onclick="b84AimCamera(-0.35)">📋 Pizarra</button>' +
-            '<button type="button" class="b84-cam-chip active" onclick="b84AimCamera(0)">🍷 Barril</button>' +
-            '<button type="button" class="b84-cam-chip" onclick="b84AimCamera(0.45)">🕹️ Xogos</button>' +
-            '<button type="button" class="b84-cam-chip" onclick="b84AimCamera(0.88)">🏺 Alacena</button>' +
+      '<!-- Bandeja inferior FUERA de la imagen: cero solape -->' +
+      '<div class="b84-bezel-Tray">' +
+        '<div class="b84-room-tabs">' + tabsHtml + '</div>' +
+        '<div class="b84-station-bar">' +
+          '<div class="b84-st-left">' +
+            '<span class="b84-st-ico" id="b84-st-ico">📒</span>' +
+            '<div class="b84-st-meta">' +
+              '<div class="b84-st-title" id="b84-st-title">Libreta do Corcho · 1984</div>' +
+              '<div class="b84-st-sub" id="b84-st-sub">Cargando saldo...</div>' +
+            '</div>' +
           '</div>' +
+          '<button type="button" class="b84-st-cta" id="b84-st-cta" onclick="b84OpenFocusedStation()">Abrir Libreta ›</button>' +
         '</div>' +
       '</div>';
 
@@ -321,56 +409,7 @@
     resizeFxCanvas();
     window.addEventListener('resize', resizeFxCanvas);
 
-    // Conectar acciones de los 7 rincones reales del Baixo
-    document.getElementById('b84-hs-fichar').onclick = function (e) {
-      e.stopPropagation();
-      focusAndRun(-0.82, smartFicharAction);
-    };
-    document.getElementById('b84-hs-sorteos').onclick = function (e) {
-      e.stopPropagation();
-      focusAndRun(-0.32, function () {
-        var acceptBanner = document.getElementById('accept-prize-banner');
-        if (acceptBanner && acceptBanner.style.display !== 'none') {
-          acceptBanner.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } else if (typeof window.onChaveMedallionClick === 'function') {
-          window.onChaveMedallionClick();
-        }
-      });
-    };
-    document.getElementById('b84-hs-agenda').onclick = function (e) {
-      e.stopPropagation();
-      focusAndRun(-0.1, function () {
-        var pulse = document.getElementById('vibe-pulse-card');
-        var agenda = document.getElementById('agenda-section');
-        var target = (pulse && pulse.style.display !== 'none') ? pulse : (agenda && agenda.style.display !== 'none' ? agenda : document.getElementById('fichar-container'));
-        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      });
-    };
-    document.getElementById('b84-hs-banco').onclick = function (e) {
-      e.stopPropagation();
-      focusAndRun(0.0, openLibreta84Modal);
-    };
-    document.getElementById('b84-hs-cunca').onclick = function (e) {
-      e.stopPropagation();
-      FuranchoAudio.clinkCunca();
-      focusAndRun(0.15, function () {
-        if (typeof window.openLevelsModal === 'function') window.openLevelsModal();
-      });
-    };
-    document.getElementById('b84-hs-xogos').onclick = function (e) {
-      e.stopPropagation();
-      focusAndRun(0.45, function () {
-        if (typeof window.openMinigamesModal === 'function') window.openMinigamesModal();
-      });
-    };
-    document.getElementById('b84-hs-museo').onclick = function (e) {
-      e.stopPropagation();
-      focusAndRun(0.85, function () {
-        if (typeof window.openPrizesModal === 'function') window.openPrizesModal();
-      });
-    };
-
-    // Gestos de arrastre horizontal 3D en el visor
+    // Al arrastrar horizontalmente, la estación más cercana al centro se enfoca sola
     var vp = document.getElementById('baixo84-viewport');
     var dragging = false, startX = 0, startPan = 0;
     vp.addEventListener('pointerdown', function (e) {
@@ -382,28 +421,33 @@
     window.addEventListener('pointermove', function (e) {
       if (!dragging) return;
       var dx = e.clientX - startX;
-      targetPanNorm = Math.max(-1, Math.min(1, startPan - dx / 150));
-      updateCompassActive(targetPanNorm);
+      targetPanNorm = Math.max(-1, Math.min(1, startPan - dx / 145));
+      var nearest = 0, bestDist = 999;
+      for (var i = 0; i < STATIONS.length; i++) {
+        var dist = Math.abs(STATIONS[i].pan - targetPanNorm);
+        if (dist < bestDist) { bestDist = dist; nearest = i; }
+      }
+      if (nearest !== focusedIdx) setFocusedStation(nearest, false);
     }, { passive: true });
     window.addEventListener('pointerup', function () { dragging = false; }, { passive: true });
 
-    // Giroscopio sutil
     window.addEventListener('deviceorientation', function (e) {
       if (dragging || e.gamma == null) return;
-      targetTiltY = Math.max(-4, Math.min(4, e.gamma / 8));
+      targetTiltY = Math.max(-3.5, Math.min(3.5, e.gamma / 8));
     }, { passive: true });
 
     mountBottomDock84();
     mountLibreta84Modal();
+    renderFocusedBar();
     startCellarLoop();
-    setInterval(syncCellarLiveBadges, 1600);
-    setTimeout(syncCellarLiveBadges, 500);
+    setInterval(syncCellarLiveBadges, 1500);
+    setTimeout(syncCellarLiveBadges, 450);
   }
 
   function resizeFxCanvas() {
     if (!fxCanvas || !panWorld) return;
-    fxCanvas.width = Math.min(760, Math.max(480, panWorld.clientWidth));
-    fxCanvas.height = Math.min(420, Math.max(260, panWorld.clientHeight));
+    fxCanvas.width = Math.min(760, Math.max(460, panWorld.clientWidth));
+    fxCanvas.height = Math.min(400, Math.max(240, panWorld.clientHeight));
   }
 
   function startCellarLoop() {
@@ -419,17 +463,16 @@
         panNorm += (targetPanNorm - panNorm) * 0.11;
         tiltY += (targetTiltY - tiltY) * 0.08;
 
-        // Desplazar la panorámica 164% de ancho dentro del visor 100%
-        var maxShiftPct = 18.5;
+        var maxShiftPct = 17.5;
         var tx = (-panNorm * maxShiftPct).toFixed(3);
-        var ry = (panNorm * -3.2 + tiltY * 0.6).toFixed(2);
+        var ry = (panNorm * -3.0 + tiltY * 0.55).toFixed(2);
         panWorld.style.transform = 'translate3d(' + tx + '%, 0, 0) rotateY(' + ry + 'deg)';
 
         if (fxCtx && fxCanvas) {
           var W = fxCanvas.width, H = fxCanvas.height;
           fxCtx.clearRect(0, 0, W, H);
 
-          // 1. Orballo cayendo fuera de la puerta abierta (izquierda)
+          // 1. Orballo tras la puerta abierta
           fxCtx.strokeStyle = 'rgba(195, 222, 242, 0.34)';
           fxCtx.lineWidth = 1.1;
           for (var i = 0; i < rainDrops.length; i++) {
@@ -437,23 +480,20 @@
             rd.y += rd.sp;
             if (rd.y > 0.84) { rd.y = 0.16; rd.x = 0.05 + Math.random() * 0.14; }
             var rx = rd.x * W, ry0 = rd.y * H;
-            fxCtx.beginPath();
-            fxCtx.moveTo(rx, ry0);
-            fxCtx.lineTo(rx - 2, ry0 + 11);
-            fxCtx.stroke();
+            fxCtx.beginPath(); fxCtx.moveTo(rx, ry0); fxCtx.lineTo(rx - 2, ry0 + 11); fxCtx.stroke();
           }
 
-          // 2. Haz cálido de tungsteno bajo el plato esmaltado (x: 60.2%, y: 21%)
-          var flicker = 0.92 + 0.08 * Math.sin(t * 7.3) * Math.cos(t * 3.1);
+          // 2. Luz cálida bajo la pantalla esmaltada
+          var flicker = 0.93 + 0.07 * Math.sin(t * 7.1) * Math.cos(t * 3.0);
           var lx = W * 0.602, ly = H * 0.21;
           var cone = fxCtx.createRadialGradient(lx, ly, 4, lx - W * 0.04, H * 0.65, W * 0.34);
-          cone.addColorStop(0, 'rgba(255, 232, 175, ' + (0.28 * flicker).toFixed(3) + ')');
-          cone.addColorStop(0.45, 'rgba(235, 168, 72, ' + (0.10 * flicker).toFixed(3) + ')');
+          cone.addColorStop(0, 'rgba(255, 232, 175, ' + (0.26 * flicker).toFixed(3) + ')');
+          cone.addColorStop(0.45, 'rgba(235, 168, 72, ' + (0.09 * flicker).toFixed(3) + ')');
           cone.addColorStop(1, 'rgba(0, 0, 0, 0)');
           fxCtx.fillStyle = cone;
           fxCtx.fillRect(W * 0.22, 0, W * 0.72, H);
 
-          // 3. Llamas azules vivas en el pote de barro de A Queimada (x: 75%, y: 58%)
+          // 3. Llamas azules en el pote de Queimada
           var qx = W * 0.752, qy = H * 0.585;
           for (var f = 0; f < 5; f++) {
             var fx = qx + (f - 2) * 4.5 + Math.sin(t * 8 + f) * 2;
@@ -463,26 +503,16 @@
             fg.addColorStop(0.65, 'rgba(147, 197, 253, 0.42)');
             fg.addColorStop(1, 'rgba(255, 255, 255, 0)');
             fxCtx.fillStyle = fg;
-            fxCtx.beginPath();
-            fxCtx.ellipse(fx, qy - fh * 0.45, 3.5, fh * 0.55, 0, 0, Math.PI * 2);
-            fxCtx.fill();
+            fxCtx.beginPath(); fxCtx.ellipse(fx, qy - fh * 0.45, 3.5, fh * 0.55, 0, 0, Math.PI * 2); fxCtx.fill();
           }
 
-          // 4. Destello suave en la cunca de vino (x: 61.3%, y: 70%)
-          fxCtx.fillStyle = 'rgba(255, 220, 200, ' + (0.14 + 0.08 * Math.sin(t * 3.5)).toFixed(3) + ')';
-          fxCtx.beginPath();
-          fxCtx.ellipse(W * 0.613, H * 0.70, 9, 2.4, 0, 0, Math.PI * 2);
-          fxCtx.fill();
-
-          // 5. Motas de polvo de bodega en el haz de luz
+          // 4. Motas de polvo flotando en la luz
           for (var k = 0; k < dustMotes.length; k++) {
             var dm = dustMotes[k];
             dm.x += dm.vx; dm.y += dm.vy;
             if (dm.y < 0.10) { dm.y = 0.85; dm.x = 0.25 + Math.random() * 0.65; }
-            fxCtx.fillStyle = 'rgba(255, 230, 170, 0.34)';
-            fxCtx.beginPath();
-            fxCtx.arc(dm.x * W, dm.y * H, dm.r, 0, Math.PI * 2);
-            fxCtx.fill();
+            fxCtx.fillStyle = 'rgba(255, 230, 170, 0.32)';
+            fxCtx.beginPath(); fxCtx.arc(dm.x * W, dm.y * H, dm.r, 0, Math.PI * 2); fxCtx.fill();
           }
         }
       }
@@ -491,7 +521,6 @@
     requestAnimationFrame(frame);
   }
 
-  // Sincroniza etiquetas en vivo del escenario 3D y de la barra inferior con el estado real
   function syncCellarLiveBadges() {
     var profileActive = document.getElementById('screen-profile')?.classList.contains('active');
     var dock = document.getElementById('baixo84-dock');
@@ -501,51 +530,48 @@
     var inside = isUserInside();
     var eraDot = document.getElementById('b84-era-dot');
     var eraLbl = document.getElementById('b84-era-label');
-    var hsFichar = document.getElementById('b84-hs-fichar');
-    var subFichar = document.getElementById('b84-sub-fichar');
+    var pinPorta = document.getElementById('b84-pin-0');
     var dockFicharLbl = document.getElementById('b84-dock-fichar-lbl');
     var dockFicharDot = document.getElementById('b84-dock-fichar-dot');
 
     if (eraDot) eraDot.classList.toggle('inside', inside);
-    if (eraLbl) eraLbl.textContent = inside ? 'ESTÁS DENTRO · BAIXO \'84' : (window.isVacationMode ? 'MODO VACACIÓNS · \'84' : 'O BAIXO DA CASA · 1984');
-    if (hsFichar) hsFichar.classList.toggle('b84-hs-live', inside);
-    if (subFichar) subFichar.textContent = inside ? '🟢 Dentro · Rexistrar Saída' : '📷 Fichar Entrada QR';
+    if (eraLbl) eraLbl.textContent = inside ? 'DENTRO · 1984' : (window.isVacationMode ? 'VACACIÓNS · 1984' : 'O BAIXO · 1984');
+    if (pinPorta) pinPorta.classList.toggle('b84-hs-live', inside);
+    STATIONS[0].sub = inside ? '🟢 Sesión activa · Pulsa para rexistrar saída' : '📷 Escanea o QR da porta ao chegar';
+    STATIONS[0].cta = inside ? 'Saír ›' : 'Fichar ›';
     if (dockFicharLbl) dockFicharLbl.textContent = inside ? 'Saír' : 'Fichar';
     if (dockFicharDot) dockFicharDot.style.display = inside ? 'block' : 'none';
 
-    // Saldo $CORCHO real
+    // Banco
     var balText = document.getElementById('corcho-user-balance')?.textContent || '0';
-    var subBanco = document.getElementById('b84-sub-banco');
-    if (subBanco) subBanco.textContent = balText + ' $CORCHO';
-
+    STATIONS[2].sub = balText + ' $CORCHO · Canxes, Packs e Movementos';
     var pendingSec = document.getElementById('corcho-pending-section');
     var hasPendingCorcho = !!(pendingSec && pendingSec.style.display !== 'none' && pendingSec.innerHTML.trim());
     var dockBancoDot = document.getElementById('b84-dock-banco-dot');
     if (dockBancoDot) dockBancoDot.style.display = hasPendingCorcho ? 'block' : 'none';
 
-    // Visitas reales en la Cunca
+    // Cunca / Visitas
     var visits = document.getElementById('visit-count-display')?.textContent || '0';
-    var subCunca = document.getElementById('b84-sub-cunca');
-    if (subCunca) subCunca.textContent = visits + (visits === '1' ? ' visita · Niveis' : ' visitas · Niveis');
+    var nextHint = document.getElementById('next-level-text')?.textContent || 'Ver niveis VIP';
+    STATIONS[3].sub = visits + (visits === '1' ? ' visita · ' : ' visitas · ') + nextHint;
 
-    // Estado Chave / Sorteos
+    // Sorteos / Chave
     var chavePill = document.getElementById('chave-pill');
     var raffleLive = document.getElementById('raffle-live-dot');
     var acceptBanner = document.getElementById('accept-prize-banner');
-    var subSorteos = document.getElementById('b84-sub-sorteos');
-    var hsSorteos = document.getElementById('b84-hs-sorteos');
+    var pinSorteos = document.getElementById('b84-pin-1');
     var dockChaveDot = document.getElementById('b84-dock-chave-dot');
 
     var wonLive = !!(acceptBanner && acceptBanner.style.display !== 'none');
     var chaveAlert = !!(chavePill && chavePill.style.display !== 'none' && chavePill.textContent.trim());
-    if (subSorteos) {
-      subSorteos.textContent = wonLive ? '🏆 ¡PREMIO ACTIVO!' : (chaveAlert ? '🔔 ' + chavePill.textContent.trim() : 'Chave e Rifas');
-    }
-    if (hsSorteos) hsSorteos.classList.toggle('b84-hs-alert', wonLive || chaveAlert);
+    STATIONS[1].sub = wonLive ? '🏆 ¡Tes un premio activo esperando!' : (chaveAlert ? '🔔 A Chave Semanal está aberta!' : 'Consulta A Chave Semanal e sorteos');
+    if (pinSorteos) pinSorteos.classList.toggle('b84-hs-alert', wonLive || chaveAlert);
     if (dockChaveDot) dockChaveDot.style.display = (wonLive || chaveAlert || (raffleLive && raffleLive.style.display !== 'none')) ? 'block' : 'none';
+
+    renderFocusedBar();
   }
 
-  // ── 3. BARRA INFERIOR RÚSTICA DE ACCESO RÁPIDO (7 UTILIDADES CLAVE) ───────
+  // ── 3. BARRA INFERIOR RÚSTICA COMPACTA ─────────────────────────────────────
   function mountBottomDock84() {
     if (document.getElementById('baixo84-dock')) return;
     var dock = document.createElement('nav');
@@ -579,7 +605,7 @@
     document.body.appendChild(dock);
   }
 
-  // ── 4. NUEVA UTILIDAD MEJORADA: LIBRETA DE AFORRO DO CORCHO 1984 ──────────
+  // ── 4. LIBRETA DE AFORRO DO CORCHO 1984 ────────────────────────────────────
   var _libretaFilter = 'all';
   var _libretaHistoryCache = [];
 
@@ -641,15 +667,13 @@
 
   window.openLibreta84Modal = async function () {
     mountLibreta84Modal();
-    var modal = document.getElementById('b84-libreta-modal');
-    modal.style.display = 'flex';
+    document.getElementById('b84-libreta-modal').style.display = 'flex';
 
     var balEl = document.getElementById('corcho-user-balance');
     var stEl = document.getElementById('corcho-wealth-status');
     document.getElementById('b84-libreta-bal').textContent = balEl ? balEl.textContent : '0';
     document.getElementById('b84-libreta-status').textContent = stEl ? stEl.textContent : 'Socio do Furancho';
 
-    // Clonar avisos pendientes si existen (vales de barra listos para enseñar)
     var pendSrc = document.getElementById('corcho-pending-section');
     var pendDst = document.getElementById('b84-libreta-pending');
     if (pendSrc && pendSrc.style.display !== 'none' && pendSrc.innerHTML.trim()) {
@@ -659,7 +683,7 @@
       pendDst.style.display = 'none';
     }
 
-    var w = window.userWalletAddress || localStorage.getItem('furancho_wallet_address') || '';
+    var w = activeWallet();
     if (!w) return;
     try {
       var r = await fetch('/api/corcho/balance?wallet=' + encodeURIComponent(w));
@@ -727,7 +751,6 @@
   }
 
   function upgradeAllMinigames84() {
-    // ── 5.0 SALA DE XOGOS: nunca ocultar juegos agotados (sello "XOGADO HOXE")
     window.openMinigamesModal = function () {
       FuranchoAudio.woodTap();
       var modal = document.getElementById('minigames-menu-modal');
@@ -735,7 +758,7 @@
       modal.style.display = 'flex';
       var hdrs = { 'wallet-address': activeWallet() };
 
-      function markExhausted(card, exhausted, textEl, msg) {
+      function markExhausted(card, exhausted, msg) {
         if (!card) return;
         card.style.display = 'block';
         card.classList.toggle('b84-game-exhausted', !!exhausted);
@@ -747,7 +770,6 @@
           st.textContent = msg || '✓ Xogado hoxe · Volve mañá';
           card.appendChild(st);
         }
-        if (textEl && msg && exhausted) textEl.textContent = msg;
       }
 
       fetch('/api/minigames/enxebre/status', { headers: hdrs }).then(function (r) { return r.json(); }).then(function (d) {
@@ -757,7 +779,7 @@
         if (costEl) costEl.textContent = d.vacationMode ? '💸 🏖️ Gratis' : (d.entryCost > 0 ? '💸 Coste: ' + d.entryCost + ' $CORCHO' : '💸 Coste: Gratis');
         var prizeEl = document.getElementById('mg-enxebre-prize');
         if (prizeEl && d.maxPrize) prizeEl.textContent = '🏆 Premio: Hasta ' + d.maxPrize + ' $CORCHO';
-        markExhausted(card, !!d.playedToday, null, '✓ Palabra do día completada · Volve mañá');
+        markExhausted(card, !!d.playedToday, '✓ Palabra do día completada · Volve mañá');
       }).catch(function () {});
 
       fetch('/api/minigames/cunca/status', { headers: hdrs }).then(function (r) { return r.json(); }).then(function (d) {
@@ -776,7 +798,7 @@
         if (costEl) costEl.textContent = d.vacationMode ? '💸 🏖️ Gratis' : '💸 Coste: ' + d.entryCost + ' $CORCHO';
         var prizeEl = document.getElementById('mg-ruleta-prize');
         if (prizeEl && d.slices) prizeEl.textContent = '🏆 Premio: Hasta ' + Math.max.apply(null, d.slices.map(function (s) { return s.prize || 0; })) + ' $CORCHO';
-        markExhausted(card, !d.canPlay, null, '✓ Tiradas de hoxe feitas · Volve mañá');
+        markExhausted(card, !d.canPlay, '✓ Tiradas de hoxe feitas · Volve mañá');
       }).catch(function () {});
 
       fetch('/api/minigames/queimada/status', { headers: hdrs }).then(function (r) { return r.json(); }).then(function (d) {
@@ -788,7 +810,7 @@
         if (descEl) descEl.textContent = d.canPlay ? ('Prepara o conxuro no pote (' + costStr + '). Quédanche ' + (d.activeSession ? '1 en curso' : left) + ' hoxe.') : 'Queimadas esgotadas hoxe.';
         var costEl = document.getElementById('mg-queimada-cost');
         if (costEl) costEl.textContent = d.vacationMode ? '💸 🏖️ Gratis' : '💸 Coste: ' + d.entryCost + ' $CORCHO';
-        markExhausted(card, !d.canPlay, null, '✓ Pote apagado ata mañá');
+        markExhausted(card, !d.canPlay, '✓ Pote apagado ata mañá');
       }).catch(function () {});
 
       var descs = {
@@ -807,12 +829,12 @@
           if (descEl) descEl.textContent = d.playsLeft > 0 ? (descs[g] + ' (' + costStr + ' · Quedan ' + d.playsLeft + ')') : descs[g];
           var costEl = document.getElementById('mg-' + g + '-cost');
           if (costEl) costEl.textContent = d.vacationMode ? '💸 🏖️ Gratis' : '💸 Coste: ' + d.entryCost + ' $CORCHO';
-          markExhausted(card, d.playsLeft <= 0, null, '✓ Esgotado hoxe · Volve mañá');
+          markExhausted(card, d.playsLeft <= 0, '✓ Esgotado hoxe · Volve mañá');
         }).catch(function () {});
       });
     };
 
-    // ── 5.1 A CHAVE NO TERREIRO 3D (Física, Parábola, Aspas y Chispas) ──────
+    // ── A CHAVE NO TERREIRO 3D ──
     var chaveRaf = null, chaveAimT = 0, chaveFlight = null, chaveSparkParticles = [];
     var chaveBladeSpin = 0, chaveStateReady = false;
 
@@ -830,7 +852,6 @@
       var msgEl = document.getElementById('chave-msg');
       modalCard.insertBefore(wrap, msgEl);
 
-      // Permitir también deslizar hacia arriba (flick) o tocar el lienzo para lanzar
       var cv = wrap.querySelector('canvas');
       var downY = null;
       cv.addEventListener('pointerdown', function (e) { downY = e.clientY; });
@@ -853,19 +874,16 @@
       chaveAimT += 0.042;
       chaveBladeSpin *= 0.94;
 
-      // Cielo de atardecer gallego + muro de granito con musgo
       var sky = c.createLinearGradient(0, 0, 0, 68);
       sky.addColorStop(0, '#1B2A38'); sky.addColorStop(1, '#3B4238');
       c.fillStyle = sky; c.fillRect(0, 0, W, 68);
 
-      // Muro rústico al fondo
       c.fillStyle = '#4A463F'; c.fillRect(0, 46, W, 26);
       for (var sx = 0; sx < W; sx += 26) {
         c.strokeStyle = '#26231E'; c.strokeRect(sx, 47, 25, 12);
         c.strokeRect(sx - 10, 59, 25, 12);
       }
 
-      // Cancha de tierra batida en perspectiva trapezoidal
       var earth = c.createLinearGradient(0, 70, 0, H);
       earth.addColorStop(0, '#5E442C'); earth.addColorStop(1, '#382515');
       c.fillStyle = earth; c.fillRect(0, 70, W, H - 70);
@@ -875,39 +893,30 @@
       c.moveTo(W * 0.70, 72); c.lineTo(W * 0.92, H);
       c.stroke();
 
-      // Cepo de granito + Hierro de A Chave en (W/2, 96)
       var tx = W * 0.5, ty = 96;
       c.fillStyle = '#78716C';
       c.fillRect(tx - 14, ty + 6, 28, 12);
       c.strokeStyle = '#CBD5E1'; c.lineWidth = 3.2;
       c.beginPath(); c.moveTo(tx, ty + 8); c.lineTo(tx, ty - 22); c.stroke();
-      // Aspas horizontales giratorias de A Chave
       var wingW = 19 * Math.cos(chaveBladeSpin);
       c.strokeStyle = '#E2E8F0'; c.lineWidth = 4;
       c.beginPath(); c.moveTo(tx - wingW, ty - 14); c.lineTo(tx + wingW, ty - 14); c.stroke();
       c.beginPath(); c.moveTo(tx - wingW * 0.7, ty - 4); c.lineTo(tx + wingW * 0.7, ty - 4); c.stroke();
 
-      // Oscilador 0..100 (centro 50 = pleno)
       var currentTiming = 50 + Math.sin(chaveAimT) * 50;
       if (chaveStateReady && !chaveFlight) {
         var aimX = W * 0.18 + (currentTiming / 100) * (W * 0.64);
-        // Guía punteada hacia A Chave
         var isSweet = currentTiming >= 44 && currentTiming <= 56;
         c.strokeStyle = isSweet ? 'rgba(74, 222, 128, 0.75)' : 'rgba(250, 204, 21, 0.45)';
         c.setLineDash([4, 4]);
         c.beginPath(); c.moveTo(W * 0.5, H - 22); c.lineTo(aimX, ty); c.stroke();
         c.setLineDash([]);
-
-        // Diana en el suelo
         c.beginPath(); c.arc(aimX, ty, 8, 0, Math.PI * 2);
         c.strokeStyle = isSweet ? '#4ADE80' : '#FACC15'; c.lineWidth = 2; c.stroke();
-
-        // Pellote de hierro en mano listo para lanzar
         c.fillStyle = '#475569'; c.strokeStyle = '#E2E8F0'; c.lineWidth = 2;
         c.beginPath(); c.ellipse(W * 0.5, H - 20, 18, 9, 0, 0, Math.PI * 2); c.fill(); c.stroke();
       }
 
-      // Vuelo parabólico 3D del pellote
       if (chaveFlight) {
         chaveFlight.p += 0.048;
         var p = Math.min(1, chaveFlight.p);
@@ -917,11 +926,8 @@
         var py = groundY - arcLift;
         var sc = 1 - p * 0.52;
 
-        // Sombra en la tierra
         c.fillStyle = 'rgba(0,0,0,0.42)';
         c.beginPath(); c.ellipse(px, groundY + 4, 16 * sc, 5 * sc, 0, 0, Math.PI * 2); c.fill();
-
-        // Disco de hierro (pellote)
         c.fillStyle = '#64748B'; c.strokeStyle = '#F1F5F9'; c.lineWidth = 1.6;
         c.beginPath(); c.ellipse(px, py, 17 * sc, 8 * sc, p * 4, 0, Math.PI * 2); c.fill(); c.stroke();
 
@@ -943,7 +949,6 @@
         }
       }
 
-      // Chispas metálicas
       for (var j = chaveSparkParticles.length - 1; j >= 0; j--) {
         var pt = chaveSparkParticles[j];
         pt.x += pt.vx; pt.y += pt.vy; pt.vy += 0.18; pt.life -= 0.04;
@@ -1018,7 +1023,7 @@
               msgEl.textContent = '💥 ¡¡CHAVE PLENA!! +' + res.prize + ' $CORCHO';
               msgEl.style.color = '#4ADE80';
             } else if (res.result === 'roce') {
-              msgEl.textContent = '✨ ¡ferro rozado! +' + res.prize + ' $CORCHO';
+              msgEl.textContent = '✨ ¡Ferro rozado! +' + res.prize + ' $CORCHO';
               msgEl.style.color = '#FACC15';
             } else {
               msgEl.textContent = '💨 Petou na terra... sen premio.';
@@ -1036,7 +1041,7 @@
       }
     };
 
-    // ── 5.2 RECREATIVA DE BAR "A RÍA '85" (Parada Secuencial de 3 Tambores) ──
+    // ── RECREATIVA DE BAR "A RÍA '85" ──
     window.spinTraga = async function () {
       var btn = document.getElementById('traga-spin-btn');
       var msg = document.getElementById('traga-msg');
@@ -1103,7 +1108,7 @@
       }
     };
 
-    // ── 5.3 O RASCA DE CORCHO E OURO REAL (Rejilla real + Virutas) ───────────
+    // ── O RASCA DE CORCHO E OURO REAL ──
     window.buyRasca = async function () {
       var buyBtn = document.getElementById('rasca-buy-btn');
       var msg = document.getElementById('rasca-msg');
@@ -1129,7 +1134,6 @@
         var c = cv.getContext('2d');
         c.globalCompositeOperation = 'source-over';
 
-        // Textura realista de corcho y lámina dorada años 80
         var grad = c.createLinearGradient(0, 0, cv.width, cv.height);
         grad.addColorStop(0, '#C89B3C');
         grad.addColorStop(0.5, '#E6C575');
@@ -1180,9 +1184,7 @@
           var x = (clientX - rect.left) * (cv.width / rect.width);
           var y = (clientY - rect.top) * (cv.height / rect.height);
           c.globalCompositeOperation = 'destination-out';
-          c.beginPath();
-          c.arc(x, y, 21, 0, Math.PI * 2);
-          c.fill();
+          c.beginPath(); c.arc(x, y, 21, 0, Math.PI * 2); c.fill();
 
           var gx = Math.floor((x / cv.width) * cols);
           var gy = Math.floor((y / cv.height) * rows);
@@ -1195,12 +1197,8 @@
               }
             }
           }
-          if (clearedCount === 8) {
-            vibrate(10);
-          }
-          if (clearedCount >= cols * rows * 0.42) {
-            finishReveal();
-          }
+          if (clearedCount === 8) vibrate(10);
+          if (clearedCount >= cols * rows * 0.42) finishReveal();
         }
 
         cv.onclick = null;
@@ -1214,7 +1212,7 @@
       }
     };
 
-    // ── 5.4 A QUEIMADA NA LAREIRA (Caldero de Barro con Fuego Azul Vivo) ─────
+    // ── A QUEIMADA NA LAREIRA ──
     var queimadaCanvasRaf = null, queimadaLiveScore = 0, queimadaBurned = false;
 
     function ensureQueimadaCanvas() {
@@ -1241,13 +1239,11 @@
         t += 0.05;
         c.clearRect(0, 0, W, H);
 
-        // Brasas de leña debajo del pote
         var ember = c.createRadialGradient(110, 162, 6, 110, 162, 72);
         ember.addColorStop(0, 'rgba(239, 68, 68, 0.55)');
         ember.addColorStop(1, 'rgba(0,0,0,0)');
         c.fillStyle = ember; c.fillRect(0, 120, W, 60);
 
-        // Llamas dinámicas saliendo del barro (azules de aguardiente o rojas si se quemó)
         var intensity = Math.max(0.25, Math.min(1.35, queimadaLiveScore / 21));
         var nFlames = 14;
         for (var i = 0; i < nFlames; i++) {
@@ -1265,12 +1261,9 @@
             fg.addColorStop(1, 'rgba(255,255,255,0)');
           }
           c.fillStyle = fg;
-          c.beginPath();
-          c.ellipse(fx, 98 - fh * 0.4, 9, fh * 0.65, 0, 0, Math.PI * 2);
-          c.fill();
+          c.beginPath(); c.ellipse(fx, 98 - fh * 0.4, 9, fh * 0.65, 0, 0, Math.PI * 2); c.fill();
         }
 
-        // Cazuela de barro de Buño con brillo vidriado
         var potG = c.createLinearGradient(35, 92, 185, 160);
         potG.addColorStop(0, '#7C3A19');
         potG.addColorStop(0.45, '#9A4B22');
@@ -1278,13 +1271,9 @@
         c.fillStyle = potG;
         c.strokeStyle = '#240F05'; c.lineWidth = 2.5;
         c.beginPath();
-        c.moveTo(36, 98);
-        c.quadraticCurveTo(32, 154, 110, 156);
-        c.quadraticCurveTo(188, 154, 184, 98);
-        c.closePath();
-        c.fill(); c.stroke();
+        c.moveTo(36, 98); c.quadraticCurveTo(32, 154, 110, 156); c.quadraticCurveTo(188, 154, 184, 98);
+        c.closePath(); c.fill(); c.stroke();
 
-        // Boca del pote con aguardiente ardiendo
         c.fillStyle = queimadaBurned ? '#7F1D1D' : '#1E3A8A';
         c.beginPath(); c.ellipse(110, 98, 74, 13, 0, 0, Math.PI * 2); c.fill(); c.stroke();
 
@@ -1311,7 +1300,7 @@
       queimadaBurned = sc > 21;
     };
 
-    // ── 5.5 TRIVIAL DA PARROQUIA '84 (Validado 100% en Servidor sin Fugas) ───
+    // ── TRIVIAL DA PARROQUIA '84 ──
     var trivQs = [], trivIdx = 0, trivAnswers = [], trivInt = null, trivSec = 12;
 
     window.openTrivialModal = async function () {
@@ -1457,7 +1446,6 @@
       }
     }
 
-    // ── 5.6 A RULETA DA PULPEIRA: sonido de clavijas de latón al girar ───────
     var origSpinRuleta = window.spinRuleta;
     if (typeof origSpinRuleta === 'function') {
       window.spinRuleta = async function () {
@@ -1475,7 +1463,6 @@
     }
   }
 
-  // ── ARRANQUE SEGURO ────────────────────────────────────────────────────────
   function boot() {
     mountBaixo84Stage();
     upgradeAllMinigames84();

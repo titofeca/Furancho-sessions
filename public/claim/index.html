@@ -17,7 +17,7 @@
   <!-- Capa "cinema": profundidad y 3D compartidos con el panel admin.
        Aditiva — quitando estas dos líneas la app vuelve a su aspecto anterior. -->
   <link rel="stylesheet" href="/assets/cinema.css" />
-  <link rel="stylesheet" href="/assets/baixo84.css" />
+  <link rel="stylesheet" href="/assets/baixo84.css?v=86" />
   <script src="/assets/cinema.js" defer></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <!-- ethers: generación de wallet EN el dispositivo (la clave privada no viaja por la red) -->
@@ -4639,7 +4639,7 @@
         if (data.vacationMessage) window._vacationMessage = data.vacationMessage;
         if (data.vacationLogo) window._vacationLogo = data.vacationLogo;
         renderVacationBanner();
-        applySummerLogoState();
+        if (typeof applySummerLogoState === 'function') applySummerLogoState();
         if (typeof checkPendingPrizeBanner === 'function') checkPendingPrizeBanner();
         // Mostrar/ocultar botón Marcho según sesión activa
         setActiveSession(data.hasActiveSession);
@@ -5101,7 +5101,7 @@
 
       // El tema, el logo y las partículas los deja ya en su sitio
       // applySummerLogoState: aquí se duplicaba el toggle.
-      applySummerLogoState();
+      if (typeof applySummerLogoState === 'function') applySummerLogoState();
 
       // Buzón de mensajes: carga inicial + arrancar polling
       startInboxPolling(lvl, userWalletAddress);
@@ -7400,7 +7400,7 @@
           window._vacationMessage = data.vacationMessage || '';
           window._vacationLogo = data.vacationLogo || '';
           renderVacationBanner();
-          applySummerLogoState();
+          if (typeof applySummerLogoState === 'function') applySummerLogoState();
         } catch (_) {}
       });
 
@@ -15137,7 +15137,7 @@
     }
   </script>
 
-  <script src="/assets/baixo84.js" defer></script>
+  <script src="/assets/baixo84.js?v=86" defer></script>
 </body>
 </html>
 
